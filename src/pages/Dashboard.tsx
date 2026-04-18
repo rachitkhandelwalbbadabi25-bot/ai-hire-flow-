@@ -3,7 +3,6 @@ import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Plus, Briefcase, FileText, CheckCircle2, TrendingUp, Search, FileEdit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate, cn } from '../lib/utils';
@@ -19,8 +18,6 @@ export default function Dashboard({ user }: DashboardProps) {
     interviews: 0,
     offers: 0
   });
-  const [recentJobs, setRecentJobs] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,21 +29,11 @@ export default function Dashboard({ user }: DashboardProps) {
         const jobsSnap = await getDocs(jobsRef);
         const resumesSnap = await getDocs(resumesRef);
         
-        const recentJobsQuery = query(jobsRef, orderBy('appliedDate', 'desc'), limit(5));
-        const recentSnap = await getDocs(recentJobsQuery);
-        
         const jobs = jobsSnap.docs.map(doc => doc.data());
         const statusCounts = jobs.reduce((acc: any, job: any) => {
           acc[job.status] = (acc[job.status] || 0) + 1;
           return acc;
         }, {});
-
-        setChartData([
-          { name: 'Applied', value: statusCounts['Applied'] || 0 },
-          { name: 'Interview', value: statusCounts['Interview'] || 0 },
-          { name: 'Offer', value: statusCounts['Offer'] || 0 },
-          { name: 'Rejected', value: statusCounts['Rejected'] || 0 }
-        ]);
 
         setStats({
           totalJobs: jobsSnap.size,
@@ -55,7 +42,6 @@ export default function Dashboard({ user }: DashboardProps) {
           offers: statusCounts['Offer'] || 0
         });
 
-        setRecentJobs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         setLoading(false);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
@@ -65,8 +51,6 @@ export default function Dashboard({ user }: DashboardProps) {
 
     fetchData();
   }, [user.uid]);
-
-  const COLORS = ['#6366F1', '#3dc2ff', '#10b981', '#ef4444'];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -162,68 +146,6 @@ export default function Dashboard({ user }: DashboardProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Chart Column */}
-        <div className="lg:col-span-2 bg-surface p-8 rounded-2xl border border-border">
-          <h3 className="font-sans font-bold text-lg text-ink mb-8">Performance Pipeline</h3>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#94949E', fontSize: 11, fontWeight: 600 }}
-                  dy={10}
-                />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94949E', fontSize: 11 }} />
-                <Tooltip 
-                  cursor={{ fill: 'rgba(255,255,255,0.02)' }}
-                  contentStyle={{ backgroundColor: '#16161A', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}
-                />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Recent Jobs Column */}
-        <div className="bg-surface p-8 rounded-2xl border border-border">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="font-sans font-bold text-lg text-ink">Recent Apps</h3>
-            <Link to="/jobs" className="text-accent hover:text-ink text-xs font-bold transition-colors">View All</Link>
-          </div>
-          <div className="space-y-6">
-            {recentJobs.length > 0 ? recentJobs.map((job) => (
-              <div key={job.id} className="flex items-center justify-between group">
-                <div>
-                  <p className="font-bold text-ink text-sm">{job.company}</p>
-                  <p className="text-ink-dim text-xs font-medium">{job.role}</p>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className={cn(
-                    "status-pill",
-                    job.status === 'Applied' && "status-applied",
-                    job.status === 'Interview' && "status-interview",
-                    job.status === 'Offer' && "status-offer",
-                    job.status === 'Rejected' && "status-rejected"
-                  )}>
-                    {job.status}
-                  </span>
-                  <p className="text-[10px] text-ink-dim/50 font-mono mt-1">{formatDate(job.appliedDate)}</p>
-                </div>
-              </div>
-            )) : (
-              <p className="text-ink-dim text-sm text-center py-12 italic">No data records.</p>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

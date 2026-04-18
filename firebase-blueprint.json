@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile and metadata",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "subscriptionPlan": { "type": "string", "enum": ["free", "premium"] },
+        "resumeCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "subscriptionPlan"]
+    },
+    "Resume": {
+      "title": "Resume Data",
+      "description": "Stored resume content and analysis",
+      "type": "object",
+      "properties": {
+        "fileName": { "type": "string" },
+        "content": { "type": "string" },
+        "analysis": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Job": {
+      "title": "Job Application",
+      "description": "Details of a job application",
+      "type": "object",
+      "properties": {
+        "company": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string", "enum": ["Applied", "Interview", "Rejected", "Offer"] },
+        "notes": { "type": "string" },
+        "appliedDate": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["company", "role", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile document"
+    },
+    "/users/{userId}/resumes/{resumeId}": {
+      "schema": "Resume",
+      "description": "User resumes and analysis"
+    },
+    "/users/{userId}/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Job application tracking"
+    }
+  }
+}

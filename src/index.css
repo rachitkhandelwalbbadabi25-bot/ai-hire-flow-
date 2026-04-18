@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-background: #0C0C0E;
+  --color-surface: #16161A;
+  --color-surface-light: #222228;
+  --color-ink: #FFFFFF;
+  --color-ink-dim: #94949E;
+  --color-accent: #6366F1;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-border: rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased bg-background text-ink;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-surface border border-border rounded-2xl overflow-hidden;
+  }
+  
+  .status-pill {
+    @apply px-3 py-1 rounded-full text-[11px] font-semibold;
+  }
+  
+  .status-applied { @apply bg-accent/15 text-accent; }
+  .status-interview { @apply bg-warning/15 text-warning; }
+  .status-offer { @apply bg-success/15 text-success; }
+  .status-rejected { @apply bg-rose-500/15 text-rose-400; }
+}
+

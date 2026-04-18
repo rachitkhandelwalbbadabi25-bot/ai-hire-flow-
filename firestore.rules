@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helpers
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Profile Rules
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && 
+        incoming().keys().hasAll(['email', 'subscriptionPlan', 'resumeCount', 'createdAt']) &&
+        incoming().subscriptionPlan in ['free', 'premium'] &&
+        incoming().resumeCount == 0;
+      allow update: if isOwner(userId) && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'resumeCount', 'subscriptionPlan']) &&
+        (incoming().resumeCount is int) &&
+        (incoming().subscriptionPlan in ['free', 'premium']);
+    }
+
+    // Resumes Subcollection
+    match /users/{userId}/resumes/{resumeId} {
+      allow list, get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(resumeId) &&
+        incoming().keys().hasAll(['fileName', 'content', 'createdAt']) &&
+        incoming().content is string && 
+        incoming().content.size() < 100000; // Limit content size for logic safety
+      allow delete: if isOwner(userId);
+      allow update: if isOwner(userId) && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['analysis']);
+    }
+
+    // Jobs Subcollection
+    match /users/{userId}/jobs/{jobId} {
+      allow list, get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(jobId) &&
+        incoming().keys().hasAll(['company', 'role', 'status', 'appliedDate']) &&
+        incoming().status in ['Applied', 'Interview', 'Rejected', 'Offer'] &&
+        incoming().company is string && incoming().company.size() <= 100 &&
+        incoming().role is string && incoming().role.size() <= 100;
+      allow update: if isOwner(userId) && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['company', 'role', 'status', 'notes']);
+      allow delete: if isOwner(userId);
+    }
+  }
+}

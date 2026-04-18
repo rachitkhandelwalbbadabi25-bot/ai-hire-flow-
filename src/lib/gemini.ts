@@ -189,3 +189,78 @@ export const findJobs = async (query: string, location: string = "") => {
     return [];
   }
 };
+
+export const generateInterviewQuestions = async (jobDescription: string, resumeText: string = "") => {
+  const prompt = `
+    Based on the following job description and (optionally) the candidate's resume, generate a list of challenging interview questions.
+    Mix behavioral and technical questions.
+    
+    Job Description: ${jobDescription}
+    Candidate Resume: ${resumeText}
+    
+    Return a JSON array where each item is:
+    - id: string (unique)
+    - question: string
+    - category: "behavioral" | "technical" | "situational"
+    - rationale: string (why this question is being asked for this role)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            question: { type: Type.STRING },
+            category: { type: Type.STRING },
+            rationale: { type: Type.STRING }
+          },
+          required: ["id", "question", "category"]
+        }
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '[]'));
+};
+
+export const evaluateInterviewAnswer = async (question: string, answer: string, jobDescription: string) => {
+  const prompt = `
+    Evaluate the candidate's answer to the following interview question for a specific role.
+    
+    Role Context: ${jobDescription}
+    Question: ${question}
+    Candidate Answer: ${answer}
+    
+    Return a JSON object with:
+    - feedback: string
+    - improvementTips: string[]
+    - score: number (0-10)
+    - keyPointsMissing: string[]
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          feedback: { type: Type.STRING },
+          improvementTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+          score: { type: Type.NUMBER },
+          keyPointsMissing: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["feedback", "score"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};

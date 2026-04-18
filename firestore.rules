@@ -51,5 +51,14 @@ service cloud.firestore {
         incoming().diff(existing()).affectedKeys().hasOnly(['company', 'role', 'status', 'notes']);
       allow delete: if isOwner(userId);
     }
+
+    // Simulations Subcollection
+    match /users/{userId}/simulations/{simulationId} {
+      allow list, get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(simulationId) &&
+        incoming().keys().hasAll(['jobDescription', 'questions', 'evaluations', 'createdAt']) &&
+        incoming().jobDescription is string && incoming().jobDescription.size() <= 10000;
+      allow delete: if isOwner(userId);
+    }
   }
 }

@@ -10,7 +10,8 @@ import {
   LogOut, 
   Sparkles,
   LayoutDashboard,
-  Search
+  Search,
+  MessageSquare
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -26,6 +27,7 @@ export default function Navbar({ user }: NavbarProps) {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Job Finder', path: '/finder', icon: Search },
     { name: 'Analyzer', path: '/analyzer', icon: FileSearch },
+    { name: 'Interview Lab', path: '/interview', icon: MessageSquare },
     { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
     { name: 'Profile', path: '/profile', icon: UserIcon },
   ];

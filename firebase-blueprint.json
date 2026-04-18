@@ -37,6 +37,17 @@
         "userId": { "type": "string" }
       },
       "required": ["company", "role", "status"]
+    },
+    "Simulation": {
+      "title": "Interview Simulation",
+      "description": "Stored interview simulation session",
+      "type": "object",
+      "properties": {
+        "jobDescription": { "type": "string" },
+        "questions": { "type": "array" },
+        "evaluations": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -51,6 +62,10 @@
     "/users/{userId}/jobs/{jobId}": {
       "schema": "Job",
       "description": "Job application tracking"
+    },
+    "/users/{userId}/simulations/{simulationId}": {
+      "schema": "Simulation",
+      "description": "Interview practice sessions"
     }
   }
 }

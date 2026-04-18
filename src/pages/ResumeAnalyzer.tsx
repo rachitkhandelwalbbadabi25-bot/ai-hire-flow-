@@ -189,7 +189,7 @@ export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
                     <CheckCircle2 className="w-4 h-4 text-success" /> Tokenized Strengths
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {analysis.keywordsFound.map((k: string, i: number) => (
+                    {(analysis.keywordsFound || []).map((k: string, i: number) => (
                       <span key={i} className="bg-background text-ink px-3 py-1.5 rounded-lg text-xs font-semibold border border-border">
                         {k}
                       </span>
@@ -202,7 +202,7 @@ export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
                     <AlertCircle className="w-4 h-4 text-rose-500" /> Alignment Gaps
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {analysis.missingKeywords.length > 0 ? analysis.missingKeywords.map((k: string, i: number) => (
+                    {(analysis.missingKeywords || []).length > 0 ? (analysis.missingKeywords || []).map((k: string, i: number) => (
                       <span key={i} className="bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/20">
                         {k}
                       </span>
@@ -222,7 +222,7 @@ export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
                 <div>
                   <p className="text-ink-dim text-[10px] font-bold uppercase tracking-widest mb-6 border-b border-border pb-2 inline-block">Structure & Formatting</p>
                   <ul className="space-y-4">
-                    {analysis.formattingSuggestions.map((s: string, i: number) => (
+                    {(analysis.formattingSuggestions || []).map((s: string, i: number) => (
                       <li key={i} className="text-sm text-ink-dim flex gap-4 leading-relaxed">
                         <span className="text-accent font-mono text-[10px] bg-accent/10 px-1.5 rounded">0{i+1}</span> {s}
                       </li>
@@ -232,7 +232,7 @@ export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
                 <div>
                   <p className="text-ink-dim text-[10px] font-bold uppercase tracking-widest mb-6 border-b border-border pb-2 inline-block">Impact & Depth</p>
                   <ul className="space-y-4">
-                    {analysis.impactSuggestions.map((s: string, i: number) => (
+                    {(analysis.impactSuggestions || []).map((s: string, i: number) => (
                       <li key={i} className="text-sm text-ink-dim flex gap-4 leading-relaxed">
                         <span className="text-success font-mono text-[10px] bg-success/10 px-1.5 rounded">0{i+1}</span> {s}
                       </li>

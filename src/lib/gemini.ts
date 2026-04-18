@@ -2,6 +2,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+const cleanJson = (text: string): string => {
+  return text.replace(/```json/g, '').replace(/```/g, '').trim();
+};
+
 export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
   const prompt = `
     Analyze the following resume text. 
@@ -33,12 +37,20 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
           impactSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
           summary: { type: Type.STRING }
         },
-        required: ["score", "atsCompatibility", "keywordsFound", "missingKeywords", "summary"]
+        required: [
+          "score", 
+          "atsCompatibility", 
+          "keywordsFound", 
+          "missingKeywords", 
+          "formattingSuggestions", 
+          "impactSuggestions", 
+          "summary"
+        ]
       }
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateResume = async (userData: any) => {
@@ -102,7 +114,7 @@ export const generateResume = async (userData: any) => {
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateCoverLetter = async (resumeText: string, jobDescription: string) => {
@@ -130,7 +142,7 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const findJobs = async (query: string, location: string = "") => {
@@ -150,6 +162,7 @@ export const findJobs = async (query: string, location: string = "") => {
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
+      toolConfig: { includeServerSideToolInvocations: true },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -163,11 +176,16 @@ export const findJobs = async (query: string, location: string = "") => {
             description: { type: Type.STRING },
             datePosted: { type: Type.STRING }
           },
-          required: ["title", "company", "link"]
+          required: ["title", "company", "link", "location", "description"]
         }
       }
     }
   });
 
-  return JSON.parse(response.text || '[]');
+  try {
+    return JSON.parse(cleanJson(response.text || '[]'));
+  } catch (e) {
+    console.error("Failed to parse jobs JSON:", e);
+    return [];
+  }
 };

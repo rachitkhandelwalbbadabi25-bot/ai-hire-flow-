@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { User } from 'firebase/auth';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap } from 'lucide-react';
+import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap, AlertCircle } from 'lucide-react';
 import { findJobs } from '../lib/gemini';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
@@ -25,6 +25,7 @@ export default function JobFinder({ user }: JobFinderProps) {
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const navigate = useNavigate();
 
@@ -33,12 +34,14 @@ export default function JobFinder({ user }: JobFinderProps) {
     if (!query) return;
 
     setLoading(true);
+    setError(null);
     setHasSearched(true);
     try {
       const results = await findJobs(query, location);
       setJobs(results);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Search failed:', error);
+      setError("The Neural Crawler encountered an interference. Check your intelligence parameters or try a different sector.");
     } finally {
       setLoading(false);
     }
@@ -140,6 +143,22 @@ export default function JobFinder({ user }: JobFinderProps) {
               <div className="h-4 bg-surface-light rounded w-3/4 mx-auto"></div>
               <div className="h-4 bg-surface-light rounded w-1/2 mx-auto"></div>
             </div>
+          </div>
+        ) : error ? (
+          <div className="py-24 text-center">
+            <div className="bg-rose-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-rose-500/20">
+              <AlertCircle className="w-8 h-8 text-rose-400" />
+            </div>
+            <h3 className="text-xl font-bold text-ink mb-2 uppercase tracking-tight">System Interference</h3>
+            <p className="text-rose-400/80 text-sm max-w-md mx-auto px-4">
+              {error}
+            </p>
+            <button 
+              onClick={() => handleSearch({ preventDefault: () => {} } as any)}
+              className="mt-6 text-[10px] font-bold text-accent uppercase tracking-widest hover:underline"
+            >
+              Re-initialize Scanning
+            </button>
           </div>
         ) : hasSearched && jobs.length === 0 ? (
           <div className="py-24 text-center">

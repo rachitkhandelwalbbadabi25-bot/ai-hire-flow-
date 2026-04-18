@@ -1,6 +1,6 @@
 import { useState, ChangeEvent, useEffect } from 'react';
 import { User } from 'firebase/auth';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { extractTextFromPDF } from '../lib/pdf';
@@ -25,6 +25,7 @@ interface ResumeAnalyzerProps {
 
 export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [jobDesc, setJobDesc] = useState('');
 
@@ -198,9 +199,19 @@ export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
                 </div>
 
                 <div className="bg-surface p-8 rounded-3xl border border-border">
-                  <h3 className="font-bold text-ink mb-6 flex items-center gap-2 text-xs uppercase tracking-widest">
-                    <AlertCircle className="w-4 h-4 text-rose-500" /> Alignment Gaps
-                  </h3>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-ink flex items-center gap-2 text-xs uppercase tracking-widest">
+                      <AlertCircle className="w-4 h-4 text-rose-500" /> Alignment Gaps
+                    </h3>
+                    {(analysis.missingKeywords || []).length > 0 && (
+                      <button 
+                        onClick={() => navigate('/learning')}
+                        className="text-[9px] font-bold text-accent px-3 py-1 bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-all uppercase tracking-widest"
+                      >
+                        Generate roadmap
+                      </button>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {(analysis.missingKeywords || []).length > 0 ? (analysis.missingKeywords || []).map((k: string, i: number) => (
                       <span key={i} className="bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/20">

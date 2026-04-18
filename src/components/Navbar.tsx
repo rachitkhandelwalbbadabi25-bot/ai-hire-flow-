@@ -11,7 +11,9 @@ import {
   Sparkles,
   LayoutDashboard,
   Search,
-  MessageSquare
+  MessageSquare,
+  BookOpen,
+  FileEdit
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -28,6 +30,8 @@ export default function Navbar({ user }: NavbarProps) {
     { name: 'Job Finder', path: '/finder', icon: Search },
     { name: 'Analyzer', path: '/analyzer', icon: FileSearch },
     { name: 'Interview Lab', path: '/interview', icon: MessageSquare },
+    { name: 'Learning Path', path: '/learning', icon: BookOpen },
+    { name: 'Resume Editor', path: '/editor', icon: FileEdit },
     { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
     { name: 'Profile', path: '/profile', icon: UserIcon },
   ];

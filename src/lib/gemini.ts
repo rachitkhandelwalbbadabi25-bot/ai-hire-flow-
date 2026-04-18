@@ -264,3 +264,102 @@ export const evaluateInterviewAnswer = async (question: string, answer: string, 
 
   return JSON.parse(cleanJson(response.text || '{}'));
 };
+
+export const generateLearningPath = async (missingSkills: string[], targetRole: string) => {
+  const prompt = `
+    Generate a highly-rated, professional learning path for a candidate who is missing the following skills: ${missingSkills.join(', ')}.
+    The target role is "${targetRole}".
+    
+    Use Google Search to find real, highly-rated courses from Coursera, Udemy, edX, and YouTube.
+    
+    Return a JSON object with:
+    - roadmapTitle: string
+    - sections: {
+        title: string,
+        skillsCovered: string[],
+        resources: {
+          name: string,
+          platform: string,
+          link: string,
+          description: string,
+          type: "video" | "course" | "book" | "documentation"
+        }[]
+      }[]
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+      toolConfig: { includeServerSideToolInvocations: true },
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          roadmapTitle: { type: Type.STRING },
+          sections: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                skillsCovered: { type: Type.ARRAY, items: { type: Type.STRING } },
+                resources: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING },
+                      platform: { type: Type.STRING },
+                      link: { type: Type.STRING },
+                      description: { type: Type.STRING },
+                      type: { type: Type.STRING }
+                    },
+                    required: ["name", "platform", "link", "type"]
+                  }
+                }
+              },
+              required: ["title", "skillsCovered", "resources"]
+            }
+          }
+        },
+        required: ["roadmapTitle", "sections"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};
+
+export const refactorResumeText = async (text: string, context: string = "") => {
+  const prompt = `
+    Refactor the following resume text to be more impactful, professional, and result-oriented.
+    Use strong action verbs and quantify achievements where possible.
+    
+    Current Text: ${text}
+    ${context ? `Target Role Context: ${context}` : ''}
+    
+    Return a JSON object with:
+    - refactoredText: string
+    - explanation: string (why these changes were made)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          refactoredText: { type: Type.STRING },
+          explanation: { type: Type.STRING }
+        },
+        required: ["refactoredText"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};

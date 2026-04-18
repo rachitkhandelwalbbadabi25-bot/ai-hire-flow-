@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { signInWithGoogle } from '../lib/firebase';
-import { FileSearch, Sparkles, Target, Zap } from 'lucide-react';
+import { FileSearch, Sparkles, Target, Zap, Map, Briefcase } from 'lucide-react';
 
 export default function Landing() {
   return (
@@ -45,22 +45,37 @@ export default function Landing() {
       {/* Features Grid */}
       <section className="py-24 bg-surface border-y border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
                 icon: FileSearch,
-                title: "Resume Analysis",
+                title: "Resume Intelligence",
                 desc: "Deep-layer mapping of ATS compatibility, keyword density, and organizational impact."
               },
               {
                 icon: Target,
-                title: "Job Matching",
-                desc: "Sub-second comparison between your profile and job specs for precision tailoring."
+                title: "Precision Matching",
+                desc: "Sub-second comparison between your profile and global job signals for mission-critical tailoring."
+              },
+              {
+                icon: Zap,
+                title: "Neural Job Finder",
+                desc: "Deploy AI agents to scan professional networks and extract optimal career acquisitions."
               },
               {
                 icon: Sparkles,
-                title: "Lifecycle Tracking",
-                desc: "Monitor your progression through every stage of the application pipeline."
+                title: "Interview Lab",
+                desc: "Simulate high-stakes vetting sessions with AI-driven behavioral and technical evaluation."
+              },
+              {
+                icon: Map,
+                title: "Neural Roadmap",
+                desc: "Convert alignment gaps into strategic growth trajectories using validated global intelligence."
+              },
+              {
+                icon: Briefcase,
+                title: "Pipeline Tracking",
+                desc: "Monitor your progression through every stage of the application and interview pipeline."
               }
             ].map((f, i) => (
               <motion.div
@@ -69,13 +84,13 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="group p-8 rounded-3xl border border-border bg-background hover:bg-surface-light/30 transition-all hover:shadow-2xl hover:shadow-accent/5"
+                className="group p-10 rounded-[2.5rem] border border-border bg-background hover:bg-surface-light/30 transition-all hover:shadow-2xl hover:shadow-accent/5"
               >
-                <div className="bg-surface-light w-12 h-12 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-accent transition-colors">
-                  <f.icon className="w-6 h-6 text-ink group-hover:text-white transition-colors" />
+                <div className="bg-surface-light w-14 h-14 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-accent transition-colors">
+                  <f.icon className="w-7 h-7 text-ink group-hover:text-white transition-colors" />
                 </div>
-                <h3 className="font-sans font-bold text-xl text-ink mb-3">{f.title}</h3>
-                <p className="text-ink-dim font-medium leading-relaxed">{f.desc}</p>
+                <h3 className="font-sans font-bold text-2xl text-ink mb-4">{f.title}</h3>
+                <p className="text-ink-dim font-medium leading-relaxed italic">"{f.desc}"</p>
               </motion.div>
             ))}
           </div>

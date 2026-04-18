@@ -60,5 +60,10 @@ service cloud.firestore {
         incoming().jobDescription is string && incoming().jobDescription.size() <= 10000;
       allow delete: if isOwner(userId);
     }
+
+    // User Config (Master Resume, etc)
+    match /users/{userId}/config/{configId} {
+      allow read, write: if isOwner(userId) && isValidId(configId);
+    }
   }
 }

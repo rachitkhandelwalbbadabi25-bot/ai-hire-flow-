@@ -4,7 +4,7 @@ import { db } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Plus, Briefcase, FileText, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Plus, Briefcase, FileText, CheckCircle2, TrendingUp, Search, FileEdit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate, cn } from '../lib/utils';
 
@@ -109,6 +109,57 @@ export default function Dashboard({ user }: DashboardProps) {
             <p className="text-2xl font-bold text-ink font-mono tracking-tighter">{s.val}</p>
           </motion.div>
         ))}
+      </div>
+
+      {/* Suggested Operations */}
+      <div className="mb-12">
+        <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] mb-6 px-2">Suggested Next Operations</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link to="/finder" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-accent/40 transition-all group shadow-sm">
+             <div className="flex items-center gap-4">
+                <div className="bg-accent/10 p-3 rounded-2xl group-hover:bg-accent/20 transition-colors">
+                   <Search className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                   <h4 className="font-bold text-ink text-sm">Market Surveillance</h4>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Initialize job discovery scan</p>
+                </div>
+             </div>
+          </Link>
+          <Link to="/interview" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-success/40 transition-all group shadow-sm">
+             <div className="flex items-center gap-4">
+                <div className="bg-success/10 p-3 rounded-2xl group-hover:bg-success/20 transition-colors">
+                   <TrendingUp className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                   <h4 className="font-bold text-ink text-sm">Simulation Drill</h4>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Calibrate interview readiness</p>
+                </div>
+             </div>
+          </Link>
+          <Link to="/learning" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-warning/40 transition-all group shadow-sm">
+             <div className="flex items-center gap-4">
+                <div className="bg-warning/10 p-3 rounded-2xl group-hover:bg-warning/20 transition-colors">
+                   <FileText className="w-5 h-5 text-warning" />
+                </div>
+                <div>
+                   <h4 className="font-bold text-ink text-sm">Learning Roadmap</h4>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Close alignment gaps</p>
+                </div>
+             </div>
+          </Link>
+          <Link to="/editor" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-accent/40 transition-all group shadow-sm">
+             <div className="flex items-center gap-4">
+                <div className="bg-accent/10 p-3 rounded-2xl group-hover:bg-accent/20 transition-colors">
+                   <FileEdit className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                   <h4 className="font-bold text-ink text-sm">Neural Editor</h4>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Refactor professional DNA</p>
+                </div>
+             </div>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

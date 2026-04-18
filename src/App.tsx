@@ -11,6 +11,8 @@ import ResumeAnalyzer from './pages/ResumeAnalyzer';
 import JobTracker from './pages/JobTracker';
 import JobFinder from './pages/JobFinder';
 import InterviewSimulator from './pages/InterviewSimulator';
+import LearningPath from './pages/LearningPath';
+import ResumeEditor from './pages/ResumeEditor';
 import Profile from './pages/Profile';
 
 export default function App() {
@@ -63,6 +65,8 @@ export default function App() {
           <Route path="/analyzer" element={user ? <ResumeAnalyzer user={user} /> : <Navigate to="/" />} />
           <Route path="/finder" element={user ? <JobFinder user={user} /> : <Navigate to="/" />} />
           <Route path="/interview" element={user ? <InterviewSimulator user={user} /> : <Navigate to="/" />} />
+          <Route path="/learning" element={user ? <LearningPath user={user} /> : <Navigate to="/" />} />
+          <Route path="/editor" element={user ? <ResumeEditor user={user} /> : <Navigate to="/" />} />
           <Route path="/jobs" element={user ? <JobTracker user={user} /> : <Navigate to="/" />} />
           <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/" />} />
         </Routes>

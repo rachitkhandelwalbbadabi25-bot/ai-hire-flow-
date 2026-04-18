@@ -5,15 +5,33 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-background: #0C0C0E;
-  --color-surface: #16161A;
-  --color-surface-light: #222228;
-  --color-ink: #FFFFFF;
-  --color-ink-dim: #94949E;
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-light: var(--surface-light);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
   --color-accent: #6366F1;
   --color-success: #10B981;
   --color-warning: #F59E0B;
-  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border: var(--border);
+}
+
+:root {
+  --background: #0C0C0E;
+  --surface: #16161A;
+  --surface-light: #222228;
+  --ink: #FFFFFF;
+  --ink-dim: #94949E;
+  --border: rgba(255, 255, 255, 0.08);
+}
+
+.light {
+  --background: #F8F9FA;
+  --surface: #FFFFFF;
+  --surface-light: #F1F3F5;
+  --ink: #1A1A1E;
+  --ink-dim: #6B7280;
+  --border: rgba(0, 0, 0, 0.08);
 }
 
 @layer base {

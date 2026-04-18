@@ -14,6 +14,7 @@ import InterviewSimulator from './pages/InterviewSimulator';
 import LearningPath from './pages/LearningPath';
 import ResumeEditor from './pages/ResumeEditor';
 import Profile from './pages/Profile';
+import { ThemeProvider } from './context/ThemeContext';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -57,20 +58,22 @@ export default function App() {
   }
 
   return (
-    <Router>
-      <Layout user={user}>
-        <Routes>
-          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
-          <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/" />} />
-          <Route path="/analyzer" element={user ? <ResumeAnalyzer user={user} /> : <Navigate to="/" />} />
-          <Route path="/finder" element={user ? <JobFinder user={user} /> : <Navigate to="/" />} />
-          <Route path="/interview" element={user ? <InterviewSimulator user={user} /> : <Navigate to="/" />} />
-          <Route path="/learning" element={user ? <LearningPath user={user} /> : <Navigate to="/" />} />
-          <Route path="/editor" element={user ? <ResumeEditor user={user} /> : <Navigate to="/" />} />
-          <Route path="/jobs" element={user ? <JobTracker user={user} /> : <Navigate to="/" />} />
-          <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/" />} />
-        </Routes>
-      </Layout>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <Layout user={user}>
+          <Routes>
+            <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
+            <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/" />} />
+            <Route path="/analyzer" element={user ? <ResumeAnalyzer user={user} /> : <Navigate to="/" />} />
+            <Route path="/finder" element={user ? <JobFinder user={user} /> : <Navigate to="/" />} />
+            <Route path="/interview" element={user ? <InterviewSimulator user={user} /> : <Navigate to="/" />} />
+            <Route path="/learning" element={user ? <LearningPath user={user} /> : <Navigate to="/" />} />
+            <Route path="/editor" element={user ? <ResumeEditor user={user} /> : <Navigate to="/" />} />
+            <Route path="/jobs" element={user ? <JobTracker user={user} /> : <Navigate to="/" />} />
+            <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/" />} />
+          </Routes>
+        </Layout>
+      </Router>
+    </ThemeProvider>
   );
 }

@@ -4,6 +4,7 @@ import { auth, signInWithGoogle } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { 
   BarChart3, 
   FileSearch, 
@@ -20,7 +21,9 @@ import {
   X,
   Home,
   GraduationCap,
-  Mic
+  Mic,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -28,6 +31,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user }: NavbarProps) {
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -81,6 +85,13 @@ export default function Navbar({ user }: NavbarProps) {
                       <p className="text-[10px] font-bold text-ink uppercase tracking-wider">{user.displayName}</p>
                       <p className="text-[9px] text-ink-dim uppercase">Standard Tier</p>
                    </div>
+                   <button
+                    onClick={toggleTheme}
+                    className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
+                    title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+                  >
+                    {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                  </button>
                    <button
                     onClick={handleSignOut}
                     className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"

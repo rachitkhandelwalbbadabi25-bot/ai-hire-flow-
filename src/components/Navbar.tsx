@@ -9,7 +9,8 @@ import {
   User as UserIcon, 
   LogOut, 
   Sparkles,
-  LayoutDashboard
+  LayoutDashboard,
+  Search
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -23,6 +24,7 @@ export default function Navbar({ user }: NavbarProps) {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Job Finder', path: '/finder', icon: Search },
     { name: 'Analyzer', path: '/analyzer', icon: FileSearch },
     { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
     { name: 'Profile', path: '/profile', icon: UserIcon },

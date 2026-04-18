@@ -132,3 +132,42 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
 
   return JSON.parse(response.text || '{}');
 };
+
+export const findJobs = async (query: string, location: string = "") => {
+  const prompt = `Search for recent job listings for "${query}" in "${location}". Pay special attention to LinkedIn job posts. 
+  
+  Return a JSON array of specific job opportunities.
+  For each job, include:
+  - title: The job title
+  - company: The company name
+  - location: The geographical location
+  - link: The direct URL to the job posting
+  - description: A short summary of the role and requirements
+  - datePosted: When it was posted if known`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            company: { type: Type.STRING },
+            location: { type: Type.STRING },
+            link: { type: Type.STRING },
+            description: { type: Type.STRING },
+            datePosted: { type: Type.STRING }
+          },
+          required: ["title", "company", "link"]
+        }
+      }
+    }
+  });
+
+  return JSON.parse(response.text || '[]');
+};

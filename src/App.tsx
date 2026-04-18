@@ -9,6 +9,7 @@ import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import ResumeAnalyzer from './pages/ResumeAnalyzer';
 import JobTracker from './pages/JobTracker';
+import JobFinder from './pages/JobFinder';
 import Profile from './pages/Profile';
 
 export default function App() {
@@ -43,10 +44,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-zinc-50">
+      <div className="h-screen w-full flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-zinc-200 border-t-zinc-900 rounded-full animate-spin" />
-          <p className="text-zinc-500 font-medium font-sans">Powering up your career...</p>
+          <div className="w-12 h-12 border-4 border-border border-t-accent rounded-full animate-spin" />
+          <p className="text-ink-dim font-medium font-sans uppercase tracking-widest text-xs">Synchronizing Neural Network...</p>
         </div>
       </div>
     );
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
           <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/" />} />
           <Route path="/analyzer" element={user ? <ResumeAnalyzer user={user} /> : <Navigate to="/" />} />
+          <Route path="/finder" element={user ? <JobFinder user={user} /> : <Navigate to="/" />} />
           <Route path="/jobs" element={user ? <JobTracker user={user} /> : <Navigate to="/" />} />
           <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/" />} />
         </Routes>

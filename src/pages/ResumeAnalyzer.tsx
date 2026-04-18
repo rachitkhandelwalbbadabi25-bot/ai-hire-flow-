@@ -1,5 +1,6 @@
-import { useState, ChangeEvent } from 'react';
+import { useState, ChangeEvent, useEffect } from 'react';
 import { User } from 'firebase/auth';
+import { useLocation } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { extractTextFromPDF } from '../lib/pdf';
@@ -23,8 +24,15 @@ interface ResumeAnalyzerProps {
 }
 
 export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
+  const location = useLocation();
   const [file, setFile] = useState<File | null>(null);
   const [jobDesc, setJobDesc] = useState('');
+
+  useEffect(() => {
+    if (location.state?.jobDescription) {
+      setJobDesc(location.state.jobDescription);
+    }
+  }, [location.state]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
   const [coverLetter, setCoverLetter] = useState<string | null>(null);

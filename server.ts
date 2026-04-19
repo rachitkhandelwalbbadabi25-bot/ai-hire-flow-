@@ -22,8 +22,22 @@ async function startServer() {
   const PORT = 3000;
 
   // Middleware
-  app.use(cors());
+  app.use(cors({
+    origin: '*', // In production, replace with your specific Vercel/Firebase domains
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+  }));
+  
   app.use(express.json());
+
+  // Handle OPTIONS preflight explicitly for all routes
+  app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.sendStatus(200);
+  });
 
   // Logging middleware
   app.use((req, res, next) => {

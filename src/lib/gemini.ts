@@ -2,19 +2,26 @@
 // This ensures that the GEMINI_API_KEY is never exposed to the frontend.
 
 const apiFetch = async (endpoint: string, data: any) => {
-  const response = await fetch(`/api/${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+  try {
+    const response = await fetch(`/api/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
 
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API Error [${endpoint}]: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  } catch (err: any) {
+    console.error(`Network Error [${endpoint}]:`, err);
+    throw err;
   }
-
-  return response.json();
 };
 
 export const analyzeResume = async (resumeText: string, jobDescription?: string) => {

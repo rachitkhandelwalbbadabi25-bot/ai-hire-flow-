@@ -62,6 +62,21 @@
         "evaluations": { "type": "object" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Cache": {
+      "title": "Operation Cache",
+      "description": "Persistent cache for expensive AI operations",
+      "type": "object",
+      "properties": {
+        "result": { "type": "object" },
+        "resumeHash": { "type": "string" },
+        "jobDescHash": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "model": { "type": "string" },
+        "tokensUsed": { "type": "integer" }
+      },
+      "required": ["result", "resumeHash", "jobDescHash", "expiresAt"]
     }
   },
   "firestore": {
@@ -80,6 +95,10 @@
     "/users/{userId}/simulations/{simulationId}": {
       "schema": "Simulation",
       "description": "Interview practice sessions"
+    },
+    "/users/{userId}/cache/{cacheId}": {
+      "schema": "Cache",
+      "description": "Persistent AI result cache"
     }
   }
 }

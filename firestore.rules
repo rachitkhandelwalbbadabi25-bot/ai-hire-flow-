@@ -43,6 +43,22 @@ service cloud.firestore {
       );
 
       // Support Sub-collections (Resumes, Jobs, Simulations, Config, etc.)
+      // 4. Learning Simulations
+      match /simulations/{simulationId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 5. Cache Rules
+      match /cache/{cacheId} {
+        function isValidCache(data) {
+          return data.resumeHash is string && 
+                 data.jobDescHash is string && 
+                 data.expiresAt is string;
+        }
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidCache(incoming());
+      }
+
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId) || isAdmin();
       }

@@ -6,6 +6,7 @@ import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { extractTextFromPDF } from '../lib/pdf';
 import { analyzeResume, generateCoverLetter } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
+import { firestoreCache } from '../services/FirestoreCache';
 import { motion } from 'motion/react';
 import { 
   FileUp, 
@@ -49,7 +50,7 @@ export default function ResumeAnalyzer() {
   const [analysis, setAnalysis] = useState<any>(null);
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isFromCache, setIsFromCache] = useState(false);
+  const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(null);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -66,27 +67,47 @@ export default function ResumeAnalyzer() {
 
     setIsAnalyzing(true);
     setError(null);
-    setIsFromCache(false);
+    setCacheSource(null);
 
     try {
       const text = await extractTextFromPDF(file);
-      const cacheKey = cacheManager.generateResumeKey(text, jobDesc);
-      const cached = cacheManager.get<{ analysis: any, coverLetter: string | null }>(cacheKey);
+      
+      // STEP 1: Check In-Memory (Browser) Cache
+      const inMemoryKey = cacheManager.generateResumeKey(text, jobDesc);
+      const inMemoryCached = cacheManager.get<{ analysis: any, coverLetter: string | null }>(inMemoryKey);
 
-      if (cached) {
-        setAnalysis(cached.analysis);
-        setCoverLetter(cached.coverLetter);
-        setIsFromCache(true);
+      if (inMemoryCached) {
+        setAnalysis(inMemoryCached.analysis);
+        setCoverLetter(inMemoryCached.coverLetter);
+        setCacheSource('browser');
         setIsAnalyzing(false);
         return;
       }
 
+      // STEP 2: Check Persistent (Firestore) Cache
+      const persistentCached = await firestoreCache.getCache(user.uid, text, jobDesc);
+      if (persistentCached) {
+        setAnalysis(persistentCached.analysis);
+        setCoverLetter(persistentCached.coverLetter);
+        setCacheSource('persistent');
+        
+        // Sync back to in-memory for even faster subsequent access
+        cacheManager.set(inMemoryKey, { 
+          analysis: persistentCached.analysis, 
+          coverLetter: persistentCached.coverLetter 
+        }, 24 * 60 * 60 * 1000);
+        
+        setIsAnalyzing(false);
+        return;
+      }
+
+      // STEP 3: Fallback to Gemini API
       if (!canScan) {
         setError(`Analysis capacity reached: ${scansLeft}/${scanLimit} scans remaining. Upgrade for more bandwidth.`);
         setIsAnalyzing(false);
         return;
       }
-
+      
       if (jobDesc && !canGenCL) {
         setError(`Cover Letter capacity reached: ${clLeft}/${clLimit} generations remaining. Upgrade for more bandwidth.`);
         setIsAnalyzing(false);
@@ -110,16 +131,19 @@ export default function ResumeAnalyzer() {
         cl = clResult.content;
       }
 
-      await updateDoc(doc(db, 'users', user.uid, 'resumes', resumeRef.id), {
+      const resultsToStore = {
         analysis: analysisResult,
         coverLetter: cl
-      });
+      };
+
+      await updateDoc(doc(db, 'users', user.uid, 'resumes', resumeRef.id), resultsToStore);
 
       setAnalysis(analysisResult);
       setCoverLetter(cl);
       
-      // Cache for 24 hours
-      cacheManager.set(cacheKey, { analysis: analysisResult, coverLetter: cl }, 24 * 60 * 60 * 1000);
+      // Save to both caches
+      cacheManager.set(inMemoryKey, resultsToStore, 24 * 60 * 60 * 1000);
+      await firestoreCache.setCache(user.uid, text, jobDesc, resultsToStore);
 
     } catch (err: any) {
       console.error(err);
@@ -230,11 +254,18 @@ export default function ResumeAnalyzer() {
           animate={{ opacity: 1 }}
           className="space-y-8"
         >
-          {isFromCache && (
+          {cacheSource && (
             <div className="flex justify-center">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 border border-accent/20 rounded-full text-accent shadow-sm">
+              <div className={cn(
+                "inline-flex items-center gap-2 px-4 py-1.5 border rounded-full shadow-sm transition-all",
+                cacheSource === 'browser' 
+                  ? "bg-accent/10 border-accent/20 text-accent" 
+                  : "bg-success/10 border-success/20 text-success"
+              )}>
                 <Sparkles className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Instant Recovery (Cached Result)</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest">
+                  {cacheSource === 'browser' ? 'Instant Recovery (Browser)' : 'Persistent Recovery (Cloud)'}
+                </span>
               </div>
             </div>
           )}

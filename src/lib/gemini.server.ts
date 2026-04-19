@@ -1,13 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Server-side initialization (using process.env)
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 const cleanJson = (text: string): string => {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
 };
 
-export const analyzeResumeContent = async (resumeText: string, jobDescription?: string) => {
+export const analyzeResumeContent = async (ai: GoogleGenAI, resumeText: string, jobDescription?: string) => {
   const prompt = `
     Analyze the following resume text. 
     ${jobDescription ? `Compare it against this job description: ${jobDescription}` : 'Provide a general analysis.'}
@@ -54,7 +51,7 @@ export const analyzeResumeContent = async (resumeText: string, jobDescription?: 
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
-export const searchJobsContent = async (queryStr: string, location: string = "") => {
+export const searchJobsContent = async (ai: GoogleGenAI, queryStr: string, location: string = "") => {
   const prompt = `Search for recent job listings for "${queryStr}" in "${location}". Pay special attention to LinkedIn job posts. 
   
   Return a JSON array of specific job opportunities.
@@ -99,7 +96,7 @@ export const searchJobsContent = async (queryStr: string, location: string = "")
   }
 };
 
-export const generateInterviewQuestionsContent = async (jobDescription: string, resumeText: string = "") => {
+export const generateInterviewQuestionsContent = async (ai: GoogleGenAI, jobDescription: string, resumeText: string = "") => {
   const prompt = `
     Based on the following job description and (optionally) the candidate's resume, generate a list of challenging interview questions.
     Mix behavioral and technical questions.
@@ -138,7 +135,7 @@ export const generateInterviewQuestionsContent = async (jobDescription: string, 
   return JSON.parse(cleanJson(response.text || '[]'));
 };
 
-export const generateCoverLetterContent = async (resumeText: string, jobDescription: string) => {
+export const generateCoverLetterContent = async (ai: GoogleGenAI, resumeText: string, jobDescription: string) => {
   const prompt = `
     Generate a personalized, persuasive cover letter based on the following resume and job description.
     
@@ -166,8 +163,7 @@ export const generateCoverLetterContent = async (resumeText: string, jobDescript
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
-// ... other methods as needed ...
-export const evaluateInterviewAnswerContent = async (question: string, answer: string, jobDescription: string) => {
+export const evaluateInterviewAnswerContent = async (ai: GoogleGenAI, question: string, answer: string, jobDescription: string) => {
   const prompt = `
     Evaluate the candidate's answer to the following interview question for a specific role.
     
@@ -203,7 +199,7 @@ export const evaluateInterviewAnswerContent = async (question: string, answer: s
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
-export const generateLearningPathContent = async (missingSkills: string[], targetRole: string) => {
+export const generateLearningPathContent = async (ai: GoogleGenAI, missingSkills: string[], targetRole: string) => {
   const prompt = `
     Generate a highly-rated, professional learning path for a candidate who is missing the following skills: ${missingSkills.join(', ')}.
     The target role is "${targetRole}".
@@ -270,7 +266,7 @@ export const generateLearningPathContent = async (missingSkills: string[], targe
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
-export const refactorResumeContent = async (text: string, context: string = "") => {
+export const refactorResumeContent = async (ai: GoogleGenAI, text: string, context: string = "") => {
   const prompt = `
     Refactor the following resume text to be more impactful, professional, and result-oriented.
     Use strong action verbs and quantify achievements where possible.
@@ -302,7 +298,7 @@ export const refactorResumeContent = async (text: string, context: string = "") 
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
-export const generateResumeContent = async (userData: any) => {
+export const generateResumeContent = async (ai: GoogleGenAI, userData: any) => {
   const prompt = `
     Generate a professional, ATS-friendly resume based on the following user details:
     ${JSON.stringify(userData)}

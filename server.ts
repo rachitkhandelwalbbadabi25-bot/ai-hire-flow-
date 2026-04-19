@@ -25,6 +25,12 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  // Logging middleware
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
+
   // Gemini API Routes (Simulating Cloud Functions)
   app.post('/api/analyze-resume', async (req, res) => {
     try {
@@ -112,6 +118,12 @@ async function startServer() {
       console.error("Resume generator error:", error);
       res.status(500).json({ error: "Failed to generate resume" });
     }
+  });
+
+  // Fallback for API routes to prevent falling through to Vite/Static
+  app.all('/api/*', (req, res) => {
+    console.warn(`Untrapped API request: ${req.method} ${req.url}`);
+    res.status(404).json({ error: 'API route not found' });
   });
 
   // Health check

@@ -16,11 +16,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error('[API] GEMINI_API_KEY is undefined');
+    const rawKey = process.env.GEMINI_API_KEY || (process.env as any).VITE_GEMINI_API_KEY;
+    if (!rawKey) {
+      console.error('[API] API Key is missing');
       return res.status(500).json({ error: 'GEMINI_API_KEY not configured in Vercel' });
     }
+
+    // Clean key: trim whitespace and remove potential surrounding quotes
+    const apiKey = rawKey.trim().replace(/^['"]|['"]$/g, '');
 
     const { resumeText, jobDescription } = req.body;
     if (!resumeText) {

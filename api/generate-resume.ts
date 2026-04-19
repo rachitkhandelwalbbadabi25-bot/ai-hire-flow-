@@ -10,8 +10,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+    const rawKey = process.env.GEMINI_API_KEY || (process.env as any).VITE_GEMINI_API_KEY;
+    if (!rawKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+    const apiKey = rawKey.trim().replace(/^['"]|['"]$/g, '');
 
     const { userData } = req.body;
     const ai = new GoogleGenAI({ apiKey });
@@ -22,4 +23,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
 }
-

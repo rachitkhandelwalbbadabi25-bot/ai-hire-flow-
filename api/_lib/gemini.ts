@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const cleanJson = (text: string): string => {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -20,20 +20,20 @@ export const analyzeResumeContent = async (ai: GoogleGenAI, resumeText: string, 
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-flash-latest",
     contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "OBJECT",
+        type: Type.OBJECT,
         properties: {
-          score: { type: "NUMBER" },
-          atsCompatibility: { type: "STRING" },
-          keywordsFound: { type: "ARRAY", items: { type: "STRING" } },
-          missingKeywords: { type: "ARRAY", items: { type: "STRING" } },
-          formattingSuggestions: { type: "ARRAY", items: { type: "STRING" } },
-          impactSuggestions: { type: "ARRAY", items: { type: "STRING" } },
-          summary: { type: "STRING" }
+          score: { type: Type.NUMBER },
+          atsCompatibility: { type: Type.STRING },
+          keywordsFound: { type: Type.ARRAY, items: { type: Type.STRING } },
+          missingKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+          formattingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+          impactSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+          summary: { type: Type.STRING }
         },
         required: [
           "score", 
@@ -64,23 +64,23 @@ export const searchJobsContent = async (ai: GoogleGenAI, queryStr: string, locat
   - datePosted: When it was posted if known`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-flash-latest",
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
       toolConfig: { includeServerSideToolInvocations: true },
       responseMimeType: "application/json",
       responseSchema: {
-        type: "ARRAY",
+        type: Type.ARRAY,
         items: {
-          type: "OBJECT",
+          type: Type.OBJECT,
           properties: {
-            title: { type: "STRING" },
-            company: { type: "STRING" },
-            location: { type: "STRING" },
-            link: { type: "STRING" },
-            description: { type: "STRING" },
-            datePosted: { type: "STRING" }
+            title: { type: Type.STRING },
+            company: { type: Type.STRING },
+            location: { type: Type.STRING },
+            link: { type: Type.STRING },
+            description: { type: Type.STRING },
+            datePosted: { type: Type.STRING }
           },
           required: ["title", "company", "link", "location", "description"]
         }
@@ -112,19 +112,19 @@ export const generateInterviewQuestionsContent = async (ai: GoogleGenAI, jobDesc
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-flash-latest",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "ARRAY",
+        type: Type.ARRAY,
         items: {
-          type: "OBJECT",
+          type: Type.OBJECT,
           properties: {
-            id: { type: "STRING" },
-            question: { type: "STRING" },
-            category: { type: "STRING" },
-            rationale: { type: "STRING" }
+            id: { type: Type.STRING },
+            question: { type: Type.STRING },
+            category: { type: Type.STRING },
+            rationale: { type: Type.STRING }
           },
           required: ["id", "question", "category"]
         }
@@ -147,14 +147,14 @@ export const generateCoverLetterContent = async (ai: GoogleGenAI, resumeText: st
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-flash-latest",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "OBJECT",
+        type: Type.OBJECT,
         properties: {
-          content: { type: "STRING" }
+          content: { type: Type.STRING }
         }
       }
     }
@@ -179,17 +179,17 @@ export const evaluateInterviewAnswerContent = async (ai: GoogleGenAI, question: 
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-flash-latest",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "OBJECT",
+        type: Type.OBJECT,
         properties: {
-          feedback: { type: "STRING" },
-          improvementTips: { type: "ARRAY", items: { type: "STRING" } },
-          score: { type: "NUMBER" },
-          keyPointsMissing: { type: "ARRAY", items: { type: "STRING" } }
+          feedback: { type: Type.STRING },
+          improvementTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+          score: { type: Type.NUMBER },
+          keyPointsMissing: { type: Type.ARRAY, items: { type: Type.STRING } }
         },
         required: ["feedback", "score"]
       }
@@ -222,33 +222,33 @@ export const generateLearningPathContent = async (ai: GoogleGenAI, missingSkills
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-flash-latest",
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
       toolConfig: { includeServerSideToolInvocations: true },
       responseMimeType: "application/json",
       responseSchema: {
-        type: "OBJECT",
+        type: Type.OBJECT,
         properties: {
-          roadmapTitle: { type: "STRING" },
+          roadmapTitle: { type: Type.STRING },
           sections: {
-            type: "ARRAY",
+            type: Type.ARRAY,
             items: {
-              type: "OBJECT",
+              type: Type.OBJECT,
               properties: {
-                title: { type: "STRING" },
-                skillsCovered: { type: "ARRAY", items: { type: "STRING" } },
+                title: { type: Type.STRING },
+                skillsCovered: { type: Type.ARRAY, items: { type: Type.STRING } },
                 resources: {
-                  type: "ARRAY",
+                  type: Type.ARRAY,
                   items: {
-                    type: "OBJECT",
+                    type: Type.OBJECT,
                     properties: {
-                      name: { type: "STRING" },
-                      platform: { type: "STRING" },
-                      link: { type: "STRING" },
-                      description: { type: "STRING" },
-                      type: { type: "STRING" }
+                      name: { type: Type.STRING },
+                      platform: { type: Type.STRING },
+                      link: { type: Type.STRING },
+                      description: { type: Type.STRING },
+                      type: { type: Type.STRING }
                     },
                     required: ["name", "platform", "link", "type"]
                   }
@@ -280,15 +280,15 @@ export const refactorResumeContent = async (ai: GoogleGenAI, text: string, conte
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-flash-latest",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "OBJECT",
+        type: Type.OBJECT,
         properties: {
-          refactoredText: { type: "STRING" },
-          explanation: { type: "STRING" }
+          refactoredText: { type: Type.STRING },
+          explanation: { type: Type.STRING }
         },
         required: ["refactoredText"]
       }
@@ -312,45 +312,45 @@ export const generateResumeContent = async (ai: GoogleGenAI, userData: any) => {
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-flash-latest",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "OBJECT",
+        type: Type.OBJECT,
         properties: {
-          summary: { type: "STRING" },
-          skills: { type: "ARRAY", items: { type: "STRING" } },
+          summary: { type: Type.STRING },
+          skills: { type: Type.ARRAY, items: { type: Type.STRING } },
           experience: {
-            type: "ARRAY",
+            type: Type.ARRAY,
             items: {
-              type: "OBJECT",
+              type: Type.OBJECT,
               properties: {
-                company: { type: "STRING" },
-                role: { type: "STRING" },
-                period: { type: "STRING" },
-                bullets: { type: "ARRAY", items: { type: "STRING" } }
+                company: { type: Type.STRING },
+                role: { type: Type.STRING },
+                period: { type: Type.STRING },
+                bullets: { type: Type.ARRAY, items: { type: Type.STRING } }
               }
             }
           },
           education: {
-            type: "ARRAY",
+            type: Type.ARRAY,
             items: {
-              type: "OBJECT",
+              type: Type.OBJECT,
               properties: {
-                school: { type: "STRING" },
-                degree: { type: "STRING" },
-                period: { type: "STRING" }
+                school: { type: Type.STRING },
+                degree: { type: Type.STRING },
+                period: { type: Type.STRING }
               }
             }
           },
           projects: {
-            type: "ARRAY",
+            type: Type.ARRAY,
             items: {
-              type: "OBJECT",
+              type: Type.OBJECT,
               properties: {
-                name: { type: "STRING" },
-                description: { type: "STRING" }
+                name: { type: Type.STRING },
+                description: { type: Type.STRING }
               }
             }
           }

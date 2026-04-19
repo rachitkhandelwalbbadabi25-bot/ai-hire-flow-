@@ -13,7 +13,7 @@ import {
   generateLearningPathContent,
   refactorResumeContent,
   generateResumeContent
-} from './src/lib/gemini.server.ts';
+} from './api/_lib/gemini.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -23,30 +23,30 @@ async function startServer() {
 
   // Middleware
   app.use(cors({
-    origin: '*', // In production, replace with your specific Vercel/Firebase domains
+    origin: true, // Echoes the request origin
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   }));
   
   app.use(express.json());
 
-  // Handle OPTIONS preflight explicitly for all routes
-  app.options('*', (req, res) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.sendStatus(200);
-  });
-
   // Logging middleware
   app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
   });
 
-  // Gemini API Routes (Simulating Cloud Functions)
+  // 1. Health check FIRST
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // 2. Gemini API Routes (Simulating Cloud Functions)
   app.post('/api/analyze-resume', async (req, res) => {
+    console.log("Analyzing resume...");
     try {
       const { resumeText, jobDescription } = req.body;
       const result = await analyzeResumeContent(resumeText, jobDescription);
@@ -58,6 +58,7 @@ async function startServer() {
   });
 
   app.post('/api/search-jobs', async (req, res) => {
+    console.log("Searching jobs...");
     try {
       const { query, location } = req.body;
       const result = await searchJobsContent(query, location);
@@ -69,6 +70,7 @@ async function startServer() {
   });
 
   app.post('/api/generate-interview', async (req, res) => {
+    console.log("Generating interview...");
     try {
       const { jobDescription, resumeText } = req.body;
       const result = await generateInterviewQuestionsContent(jobDescription, resumeText);
@@ -80,6 +82,7 @@ async function startServer() {
   });
 
   app.post('/api/generate-cover-letter', async (req, res) => {
+    console.log("Generating cover letter...");
     try {
       const { resumeText, jobDescription } = req.body;
       const result = await generateCoverLetterContent(resumeText, jobDescription);
@@ -91,6 +94,7 @@ async function startServer() {
   });
 
   app.post('/api/evaluate-answer', async (req, res) => {
+    console.log("Evaluating answer...");
     try {
       const { question, answer, jobDescription } = req.body;
       const result = await evaluateInterviewAnswerContent(question, answer, jobDescription);
@@ -102,6 +106,7 @@ async function startServer() {
   });
 
   app.post('/api/learning-path', async (req, res) => {
+    console.log("Generating learning path...");
     try {
       const { missingSkills, targetRole } = req.body;
       const result = await generateLearningPathContent(missingSkills, targetRole);
@@ -113,6 +118,7 @@ async function startServer() {
   });
 
   app.post('/api/refactor-resume', async (req, res) => {
+    console.log("Refactoring resume...");
     try {
       const { text, context } = req.body;
       const result = await refactorResumeContent(text, context);
@@ -124,6 +130,7 @@ async function startServer() {
   });
 
   app.post('/api/generate-resume', async (req, res) => {
+    console.log("Generating resume template...");
     try {
       const { userData } = req.body;
       const result = await generateResumeContent(userData);
@@ -134,18 +141,13 @@ async function startServer() {
     }
   });
 
-  // Fallback for API routes to prevent falling through to Vite/Static
+  // 3. Fallback for API routes
   app.all('/api/*', (req, res) => {
     console.warn(`Untrapped API request: ${req.method} ${req.url}`);
-    res.status(404).json({ error: 'API route not found' });
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
   });
 
-  // Health check
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
-
-  // Vite middleware for development
+  // 4. Client serving
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

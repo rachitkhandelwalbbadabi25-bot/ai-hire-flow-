@@ -2,24 +2,34 @@
 // This ensures that the GEMINI_API_KEY is never exposed to the frontend.
 
 const apiFetch = async (endpoint: string, data: any) => {
+  const url = `/api/${endpoint}`;
+  console.log(`[API Request] Initiating ${url}`, data);
+  
   try {
-    const response = await fetch(`/api/${endpoint}`, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(data),
     });
 
+    if (response.status === 405) {
+      console.error(`[API 405] Method Not Allowed for ${url}. This often means the request hit a static server instead of the Express backend.`);
+    }
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API Error [${endpoint}]: ${response.status} ${response.statusText} - ${errorText}`);
+      const errorBody = await response.text();
+      console.error(`[API Error] ${endpoint}: ${response.status} ${response.statusText}`, errorBody);
       throw new Error(`API call failed: ${response.status} ${response.statusText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log(`[API Success] ${endpoint}`, result);
+    return result;
   } catch (err: any) {
-    console.error(`Network Error [${endpoint}]:`, err);
+    console.error(`[Network Error] ${endpoint}:`, err);
     throw err;
   }
 };

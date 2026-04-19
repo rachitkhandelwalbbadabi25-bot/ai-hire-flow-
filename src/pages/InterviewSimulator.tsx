@@ -15,6 +15,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { generateInterviewQuestions, evaluateInterviewAnswer } from '../lib/gemini';
+import { cacheManager } from '../lib/CacheManager';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 
@@ -54,6 +55,7 @@ export default function InterviewSimulator() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluations, setEvaluations] = useState<Record<string, Evaluation>>({});
   const [recentResumeText, setRecentResumeText] = useState('');
+  const [isFromCache, setIsFromCache] = useState(false);
 
   // Auto-load most recent resume for context if available
   useEffect(() => {
@@ -74,16 +76,36 @@ export default function InterviewSimulator() {
   const startInterview = async () => {
     if (!jobDescription) return;
     
-    if (!hasAccess) {
-      alert(`Simulation bandwidth reached: ${remaining}/${limit} sessions remaining. Please upgrade for more access.`);
-      return;
-    }
-
     setIsGenerating(true);
+    setIsFromCache(false);
+
     try {
+      // Key on combined JD + difficulty (or just JD part for simplicity)
+      const cacheKey = cacheManager.generateInterviewKey(jobDescription.slice(0, 100));
+      const cached = cacheManager.get<Question[]>(cacheKey);
+
+      if (cached) {
+        setQuestions(cached);
+        setIsFromCache(true);
+        setStep('interview');
+        setCurrentIdx(0);
+        setIsGenerating(false);
+        return;
+      }
+
+      if (!hasAccess) {
+        alert(`Simulation bandwidth reached: ${remaining}/${limit} sessions remaining. Please upgrade for more access.`);
+        setIsGenerating(false);
+        return;
+      }
+
       await deductCredit('interviewSessions');
       const qs = await generateInterviewQuestions(jobDescription, recentResumeText);
       setQuestions(qs);
+      
+      // Cache for 6 hours
+      cacheManager.set(cacheKey, qs, 6 * 60 * 60 * 1000);
+
       setStep('interview');
       setCurrentIdx(0);
     } catch (error: any) {
@@ -212,6 +234,14 @@ export default function InterviewSimulator() {
             exit={{ opacity: 0 }}
             className="space-y-8"
           >
+            {isFromCache && (
+              <div className="flex justify-center">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 border border-accent/20 rounded-full text-accent shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Neural Mirroring (Cached Session)</span>
+                </div>
+              </div>
+            )}
             {/* Progress */}
             <div className="bg-surface p-4 rounded-2xl border border-border flex items-center justify-between">
               <div className="flex gap-2">

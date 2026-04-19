@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap, AlertCircle } from 'lucide-react';
 import { findJobs } from '../lib/gemini';
+import { cacheManager } from '../lib/CacheManager';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -26,6 +27,7 @@ export default function JobFinder() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isFromCache, setIsFromCache] = useState(false);
   const navigate = useNavigate();
 
   const { hasAccess, remaining, limit } = checkAccess('jobSearches');
@@ -36,18 +38,34 @@ export default function JobFinder() {
     e.preventDefault();
     if (!query) return;
 
-    if (!hasAccess) {
-      setError(`Search capacity exceeded. Remaining scans: ${remaining}/${limit}. Please upgrade for more bandwidth.`);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setHasSearched(true);
+    setIsFromCache(false);
+
     try {
+      const cacheKey = cacheManager.generateJobKey(query, location);
+      const cached = cacheManager.get<Job[]>(cacheKey);
+
+      if (cached) {
+        setJobs(cached);
+        setIsFromCache(true);
+        setLoading(false);
+        return;
+      }
+
+      if (!hasAccess) {
+        setError(`Search capacity exceeded. Remaining scans: ${remaining}/${limit}. Please upgrade for more bandwidth.`);
+        setLoading(false);
+        return;
+      }
+
       await deductCredit('jobSearches');
       const results = await findJobs(query, location);
       setJobs(results);
+      
+      // Cache for 30 minutes
+      cacheManager.set(cacheKey, results, 30 * 60 * 1000);
     } catch (error: any) {
       console.error('Search failed:', error);
       setError(error.message || "The Neural Crawler encountered an interference.");
@@ -148,6 +166,14 @@ export default function JobFinder() {
 
       {/* Results */}
       <div className="min-h-[400px]">
+        {isFromCache && (
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 border border-accent/20 rounded-full text-accent shadow-sm">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Neural Mirroring (Cached Result)</span>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="py-24 text-center">
             <div className="inline-flex items-center gap-3 px-6 py-3 bg-surface border border-border rounded-full mb-6">

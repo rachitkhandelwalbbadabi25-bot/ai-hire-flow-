@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { extractTextFromPDF } from '../lib/pdf';
 import { analyzeResume, generateCoverLetter } from '../lib/gemini';
+import { cacheManager } from '../lib/CacheManager';
 import { motion } from 'motion/react';
 import { 
   FileUp, 
@@ -15,7 +16,8 @@ import {
   Copy,
   Terminal,
   BrainCircuit,
-  Target
+  Target,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -47,6 +49,7 @@ export default function ResumeAnalyzer() {
   const [analysis, setAnalysis] = useState<any>(null);
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isFromCache, setIsFromCache] = useState(false);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -61,21 +64,34 @@ export default function ResumeAnalyzer() {
       return;
     }
 
-    if (!canScan) {
-      setError(`Analysis capacity reached: ${scansLeft}/${scanLimit} scans remaining. Upgrade for more bandwidth.`);
-      return;
-    }
-
-    if (jobDesc && !canGenCL) {
-      setError(`Cover Letter capacity reached: ${clLeft}/${clLimit} generations remaining. Upgrade for more bandwidth.`);
-      return;
-    }
-
     setIsAnalyzing(true);
     setError(null);
+    setIsFromCache(false);
 
     try {
       const text = await extractTextFromPDF(file);
+      const cacheKey = cacheManager.generateResumeKey(text, jobDesc);
+      const cached = cacheManager.get<{ analysis: any, coverLetter: string | null }>(cacheKey);
+
+      if (cached) {
+        setAnalysis(cached.analysis);
+        setCoverLetter(cached.coverLetter);
+        setIsFromCache(true);
+        setIsAnalyzing(false);
+        return;
+      }
+
+      if (!canScan) {
+        setError(`Analysis capacity reached: ${scansLeft}/${scanLimit} scans remaining. Upgrade for more bandwidth.`);
+        setIsAnalyzing(false);
+        return;
+      }
+
+      if (jobDesc && !canGenCL) {
+        setError(`Cover Letter capacity reached: ${clLeft}/${clLimit} generations remaining. Upgrade for more bandwidth.`);
+        setIsAnalyzing(false);
+        return;
+      }
       
       await deductCredit('resumeScans');
       
@@ -86,18 +102,25 @@ export default function ResumeAnalyzer() {
       });
 
       const analysisResult = await analyzeResume(text, jobDesc);
-      
-      await updateDoc(doc(db, 'users', user.uid, 'resumes', resumeRef.id), {
-        analysis: analysisResult
-      });
-
-      setAnalysis(analysisResult);
+      let cl: string | null = null;
       
       if (jobDesc) {
         await deductCredit('coverLetters');
         const clResult = await generateCoverLetter(text, jobDesc);
-        setCoverLetter(clResult.content);
+        cl = clResult.content;
       }
+
+      await updateDoc(doc(db, 'users', user.uid, 'resumes', resumeRef.id), {
+        analysis: analysisResult,
+        coverLetter: cl
+      });
+
+      setAnalysis(analysisResult);
+      setCoverLetter(cl);
+      
+      // Cache for 24 hours
+      cacheManager.set(cacheKey, { analysis: analysisResult, coverLetter: cl }, 24 * 60 * 60 * 1000);
+
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Internal Analysis Error. Please ensure PDF integrity.");
@@ -207,6 +230,14 @@ export default function ResumeAnalyzer() {
           animate={{ opacity: 1 }}
           className="space-y-8"
         >
+          {isFromCache && (
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 border border-accent/20 rounded-full text-accent shadow-sm">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Instant Recovery (Cached Result)</span>
+              </div>
+            </div>
+          )}
           {/* Analysis View */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-surface-light p-10 rounded-3xl border border-border flex flex-col items-center justify-center text-center">

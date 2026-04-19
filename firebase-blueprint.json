@@ -7,11 +7,11 @@
       "properties": {
         "email": { "type": "string" },
         "displayName": { "type": "string" },
-        "subscriptionPlan": { "type": "string", "enum": ["free", "premium"] },
+        "plan": { "type": "string", "enum": ["free", "premium", "admin"] },
         "resumeCount": { "type": "integer" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["email", "subscriptionPlan"]
+      "required": ["email", "plan"]
     },
     "Resume": {
       "title": "Resume Data",

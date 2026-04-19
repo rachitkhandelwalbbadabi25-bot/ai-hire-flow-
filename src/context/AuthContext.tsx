@@ -33,7 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const unsubDoc = onSnapshot(userRef, async (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
-            setPlan(data.plan || 'free');
+            const isEmailAdmin = firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email);
+            
+            // Auto-upgrade to admin if email is in ADMIN_EMAILS but plan is not admin
+            if (isEmailAdmin && data.plan !== 'admin') {
+              await setDoc(userRef, { plan: 'admin' }, { merge: true });
+              setPlan('admin');
+            } else {
+              setPlan(data.plan || 'free');
+            }
           } else {
             // Initial user creation
             const isEmailAdmin = firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email);

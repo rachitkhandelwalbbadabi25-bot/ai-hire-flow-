@@ -42,7 +42,11 @@ interface LearningPathProps {
   user: User;
 }
 
-export default function LearningPath({ user }: LearningPathProps) {
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+
+export default function LearningPath() {
+  const { user, isAdmin, isPremium } = useAuth();
   const [targetRole, setTargetRole] = useState('');
   const [skillsStr, setSkillsStr] = useState('');
   const [loading, setLoading] = useState(false);
@@ -136,15 +140,25 @@ export default function LearningPath({ user }: LearningPathProps) {
                 </div>
                 <textarea 
                   value={skillsStr}
+                  disabled={!isAdmin && !isPremium}
                   onChange={(e) => setSkillsStr(e.target.value)}
-                  className="w-full h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed"
-                  placeholder="Enter skills separated by commas..."
+                  className="w-full h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed disabled:opacity-50"
+                  placeholder={(isAdmin || isPremium) ? "Enter skills separated by commas..." : "Premium trajectory mapping locked."}
                 />
               </div>
 
+              {!isAdmin && !isPremium && (
+                <div className="p-4 bg-accent/5 border border-accent/20 rounded-2xl text-center space-y-3 shadow-sm">
+                  <p className="text-[10px] font-bold text-ink uppercase tracking-wider">Complex Roadmap Generation Locked</p>
+                  <Link to="/profile" className="block w-full text-[9px] font-bold text-white bg-accent py-3 rounded-xl uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-accent/20">
+                    Upgrade to Premium
+                  </Link>
+                </div>
+              )}
+
               <button 
                 onClick={generatePath}
-                disabled={loading || !targetRole || !skillsStr}
+                disabled={loading || !targetRole || !skillsStr || (!isAdmin && !isPremium)}
                 className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}

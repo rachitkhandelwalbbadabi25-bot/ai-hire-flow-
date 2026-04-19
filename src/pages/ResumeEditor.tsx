@@ -38,7 +38,11 @@ interface ResumeEditorProps {
   user: User;
 }
 
-export default function ResumeEditor({ user }: ResumeEditorProps) {
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+
+export default function ResumeEditor() {
+  const { user, isAdmin, isPremium } = useAuth();
   const [data, setData] = useState<ResumeData>({
     summary: '',
     experience: [],
@@ -171,19 +175,28 @@ export default function ResumeEditor({ user }: ResumeEditorProps) {
             </h3>
             <button
               onClick={() => handleRefactor(data.summary, 'summary')}
-              disabled={refactoringId === 'summary'}
-              className="group flex items-center gap-2 text-[10px] font-bold text-accent uppercase tracking-widest hover:underline disabled:opacity-50"
+              disabled={refactoringId === 'summary' || (!isAdmin && !isPremium)}
+              className="group flex items-center gap-2 text-[10px] font-bold text-accent uppercase tracking-widest hover:underline disabled:opacity-50 disabled:grayscale"
             >
               <Wand2 className={cn("w-3.5 h-3.5", refactoringId === 'summary' && "animate-pulse")} />
-              Refactor Summary
+              {(isAdmin || isPremium) ? 'Refactor Summary' : 'Refactor (Premium)'}
             </button>
           </div>
-          <textarea
-            value={data.summary}
-            onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
-            placeholder="Introduce your trajectory..."
-            className="w-full h-40 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
-          />
+          <div className="relative group/summary-box">
+            <textarea
+              value={data.summary}
+              onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
+              placeholder="Introduce your trajectory..."
+              className="w-full h-40 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
+            />
+            {!isAdmin && !isPremium && (
+               <div className="absolute top-4 right-4 group-hover/summary-box:opacity-100 transition-opacity">
+                  <span className="flex items-center gap-1.5 px-2 py-1 bg-accent/10 border border-accent/20 rounded-lg text-accent text-[8px] font-bold uppercase tracking-wider">
+                     <Sparkles className="w-3 h-3" /> Premium Feature
+                  </span>
+               </div>
+            )}
+          </div>
         </section>
 
         {/* Experience Section */}
@@ -296,9 +309,9 @@ export default function ResumeEditor({ user }: ResumeEditorProps) {
                               <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/bullet:opacity-100 transition-opacity">
                                 <button
                                   onClick={() => handleRefactor(bullet, 'bullet', exp.id, bIdx)}
-                                  disabled={refactoringId === `${exp.id}-${bIdx}`}
-                                  className="p-1.5 bg-accent/10 border border-accent/20 rounded-lg text-accent hover:bg-accent/20 transition-all disabled:opacity-50"
-                                  title="Neural Refactor"
+                                  disabled={refactoringId === `${exp.id}-${bIdx}` || (!isAdmin && !isPremium)}
+                                  className="p-1.5 bg-accent/10 border border-accent/20 rounded-lg text-accent hover:bg-accent/20 transition-all disabled:opacity-50 disabled:grayscale"
+                                  title={(isAdmin || isPremium) ? "Neural Refactor" : "Premium Feature Locked"}
                                 >
                                   <Wand2 className={cn("w-3.5 h-3.5", refactoringId === `${exp.id}-${bIdx}` && "animate-pulse")} />
                                 </button>

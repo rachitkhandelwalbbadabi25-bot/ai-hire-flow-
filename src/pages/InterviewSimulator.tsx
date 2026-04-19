@@ -36,7 +36,11 @@ interface InterviewSimulatorProps {
   user: User;
 }
 
-export default function InterviewSimulator({ user }: InterviewSimulatorProps) {
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+
+export default function InterviewSimulator() {
+  const { user, isAdmin, isPremium } = useAuth();
   const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
   const [jobDescription, setJobDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -219,16 +223,25 @@ export default function InterviewSimulator({ user }: InterviewSimulatorProps) {
                     <p className="text-xs text-ink-dim italic mb-8 max-w-lg">“{questions[currentIdx].rationale}”</p>
                   )}
 
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1 font-sans">Neural Transmission (Your Answer)</label>
-                    <textarea
-                      autoFocus
-                      value={userAnswer}
-                      onChange={(e) => setUserAnswer(e.target.value)}
-                      placeholder="Synthesize your response..."
-                      className="w-full h-48 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
-                    />
-                  </div>
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1 font-sans">Neural Transmission (Your Answer)</label>
+                      <textarea
+                        autoFocus
+                        disabled={!isAdmin && !isPremium}
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        placeholder={(isAdmin || isPremium) ? "Synthesize your response..." : "Voice synthesis requires Premium Uplink..."}
+                        className="w-full h-48 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans disabled:opacity-50"
+                      />
+                      {!isAdmin && !isPremium && (
+                        <div className="p-4 bg-accent/5 border border-accent/20 rounded-xl flex items-center justify-between">
+                          <p className="text-[10px] font-bold text-accent uppercase tracking-wider">Premium intelligence locked</p>
+                          <Link to="/profile" className="text-[9px] font-bold text-white bg-accent px-3 py-1.5 rounded-lg uppercase tracking-widest hover:opacity-90 transition-all">
+                            Upgrade to Unlock
+                          </Link>
+                        </div>
+                      )}
+                    </div>
 
                   <div className="mt-8 flex justify-end">
                     <button

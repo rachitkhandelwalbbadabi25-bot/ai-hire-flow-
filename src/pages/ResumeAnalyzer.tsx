@@ -23,7 +23,11 @@ interface ResumeAnalyzerProps {
   user: User;
 }
 
-export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+
+export default function ResumeAnalyzer() {
+  const { user, isAdmin, isPremium } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
@@ -135,16 +139,25 @@ export default function ResumeAnalyzer({ user }: ResumeAnalyzerProps) {
           </div>
 
           {/* Job Description Card */}
-          <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm flex flex-col">
+          <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm flex flex-col relative overflow-hidden">
             <h3 className="font-bold text-ink mb-6 flex items-center gap-2 uppercase text-xs tracking-widest">
               <Target className="w-4 h-4 text-accent" /> Alignment Target
             </h3>
             <textarea
               value={jobDesc}
+              disabled={!isAdmin && !isPremium}
               onChange={(e) => setJobDesc(e.target.value)}
-              placeholder="Input target job specification for comparative matching..."
-              className="flex-1 w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink"
+              placeholder={(isAdmin || isPremium) ? "Input target job specification for comparative matching..." : "Alignment Target requires Premium Uplink..."}
+              className="flex-1 w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink disabled:opacity-50"
             />
+            {!isAdmin && !isPremium && (
+              <div className="absolute inset-0 bg-surface/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
+                 <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] mb-3">AI Matching Locked</p>
+                 <Link to="/profile" className="px-5 py-2.5 bg-accent text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/20 hover:opacity-90">
+                   Upgrade to Premium
+                 </Link>
+              </div>
+            )}
           </div>
 
           <div className="md:col-span-2">

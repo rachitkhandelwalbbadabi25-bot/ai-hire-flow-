@@ -1,9 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { useEffect, useState } from 'react';
-import { auth, db } from './lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-
 import Layout from './components/Layout';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
@@ -15,36 +10,10 @@ import LearningPath from './pages/LearningPath';
 import ResumeEditor from './pages/ResumeEditor';
 import Profile from './pages/Profile';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Initialize user doc if it doesn't exist
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (!userDoc.exists()) {
-          await setDoc(userRef, {
-            email: user.email,
-            displayName: user.displayName,
-            subscriptionPlan: 'free',
-            resumeCount: 0,
-            createdAt: new Date().toISOString()
-          });
-        }
-        setUser(user);
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+function AppRoutes() {
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -58,22 +27,30 @@ export default function App() {
   }
 
   return (
-    <ThemeProvider>
-      <Router>
-        <Layout user={user}>
-          <Routes>
-            <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
-            <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/" />} />
-            <Route path="/analyzer" element={user ? <ResumeAnalyzer user={user} /> : <Navigate to="/" />} />
-            <Route path="/finder" element={user ? <JobFinder user={user} /> : <Navigate to="/" />} />
-            <Route path="/interview" element={user ? <InterviewSimulator user={user} /> : <Navigate to="/" />} />
-            <Route path="/learning" element={user ? <LearningPath user={user} /> : <Navigate to="/" />} />
-            <Route path="/editor" element={user ? <ResumeEditor user={user} /> : <Navigate to="/" />} />
-            <Route path="/jobs" element={user ? <JobTracker user={user} /> : <Navigate to="/" />} />
-            <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/" />} />
-          </Routes>
-        </Layout>
-      </Router>
-    </ThemeProvider>
+    <Router>
+      <Layout user={user}>
+        <Routes>
+          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
+          <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" />} />
+          <Route path="/analyzer" element={user ? <ResumeAnalyzer /> : <Navigate to="/" />} />
+          <Route path="/finder" element={user ? <JobFinder /> : <Navigate to="/" />} />
+          <Route path="/interview" element={user ? <InterviewSimulator /> : <Navigate to="/" />} />
+          <Route path="/learning" element={user ? <LearningPath /> : <Navigate to="/" />} />
+          <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" />} />
+          <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" />} />
+          <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
+        </Routes>
+      </Layout>
+    </Router>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <AppRoutes />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

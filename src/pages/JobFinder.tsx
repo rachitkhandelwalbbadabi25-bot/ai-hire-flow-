@@ -1,11 +1,11 @@
 import { useState, FormEvent } from 'react';
-import { User } from 'firebase/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap, AlertCircle } from 'lucide-react';
 import { findJobs } from '../lib/gemini';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 interface Job {
   title: string;
@@ -16,11 +16,8 @@ interface Job {
   datePosted: string;
 }
 
-interface JobFinderProps {
-  user: User;
-}
-
-export default function JobFinder({ user }: JobFinderProps) {
+export default function JobFinder() {
+  const { user, isAdmin, isPremium } = useAuth();
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -29,9 +26,17 @@ export default function JobFinder({ user }: JobFinderProps) {
   const [hasSearched, setHasSearched] = useState(false);
   const navigate = useNavigate();
 
+  if (!user) return null;
+
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     if (!query) return;
+
+    // Check plan limits
+    if (!isAdmin && !isPremium) {
+       setError("Neural Crawler search capacity exceeded for Free Tier. Please upgrade to use real-time AI search agents.");
+       return;
+    }
 
     setLoading(true);
     setError(null);

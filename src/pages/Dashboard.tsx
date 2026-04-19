@@ -1,17 +1,14 @@
-import { User } from 'firebase/auth';
-import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Briefcase, FileText, CheckCircle2, TrendingUp, Search, FileEdit } from 'lucide-react';
+import { Plus, Briefcase, FileText, CheckCircle2, TrendingUp, Search, FileEdit, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { formatDate, cn } from '../lib/utils';
+import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
-interface DashboardProps {
-  user: User;
-}
-
-export default function Dashboard({ user }: DashboardProps) {
+export default function Dashboard() {
+  const { user, isAdmin, isPremium } = useAuth();
   const [stats, setStats] = useState({
     totalJobs: 0,
     resumesAnalyzed: 0,
@@ -21,6 +18,8 @@ export default function Dashboard({ user }: DashboardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user) return;
+    
     const fetchData = async () => {
       try {
         const jobsRef = collection(db, 'users', user.uid, 'jobs');
@@ -50,23 +49,41 @@ export default function Dashboard({ user }: DashboardProps) {
     };
 
     fetchData();
-  }, [user.uid]);
+  }, [user]);
+
+  if (!user) return null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex justify-between items-end mb-12">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-12 gap-6">
         <div>
-          <p className="text-ink-dim font-medium mb-1 uppercase tracking-widest text-[10px]">Overview</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-ink-dim font-medium uppercase tracking-widest text-[10px]">Overview</p>
+            {(isAdmin || isPremium) && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[8px] font-bold uppercase">
+                <Crown className="w-2 h-2" /> Unlimited Access
+              </span>
+            )}
+          </div>
           <h1 className="text-3xl font-bold text-ink font-sans tracking-tight">
             Welcome back, {user.displayName?.split(' ')[0]}
           </h1>
         </div>
-        <Link 
-          to="/jobs" 
-          className="bg-accent text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20"
-        >
-          <Plus className="w-4 h-4" /> Add Application
-        </Link>
+        
+        <div className="flex items-center gap-4">
+          {!isAdmin && !isPremium && (
+            <div className="text-right hidden md:block">
+              <p className="text-[10px] font-bold text-accent uppercase tracking-wider mb-0.5">Free Tier Plan</p>
+              <p className="text-[9px] text-ink-dim font-mono tracking-tighter uppercase">5 Neural Scans Remaining</p>
+            </div>
+          )}
+          <Link 
+            to="/jobs" 
+            className="bg-accent text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20 h-fit"
+          >
+            <Plus className="w-4 h-4" /> Add Application
+          </Link>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -82,10 +99,10 @@ export default function Dashboard({ user }: DashboardProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-surface p-6 rounded-2xl border border-border"
+            className="bg-surface p-6 rounded-2xl border border-border group hover:border-accent/30 transition-all"
           >
             <div className="flex justify-between items-start mb-4">
-              <div className="bg-surface-light p-2 rounded-xl">
+              <div className="bg-surface-light p-2 rounded-xl group-hover:bg-accent/5 transition-all">
                 <s.icon className={cn("w-5 h-5", s.color)} />
               </div>
             </div>
@@ -98,14 +115,14 @@ export default function Dashboard({ user }: DashboardProps) {
       {/* Suggested Operations */}
       <div className="mb-12">
         <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] mb-6 px-2">Suggested Next Operations</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link to="/finder" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-accent/40 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-accent/10 p-3 rounded-2xl group-hover:bg-accent/20 transition-colors">
                    <Search className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                   <h4 className="font-bold text-ink text-sm">Market Surveillance</h4>
+                   <h4 className="font-bold text-ink text-sm">Market surveillance</h4>
                    <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Initialize job discovery scan</p>
                 </div>
              </div>
@@ -116,8 +133,8 @@ export default function Dashboard({ user }: DashboardProps) {
                    <TrendingUp className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                   <h4 className="font-bold text-ink text-sm">Simulation Drill</h4>
-                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Calibrate interview readiness</p>
+                   <h4 className="font-bold text-ink text-sm">Simulation drill</h4>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Calibrate readiness levels</p>
                 </div>
              </div>
           </Link>
@@ -145,7 +162,6 @@ export default function Dashboard({ user }: DashboardProps) {
           </Link>
         </div>
       </div>
-
     </div>
   );
 }

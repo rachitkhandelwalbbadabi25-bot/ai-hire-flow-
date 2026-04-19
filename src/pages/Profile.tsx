@@ -1,14 +1,16 @@
-import { User } from 'firebase/auth';
 import { motion } from 'motion/react';
-import { User as UserIcon, Mail, Shield, Zap, Sparkles, LogOut } from 'lucide-react';
+import { User as UserIcon, LogOut, Zap, Shield, Sparkles } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
+import { useAuth } from '../context/AuthContext';
 
-interface ProfileProps {
-  user: User;
-}
+export default function Profile() {
+  const { user, plan, isAdmin, isPremium } = useAuth();
 
-export default function Profile({ user }: ProfileProps) {
+  if (!user) return null;
+
+  const planDisplay = isAdmin ? 'System Administrator' : isPremium ? 'Premium Architect' : 'Free Tier';
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-12">
@@ -42,37 +44,53 @@ export default function Profile({ user }: ProfileProps) {
         <div className="md:col-span-2 space-y-8">
           <div className="bg-surface rounded-3xl border border-border p-8 shadow-sm">
             <h3 className="text-xs font-bold text-ink uppercase tracking-widest mb-8 border-b border-border pb-4 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-accent" /> Active Plan
+              <Zap className="w-4 h-4 text-accent" /> Active Access Level
             </h3>
             
             <div className="flex items-center justify-between group">
               <div>
-                <p className="text-lg font-bold text-ink px-3 py-1 bg-accent/10 border border-accent/20 rounded-lg inline-block mb-2 uppercase">Elite Professional</p>
-                <p className="text-sm text-ink-dim font-medium">Enterprise-grade AI intelligence and unlimited lifecycle tracking.</p>
+                <p className={`text-lg font-bold text-ink px-3 py-1 border rounded-lg inline-block mb-2 uppercase ${
+                  isAdmin ? 'bg-rose-500/10 border-rose-500/20' : 
+                  isPremium ? 'bg-accent/10 border-accent/20' : 
+                  'bg-ink-dim/5 border-border'
+                }`}>
+                  {planDisplay}
+                </p>
+                <p className="text-sm text-ink-dim font-medium">
+                  {isAdmin ? 'Complete system override. All neural pathways unlocked.' : 
+                   isPremium ? 'Enterprise-grade AI intelligence and priority processing.' : 
+                   'Standard intelligence processing with daily throughput quotas.'}
+                </p>
               </div>
               <div className="text-right">
-                <p className="text-xs font-bold text-success mb-1 uppercase">Pro Active</p>
-                <p className="text-[10px] text-ink-dim font-mono tracking-tighter">Renewal: 2026-05-18</p>
+                <p className={`text-xs font-bold mb-1 uppercase ${isAdmin || isPremium ? 'text-success' : 'text-accent'}`}>
+                  {isAdmin ? 'Master' : isPremium ? 'Verified' : 'Limited'}
+                </p>
+                <p className="text-[10px] text-ink-dim font-mono tracking-tighter">
+                  {isAdmin ? 'Permanent' : 'Neural Uplink Stable'}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="bg-surface rounded-3xl border border-border p-8 shadow-sm">
             <h3 className="text-xs font-bold text-ink uppercase tracking-widest mb-8 border-b border-border pb-4 flex items-center gap-2">
-               Sub-Sector Usage
+               System Resource Allocation
             </h3>
             
             <div className="space-y-8">
               <div>
                 <div className="flex justify-between items-end mb-3">
-                  <p className="text-[10px] font-bold text-ink uppercase tracking-widest">Neural Scans</p>
-                  <p className="text-[10px] font-mono text-ink-dim uppercase">Unlimited / Month</p>
+                  <p className="text-[10px] font-bold text-ink uppercase tracking-widest">Neural Scan Bandwidth</p>
+                  <p className="text-[10px] font-mono text-ink-dim uppercase">
+                    {(isAdmin || isPremium) ? 'Unlimited' : '3 / 10 Active'}
+                  </p>
                 </div>
                 <div className="h-2 w-full bg-background rounded-full overflow-hidden border border-border">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: '85%' }}
-                    className="h-full bg-accent rounded-full"
+                    animate={{ width: (isAdmin || isPremium) ? '100%' : '30%' }}
+                    className={`h-full rounded-full ${isAdmin ? 'bg-rose-500' : 'bg-accent'}`}
                   />
                 </div>
               </div>
@@ -80,13 +98,15 @@ export default function Profile({ user }: ProfileProps) {
               <div>
                 <div className="flex justify-between items-end mb-3">
                   <p className="text-[10px] font-bold text-ink uppercase tracking-widest">Job Pipeline Slots</p>
-                  <p className="text-[10px] font-mono text-ink-dim uppercase">42 / ∞</p>
+                  <p className="text-[10px] font-mono text-ink-dim uppercase">
+                    {(isAdmin || isPremium) ? 'Unlimited' : '5 / 10 slots'}
+                  </p>
                 </div>
                 <div className="h-2 w-full bg-background rounded-full overflow-hidden border border-border">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: '45%' }}
-                    className="h-full bg-success rounded-full"
+                    animate={{ width: (isAdmin || isPremium) ? '100%' : '50%' }}
+                    className={`h-full rounded-full ${isAdmin ? 'bg-rose-500' : 'bg-success'}`}
                   />
                 </div>
               </div>

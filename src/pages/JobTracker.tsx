@@ -1,5 +1,4 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { User } from 'firebase/auth';
 import { db } from '../lib/firebase';
 import { collection, query, getDocs, addDoc, deleteDoc, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,15 +9,14 @@ import {
   Building2, 
   Calendar,
   X,
-  Briefcase
+  Briefcase,
+  LoaderCircle as Spinner
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
-interface JobTrackerProps {
-  user: User;
-}
-
-export default function JobTracker({ user }: JobTrackerProps) {
+export default function JobTracker() {
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -33,8 +31,8 @@ export default function JobTracker({ user }: JobTrackerProps) {
   });
 
   useEffect(() => {
-    fetchJobs();
-  }, [user.uid]);
+    if (user) fetchJobs();
+  }, [user]);
 
   const fetchJobs = async () => {
     try {
@@ -110,7 +108,7 @@ export default function JobTracker({ user }: JobTrackerProps) {
 
       {loading ? (
         <div className="h-64 flex items-center justify-center">
-          <LoaderCircle className="w-8 h-8 animate-spin text-accent/20" />
+          <Spinner className="w-8 h-8 animate-spin text-accent/20" />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">

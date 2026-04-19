@@ -37,11 +37,15 @@ interface InterviewSimulatorProps {
 }
 
 import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../context/PlanContext';
 import { Link } from 'react-router-dom';
 
 export default function InterviewSimulator() {
-  const { user, isAdmin, isPremium } = useAuth();
+  const { user } = useAuth();
+  const { checkAccess, deductCredit } = usePlan();
   const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
+  
+  const { hasAccess, remaining, limit } = checkAccess('interviewSessions');
   const [jobDescription, setJobDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -69,14 +73,22 @@ export default function InterviewSimulator() {
 
   const startInterview = async () => {
     if (!jobDescription) return;
+    
+    if (!hasAccess) {
+      alert(`Simulation bandwidth reached: ${remaining}/${limit} sessions remaining. Please upgrade for more access.`);
+      return;
+    }
+
     setIsGenerating(true);
     try {
+      await deductCredit('interviewSessions');
       const qs = await generateInterviewQuestions(jobDescription, recentResumeText);
       setQuestions(qs);
       setStep('interview');
       setCurrentIdx(0);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate questions:', error);
+      alert(error.message || "Question Synthesis Failure.");
     } finally {
       setIsGenerating(false);
     }
@@ -123,17 +135,26 @@ export default function InterviewSimulator() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-20">
-      <div className="mb-12">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
-            <BrainCircuit className="w-5 h-5 text-accent" />
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
+              <BrainCircuit className="w-5 h-5 text-accent" />
+            </div>
+            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Neural Simulation</span>
           </div>
-          <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Neural Simulation</span>
+          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">High-Velocity Drill</h1>
+          <p className="text-ink-dim font-medium text-lg max-w-2xl">
+            Simulate high-stakes adversarial technical and behavioral vetting sessions.
+          </p>
         </div>
-        <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">High-Velocity Drill</h1>
-        <p className="text-ink-dim font-medium text-lg max-w-2xl">
-          Simulate high-stakes adversarial technical and behavioral vetting sessions.
-        </p>
+        <div className="px-5 py-3 bg-surface border border-border rounded-2xl flex items-center gap-3 shadow-sm self-start md:self-auto">
+           <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+           <div className="flex flex-col">
+              <span className="text-[10px] font-black text-ink uppercase tracking-wider">Sessions Ready</span>
+              <span className="text-[10px] font-bold text-ink-dim uppercase">{remaining} / {limit} Units</span>
+           </div>
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -227,20 +248,11 @@ export default function InterviewSimulator() {
                       <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1 font-sans">Neural Transmission (Your Answer)</label>
                       <textarea
                         autoFocus
-                        disabled={!isAdmin && !isPremium}
                         value={userAnswer}
                         onChange={(e) => setUserAnswer(e.target.value)}
-                        placeholder={(isAdmin || isPremium) ? "Synthesize your response..." : "Voice synthesis requires Premium Uplink..."}
+                        placeholder="Synthesize your response..."
                         className="w-full h-48 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans disabled:opacity-50"
                       />
-                      {!isAdmin && !isPremium && (
-                        <div className="p-4 bg-accent/5 border border-accent/20 rounded-xl flex items-center justify-between">
-                          <p className="text-[10px] font-bold text-accent uppercase tracking-wider">Premium intelligence locked</p>
-                          <Link to="/profile" className="text-[9px] font-bold text-white bg-accent px-3 py-1.5 rounded-lg uppercase tracking-widest hover:opacity-90 transition-all">
-                            Upgrade to Unlock
-                          </Link>
-                        </div>
-                      )}
                     </div>
 
                   <div className="mt-8 flex justify-end">

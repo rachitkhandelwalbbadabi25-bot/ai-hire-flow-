@@ -43,10 +43,17 @@ interface LearningPathProps {
 }
 
 import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../context/PlanContext';
 import { Link } from 'react-router-dom';
 
 export default function LearningPath() {
-  const { user, isAdmin, isPremium } = useAuth();
+  const { user } = useAuth();
+  const { plan, checkAccess, openUpgradeModal } = usePlan();
+  
+  const { remaining: roadmapType } = checkAccess('learningPath'); // Basic, Full, Personalized
+  const isFree = plan === 'free';
+  const isPersonalized = roadmapType === 'personalized';
+
   const [targetRole, setTargetRole] = useState('');
   const [skillsStr, setSkillsStr] = useState('');
   const [loading, setLoading] = useState(false);
@@ -140,25 +147,28 @@ export default function LearningPath() {
                 </div>
                 <textarea 
                   value={skillsStr}
-                  disabled={!isAdmin && !isPremium}
+                  disabled={isFree}
                   onChange={(e) => setSkillsStr(e.target.value)}
                   className="w-full h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed disabled:opacity-50"
-                  placeholder={(isAdmin || isPremium) ? "Enter skills separated by commas..." : "Premium trajectory mapping locked."}
+                  placeholder={!isFree ? "Enter skills separated by commas..." : "Premium trajectory mapping locked."}
                 />
               </div>
 
-              {!isAdmin && !isPremium && (
+              {isFree && (
                 <div className="p-4 bg-accent/5 border border-accent/20 rounded-2xl text-center space-y-3 shadow-sm">
                   <p className="text-[10px] font-bold text-ink uppercase tracking-wider">Complex Roadmap Generation Locked</p>
-                  <Link to="/profile" className="block w-full text-[9px] font-bold text-white bg-accent py-3 rounded-xl uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-accent/20">
+                  <button 
+                    onClick={() => openUpgradeModal('learningPath')}
+                    className="block w-full text-[9px] font-bold text-white bg-accent py-3 rounded-xl uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-accent/20"
+                  >
                     Upgrade to Premium
-                  </Link>
+                  </button>
                 </div>
               )}
 
               <button 
                 onClick={generatePath}
-                disabled={loading || !targetRole || !skillsStr || (!isAdmin && !isPremium)}
+                disabled={loading || !targetRole || !skillsStr || isFree}
                 className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -207,7 +217,7 @@ export default function LearningPath() {
                 <div className="bg-accent/10 border border-accent/20 p-8 rounded-[3rem] text-center mb-8">
                    <h2 className="text-2xl font-black text-ink uppercase tracking-tight mb-2">{roadmap.roadmapTitle}</h2>
                    <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent uppercase tracking-[0.2em]">
-                      <Zap className="w-3 h-3" /> Accelerated Learning Protocol V1.0
+                      <Zap className="w-3 h-3" /> Accelerated {roadmapType} Learning Protocol
                    </div>
                 </div>
 

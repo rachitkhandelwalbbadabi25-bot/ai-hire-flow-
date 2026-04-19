@@ -7,7 +7,21 @@
       "properties": {
         "email": { "type": "string" },
         "displayName": { "type": "string" },
-        "plan": { "type": "string", "enum": ["free", "premium", "admin"] },
+        "plan": { "type": "string", "enum": ["free", "standard", "premium", "admin"] },
+        "credits": {
+          "type": "object",
+          "properties": {
+            "jobSearches": { "type": "integer" },
+            "jobSearchesLastReset": { "type": "string", "format": "date-time" },
+            "resumeScans": { "type": "integer" },
+            "resumeScansLastReset": { "type": "string", "format": "date-time" },
+            "interviewSessions": { "type": "integer" },
+            "interviewSessionsLastReset": { "type": "string", "format": "date-time" },
+            "coverLetters": { "type": "integer" },
+            "coverLettersLastReset": { "type": "string", "format": "date-time" },
+            "jobsTracked": { "type": "integer" }
+          }
+        },
         "resumeCount": { "type": "integer" },
         "createdAt": { "type": "string", "format": "date-time" }
       },

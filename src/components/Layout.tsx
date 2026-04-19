@@ -1,5 +1,6 @@
 import { User } from 'firebase/auth';
 import Navbar from './Navbar';
+import UpgradeModal from './UpgradeModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation } from 'react-router-dom';
 import { ReactNode } from 'react';
@@ -15,6 +16,7 @@ export default function Layout({ user, children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background selection:bg-accent selection:text-white text-ink">
       <Navbar user={user} />
+      <UpgradeModal />
       <main className={user ? "pt-24 pb-12" : ""}>
         <AnimatePresence mode="wait">
           <motion.div

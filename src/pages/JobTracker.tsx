@@ -14,13 +14,17 @@ import {
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../context/PlanContext';
 
 export default function JobTracker() {
   const { user } = useAuth();
+  const { checkAccess, openUpgradeModal } = usePlan();
   const [jobs, setJobs] = useState<any[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  const { hasAccess: canAddJob, remaining: jobsRemaining, limit: jobLimit } = checkAccess('jobsTracked', jobs.length);
 
   // Form state
   const [newJob, setNewJob] = useState({
@@ -48,6 +52,11 @@ export default function JobTracker() {
 
   const handleAddJob = async (e: FormEvent) => {
     e.preventDefault();
+    if (!canAddJob) {
+      openUpgradeModal('jobsTracked');
+      return;
+    }
+
     try {
       await addDoc(collection(db, 'users', user.uid, 'jobs'), {
         ...newJob,
@@ -81,11 +90,32 @@ export default function JobTracker() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
-        <div>
-          <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase font-sans leading-none">Job Pipeline</h1>
-          <p className="text-ink-dim font-medium text-sm">Real-time surveillance of your current professional acquisitions.</p>
+        <div className="flex flex-col md:flex-row md:items-end gap-6 mb-12">
+          <div>
+            <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase font-sans leading-none">Job Pipeline</h1>
+            <p className="text-ink-dim font-medium text-sm">Real-time surveillance of your current professional acquisitions.</p>
+          </div>
+          <div className="flex items-center gap-4 bg-surface border border-border px-4 py-2 rounded-xl shadow-sm">
+             <div className="flex flex-col">
+                <span className="text-[10px] font-black text-ink uppercase tracking-wider">Storage Capacity</span>
+                <span className={cn(
+                  "text-[10px] font-bold uppercase",
+                  jobsRemaining === 0 ? "text-rose-500" : "text-ink-dim"
+                )}>
+                  {jobs.length} / {jobLimit} Slots Used
+                </span>
+             </div>
+             <div className="w-12 h-1.5 bg-background rounded-full overflow-hidden">
+                <div 
+                  className={cn(
+                    "h-full transition-all duration-1000",
+                    jobsRemaining === 0 ? "bg-rose-500" : "bg-accent"
+                  )} 
+                  style={{ width: `${Math.min(100, (jobs.length / (typeof jobLimit === 'number' ? jobLimit : 1)) * 100)}%` }} 
+                />
+             </div>
+          </div>
         </div>
-        
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" />

@@ -3,7 +3,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
-export type UserPlan = 'free' | 'premium' | 'admin';
+export type UserPlan = 'free' | 'standard' | 'premium' | 'admin';
 
 const ADMIN_EMAILS = ["rrachitkhandelwal8@gmail.com"]; // User's email from runtime context
 

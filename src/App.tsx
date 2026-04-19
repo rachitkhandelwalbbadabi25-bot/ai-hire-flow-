@@ -11,6 +11,7 @@ import ResumeEditor from './pages/ResumeEditor';
 import Profile from './pages/Profile';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PlanProvider } from './context/PlanContext';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -48,9 +49,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <AppRoutes />
-      </ThemeProvider>
+      <PlanProvider>
+        <ThemeProvider>
+          <AppRoutes />
+        </ThemeProvider>
+      </PlanProvider>
     </AuthProvider>
   );
 }

@@ -24,14 +24,19 @@ interface ResumeAnalyzerProps {
 }
 
 import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../context/PlanContext';
 import { Link } from 'react-router-dom';
 
 export default function ResumeAnalyzer() {
-  const { user, isAdmin, isPremium } = useAuth();
+  const { user } = useAuth();
+  const { checkAccess, deductCredit } = usePlan();
   const location = useLocation();
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [jobDesc, setJobDesc] = useState('');
+
+  const { hasAccess: canScan, remaining: scansLeft, limit: scanLimit } = checkAccess('resumeScans');
+  const { hasAccess: canGenCL, remaining: clLeft, limit: clLimit } = checkAccess('coverLetters');
 
   useEffect(() => {
     if (location.state?.jobDescription) {
@@ -56,11 +61,23 @@ export default function ResumeAnalyzer() {
       return;
     }
 
+    if (!canScan) {
+      setError(`Analysis capacity reached: ${scansLeft}/${scanLimit} scans remaining. Upgrade for more bandwidth.`);
+      return;
+    }
+
+    if (jobDesc && !canGenCL) {
+      setError(`Cover Letter capacity reached: ${clLeft}/${clLimit} generations remaining. Upgrade for more bandwidth.`);
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
 
     try {
       const text = await extractTextFromPDF(file);
+      
+      await deductCredit('resumeScans');
       
       const resumeRef = await addDoc(collection(db, 'users', user.uid, 'resumes'), {
         fileName: file.name,
@@ -77,12 +94,13 @@ export default function ResumeAnalyzer() {
       setAnalysis(analysisResult);
       
       if (jobDesc) {
+        await deductCredit('coverLetters');
         const clResult = await generateCoverLetter(text, jobDesc);
         setCoverLetter(clResult.content);
       }
     } catch (err: any) {
       console.error(err);
-      setError("Internal Analysis Error. Please ensure PDF integrity.");
+      setError(err.message || "Internal Analysis Error. Please ensure PDF integrity.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -90,9 +108,21 @@ export default function ResumeAnalyzer() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="mb-12">
-        <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">Resume Intelligence</h1>
-        <p className="text-ink-dim font-medium">Deploying neural analysis on your professional trajectory.</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
+        <div>
+          <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">Resume Intelligence</h1>
+          <p className="text-ink-dim font-medium">Deploying neural analysis on your professional trajectory.</p>
+        </div>
+        <div className="flex gap-3">
+          <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3">
+             <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">Scans: {scansLeft} / {scanLimit}</span>
+          </div>
+          <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3">
+             <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">Letters: {clLeft} / {clLimit}</span>
+          </div>
+        </div>
       </div>
 
       {!analysis ? (
@@ -145,19 +175,10 @@ export default function ResumeAnalyzer() {
             </h3>
             <textarea
               value={jobDesc}
-              disabled={!isAdmin && !isPremium}
               onChange={(e) => setJobDesc(e.target.value)}
-              placeholder={(isAdmin || isPremium) ? "Input target job specification for comparative matching..." : "Alignment Target requires Premium Uplink..."}
+              placeholder="Input target job specification for comparative matching..."
               className="flex-1 w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink disabled:opacity-50"
             />
-            {!isAdmin && !isPremium && (
-              <div className="absolute inset-0 bg-surface/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
-                 <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] mb-3">AI Matching Locked</p>
-                 <Link to="/profile" className="px-5 py-2.5 bg-accent text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/20 hover:opacity-90">
-                   Upgrade to Premium
-                 </Link>
-              </div>
-            )}
           </div>
 
           <div className="md:col-span-2">

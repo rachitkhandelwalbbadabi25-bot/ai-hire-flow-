@@ -22,18 +22,24 @@ service cloud.firestore {
 
     // 1. User Profile Rules
     match /users/{userId} {
+      function isValidUser(data) {
+        return data.email is string &&
+          data.plan is string && data.plan in ['free', 'standard', 'premium', 'admin'];
+      }
+
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       
-      allow create: if isOwner(userId) && (
+      allow create: if isOwner(userId) && isValidUser(incoming()) && (
         incoming().plan == 'admin' ? request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com" : true
       );
 
-      allow update: if isOwner(userId) && (
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
         (incoming().plan != existing().plan ? (
            incoming().plan == 'admin' ? request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com" : 
-           incoming().plan == 'premium' ? isAdmin() : 
+           (incoming().plan == 'premium' || incoming().plan == 'standard') ? (isAdmin() || request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com") :
            true
-        ) : true)
+        ) : true) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'plan', 'resumeCount', 'email', 'createdAt', 'credits', 'photoURL'])
       );
 
       // Support Sub-collections (Resumes, Jobs, Simulations, Config, etc.)

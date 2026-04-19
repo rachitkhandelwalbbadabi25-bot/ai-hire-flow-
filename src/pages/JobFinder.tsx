@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../context/PlanContext';
 
 interface Job {
   title: string;
@@ -17,7 +18,8 @@ interface Job {
 }
 
 export default function JobFinder() {
-  const { user, isAdmin, isPremium } = useAuth();
+  const { user } = useAuth();
+  const { checkAccess, deductCredit } = usePlan();
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -26,27 +28,29 @@ export default function JobFinder() {
   const [hasSearched, setHasSearched] = useState(false);
   const navigate = useNavigate();
 
+  const { hasAccess, remaining, limit } = checkAccess('jobSearches');
+
   if (!user) return null;
 
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     if (!query) return;
 
-    // Check plan limits
-    if (!isAdmin && !isPremium) {
-       setError("Neural Crawler search capacity exceeded for Free Tier. Please upgrade to use real-time AI search agents.");
-       return;
+    if (!hasAccess) {
+      setError(`Search capacity exceeded. Remaining scans: ${remaining}/${limit}. Please upgrade for more bandwidth.`);
+      return;
     }
 
     setLoading(true);
     setError(null);
     setHasSearched(true);
     try {
+      await deductCredit('jobSearches');
       const results = await findJobs(query, location);
       setJobs(results);
     } catch (error: any) {
       console.error('Search failed:', error);
-      setError("The Neural Crawler encountered an interference. Check your intelligence parameters or try a different sector.");
+      setError(error.message || "The Neural Crawler encountered an interference.");
     } finally {
       setLoading(false);
     }
@@ -76,11 +80,17 @@ export default function JobFinder() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
       <div className="mb-12">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
-            <Search className="w-5 h-5 text-accent" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
+              <Search className="w-5 h-5 text-accent" />
+            </div>
+            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Neural Crawler</span>
           </div>
-          <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Neural Crawler</span>
+          <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3">
+             <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">Scans Available: {remaining} / {limit}</span>
+          </div>
         </div>
         <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Market Surveillance</h1>
         <p className="text-ink-dim font-medium text-lg max-w-2xl">

@@ -5,6 +5,7 @@ import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
+import PlanBadge from './PlanBadge';
 import { 
   BarChart3, 
   FileSearch, 
@@ -80,10 +81,9 @@ export default function Navbar({ user }: NavbarProps) {
 
             <div className="flex items-center gap-4">
               {user ? (
-                <div className="flex items-center gap-3">
-                   <div className="hidden sm:block text-right">
-                      <p className="text-[10px] font-bold text-ink uppercase tracking-wider">{user.displayName}</p>
-                      <p className="text-[9px] text-ink-dim uppercase">Standard Tier</p>
+                <div className="flex items-center gap-6">
+                   <div className="hidden sm:block">
+                      <PlanBadge />
                    </div>
                    <button
                     onClick={toggleTheme}

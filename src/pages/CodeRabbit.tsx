@@ -53,6 +53,10 @@ export default function CodeRabbit() {
     addLog("Checking Logic Chains...");
     
     try {
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error("Neural Authorization Key missing. Please check your system settings.");
+      }
+
       await new Promise(r => setTimeout(r, 800));
       addLog("Analyzing Syntax Tree...");
       
@@ -67,7 +71,7 @@ export default function CodeRabbit() {
       setResult(response);
     } catch (err: any) {
       console.error(err);
-      setError("The Neural Sinkhole swallowed the signal. System re-initialization required.");
+      setError(err.message || "The Neural Sinkhole swallowed the signal. System re-initialization required.");
     } finally {
       setIsAuditing(false);
     }

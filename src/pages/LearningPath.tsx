@@ -48,6 +48,7 @@ import { Link } from 'react-router-dom';
 
 export default function LearningPath() {
   const { user } = useAuth();
+  if (!user) return null;
   const { plan, checkAccess, openUpgradeModal } = usePlan();
   
   const { remaining: roadmapType } = checkAccess('learningPath'); // Basic, Full, Personalized

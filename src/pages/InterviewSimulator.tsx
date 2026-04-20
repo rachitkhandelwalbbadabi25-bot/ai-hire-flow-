@@ -43,6 +43,7 @@ import { Link } from 'react-router-dom';
 
 export default function InterviewSimulator() {
   const { user } = useAuth();
+  if (!user) return null;
   const { checkAccess, deductCredit } = usePlan();
   const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
   

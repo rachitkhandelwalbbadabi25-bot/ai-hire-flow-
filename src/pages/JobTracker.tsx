@@ -18,6 +18,7 @@ import { usePlan } from '../context/PlanContext';
 
 export default function JobTracker() {
   const { user } = useAuth();
+  if (!user) return null;
   const { checkAccess, openUpgradeModal } = usePlan();
   const [jobs, setJobs] = useState<any[]>([]);
   const [isAdding, setIsAdding] = useState(false);

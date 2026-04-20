@@ -32,6 +32,7 @@ import { Link } from 'react-router-dom';
 
 export default function ResumeAnalyzer() {
   const { user } = useAuth();
+  if (!user) return null;
   const { checkAccess, deductCredit } = usePlan();
   const location = useLocation();
   const navigate = useNavigate();

@@ -47,7 +47,7 @@ export default function InterviewSimulator() {
   const { checkAccess, deductCredit } = usePlan();
   const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
   
-  const { hasAccess, remaining, limit } = checkAccess('interviewSessions');
+  const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
   const [jobDescription, setJobDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -101,7 +101,7 @@ export default function InterviewSimulator() {
       }
 
       if (!hasAccess) {
-        alert(`Simulation bandwidth reached: ${remaining}/${limit} sessions remaining. Please upgrade for more access.`);
+        alert(`Simulation bandwidth reached: ${remaining}/${sessionLimit} sessions remaining. Please upgrade for more access.`);
         setIsGenerating(false);
         return;
       }
@@ -181,7 +181,7 @@ export default function InterviewSimulator() {
            <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
            <div className="flex flex-col">
               <span className="text-[10px] font-black text-ink uppercase tracking-wider">Sessions Ready</span>
-              <span className="text-[10px] font-bold text-ink-dim uppercase">{remaining} / {limit} Units</span>
+              <span className="text-[10px] font-bold text-ink-dim uppercase">{remaining} / {sessionLimit} Units</span>
            </div>
         </div>
       </div>

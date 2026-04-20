@@ -65,3 +65,7 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
 export const refactorResumeText = async (text: string, context: string = "") => {
   return apiFetch('refactor-resume', { text, context });
 };
+
+export const auditCode = async (code: string, context: any = {}) => {
+  return apiFetch('code-rabbit', { code, context });
+};

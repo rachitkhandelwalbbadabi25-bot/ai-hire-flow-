@@ -12,6 +12,7 @@ import InterviewSimulator from './pages/InterviewSimulator';
 import LearningPath from './pages/LearningPath';
 import ResumeEditor from './pages/ResumeEditor';
 import Profile from './pages/Profile';
+import CodeRabbit from './pages/CodeRabbit';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { PlanProvider } from './context/PlanContext';
@@ -63,6 +64,7 @@ function AppRoutes() {
           <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" />} />
           <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" />} />
           <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
+          <Route path="/rabbit" element={user ? <CodeRabbit /> : <Navigate to="/" />} />
         </Routes>
       </Layout>
     </Router>

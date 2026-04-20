@@ -117,6 +117,47 @@ async function startServer() {
     }
   });
 
+  app.post('/api/code-rabbit', async (req, res) => {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      const prompt = `
+        You are "Code Rabbit", an elite AI software engineer.
+        Analyze the following code/error and provide:
+        1. Root cause of the bug.
+        2. Impact analysis.
+        3. A corrected code snippet with best practices (TypesScript, React, etc).
+        
+        Context provided:
+        ${JSON.stringify(req.body.context, null, 2)}
+        
+        Error/Snippet:
+        ${req.body.code}
+      `;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-pro-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              explanation: { type: "string" },
+              rootCause: { type: "string" },
+              fixedCode: { type: "string" },
+              bestPractices: { type: "array", items: { type: "string" } }
+            },
+            required: ["explanation", "rootCause", "fixedCode", "bestPractices"]
+          }
+        }
+      });
+      
+      res.json(JSON.parse(response.text));
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    }
+  });
+
   // Client serving (Vite in dev, Static in prod)
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

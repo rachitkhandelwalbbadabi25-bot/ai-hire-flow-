@@ -43,11 +43,11 @@ import { usePlan } from '../context/PlanContext';
 import { Link } from 'react-router-dom';
 
 export default function ResumeEditor() {
-  const { user } = useAuth();
+  const { user, plan } = useAuth();
   const { checkAccess, openUpgradeModal } = usePlan();
   
   const { hasAccess: isUnlocked } = checkAccess('resumeEditor');
-  const { hasAccess: canRefactor } = checkAccess('premium'); // Higher level checked for refactoring
+  const canRefactor = plan === 'premium' || plan === 'admin';
   
   const [data, setData] = useState<ResumeData>({
     summary: '',

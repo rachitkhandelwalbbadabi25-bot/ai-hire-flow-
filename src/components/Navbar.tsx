@@ -24,7 +24,8 @@ import {
   GraduationCap,
   Mic,
   Sun,
-  Moon
+  Moon,
+  Bug
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -46,6 +47,7 @@ export default function Navbar({ user }: NavbarProps) {
     { name: 'Learning Path', path: '/learning', icon: GraduationCap },
     { name: 'Resume Editor', path: '/editor', icon: FileEdit },
     { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
+    { name: 'Code Rabbit', path: '/rabbit', icon: Bug },
     { name: 'Profile', path: '/profile', icon: UserIcon },
   ];
 

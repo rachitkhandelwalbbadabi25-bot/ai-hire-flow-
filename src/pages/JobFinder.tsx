@@ -45,9 +45,15 @@ export default function JobFinder() {
 
     try {
       const cacheKey = cacheManager.generateJobKey(query, location);
-      const cached = cacheManager.get<Job[]>(cacheKey);
+      
+      let cached = null;
+      try {
+        cached = cacheManager.get<Job[]>(cacheKey);
+      } catch (e) {
+        console.warn('Cache access failure:', e);
+      }
 
-      if (cached) {
+      if (cached && Array.isArray(cached)) {
         setJobs(cached);
         setIsFromCache(true);
         setLoading(false);

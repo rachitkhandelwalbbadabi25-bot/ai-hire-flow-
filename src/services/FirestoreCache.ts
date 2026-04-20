@@ -33,13 +33,14 @@ export interface CacheData {
 }
 
 class FirestoreCacheService {
-  private getCollection(userId: string) {
+  private getCollection = (userId: string) => {
     return collection(db, 'users', userId, 'cache');
   }
 
-  async getCache(userId: string, resumeText: string, jobDesc: string): Promise<any | null> {
-    const resumeHash = hashString(resumeText);
-    const jobDescHash = hashString(jobDesc);
+  getCache = async (userId: string, resumeText: string, jobDesc: string): Promise<any | null> => {
+    if (!userId) return null;
+    const resumeHash = hashString(resumeText || '');
+    const jobDescHash = hashString(jobDesc || '');
 
     try {
       const q = query(
@@ -54,22 +55,29 @@ class FirestoreCacheService {
       const docSnapshot = snapshot.docs[0];
       const data = docSnapshot.data() as CacheData;
 
+      if (!data) return null;
+
       // Check expiration
-      if (new Date(data.expiresAt) < new Date()) {
-        await deleteDoc(doc(db, 'users', userId, 'cache', docSnapshot.id));
+      if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+        try {
+          await deleteDoc(doc(db, 'users', userId, 'cache', docSnapshot.id));
+        } catch (e) {
+          console.warn('Silent fail on deleting expired cache doc');
+        }
         return null;
       }
 
-      return data.result;
+      return data.result || null;
     } catch (error) {
       console.error('Firestore cache retrieval failed:', error);
       return null;
     }
   }
 
-  async setCache(userId: string, resumeText: string, jobDesc: string, result: any): Promise<void> {
-    const resumeHash = hashString(resumeText);
-    const jobDescHash = hashString(jobDesc);
+  setCache = async (userId: string, resumeText: string, jobDesc: string, result: any): Promise<void> => {
+    if (!userId || !result) return;
+    const resumeHash = hashString(resumeText || '');
+    const jobDescHash = hashString(jobDesc || '');
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -80,7 +88,7 @@ class FirestoreCacheService {
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
       model: 'gemini-1.5-flash',
-      tokensUsed: 0, // Placeholder
+      tokensUsed: 0,
     };
 
     try {
@@ -91,7 +99,8 @@ class FirestoreCacheService {
     }
   }
 
-  async cleanupExpired(userId: string): Promise<void> {
+  cleanupExpired = async (userId: string): Promise<void> => {
+    if (!userId) return;
     try {
       const q = query(
         this.getCollection(userId),
@@ -105,11 +114,10 @@ class FirestoreCacheService {
     }
   }
 
-  // Utility to help with UI
-  getHashes(resumeText: string, jobDesc: string) {
+  getHashes = (resumeText: string, jobDesc: string) => {
     return {
-      resumeHash: hashString(resumeText),
-      jobDescHash: hashString(jobDesc)
+      resumeHash: hashString(resumeText || ''),
+      jobDescHash: hashString(jobDesc || '')
     };
   }
 }

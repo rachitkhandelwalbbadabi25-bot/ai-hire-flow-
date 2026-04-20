@@ -83,9 +83,15 @@ export default function InterviewSimulator() {
     try {
       // Key on combined JD + difficulty (or just JD part for simplicity)
       const cacheKey = cacheManager.generateInterviewKey(jobDescription.slice(0, 100));
-      const cached = cacheManager.get<Question[]>(cacheKey);
+      
+      let cached = null;
+      try {
+        cached = cacheManager.get<Question[]>(cacheKey);
+      } catch (e) {
+        console.warn('Cache layer failure:', e);
+      }
 
-      if (cached) {
+      if (cached && Array.isArray(cached)) {
         setQuestions(cached);
         setIsFromCache(true);
         setStep('interview');

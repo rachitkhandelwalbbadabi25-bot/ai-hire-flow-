@@ -75,9 +75,15 @@ export default function ResumeAnalyzer() {
       
       // STEP 1: Check In-Memory (Browser) Cache
       const inMemoryKey = cacheManager.generateResumeKey(text, jobDesc);
-      const inMemoryCached = cacheManager.get<{ analysis: any, coverLetter: string | null }>(inMemoryKey);
+      
+      let inMemoryCached = null;
+      try {
+        inMemoryCached = cacheManager.get<{ analysis: any, coverLetter: string | null }>(inMemoryKey);
+      } catch (e) {
+        console.warn('In-memory cache retrieval error:', e);
+      }
 
-      if (inMemoryCached) {
+      if (inMemoryCached && typeof inMemoryCached === 'object' && 'analysis' in inMemoryCached) {
         setAnalysis(inMemoryCached.analysis);
         setCoverLetter(inMemoryCached.coverLetter);
         setCacheSource('browser');
@@ -86,17 +92,27 @@ export default function ResumeAnalyzer() {
       }
 
       // STEP 2: Check Persistent (Firestore) Cache
-      const persistentCached = await firestoreCache.getCache(user.uid, text, jobDesc);
-      if (persistentCached) {
+      let persistentCached = null;
+      try {
+        persistentCached = await firestoreCache.getCache(user.uid, text, jobDesc);
+      } catch (e) {
+        console.warn('Persistent cache retrieval error:', e);
+      }
+
+      if (persistentCached && typeof persistentCached === 'object' && 'analysis' in persistentCached) {
         setAnalysis(persistentCached.analysis);
         setCoverLetter(persistentCached.coverLetter);
         setCacheSource('persistent');
         
         // Sync back to in-memory for even faster subsequent access
-        cacheManager.set(inMemoryKey, { 
-          analysis: persistentCached.analysis, 
-          coverLetter: persistentCached.coverLetter 
-        }, 24 * 60 * 60 * 1000);
+        try {
+          cacheManager.set(inMemoryKey, { 
+            analysis: persistentCached.analysis, 
+            coverLetter: persistentCached.coverLetter 
+          }, 24 * 60 * 60 * 1000);
+        } catch (e) {
+          console.warn('Failed to sync Firestore cache to runtime memory');
+        }
         
         setIsAnalyzing(false);
         return;

@@ -55,3 +55,12 @@
   .status-rejected { @apply bg-rose-500/15 text-rose-400; }
 }
 
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+:root {
+  --accent-rgb: 99, 102, 241;
+}
+

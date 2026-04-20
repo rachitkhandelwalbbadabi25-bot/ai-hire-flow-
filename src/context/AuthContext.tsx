@@ -22,15 +22,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<UserPlan>('free');
 
+  const [unsubDoc, setUnsubDoc] = useState<(() => void) | null>(null);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Clean up previous listener to prevent memory leaks and zombie updates
+      if (unsubDoc) {
+        unsubDoc();
+        setUnsubDoc(null);
+      }
+
       if (firebaseUser) {
         setUser(firebaseUser);
         
         const userRef = doc(db, 'users', firebaseUser.uid);
         
         // Listen for real-time updates to user data
-        const unsubDoc = onSnapshot(userRef, async (snapshot) => {
+        const unsub = onSnapshot(userRef, async (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
             const isEmailAdmin = firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email);
@@ -58,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         });
 
-        return () => unsubDoc();
+        setUnsubDoc(() => unsub);
       } else {
         setUser(null);
         setPlan('free');
@@ -66,7 +74,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (unsubDoc) unsubDoc();
+    };
   }, []);
 
   // Update loading state once plan is determined

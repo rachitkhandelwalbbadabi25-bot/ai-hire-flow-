@@ -318,7 +318,7 @@ export default function ResumeEditor() {
                           </button>
                         </div>
                         <div className="space-y-3">
-                          {exp.bullets.map((bullet, bIdx) => (
+                          {(exp?.bullets || []).map((bullet, bIdx) => (
                             <div key={bIdx} className="relative group/bullet">
                               <textarea
                                 value={bullet}
@@ -384,7 +384,7 @@ export default function ResumeEditor() {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {data.skills.map((skill, i) => (
+              {(data?.skills || []).map((skill, i) => (
                 <span key={i} className="group relative bg-background border border-border px-4 py-2 rounded-xl text-xs font-bold text-ink-dim flex items-center gap-2">
                   {skill}
                   <button 
@@ -408,7 +408,7 @@ export default function ResumeEditor() {
          <div className="flex items-center gap-6 pr-4">
             <div className="flex flex-col">
                <span className="text-[9px] font-bold text-ink-dim uppercase">Tokens</span>
-               <span className="text-xs font-bold text-ink">{data.experience.reduce((acc, curr) => acc + curr.bullets.length, 0)}</span>
+               <span className="text-xs font-bold text-ink">{(data?.experience || []).reduce((acc, curr) => acc + (curr.bullets?.length || 0), 0)}</span>
             </div>
             <div className="flex flex-col">
                <span className="text-[9px] font-bold text-ink-dim uppercase">Skills</span>

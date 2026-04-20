@@ -221,7 +221,7 @@ export default function LearningPath() {
                    </div>
                 </div>
 
-                {roadmap.sections.map((section, idx) => (
+                {(roadmap?.sections || []).map((section, idx) => (
                   <div key={idx} className="relative pl-12 group">
                     {/* Vertical Line */}
                     {idx !== roadmap.sections.length - 1 && (

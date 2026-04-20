@@ -28,9 +28,11 @@ export default function Dashboard() {
         const jobsSnap = await getDocs(jobsRef);
         const resumesSnap = await getDocs(resumesRef);
         
-        const jobs = jobsSnap.docs.map(doc => doc.data());
+        const jobs = (jobsSnap.docs || []).map(doc => doc.data());
         const statusCounts = jobs.reduce((acc: any, job: any) => {
-          acc[job.status] = (acc[job.status] || 0) + 1;
+          if (job && job.status) {
+            acc[job.status] = (acc[job.status] || 0) + 1;
+          }
           return acc;
         }, {});
 

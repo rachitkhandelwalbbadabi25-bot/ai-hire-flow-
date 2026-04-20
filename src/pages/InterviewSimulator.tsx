@@ -245,7 +245,7 @@ export default function InterviewSimulator() {
             {/* Progress */}
             <div className="bg-surface p-4 rounded-2xl border border-border flex items-center justify-between">
               <div className="flex gap-2">
-                {questions.map((_, i) => (
+                {(questions || []).map((_, i) => (
                   <div 
                     key={i} 
                     className={`h-1.5 w-8 rounded-full transition-all duration-500 ${
@@ -354,7 +354,7 @@ export default function InterviewSimulator() {
                                       <RotateCcw className="w-3 h-3 text-accent" /> Refactoring Tips
                                    </p>
                                    <ul className="space-y-2">
-                                      {evalData?.improvementTips.map((tip, i) => (
+                                      {(evalData?.improvementTips || []).map((tip: any, i: number) => (
                                         <li key={i} className="text-[11px] text-ink-dim flex gap-2">
                                            <span className="text-accent">•</span> {tip}
                                         </li>
@@ -363,11 +363,11 @@ export default function InterviewSimulator() {
                                 </div>
                                 <div>
                                    <p className="text-[10px] font-bold text-ink uppercase tracking-widest mb-4 flex items-center gap-2">
-                                      <CheckCircle2 className="w-3 h-3 text-success" /> Integrity Score: {evalData?.score}/10
+                                      <CheckCircle2 className="w-3 h-3 text-success" /> Integrity Score: {evalData?.score ?? 0}/10
                                    </p>
-                                   {evalData?.keyPointsMissing.length > 0 && (
+                                   {(evalData?.keyPointsMissing?.length ?? 0) > 0 && (
                                      <ul className="space-y-2">
-                                        {evalData.keyPointsMissing.map((point, i) => (
+                                        {(evalData?.keyPointsMissing || []).map((point: any, i: number) => (
                                           <li key={i} className="text-[11px] text-rose-400 flex gap-2">
                                              <span className="text-rose-400">•</span> {point}
                                           </li>

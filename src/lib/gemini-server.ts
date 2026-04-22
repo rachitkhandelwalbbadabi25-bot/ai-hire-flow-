@@ -26,7 +26,7 @@ export const analyzeResumeContent = async (ai: GoogleGenAI, resumeText: string, 
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
     config: {
       responseMimeType: "application/json",
@@ -70,7 +70,7 @@ export const searchJobsContent = async (ai: GoogleGenAI, queryStr: string, locat
   - datePosted: When it was posted if known`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
@@ -118,7 +118,7 @@ export const generateInterviewQuestionsContent = async (ai: GoogleGenAI, jobDesc
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -153,7 +153,7 @@ export const generateCoverLetterContent = async (ai: GoogleGenAI, resumeText: st
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -185,7 +185,7 @@ export const evaluateInterviewAnswerContent = async (ai: GoogleGenAI, question: 
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -228,7 +228,7 @@ export const generateLearningPathContent = async (ai: GoogleGenAI, missingSkills
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
@@ -286,7 +286,7 @@ export const refactorResumeContent = async (ai: GoogleGenAI, text: string, conte
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -318,7 +318,7 @@ export const generateResumeContent = async (ai: GoogleGenAI, userData: any) => {
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",

@@ -80,7 +80,7 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
     if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
       config: {
         responseMimeType: "application/json",
@@ -125,7 +125,7 @@ export const generateResume = async (userData: any) => {
     if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -196,7 +196,7 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
     if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -225,7 +225,7 @@ export const findJobs = async (queryStr: string, location: string = "") => {
     if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -264,7 +264,7 @@ export const generateInterviewQuestions = async (jobDescription: string, resumeT
     if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -299,7 +299,7 @@ export const evaluateInterviewAnswer = async (question: string, answer: string, 
     if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -330,7 +330,7 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
     if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -353,7 +353,7 @@ export const refactorResumeText = async (text: string, context: string = "") => 
     if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });

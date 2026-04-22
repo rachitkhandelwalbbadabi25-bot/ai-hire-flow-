@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { generateResumeContent } from "../src/lib/gemini-server";
+import { generateResumeContent } from "../src/lib/gemini-server.ts";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

@@ -7,10 +7,14 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("GEMINI_API_KEY is not defined");
-    
-    const ai = new GoogleGenAI({ apiKey: key });
+    const apiKey = process.env.GEMINI_API_KEY;
+    console.log('[API Registry] learning-path: Key available:', !!apiKey);
+
+    if (!apiKey) {
+      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
     const { missingSkills, targetRole } = req.body;
     const result = await generateLearningPathContent(ai, missingSkills, targetRole);
     res.status(200).json(result);

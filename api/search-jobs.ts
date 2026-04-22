@@ -7,10 +7,16 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("GEMINI_API_KEY is not defined");
+    const apiKey = process.env.GEMINI_API_KEY;
+    console.log('[API Registry] search-jobs: Key available:', !!apiKey);
     
-    const ai = new GoogleGenAI({ apiKey: key });
+    if (!apiKey) {
+      return res.status(500).json({ 
+        error: "GEMINI_API_KEY is not configured on the server. Please set it in your Vercel/environment variables." 
+      });
+    }
+    
+    const ai = new GoogleGenAI({ apiKey });
     const { query, queryStr, location } = req.body;
     const result = await searchJobsContent(ai, query || queryStr, location);
     res.status(200).json(result);

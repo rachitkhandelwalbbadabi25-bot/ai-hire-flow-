@@ -1,5 +1,5 @@
 import express from 'express';
-// import { createServer as createViteServer } from 'vite'; // Dynamic import used below
+import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';

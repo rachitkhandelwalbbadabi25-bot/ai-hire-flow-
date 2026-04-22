@@ -1,11 +1,25 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize client-side GenAI
+// Initialize client-side GenAI lazily to prevent browser-side key requirement errors
+let clientAi: GoogleGenAI | null = null;
+
 const getAI = () => {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+  if (clientAi) return clientAi;
+  
+  // Use VITE_ prefix for client-side keys if available, otherwise fallback to process.env (server only)
+  const key = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  
+  if (!key) {
+    console.warn("[Neural Shield] No client-side API key detected. Neural Buffer (fallback) is disabled.");
+    return null;
+  }
+  
+  clientAi = new GoogleGenAI({ apiKey: key });
+  return clientAi;
 };
 
-const ai = getAI();
+// Remove global initialization to prevent page-load crashes
+// const ai = getAI();
 
 const cleanJson = (text: string): string => {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -62,6 +76,9 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
       - summary: A professional executive summary of the audit findings.
     `;
 
+    const ai = getAI();
+    if (!ai) throw backendError;
+
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
@@ -103,6 +120,9 @@ export const generateResume = async (userData: any) => {
       - education: { school: string, degree: string, period: string }[]
       - projects: { name: string, description: string }[]
     `;
+
+    const ai = getAI();
+    if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
@@ -172,6 +192,9 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
       - content: string (the full text of the cover letter)
     `;
 
+    const ai = getAI();
+    if (!ai) throw backendError;
+
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
@@ -197,6 +220,9 @@ export const findJobs = async (queryStr: string, location: string = "") => {
     console.log('[Neural Buffer] Performing direct client-side search...');
     const prompt = `Search for recent job listings for "${queryStr}" in "${location}". 
     Return a JSON array of specific job opportunities.`;
+
+    const ai = getAI();
+    if (!ai) throw backendError;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
@@ -234,6 +260,9 @@ export const generateInterviewQuestions = async (jobDescription: string, resumeT
     console.log('[Neural Buffer] Performing direct client-side generation...');
     const prompt = `Generate interview questions for: ${jobDescription}`;
 
+    const ai = getAI();
+    if (!ai) throw backendError;
+
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
@@ -266,6 +295,9 @@ export const evaluateInterviewAnswer = async (question: string, answer: string, 
     console.log('[Neural Buffer] Performing direct client-side evaluation...');
     const prompt = `Evaluate answer: ${answer}`;
 
+    const ai = getAI();
+    if (!ai) throw backendError;
+
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
@@ -294,6 +326,9 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
   } catch (backendError) {
     const prompt = `Learning path for: ${missingSkills.join(', ')}`;
 
+    const ai = getAI();
+    if (!ai) throw backendError;
+
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
@@ -313,6 +348,10 @@ export const refactorResumeText = async (text: string, context: string = "") => 
     return await apiFetch('refactor-resume', { text, context });
   } catch (backendError) {
     const prompt = `Refactor: ${text}`;
+    
+    const ai = getAI();
+    if (!ai) throw backendError;
+
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
@@ -324,6 +363,10 @@ export const refactorResumeText = async (text: string, context: string = "") => 
 
 export const auditCode = async (code: string, context: any = {}) => {
   const ai = getAI();
+  if (!ai) {
+    throw new Error("Neural Buffer is offline. Code Rabbit requires a browser-compatible API Key for local diagnostics.");
+  }
+
   const prompt = `
     You are "Code Rabbit", an elite AI software engineer.
     Analyze the following code/error and provide:

@@ -11,24 +11,59 @@ const cleanJson = (text: string): string => {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
 };
 
-export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
-  const prompt = `
-    Analyze the following resume text. 
-    ${jobDescription ? `Compare it against this job description: ${jobDescription}` : 'Provide a general analysis.'}
-    
-    Return a JSON object with:
-    - score: number (0-100)
-    - atsCompatibility: string
-    - keywordsFound: string[]
-    - missingKeywords: string[]
-    - formattingSuggestions: string[]
-    - impactSuggestions: string[]
-    - summary: string
-  `;
-
+const apiFetch = async (endpoint: string, data: any) => {
+  const url = `/api/${endpoint}`;
+  console.log(`[Neural Link] Routing to ${url}`);
+  
   try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(`[Neural Warning] Backend rejected signal (${response.status}). Activating Client-Side Buffer.`);
+      throw new Error(errorText || `API failure: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (err: any) {
+    console.error(`[Neural Link Error] ${endpoint}:`, err);
+    throw err;
+  }
+};
+
+export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
+  try {
+    return await apiFetch('analyze-resume', { resumeText, jobDescription });
+  } catch (backendError) {
+    console.log('[Neural Buffer] Performing deep-scan client-side analysis...');
+    const prompt = `
+      You are an expert ATS (Applicant Tracking System) optimizer and professional resume auditor. 
+      Analyze the provided resume text with extreme critical detail. 
+
+      ${jobDescription ? `
+      STRATEGY: Conduct a rigorous gap analysis against this Job Description: ${jobDescription}.
+      - Identify specific technical and soft skills missing.
+      - Evaluate the 'Semantic Match' between the candidate's experience and the JD requirements.
+      ` : 'STRATEGY: Perform a comprehensive general audit based on industry best practices.'}
+      
+      Return a JSON object with:
+      - score (number 0-100): Calculated based on JD alignment, keyword density, and achievement quantification. Be strict.
+      - atsCompatibility: Detailed assessment of parseability and sectioning.
+      - keywordsFound: Technical and domain-specific keywords identified.
+      - missingKeywords: Critical keywords from the JD or industry that should be added.
+      - formattingSuggestions: Precise feedback on layout, white space, and visual hierarchy.
+      - impactSuggestions: Actionable advice on rewriting bullets to be more 'result-oriented' (e.g., 'Led project X' vs 'Increased efficiency by 15% via project X').
+      - summary: A professional executive summary of the audit findings.
+    `;
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
       config: {
         responseMimeType: "application/json",
@@ -43,42 +78,34 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
             impactSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
             summary: { type: Type.STRING }
           },
-          required: [
-            "score", 
-            "atsCompatibility", 
-            "keywordsFound", 
-            "missingKeywords", 
-            "formattingSuggestions", 
-            "impactSuggestions", 
-            "summary"
-          ]
+          required: ["score", "atsCompatibility", "keywordsFound", "missingKeywords", "formattingSuggestions", "impactSuggestions", "summary"]
         }
       }
     });
 
     return JSON.parse(cleanJson(response.text || '{}'));
-  } catch (err: any) {
-    console.error('[Analyze Resume Error]', err);
-    throw err;
   }
 };
 
 export const generateResume = async (userData: any) => {
-  const prompt = `
-    Generate a professional, ATS-friendly resume based on the following user details:
-    ${JSON.stringify(userData)}
-    
-    Return a JSON object with sections:
-    - summary: string
-    - skills: string[]
-    - experience: { company: string, role: string, period: string, bullets: string[] }[]
-    - education: { school: string, degree: string, period: string }[]
-    - projects: { name: string, description: string }[]
-  `;
-
   try {
+    return await apiFetch('generate-resume', { userData });
+  } catch (backendError) {
+    console.log('[Neural Buffer] Performing direct client-side generation...');
+    const prompt = `
+      Generate a professional, ATS-friendly resume based on the following user details:
+      ${JSON.stringify(userData)}
+      
+      Return a JSON object with sections:
+      - summary: string
+      - skills: string[]
+      - experience: { company: string, role: string, period: string, bullets: string[] }[]
+      - education: { school: string, degree: string, period: string }[]
+      - projects: { name: string, description: string }[]
+    `;
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -126,26 +153,27 @@ export const generateResume = async (userData: any) => {
     });
 
     return JSON.parse(cleanJson(response.text || '{}'));
-  } catch (err: any) {
-    console.error('[Generate Resume Error]', err);
-    throw err;
   }
 };
 
 export const generateCoverLetter = async (resumeText: string, jobDescription: string) => {
-  const prompt = `
-    Generate a personalized, persuasive cover letter based on the following resume and job description.
-    
-    Resume: ${resumeText}
-    Job Description: ${jobDescription}
-    
-    Return a JSON object with:
-    - content: string (the full text of the cover letter)
-  `;
-
   try {
+    const result = await apiFetch('generate-cover-letter', { resumeText, jobDescription });
+    return result;
+  } catch (backendError) {
+    console.log('[Neural Buffer] Performing direct client-side generation...');
+    const prompt = `
+      Generate a personalized, persuasive cover letter based on the following resume and job description.
+      
+      Resume: ${resumeText}
+      Job Description: ${jobDescription}
+      
+      Return a JSON object with:
+      - content: string (the full text of the cover letter)
+    `;
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -159,27 +187,19 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
     });
 
     return JSON.parse(cleanJson(response.text || '{}'));
-  } catch (err: any) {
-    console.error('[Generate Cover Letter Error]', err);
-    throw err;
   }
 };
 
 export const findJobs = async (queryStr: string, location: string = "") => {
-  const prompt = `Search for recent job listings for "${queryStr}" in "${location}". Pay special attention to LinkedIn job posts. 
-  
-  Return a JSON array of specific job opportunities.
-  For each job, include:
-  - title: The job title
-  - company: The company name
-  - location: The geographical location
-  - link: The direct URL to the job posting
-  - description: A short summary of the role and requirements
-  - datePosted: When it was posted if known`;
-
   try {
+    return await apiFetch('search-jobs', { query: queryStr, location });
+  } catch (backendError) {
+    console.log('[Neural Buffer] Performing direct client-side search...');
+    const prompt = `Search for recent job listings for "${queryStr}" in "${location}". 
+    Return a JSON array of specific job opportunities.`;
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -204,30 +224,18 @@ export const findJobs = async (queryStr: string, location: string = "") => {
     });
 
     return JSON.parse(cleanJson(response.text || '[]'));
-  } catch (err: any) {
-    console.error('[Find Jobs Error]', err);
-    throw err;
   }
 };
 
 export const generateInterviewQuestions = async (jobDescription: string, resumeText: string = "") => {
-  const prompt = `
-    Based on the following job description and (optionally) the candidate's resume, generate a list of challenging interview questions.
-    Mix behavioral and technical questions.
-    
-    Job Description: ${jobDescription}
-    Candidate Resume: ${resumeText}
-    
-    Return a JSON array where each item is:
-    - id: string (unique)
-    - question: string
-    - category: "behavioral" | "technical" | "situational"
-    - rationale: string (why this question is being asked for this role)
-  `;
-
   try {
+    return await apiFetch('generate-interview', { jobDescription, resumeText });
+  } catch (backendError) {
+    console.log('[Neural Buffer] Performing direct client-side generation...');
+    const prompt = `Generate interview questions for: ${jobDescription}`;
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -248,30 +256,18 @@ export const generateInterviewQuestions = async (jobDescription: string, resumeT
     });
 
     return JSON.parse(cleanJson(response.text || '[]'));
-  } catch (err: any) {
-    console.error('[Generate Interview Error]', err);
-    throw err;
   }
 };
 
 export const evaluateInterviewAnswer = async (question: string, answer: string, jobDescription: string) => {
-  const prompt = `
-    Evaluate the candidate's answer to the following interview question for a specific role.
-    
-    Role Context: ${jobDescription}
-    Question: ${question}
-    Candidate Answer: ${answer}
-    
-    Return a JSON object with:
-    - feedback: string
-    - improvementTips: string[]
-    - score: number (0-10)
-    - keyPointsMissing: string[]
-  `;
-
   try {
+    return await apiFetch('evaluate-answer', { question, answer, jobDescription });
+  } catch (backendError) {
+    console.log('[Neural Buffer] Performing direct client-side evaluation...');
+    const prompt = `Evaluate answer: ${answer}`;
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -289,118 +285,40 @@ export const evaluateInterviewAnswer = async (question: string, answer: string, 
     });
 
     return JSON.parse(cleanJson(response.text || '{}'));
-  } catch (err: any) {
-    console.error('[Evaluate Answer Error]', err);
-    throw err;
   }
 };
 
 export const generateLearningPath = async (missingSkills: string[], targetRole: string) => {
-  const prompt = `
-    Generate a highly-rated, professional learning path for a candidate who is missing the following skills: ${missingSkills.join(', ')}.
-    The target role is "${targetRole}".
-    
-    Use Google Search to find real, highly-rated courses from Coursera, Udemy, edX, and YouTube.
-    
-    Return a JSON object with:
-    - roadmapTitle: string
-    - sections: {
-        title: string,
-        skillsCovered: string[],
-        resources: {
-          name: string,
-          platform: string,
-          link: string,
-          description: string,
-          type: "video" | "course" | "book" | "documentation"
-        }[]
-      }[]
-  `;
-
   try {
+    return await apiFetch('learning-path', { missingSkills, targetRole });
+  } catch (backendError) {
+    const prompt = `Learning path for: ${missingSkills.join(', ')}`;
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
         toolConfig: { includeServerSideToolInvocations: true },
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            roadmapTitle: { type: Type.STRING },
-            sections: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  skillsCovered: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  resources: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        name: { type: Type.STRING },
-                        platform: { type: Type.STRING },
-                        link: { type: Type.STRING },
-                        description: { type: Type.STRING },
-                        type: { type: Type.STRING }
-                      },
-                      required: ["name", "platform", "link", "type"]
-                    }
-                  }
-                },
-                required: ["title", "skillsCovered", "resources"]
-              }
-            }
-          },
-          required: ["roadmapTitle", "sections"]
-        }
+        responseMimeType: "application/json"
       }
     });
 
     return JSON.parse(cleanJson(response.text || '{}'));
-  } catch (err: any) {
-    console.error('[Learning Path Error]', err);
-    throw err;
   }
 };
 
 export const refactorResumeText = async (text: string, context: string = "") => {
-  const prompt = `
-    Refactor the following resume text to be more impactful, professional, and result-oriented.
-    Use strong action verbs and quantify achievements where possible.
-    
-    Current Text: ${text}
-    ${context ? `Target Role Context: ${context}` : ''}
-    
-    Return a JSON object with:
-    - refactoredText: string
-    - explanation: string (why these changes were made)
-  `;
-
   try {
+    return await apiFetch('refactor-resume', { text, context });
+  } catch (backendError) {
+    const prompt = `Refactor: ${text}`;
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            refactoredText: { type: Type.STRING },
-            explanation: { type: Type.STRING }
-          },
-          required: ["refactoredText"]
-        }
-      }
+      config: { responseMimeType: "application/json" }
     });
-
     return JSON.parse(cleanJson(response.text || '{}'));
-  } catch (err: any) {
-    console.error('[Refactor Resume Error]', err);
-    throw err;
   }
 };
 

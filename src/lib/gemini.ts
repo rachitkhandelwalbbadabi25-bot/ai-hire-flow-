@@ -1,67 +1,394 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+const getAI = () => {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    console.error("GEMINI_API_KEY is missing from environment. AI features will not function.");
+  }
+  return new GoogleGenAI({ apiKey: key || "" });
+};
+
+const ai = getAI();
+
 const cleanJson = (text: string): string => {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
 };
 
-const apiFetch = async (endpoint: string, data: any) => {
-  const url = `/api/${endpoint}`;
-  console.log(`[Neural Link] Routing to ${url}`);
-  
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || `API failure: ${response.status}`;
-      throw new Error(errorMessage);
-    }
-
-    return await response.json();
-  } catch (err: any) {
-    console.error(`[Neural Link Error] ${endpoint}:`, err);
-    throw err;
-  }
-};
-
 export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
-  return await apiFetch('analyze-resume', { resumeText, jobDescription });
-};
+  const prompt = `
+    You are an expert ATS (Applicant Tracking System) optimizer and professional resume auditor. 
+    Analyze the provided resume text with extreme critical detail. 
 
-export const generateResume = async (userData: any) => {
-  return await apiFetch('generate-resume', { userData });
-};
+    ${jobDescription ? `
+    STRATEGY: Conduct a rigorous gap analysis against this Job Description: ${jobDescription}.
+    - Identify specific technical and soft skills missing.
+    - Evaluate the 'Semantic Match' between the candidate's experience and the JD requirements.
+    ` : 'STRATEGY: Perform a comprehensive general audit based on industry best practices.'}
+    
+    Return a JSON object with results.
+  `;
 
-export const generateCoverLetter = async (resumeText: string, jobDescription: string) => {
-  return await apiFetch('generate-cover-letter', { resumeText, jobDescription });
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          score: { type: Type.NUMBER },
+          atsCompatibility: { type: Type.STRING },
+          keywordsFound: { type: Type.ARRAY, items: { type: Type.STRING } },
+          missingKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+          formattingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+          impactSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+          summary: { type: Type.STRING }
+        },
+        required: [
+          "score", 
+          "atsCompatibility", 
+          "keywordsFound", 
+          "missingKeywords", 
+          "formattingSuggestions", 
+          "impactSuggestions", 
+          "summary"
+        ]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const findJobs = async (queryStr: string, location: string = "") => {
-  return await apiFetch('search-jobs', { query: queryStr, location });
+  const isIndianContext = location.toLowerCase().includes('india') || 
+                          queryStr.toLowerCase().includes('india') ||
+                          queryStr.toLowerCase().includes('tcs') ||
+                          queryStr.toLowerCase().includes('infosys');
+
+  const prompt = `
+    Find recent job listings for "${queryStr}" in "${location}". 
+    
+    ${isIndianContext ? `
+    IMPORTANT: Prioritize results from major Indian job portals:
+    - Naukri.com
+    - Internshala (especially for internships and entry-level roles)
+    - Instahyre
+    - LinkedIn India
+    - IIMJobs
+    
+    Context: Analyze the roles based on Indian corporate standards. 
+    Distinguish between 'Service-based MNC' (e.g. TCS, Infosys, Wipro) roles and 'Product-based Startup' (e.g. Zomato, CRED, Swiggy) roles.
+    ` : ''}
+    
+    Return a JSON array of specific job opportunities.
+    For each job, include:
+    - title: The job title
+    - company: The company name
+    - location: The geographical location
+    - link: The direct URL to the job posting
+    - description: A short summary of the role and requirements. If it's a campus placement role, mention 'Campus' in description.
+    - datePosted: When it was posted if known
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+      toolConfig: { includeServerSideToolInvocations: true },
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            company: { type: Type.STRING },
+            location: { type: Type.STRING },
+            link: { type: Type.STRING },
+            description: { type: Type.STRING },
+            datePosted: { type: Type.STRING }
+          },
+          required: ["title", "company", "link", "location", "description"]
+        }
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '[]'));
 };
 
 export const generateInterviewQuestions = async (jobDescription: string, resumeText: string = "") => {
-  return await apiFetch('generate-interview', { jobDescription, resumeText });
+  const prompt = `
+    Based on the following job description and (optionally) the candidate's resume, generate a list of challenging interview questions.
+    Mix behavioral and technical questions.
+    
+    SPECIAL CONTEXT: 
+    - If the role is in India, include questions typical of 'Indian Campus Placements' (Aptitude, OOPS, DBMS, OS for MNCs like TCS/Infosys).
+    - If it's for a high-growth startup, focus on ownership and 'Ship fast' culture.
+    
+    Job Description: ${jobDescription}
+    Candidate Resume: ${resumeText}
+    
+    Return a JSON array where each item is:
+    - id: string (unique)
+    - question: string
+    - category: "behavioral" | "technical" | "situational"
+    - rationale: string (why this question is being asked for this role)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            question: { type: Type.STRING },
+            category: { type: Type.STRING },
+            rationale: { type: Type.STRING }
+          },
+          required: ["id", "question", "category"]
+        }
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '[]'));
 };
 
 export const evaluateInterviewAnswer = async (question: string, answer: string, jobDescription: string) => {
-  return await apiFetch('evaluate-answer', { question, answer, jobDescription });
+  const prompt = `
+    Evaluate the candidate's answer to the following interview question for a specific role.
+    
+    Role Context: ${jobDescription}
+    Question: ${question}
+    Candidate Answer: ${answer}
+    
+    Return a JSON object with:
+    - feedback: string
+    - improvementTips: string[]
+    - score: number (0-10)
+    - keyPointsMissing: string[]
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          feedback: { type: Type.STRING },
+          improvementTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+          score: { type: Type.NUMBER },
+          keyPointsMissing: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["feedback", "score"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateLearningPath = async (missingSkills: string[], targetRole: string) => {
-  return await apiFetch('learning-path', { missingSkills, targetRole });
+  const prompt = `
+    Generate a highly-rated, professional learning path for a candidate who is missing the following skills: ${missingSkills.join(', ')}.
+    The target role is "${targetRole}".
+    
+    Use Google Search to find real, highly-rated courses from Coursera, Udemy, edX, and YouTube.
+    
+    Return a JSON object with:
+    - roadmapTitle: string
+    - sections: {
+        title: string,
+        skillsCovered: string[],
+        resources: {
+          name: string,
+          platform: string,
+          link: string,
+          description: string,
+          type: "video" | "course" | "book" | "documentation"
+        }[]
+      }[]
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+      toolConfig: { includeServerSideToolInvocations: true },
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          roadmapTitle: { type: Type.STRING },
+          sections: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                skillsCovered: { type: Type.ARRAY, items: { type: Type.STRING } },
+                resources: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING },
+                      platform: { type: Type.STRING },
+                      link: { type: Type.STRING },
+                      description: { type: Type.STRING },
+                      type: { type: Type.STRING }
+                    },
+                    required: ["name", "platform", "link", "type"]
+                  }
+                }
+              },
+              required: ["title", "skillsCovered", "resources"]
+            }
+          }
+        },
+        required: ["roadmapTitle", "sections"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const refactorResumeText = async (text: string, context: string = "") => {
-  return await apiFetch('refactor-resume', { text, context });
+  const prompt = `
+    Refactor the following resume text to be more impactful, professional, and result-oriented.
+    Use strong action verbs and quantify achievements where possible.
+    
+    Current Text: ${text}
+    ${context ? `Target Role Context: ${context}` : ''}
+    
+    Return a JSON object with:
+    - refactoredText: string
+    - explanation: string (why these changes were made)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          refactoredText: { type: Type.STRING },
+          explanation: { type: Type.STRING }
+        },
+        required: ["refactoredText"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};
+
+export const generateResume = async (userData: any) => {
+  const prompt = `
+    Generate a professional, ATS-friendly resume based on the following user details:
+    ${JSON.stringify(userData)}
+    
+    Return a JSON object with sections:
+    - summary: string
+    - skills: string[]
+    - experience: { company: string, role: string, period: string, bullets: string[] }[]
+    - education: { school: string, degree: string, period: string }[]
+    - projects: { name: string, description: string }[]
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          summary: { type: Type.STRING },
+          skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+          experience: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                company: { type: Type.STRING },
+                role: { type: Type.STRING },
+                period: { type: Type.STRING },
+                bullets: { type: Type.ARRAY, items: { type: Type.STRING } }
+              }
+            }
+          },
+          education: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                school: { type: Type.STRING },
+                degree: { type: Type.STRING },
+                period: { type: Type.STRING }
+              }
+            }
+          },
+          projects: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                description: { type: Type.STRING }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};
+
+export const generateCoverLetter = async (resumeText: string, jobDescription: string) => {
+  const prompt = `
+    Generate a personalized, persuasive cover letter based on the following resume and job description.
+    
+    Resume: ${resumeText}
+    Job Description: ${jobDescription}
+    
+    Return a JSON object with:
+    - content: string (the full text of the cover letter)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          content: { type: Type.STRING }
+        }
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const auditCode = async (code: string, context: any = {}) => {
-  throw new Error("Audit Code is currently disabled. All AI features are transitioning to secure server-side execution.");
+  throw new Error("Audit Code is currently disabled.");
 };

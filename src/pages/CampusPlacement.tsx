@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { GraduationCap, BookOpen, Code, Trophy, Target, Sparkles, Building2, ChevronRight, Zap, PlayCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { GraduationCap, BookOpen, Code, Trophy, Target, Sparkles, Building2, ChevronRight, Zap, PlayCircle, X, Loader2, BookCheck } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { generateLearningPath } from '../lib/gemini';
 
 export default function CampusPlacement() {
   const { t } = useLanguage();
+  const [loading, setLoading] = useState(false);
+  const [selectedPath, setSelectedPath] = useState<any>(null);
+  const [showModal, setShowModal] = useState(false);
   
   const mncRoles = [
     { title: "TCS Ninja / Digital", focus: "Aptitude, Coding, HR Protocols", color: "bg-blue-500" },
@@ -18,8 +22,96 @@ export default function CampusPlacement() {
     { title: "Back-end Architect", focus: "System Design, Microservices, Scalability", color: "bg-indigo-500" }
   ];
 
+  const handleInitializePath = async (role: string) => {
+    setLoading(true);
+    setShowModal(true);
+    try {
+      // We'll treat common campus requirements as "missing skills" to generate a solid roadmap
+      const roadmap = await generateLearningPath(['Aptitude', 'Data Structures', 'Algorithms', 'DBMS', 'Operating Systems'], role);
+      setSelectedPath(roadmap);
+    } catch (error) {
+      console.error("Failed to generate roadmap", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-surface border border-border w-full max-w-4xl max-h-[80vh] overflow-y-auto rounded-[2.5rem] shadow-2xl p-8 lg:p-12 relative"
+            >
+              <button 
+                onClick={() => setShowModal(false)}
+                className="absolute top-8 right-8 p-2 hover:bg-accent/10 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-ink-dim" />
+              </button>
+
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <Loader2 className="w-12 h-12 text-accent animate-spin" />
+                  <p className="text-sm font-bold text-ink uppercase tracking-widest">Architecting Neural Roadmap...</p>
+                </div>
+              ) : selectedPath ? (
+                <div>
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="bg-accent/10 p-3 rounded-2xl border border-accent/20">
+                      <BookCheck className="w-6 h-6 text-accent" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">{selectedPath.roadmapTitle}</h2>
+                      <p className="text-[10px] font-bold text-accent uppercase tracking-widest">AI-Engineered Placement Strategy</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {selectedPath.sections.map((section: any, idx: number) => (
+                      <div key={idx} className="bg-background border border-border rounded-3xl p-6">
+                        <h4 className="font-bold text-ink mb-4 flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[10px]">{idx + 1}</span>
+                          {section.title}
+                        </h4>
+                        <div className="flex flex-wrap gap-2 mb-6">
+                          {section.skillsCovered.map((skill: string, sIdx: number) => (
+                            <span key={sIdx} className="px-2 py-1 bg-surface-light text-ink-dim text-[9px] font-bold uppercase rounded-md border border-border">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="space-y-3">
+                          {section.resources.map((res: any, rIdx: number) => (
+                            <a 
+                              key={rIdx} 
+                              href={res.link} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="flex items-center justify-between p-3 bg-surface rounded-xl border border-border hover:border-accent/40 group transition-all"
+                            >
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-ink uppercase">{res.name}</span>
+                                <span className="text-[8px] text-ink-dim uppercase">{res.platform} • {res.type}</span>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-ink-dim group-hover:text-accent transition-colors" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="mb-12">
         <div className="flex items-center gap-2 mb-4">
           <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
@@ -62,7 +154,10 @@ export default function CampusPlacement() {
                   </div>
                   <h4 className="font-bold text-ink mb-1">{role.title}</h4>
                   <p className="text-xs text-ink-dim italic mb-4">"{role.focus}"</p>
-                  <button className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-1 group-hover:gap-2 transition-all">
+                  <button 
+                    onClick={() => handleInitializePath(role.title)}
+                    className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-1 group-hover:gap-2 transition-all outline-none"
+                  >
                     Initialize Path <ChevronRight className="w-3 h-3" />
                   </button>
                 </motion.div>
@@ -79,26 +174,32 @@ export default function CampusPlacement() {
             </div>
             
             <div className="space-y-4">
-               <div className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-emerald-500" />
-                  </div>
-                  <div className="flex-1">
-                    <h5 className="text-xs font-bold text-ink uppercase">Logical Reasoning & Quantitative</h5>
-                    <p className="text-[10px] text-ink-dim tracking-tight">Focus: Probability, P&C, Time-Distance, Syllogisms.</p>
-                  </div>
-                  <PlayCircle className="w-6 h-6 text-ink-dim hover:text-emerald-500 cursor-pointer transition-colors" />
-               </div>
-               <div className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <Code className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div className="flex-1">
-                    <h5 className="text-xs font-bold text-ink uppercase">CS Fundamentals</h5>
-                    <p className="text-[10px] text-ink-dim tracking-tight">Object Oriented Programming, Database Joins, OS Threading.</p>
-                  </div>
-                  <PlayCircle className="w-6 h-6 text-ink-dim hover:text-blue-500 cursor-pointer transition-colors" />
-               </div>
+                <div className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl group">
+                   <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                     <Zap className="w-5 h-5 text-emerald-500" />
+                   </div>
+                   <div className="flex-1">
+                     <h5 className="text-xs font-bold text-ink uppercase">Logical Reasoning & Quantitative</h5>
+                     <p className="text-[10px] text-ink-dim tracking-tight">Focus: Probability, P&C, Time-Distance, Syllogisms.</p>
+                   </div>
+                   <PlayCircle 
+                      onClick={() => handleInitializePath("Logical Reasoning Aptitude")}
+                      className="w-6 h-6 text-ink-dim hover:text-emerald-500 cursor-pointer transition-colors" 
+                   />
+                </div>
+                <div className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl group">
+                   <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                     <Code className="w-5 h-5 text-blue-500" />
+                   </div>
+                   <div className="flex-1">
+                     <h5 className="text-xs font-bold text-ink uppercase">CS Fundamentals</h5>
+                     <p className="text-[10px] text-ink-dim tracking-tight">Object Oriented Programming, Database Joins, OS Threading.</p>
+                   </div>
+                   <PlayCircle 
+                      onClick={() => handleInitializePath("Computer Science Fundamentals (OOPS/DBMS/OS)")}
+                      className="w-6 h-6 text-ink-dim hover:text-blue-500 cursor-pointer transition-colors" 
+                   />
+                </div>
             </div>
           </div>
         </div>

@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Share2, Bell, MessageCircle, Send, Plus, Users, UserCheck, Smartphone, Settings, ExternalLink, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Share2, Bell, MessageCircle, Send, Plus, Users, UserCheck, Smartphone, Settings, ExternalLink, Zap, X, Loader2, Copy, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { generateCoverLetter } from '../lib/gemini';
 
 export default function OutreachHub() {
   const { t } = useLanguage();
   const [waNumber, setWaNumber] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [generatedMessage, setGeneratedMessage] = useState('');
+  const [showGenModal, setShowGenModal] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   const referrals = [
     { name: "Rahul S.", company: "Zomato", status: "Requested", date: "24 Apr" },
@@ -13,8 +20,81 @@ export default function OutreachHub() {
     { name: "Anish K.", company: "Infosys", status: "Pending Response", date: "18 Apr" }
   ];
 
+  const handleSync = () => {
+    setSyncing(true);
+    setTimeout(() => setSyncing(false), 2000);
+  };
+
+  const generateMessage = async (contact: any) => {
+    setSelectedContact(contact);
+    setShowGenModal(true);
+    setLoadingMsg(true);
+    try {
+      // Reusing cover letter logic for outreach messages since it requires similar context
+      const res = await generateCoverLetter("Candidate: Final Year Engineering Student. Skills: React, Node.js, Python. Looking for referral in India.", `Company: ${contact.company}`);
+      setGeneratedMessage(res.content);
+    } catch (error) {
+      console.error("Failed to generate message", error);
+      setGeneratedMessage("Hi " + contact.name + ", I hope you're doing well! I'm really interested in " + contact.company + " and was wondering if you could help with a referral. Thanks!");
+    } finally {
+      setLoadingMsg(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedMessage);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+      <AnimatePresence>
+        {showGenModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+               initial={{ scale: 0.9, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               exit={{ scale: 0.9, opacity: 0 }}
+               className="bg-surface border border-border w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 relative"
+            >
+               <button 
+                  onClick={() => setShowGenModal(false)}
+                  className="absolute top-8 right-8 p-2 hover:bg-accent/10 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-ink-dim" />
+                </button>
+
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-ink uppercase tracking-tight">Neural Referrer Direct</h3>
+                  <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Generating personalized pitch for {selectedContact?.name}</p>
+                </div>
+
+                <div className="bg-background border border-border p-6 rounded-3xl min-h-[200px] relative font-sans text-sm leading-relaxed text-ink">
+                  {loadingMsg ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                       <Loader2 className="w-8 h-8 text-accent animate-spin" />
+                       <span className="text-[10px] font-bold text-ink-dim uppercase">Crafting Narrative...</span>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{generatedMessage}</p>
+                  )}
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                   <button 
+                    onClick={copyToClipboard}
+                    className="flex-1 bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                   >
+                     {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                     {copied ? "Copied" : "Copy Neural Pitch"}
+                   </button>
+                </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Left Column - Alerts & Automation */}
@@ -65,8 +145,12 @@ export default function OutreachHub() {
                 </div>
              </div>
 
-             <button className="w-full bg-success text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-success/20">
-                Synchronize Pipeline <Send className="w-3.5 h-3.5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+             <button 
+              onClick={handleSync}
+              className="w-full bg-success text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-success/20"
+             >
+                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Synchronize Pipeline"} 
+                {!syncing && <Send className="w-3.5 h-3.5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
              </button>
 
              <p className="mt-4 text-[9px] text-center text-ink-dim uppercase font-mono tracking-tighter">
@@ -140,10 +224,13 @@ export default function OutreachHub() {
                                </div>
                             </td>
                             <td className="py-6 text-right">
-                               <button className="text-ink-dim hover:text-accent transition-colors">
-                                  <ExternalLink className="w-4 h-4" />
+                                <button 
+                                  onClick={() => generateMessage(ref)}
+                                  className="text-[9px] font-bold text-accent uppercase tracking-widest p-2 px-4 border border-accent/20 rounded-xl hover:bg-accent/10 transition-all font-sans"
+                                >
+                                  Generate Pitch
                                 </button>
-                            </td>
+                             </td>
                          </tr>
                       ))}
                    </tbody>

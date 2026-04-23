@@ -12,10 +12,12 @@ import InterviewSimulator from './pages/InterviewSimulator';
 import LearningPath from './pages/LearningPath';
 import ResumeEditor from './pages/ResumeEditor';
 import Profile from './pages/Profile';
-import CodeRabbit from './pages/CodeRabbit';
+import CampusPlacement from './pages/CampusPlacement';
+import OutreachHub from './pages/OutreachHub';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { PlanProvider } from './context/PlanContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { Sparkles } from 'lucide-react';
 
 function AppRoutes() {
@@ -63,8 +65,9 @@ function AppRoutes() {
           <Route path="/learning" element={user ? <LearningPath /> : <Navigate to="/" />} />
           <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" />} />
           <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" />} />
+          <Route path="/campus" element={user ? <CampusPlacement /> : <Navigate to="/" />} />
+          <Route path="/outreach" element={user ? <OutreachHub /> : <Navigate to="/" />} />
           <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
-          <Route path="/rabbit" element={user ? <CodeRabbit /> : <Navigate to="/" />} />
         </Routes>
       </Layout>
     </Router>
@@ -73,12 +76,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <PlanProvider>
-        <ThemeProvider>
-          <AppRoutes />
-        </ThemeProvider>
-      </PlanProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <PlanProvider>
+          <ThemeProvider>
+            <AppRoutes />
+          </ThemeProvider>
+        </PlanProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }

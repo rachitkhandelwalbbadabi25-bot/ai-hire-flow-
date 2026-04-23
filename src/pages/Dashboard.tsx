@@ -2,7 +2,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Briefcase, FileText, CheckCircle2, TrendingUp, Search, FileEdit, Crown, Bug, ArrowRight } from 'lucide-react';
+import { Plus, Briefcase, FileText, CheckCircle2, TrendingUp, Search, FileEdit, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
@@ -164,30 +164,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Code Rabbit Status */}
-      <div className="bg-surface p-8 rounded-[2.5rem] border border-border shadow-sm mb-12 flex flex-col md:flex-row items-center justify-between gap-8 h-fit">
-        <div className="flex items-center gap-6">
-           <div className="bg-accent/10 p-5 rounded-[2rem] border border-accent/20">
-              <Bug className="w-8 h-8 text-accent animate-pulse" />
-           </div>
-           <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-bold text-ink text-lg uppercase tracking-tight">Code Rabbit Integrity</h4>
-                <div className="px-2 py-0.5 bg-success/10 border border-success/20 rounded text-[8px] font-black text-success uppercase">System Active</div>
-                <div className="px-2 py-0.5 bg-accent/10 border border-accent/20 rounded text-[8px] font-black text-accent uppercase">Neural Fix Applied</div>
-              </div>
-              <p className="text-xs text-ink-dim max-w-lg leading-relaxed">
-                The high-precision logical auditor is monitoring system telemetry. If anomalies are detected, re-synchronize using the neural repair sequence.
-              </p>
-           </div>
-        </div>
-        <Link 
-          to="/rabbit" 
-          className="bg-accent text-white px-8 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-accent/20 hover:scale-105 transition-all flex items-center gap-2"
-        >
-          Audit System Logic <ArrowRight className="w-3 h-3" />
-        </Link>
-      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import PlanBadge from './PlanBadge';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   BarChart3, 
   FileSearch, 
@@ -25,7 +26,9 @@ import {
   Mic,
   Sun,
   Moon,
-  Bug
+  Globe,
+  Award,
+  MessageCircle
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -34,21 +37,23 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const location = useLocation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleSignOut = () => signOut(auth);
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Job Finder', path: '/finder', icon: Search },
-    { name: 'Analyzer', path: '/analyzer', icon: BarChart3 },
-    { name: 'Interview Lab', path: '/interview', icon: Mic },
-    { name: 'Learning Path', path: '/learning', icon: GraduationCap },
-    { name: 'Resume Editor', path: '/editor', icon: FileEdit },
-    { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
-    { name: 'Code Rabbit', path: '/rabbit', icon: Bug },
-    { name: 'Profile', path: '/profile', icon: UserIcon },
+    { name: t('dashboard'), path: '/dashboard', icon: Home },
+    { name: t('jobFinder'), path: '/finder', icon: Search },
+    { name: t('campusPlacement'), path: '/campus', icon: Award },
+    { name: t('outreach'), path: '/outreach', icon: MessageCircle },
+    { name: t('analyzer'), path: '/analyzer', icon: BarChart3 },
+    { name: t('interviewLab'), path: '/interview', icon: Mic },
+    { name: t('learningPath'), path: '/learning', icon: GraduationCap },
+    { name: t('resumeEditor'), path: '/editor', icon: FileEdit },
+    { name: t('jobTracker'), path: '/jobs', icon: Briefcase },
+    { name: t('profile'), path: '/profile', icon: UserIcon },
   ];
 
   // Close drawer on path change
@@ -95,6 +100,14 @@ export default function Navbar({ user }: NavbarProps) {
                     {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                   </button>
                    <button
+                    onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
+                    className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center gap-1.5"
+                    title={language === 'en' ? 'हिन्दी में बदलें' : 'Switch to English'}
+                  >
+                    <Globe className="w-5 h-5" />
+                    <span className="text-[10px] font-bold uppercase hidden md:inline">{language === 'en' ? 'EN' : 'HI'}</span>
+                  </button>
+                   <button
                     onClick={handleSignOut}
                     className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
                     title="Sign Out"
@@ -107,7 +120,7 @@ export default function Navbar({ user }: NavbarProps) {
                   onClick={signInWithGoogle}
                   className="bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-accent/20"
                 >
-                  Get Started
+                  {t('getStarted')}
                 </button>
               )}
             </div>

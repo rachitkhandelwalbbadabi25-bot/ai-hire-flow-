@@ -58,16 +58,35 @@ export const analyzeResumeContent = async (ai: GoogleGenAI, resumeText: string, 
 };
 
 export const searchJobsContent = async (ai: GoogleGenAI, queryStr: string, location: string = "") => {
-  const prompt = `Search for recent job listings for "${queryStr}" in "${location}". 
-  
-  Return a JSON array of specific job opportunities.
-  For each job, include:
-  - title: The job title
-  - company: The company name
-  - location: The geographical location
-  - link: The direct URL to the job posting
-  - description: A short summary of the role and requirements
-  - datePosted: When it was posted if known`;
+  const isIndianContext = location.toLowerCase().includes('india') || 
+                          queryStr.toLowerCase().includes('india') ||
+                          queryStr.toLowerCase().includes('tcs') ||
+                          queryStr.toLowerCase().includes('infosys');
+
+  const prompt = `
+    Find recent job listings for "${queryStr}" in "${location}". 
+    
+    ${isIndianContext ? `
+    IMPORTANT: Prioritize results from major Indian job portals:
+    - Naukri.com
+    - Internshala (especially for internships and entry-level roles)
+    - Instahyre
+    - LinkedIn India
+    - IIMJobs
+    
+    Context: Analyze the roles based on Indian corporate standards. 
+    Distinguish between 'Service-based MNC' (e.g. TCS, Infosys, Wipro) roles and 'Product-based Startup' (e.g. Zomato, CRED, Swiggy) roles.
+    ` : ''}
+    
+    Return a JSON array of specific job opportunities.
+    For each job, include:
+    - title: The job title
+    - company: The company name
+    - location: The geographical location
+    - link: The direct URL to the job posting
+    - description: A short summary of the role and requirements. If it's a campus placement role, mention 'Campus' in description.
+    - datePosted: When it was posted if known
+  `;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
@@ -106,6 +125,10 @@ export const generateInterviewQuestionsContent = async (ai: GoogleGenAI, jobDesc
   const prompt = `
     Based on the following job description and (optionally) the candidate's resume, generate a list of challenging interview questions.
     Mix behavioral and technical questions.
+    
+    SPECIAL CONTEXT: 
+    - If the role is in India, include questions typical of 'Indian Campus Placements' (Aptitude, OOPS, DBMS, OS for MNCs like TCS/Infosys).
+    - If it's for a high-growth startup, focus on ownership and 'Ship fast' culture.
     
     Job Description: ${jobDescription}
     Candidate Resume: ${resumeText}

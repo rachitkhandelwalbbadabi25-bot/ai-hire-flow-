@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Bug, Activity } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function NeuralStatus() {
@@ -25,15 +25,6 @@ export default function NeuralStatus() {
              <span className="text-[8px] font-black text-ink uppercase tracking-widest leading-none">System Healthy</span>
              <span className="text-[7px] font-mono text-ink-dim uppercase mt-1">Audit Mode: Active</span>
           </div>
-       </motion.div>
-
-       <motion.div 
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="bg-accent p-3 rounded-full shadow-lg cursor-pointer border border-accent/20 group"
-        onClick={() => window.location.href = '/rabbit'}
-       >
-          <Bug className="w-4 h-4 text-white group-hover:rotate-12 transition-transform" />
        </motion.div>
     </div>
   );

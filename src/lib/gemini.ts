@@ -91,32 +91,46 @@ export const findJobs = async (queryStr: string, location: string = "") => {
     - datePosted: When it was posted if known
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-      toolConfig: { includeServerSideToolInvocations: true },
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            company: { type: Type.STRING },
-            location: { type: Type.STRING },
-            link: { type: Type.STRING },
-            description: { type: Type.STRING },
-            datePosted: { type: Type.STRING }
-          },
-          required: ["title", "company", "link", "location", "description"]
-        }
+  const config = {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          company: { type: Type.STRING },
+          location: { type: Type.STRING },
+          link: { type: Type.STRING },
+          description: { type: Type.STRING },
+          datePosted: { type: Type.STRING }
+        },
+        required: ["title", "company", "link", "location", "description"]
       }
     }
-  });
+  };
 
-  return JSON.parse(cleanJson(response.text || '[]'));
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        ...config,
+        tools: [{ googleSearch: {} }],
+        toolConfig: { includeServerSideToolInvocations: true },
+      }
+    });
+    return JSON.parse(cleanJson(response.text || '[]'));
+  } catch (error: any) {
+    console.warn("[Neural Search] Search Grounding exhausted, falling back to generative search.", error);
+    // Fallback to standard generative results if Grounding tool hits quota (429)
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt + "\nNOTE: Search Grounding is currently restricted. Provide typical current listings based on your latest internal training knowledge.",
+      config: config
+    });
+    return JSON.parse(cleanJson(response.text || '[]'));
+  }
 };
 
 export const generateInterviewQuestions = async (jobDescription: string, resumeText: string = "") => {
@@ -220,49 +234,63 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
       }[]
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-      toolConfig: { includeServerSideToolInvocations: true },
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          roadmapTitle: { type: Type.STRING },
-          sections: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                skillsCovered: { type: Type.ARRAY, items: { type: Type.STRING } },
-                resources: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      name: { type: Type.STRING },
-                      platform: { type: Type.STRING },
-                      link: { type: Type.STRING },
-                      description: { type: Type.STRING },
-                      type: { type: Type.STRING }
-                    },
-                    required: ["name", "platform", "link", "type"]
-                  }
+  const config = {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        roadmapTitle: { type: Type.STRING },
+        sections: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              skillsCovered: { type: Type.ARRAY, items: { type: Type.STRING } },
+              resources: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    platform: { type: Type.STRING },
+                    link: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    type: { type: Type.STRING }
+                  },
+                  required: ["name", "platform", "link", "type"]
                 }
-              },
-              required: ["title", "skillsCovered", "resources"]
-            }
+              }
+            },
+            required: ["title", "skillsCovered", "resources"]
           }
-        },
-        required: ["roadmapTitle", "sections"]
-      }
+        }
+      },
+      required: ["roadmapTitle", "sections"]
     }
-  });
+  };
 
-  return JSON.parse(cleanJson(response.text || '{}'));
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        ...config,
+        tools: [{ googleSearch: {} }],
+        toolConfig: { includeServerSideToolInvocations: true },
+      }
+    });
+
+    return JSON.parse(cleanJson(response.text || '{}'));
+  } catch (error: any) {
+    console.warn("[Neural roadmap] Search Grounding exhausted, falling back to generative roadmap.", error);
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt + "\nNOTE: Google Search Grounding is hit by quota limits. Use curated training knowledge to provide the most industry-standard resources available.",
+      config: config
+    });
+    return JSON.parse(cleanJson(response.text || '{}'));
+  }
 };
 
 export const refactorResumeText = async (text: string, context: string = "") => {

@@ -122,14 +122,19 @@ export const findJobs = async (queryStr: string, location: string = "") => {
     });
     return JSON.parse(cleanJson(response.text || '[]'));
   } catch (error: any) {
-    console.warn("[Neural Search] Search Grounding exhausted, falling back to generative search.", error);
-    // Fallback to standard generative results if Grounding tool hits quota (429)
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt + "\nNOTE: Search Grounding is currently restricted. Provide typical current listings based on your latest internal training knowledge.",
-      config: config
-    });
-    return JSON.parse(cleanJson(response.text || '[]'));
+    console.warn("[Neural Search] Search Grounding or API failure. Falling back to generative search.", error);
+    // Fallback to standard generative results if Grounding tool hits quota (429) or internal error (500)
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt + "\nNOTE: Real-time search is currently restricted. Provide realistic placeholders or typical examples based on your latest training knowledge to maintain UX.",
+        config: config
+      });
+      return JSON.parse(cleanJson(response.text || '[]'));
+    } catch (fallbackError) {
+      console.error("[Neural Search] Critical API failure.", fallbackError);
+      throw error; // Throw the original error or a meaningful descriptive one
+    }
   }
 };
 
@@ -283,13 +288,18 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
 
     return JSON.parse(cleanJson(response.text || '{}'));
   } catch (error: any) {
-    console.warn("[Neural roadmap] Search Grounding exhausted, falling back to generative roadmap.", error);
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt + "\nNOTE: Google Search Grounding is hit by quota limits. Use curated training knowledge to provide the most industry-standard resources available.",
-      config: config
-    });
-    return JSON.parse(cleanJson(response.text || '{}'));
+    console.warn("[Neural roadmap] Search Grounding or API failure. Falling back to generative roadmap.", error);
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt + "\nNOTE: Google Search Grounding is hit by quota limits or internal error. Use curated training knowledge to provide the most industry-standard resources available.",
+        config: config
+      });
+      return JSON.parse(cleanJson(response.text || '{}'));
+    } catch (fallbackError) {
+      console.error("[Neural roadmap] Critical API failure.", fallbackError);
+      throw error;
+    }
   }
 };
 

@@ -43,6 +43,9 @@ export default function Dashboard() {
     interviewReadiness: 0,
     simulationsRun: 0,
     weeklyMilestoneCount: 0,
+    weeklyResumesCount: 0,
+    weeklyJobsCount: 0,
+    weeklySimulationsCount: 0,
     upcomingEvents: [] as any[]
   });
   const [loading, setLoading] = useState(true);
@@ -113,16 +116,21 @@ export default function Dashboard() {
           return date >= sevenDaysAgo;
         };
 
-        let weeklyMilestoneCount = 0;
+        let weeklyResumesCount = 0;
+        let weeklyJobsCount = 0;
+        let weeklySimulationsCount = 0;
+
         resumes.forEach((r: any) => {
-          if (isWithinLast7Days(r.createdAt)) weeklyMilestoneCount++;
+          if (isWithinLast7Days(r.createdAt)) weeklyResumesCount++;
         });
         jobs.forEach((j: any) => {
-          if (isWithinLast7Days(j.appliedDate)) weeklyMilestoneCount++;
+          if (isWithinLast7Days(j.appliedDate)) weeklyJobsCount++;
         });
         simulations.forEach((s: any) => {
-          if (isWithinLast7Days(s.createdAt)) weeklyMilestoneCount++;
+          if (isWithinLast7Days(s.createdAt)) weeklySimulationsCount++;
         });
+
+        const weeklyMilestoneCount = weeklyResumesCount + weeklyJobsCount + weeklySimulationsCount;
 
         // 4. Upcoming events from jobs with status 'Interview'
         const upcomingEvents: any[] = [];
@@ -153,6 +161,9 @@ export default function Dashboard() {
           interviewReadiness,
           simulationsRun: simulations.length,
           weeklyMilestoneCount,
+          weeklyResumesCount,
+          weeklyJobsCount,
+          weeklySimulationsCount,
           upcomingEvents
         });
 
@@ -400,15 +411,28 @@ export default function Dashboard() {
             </div>
             <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-2">Weekly Milestones</h3>
             <div className="flex items-baseline gap-2 mb-4">
-              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">{stats.weeklyMilestoneCount}/10</span>
-              <span className="text-xs text-warning font-semibold">Targets Logged</span>
+              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">{stats.weeklyMilestoneCount}</span>
+              <span className="text-xs text-warning font-semibold">Activities (Last 7 Days)</span>
             </div>
-            <div className="w-full bg-surface-light h-1.5 rounded-full overflow-hidden mb-3">
-              <div className="bg-warning h-full rounded-full" style={{ width: `${Math.min(100, (stats.weeklyMilestoneCount / 10) * 100)}%` }} />
+            
+            <div className="grid grid-cols-3 gap-2 py-3 px-4 bg-background/50 rounded-2xl border border-border/60 mb-4 text-center">
+              <div>
+                <p className="text-[9px] text-ink-dim uppercase font-bold tracking-wider">Jobs Tracked</p>
+                <p className="text-lg font-black text-ink mt-0.5">{stats.weeklyJobsCount}</p>
+              </div>
+              <div className="border-x border-border/60">
+                <p className="text-[9px] text-ink-dim uppercase font-bold tracking-wider">Resumes</p>
+                <p className="text-lg font-black text-ink mt-0.5">{stats.weeklyResumesCount}</p>
+              </div>
+              <div>
+                <p className="text-[9px] text-ink-dim uppercase font-bold tracking-wider">Drills Run</p>
+                <p className="text-lg font-black text-ink mt-0.5">{stats.weeklySimulationsCount}</p>
+              </div>
             </div>
+
             <p className="text-xs text-ink-dim leading-relaxed">
               {stats.weeklyMilestoneCount > 0 ? (
-                `Excellent activity profile. You logged ${stats.weeklyMilestoneCount} operations in the pipeline over the last 7 days. Keep up your current job acquisition velocity!`
+                `Verified breakdown: ${stats.weeklyJobsCount} jobs tracked, ${stats.weeklyResumesCount} resumes evaluated, and ${stats.weeklySimulationsCount} interview drills practiced this week.`
               ) : (
                 "No operations recorded in the last 7 days. Track target jobs, audit resumes, or initiate simulated interview drills to log weekly milestone targets."
               )}

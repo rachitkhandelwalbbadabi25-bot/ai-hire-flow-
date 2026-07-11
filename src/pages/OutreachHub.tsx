@@ -56,7 +56,7 @@ export default function OutreachHub() {
                initial={{ scale: 0.9, opacity: 0 }}
                animate={{ scale: 1, opacity: 1 }}
                exit={{ scale: 0.9, opacity: 0 }}
-               className="bg-surface border border-border w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 relative"
+               className="glass-panel w-full max-w-lg relative"
             >
                <button 
                   onClick={() => setShowGenModal(false)}
@@ -99,7 +99,7 @@ export default function OutreachHub() {
         
         {/* Left Column - Alerts & Automation */}
         <div className="lg:col-span-12 xl:col-span-5 space-y-8">
-          <div className="bg-surface border border-border rounded-[2.5rem] p-8 shadow-sm">
+          <div className="glass-panel mb-8 shadow-sm">
              <div className="flex items-center gap-3 mb-8">
                 <div className="bg-success/10 p-2.5 rounded-2xl border border-success/20">
                    <MessageCircle className="w-5 h-5 text-success" />
@@ -175,7 +175,7 @@ export default function OutreachHub() {
 
         {/* Right Column - Referral Tracker */}
         <div className="lg:col-span-12 xl:col-span-7 space-y-8">
-          <div className="bg-surface border border-border rounded-[2.5rem] p-8 shadow-sm">
+          <div className="glass-panel mb-8 shadow-sm">
              <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                    <div className="bg-accent/10 p-2.5 rounded-2xl border border-accent/20">

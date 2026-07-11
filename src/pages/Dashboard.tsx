@@ -101,7 +101,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-surface p-6 rounded-2xl border border-border group hover:border-accent/30 transition-all"
+            className="glass-card p-6 border border-border group hover:border-accent/30 transition-all"
           >
             <div className="flex justify-between items-start mb-4">
               <div className="bg-surface-light p-2 rounded-xl group-hover:bg-accent/5 transition-all">
@@ -117,7 +117,7 @@ export default function Dashboard() {
       <div className="mb-12">
         <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] mb-6 px-2">Suggested Next Operations</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Link to="/finder" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-accent/40 transition-all group shadow-sm">
+          <Link to="/finder" className="glass-card p-6 border border-border hover:border-accent/40 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-accent/10 p-3 rounded-2xl group-hover:bg-accent/20 transition-colors">
                    <Search className="w-5 h-5 text-accent" />
@@ -128,7 +128,7 @@ export default function Dashboard() {
                 </div>
              </div>
           </Link>
-          <Link to="/interview" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-success/40 transition-all group shadow-sm">
+          <Link to="/interview" className="glass-card p-6 border border-border hover:border-success/40 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-success/10 p-3 rounded-2xl group-hover:bg-success/20 transition-colors">
                    <TrendingUp className="w-5 h-5 text-success" />
@@ -139,7 +139,7 @@ export default function Dashboard() {
                 </div>
              </div>
           </Link>
-          <Link to="/learning" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-warning/40 transition-all group shadow-sm">
+          <Link to="/learning" className="glass-card p-6 border border-border hover:border-warning/40 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-warning/10 p-3 rounded-2xl group-hover:bg-warning/20 transition-colors">
                    <FileText className="w-5 h-5 text-warning" />
@@ -150,7 +150,7 @@ export default function Dashboard() {
                 </div>
              </div>
           </Link>
-          <Link to="/editor" className="bg-surface p-6 rounded-[2rem] border border-border hover:border-accent/40 transition-all group shadow-sm">
+          <Link to="/editor" className="glass-card p-6 border border-border hover:border-accent/40 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-accent/10 p-3 rounded-2xl group-hover:bg-accent/20 transition-colors">
                    <FileEdit className="w-5 h-5 text-accent" />

@@ -111,7 +111,7 @@ export default function JobFinder() {
             </div>
             <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Neural Crawler</span>
           </div>
-          <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3">
+          <div className="px-4 py-2 glass border border-border rounded-xl flex items-center gap-3">
              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
              <span className="text-[10px] font-bold text-ink uppercase tracking-wider">Scans Available: {remaining} / {limit}</span>
           </div>
@@ -123,7 +123,7 @@ export default function JobFinder() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-surface p-8 rounded-[2rem] border border-border shadow-2xl mb-12">
+      <div className="glass-panel mb-12">
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
           <div className="md:col-span-5">
             <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Sector / Role Target</label>
@@ -226,7 +226,7 @@ export default function JobFinder() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="bg-surface border border-border rounded-3xl p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group"
+                  className="glass-card p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="bg-background/80 p-3 rounded-2xl border border-border">
@@ -287,21 +287,21 @@ export default function JobFinder() {
       {!hasSearched && (
         <div className="py-24 text-center">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto opacity-40 grayscale group-hover:grayscale-0 transition-all">
-             <div className="p-8 bg-surface border border-border rounded-3xl">
+             <div className="p-8 glass-card">
                 <div className="w-12 h-12 bg-accent/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-accent/10">
                    <TargetIcon className="w-6 h-6 text-accent" />
                 </div>
                 <h4 className="text-xs font-bold text-ink uppercase tracking-tighter mb-2">LinkedIn Vectors</h4>
                 <p className="text-[10px] text-ink-dim">Deep scan professional network indices.</p>
              </div>
-             <div className="p-8 bg-surface border border-border rounded-3xl">
+             <div className="p-8 glass-card">
                 <div className="w-12 h-12 bg-success/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-success/10">
                    <Zap className="w-6 h-6 text-success" />
                 </div>
                 <h4 className="text-xs font-bold text-ink uppercase tracking-tighter mb-2">Rapid Response</h4>
                 <p className="text-[10px] text-ink-dim">Real-time listing extraction engine.</p>
              </div>
-             <div className="p-8 bg-surface border border-border rounded-3xl">
+             <div className="p-8 glass-card">
                 <div className="w-12 h-12 bg-warning/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-warning/10">
                    <Building2 className="w-6 h-6 text-warning" />
                 </div>

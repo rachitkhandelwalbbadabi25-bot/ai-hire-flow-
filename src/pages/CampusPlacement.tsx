@@ -45,7 +45,7 @@ export default function CampusPlacement() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-surface border border-border w-full max-w-4xl max-h-[80vh] overflow-y-auto rounded-[2.5rem] shadow-2xl p-8 lg:p-12 relative"
+              className="glass-panel w-full max-w-4xl max-h-[80vh] overflow-y-auto relative"
             >
               <button 
                 onClick={() => setShowModal(false)}
@@ -129,12 +129,12 @@ export default function CampusPlacement() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
         {/* Core Prep Sections */}
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-surface border border-border rounded-[2rem] p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold text-ink uppercase tracking-tight flex items-center gap-3">
-                <BookOpen className="w-5 h-5 text-accent" />
-                Muls-tier MNC Roadmap
-              </h3>
+          <div className="glass-panel mb-8">
+             <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-bold text-ink uppercase tracking-tight flex items-center gap-3">
+                   <BookOpen className="w-5 h-5 text-accent" />
+                   Muls-tier MNC Roadmap
+                </h3>
               <div className="px-3 py-1 bg-accent/10 text-accent text-[8px] font-bold uppercase rounded-full">
                 Service Sector Optimized
               </div>
@@ -165,13 +165,13 @@ export default function CampusPlacement() {
             </div>
           </div>
 
-          <div className="bg-surface border border-border rounded-[2rem] p-8">
+          <div className="glass-panel mb-8">
              <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold text-ink uppercase tracking-tight flex items-center gap-3">
-                <Target className="w-5 h-5 text-emerald-500" />
-                Aptitude & Technical Drill
-              </h3>
-            </div>
+               <h3 className="text-xl font-bold text-ink uppercase tracking-tight flex items-center gap-3">
+                 <Target className="w-5 h-5 text-emerald-500" />
+                 Aptitude & Technical Drill
+               </h3>
+             </div>
             
             <div className="space-y-4">
                 <div className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl group">
@@ -228,7 +228,7 @@ export default function CampusPlacement() {
               </button>
            </div>
 
-           <div className="bg-surface border border-border rounded-[2rem] p-8">
+           <div className="glass-panel">
               <h4 className="text-xs font-bold text-ink uppercase tracking-widest mb-6">Trending This Placement Cycle</h4>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">

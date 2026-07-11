@@ -1,111 +1,153 @@
-# ⚡️ AI HireFlow
+# AI HireFlow
 
-> **An AI Career Operating System** — Crafted for professionals who refuse to settle. Precision engineered with minimalist glassmorphism, responsive micro-interactions, and integrated intelligence.
+**AI Resume & Job Tracker — a full-stack, AI-driven career acceleration cockpit**
 
-[![Built with React](https://img.shields.io/badge/Framework-React%2019-09090B?style=flat&logo=react&logoColor=61DAFB)](https://react.dev/)
-[![Styled with Tailwind](https://img.shields.io/badge/Styled%20with-Tailwind%20CSS-09090B?style=flat&logo=tailwindcss&logoColor=38BDF8)](https://tailwindcss.com/)
-[![Powered by Gemini](https://img.shields.io/badge/AI%20Engine-Gemini%203.5-09090B?style=flat&logo=google&logoColor=7C3AED)](https://ai.google.dev/)
-[![Database Firestore](https://img.shields.io/badge/Database-Firestore-09090B?style=flat&logo=firebase&logoColor=FFCA28)](https://firebase.google.com/)
+AI HireFlow integrates real-time intelligence to analyze resumes, track job pipelines, simulate interviews, design curated learning curriculums, and automate professional outreach — all wrapped in a handcrafted **Glassmorphic Slate** theme.
 
----
+[![Live Demo](https://img.shields.io/badge/demo-live-4F46E5?style=for-the-badge)](https://ai-hire-flow.vercel.app)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Firebase](https://img.shields.io/badge/Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com)
+[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](#license)
 
-## 💎 Design Philosophy
-
-AI HireFlow rejects the typical "AI Slop" of generic, over-gradiented dashboards. Instead, it is inspired by the meticulous craftsmanship of **Apple, Linear, Stripe, and Vercel**:
-
-*   **Atmospheric "Calm Twilight" Dark Canvas**: Styled on `#09090B` backgrounds with deep `#111217` panels, subtle custom border accents (`rgba(255, 255, 255, 0.06)`), and heavy glassmorphic blurs (`backdrop-blur-xl`).
-*   **Perfect Typographic Rhythm**: Handcrafted layouts featuring beautiful typography pairing, generous line spacing, and stark visual contrast that highlights what matters.
-*   **Intentional Interactions**: Fluid transitions powered by `motion` that guide the eyes without overwhelming. Micro-states, subtle element scale changes, and custom hover states that feel "alive."
-*   **No Technical Larping**: Zero useless logs, status lines, or simulated terminal noise. The user is treated to clean, actionable screens built for human productivity.
+**[Live Demo →](https://ai-hire-flow.vercel.app)**
 
 ---
 
-## 🌌 Core Modules & Intelligence Layer
+## Screenshots
 
-AI HireFlow embeds custom-trained Gemini intelligence directly into every workflows:
+> Add screenshots or a short GIF walkthrough here — dashboard, kanban tracker, and resume analyzer are the strongest first impressions.
 
-1.  **Dashboard (`/dashboard`)**
-    *   *The "What's Next?" Feed:* Instead of static widgets, you receive immediate, personalized career progress, AI Recommendations, current resume metrics, and upcoming milestones.
-2.  **Resume Analyzer (`/analyzer`)**
-    *   *Split-Screen Audit:* Upload your resume alongside target job descriptions to calculate live ATS scores, discover critical skill gaps, and view custom action plans side-by-side.
-3.  **Resume Editor (`/editor`)**
-    *   *AI-Powered Redraft:* Seamless inline text refactoring optimized for maximum impact and metrics-based bullet phrasing.
-4.  **Job Finder (`/finder`)**
-    *   *Neural Crawler:* Live web search and listing extraction with built-in Google Grounding. Displays custom "AI Match" insights for each role.
-5.  **Application Tracker (`/jobs`)**
-    *   *Elite Kanban:* Beautiful drag-and-drop workflow tracking opportunities from *Applied* to *Interview*, *Offer*, or *Archived*.
-6.  **Interview Simulator (`/interview`)**
-    *   *Real-time Practice Room:* High-fidelity environment with randomized questions, timers, voice prompts, and granular metrics-based AI performance evaluation.
-7.  **Learning Roadmaps (`/learning`)**
-    *   *Interactive Timeline:* Personalized, step-by-step career acceleration pathways mapping your custom learning milestones.
-8.  **Campus Preparation (`/campus`)**
-    *   *MNC Drills:* Highly targeted aptitude and technical drilling modules optimized for competitive placement pipelines.
-9.  **Outreach Hub (`/outreach`)**
-    *   *Hyper-personalized Pitching:* AI-driven cold email, LinkedIn connection request, and referral template writer built for response rate optimization.
+```
+docs/screenshots/dashboard.png
+docs/screenshots/kanban.png
+docs/screenshots/analyzer.png
+```
 
 ---
 
-## 🛠️ Technology Stack
+## Key Features
 
-*   **Frontend**: React 19, TypeScript, Vite, Tailwind CSS (v4)
-*   **Animations**: Motion (`motion/react`)
-*   **Visualizations**: Recharts, Lucide Icons
-*   **Database & Auth**: Firebase Auth, Cloud Firestore
-*   **AI Engine**: Google Gen AI SDK (`@google/genai`) on Express server proxy
+| Module | What it does |
+|---|---|
+| 📊 **Integrated Career Dashboard** | Glassmorphic command center aggregating pipeline metrics, active application statuses, upcoming interviews, and AI-recommended next actions |
+| 🔍 **Neural Resume Analyzer** | Server-side Gemini intelligence performs instant, multi-point reviews of CV alignment, formatting, impact metrics, and keyword density |
+| 📝 **Interactive Resume Editor** | Build and refine resumes with inline, context-sensitive AI assistance and live structural polishing |
+| 💼 **Intelligent Job Finder & Tracker** | Real-time job discovery with a visual Kanban pipeline board to track progress |
+| 🗣️ **Mock Interview Simulator** | Immersive technical and behavioral simulation with instant performance feedback and score breakdowns |
+| 📚 **Custom Learning Paths** | Maps out industry-standard curriculums and milestones to bridge skill gaps for target roles |
+| ✉️ **Professional Outreach Hub** | Automates personalized referral scripts, templates, and follow-up tracking |
+| 🏫 **Campus Placement Drill** | Specialized MNC recruitment prep, technical drills, and service-sector mock challenges |
+| 💻 **CodeRabbit Sandbox** | Real-time playground to test, refactor, and review code with immediate AI diagnostics |
 
 ---
 
-## 🚀 Local Installation & Setup
+## Tech Stack
 
-Get AI HireFlow running locally in less than 3 minutes:
+**Frontend:** React 18, TypeScript, Vite, Tailwind CSS (custom glassmorphism utilities), Framer Motion
 
-### 1. Clone & Install Dependencies
+**Backend & Orchestration:** Node.js, Express, TypeScript, server-side Google GenAI SDK (Gemini)
+
+**Persistence:** Firestore (Firebase)
+
+**Deployment:** Vercel (serverless functions via `/api`)
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- A Google AI Studio / Gemini API key
+- A Firebase project with Firestore enabled
+
+### Installation
+
 ```bash
-git clone https://github.com/your-username/ai-hireflow.git
-cd ai-hireflow
+git clone https://github.com/<your-username>/ai-hire-flow.git
+cd ai-hire-flow
 npm install
 ```
 
-### 2. Configure Environment Variables
-Create a `.env` file in the root directory (using `.env.example` as a template):
-```env
-GEMINI_API_KEY=your_gemini_api_key
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```
+GEMINI_API_KEY=your_gemini_api_key_here
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_PROJECT_ID=your_firebase_project_id
 ```
 
-### 3. Run Development Server
+> On Vercel, add the same keys under **Project Settings → Environment Variables**, then redeploy so the serverless functions can read them at build/runtime.
+
+### Run locally
+
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
----
+The app will be available at `http://localhost:5173` (or the port Vite assigns).
 
-## 🎨 Design System Guide
+### Build for production
 
-AI HireFlow enforces consistent, designer-grade variables globally in `src/index.css`:
-
-```css
-:root {
-  --background: #08080A;
-  --surface: #111116;
-  --surface-light: #1A1A22;
-  --ink: #FFFFFF;
-  --ink-dim: #94949E;
-  --border: rgba(255, 255, 255, 0.06);
-}
-
-/* Glassmorphic Utilities */
-.glass-card {
-  background: rgba(17, 17, 22, 0.60);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
+```bash
+npm run build
 ```
 
 ---
 
-<p align="center">
-  Precision engineered for students and professionals chasing elite placements.
-</p>
+## Deployment
+
+This project deploys to **Vercel**. The `/api` directory contains the serverless Express entry point (`api/index.ts`), configured in `vercel.json`:
+
+```json
+{
+  "version": 2,
+  "functions": {
+    "api/index.ts": { "maxDuration": 30 }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.ts" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
+
+Push to your connected GitHub repository and Vercel will auto-deploy on every commit to `main`.
+
+---
+
+## Project Structure
+
+```
+ai-hire-flow/
+├── api/                  # Vercel serverless functions (Express)
+│   └── index.ts
+├── src/
+│   ├── components/       # UI components
+│   ├── pages/             # Dashboard, Analyzer, Finder, Editor, etc.
+│   ├── lib/                # gemini.ts and other service integrations
+│   └── firestore.rules
+├── public/
+│   └── robots.txt
+├── vercel.json
+├── vite.config.ts
+└── package.json
+```
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Author
+
+**Rachit Khandelwal**
+[LinkedIn](https://linkedin.com/in/rachit-khandelwal-ab0b78359) · [@ai.walabhai](https://instagram.com/ai.walabhai)

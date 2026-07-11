@@ -111,11 +111,11 @@ export default function LearningPath() {
           <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
             <Map className="w-5 h-5 text-accent" />
           </div>
-          <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Neural Roadmap</span>
+          <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Learning Roadmap</span>
         </div>
         <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Skill Acquisition Path</h1>
         <p className="text-ink-dim font-medium text-lg max-w-2xl">
-          Convert alignment gaps into strategic growth trajectories using validated global intelligence.
+          Convert alignment gaps into strategic growth trajectories using validated career requirements.
         </p>
       </div>
 
@@ -173,7 +173,7 @@ export default function LearningPath() {
                 className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {loading ? 'Synthesizing Roadmap...' : 'Generate Neural Path'}
+                {loading ? 'Synthesizing Roadmap...' : 'Generate Learning Path'}
               </button>
             </div>
           </div>
@@ -191,7 +191,7 @@ export default function LearningPath() {
                 <div className="bg-surface w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-border">
                   <Search className="w-8 h-8 text-ink-dim" />
                 </div>
-                <h3 className="text-xl font-bold text-ink mb-2 uppercase tracking-tight">No Trajectory Initialized</h3>
+                <h3 className="text-xl font-bold text-ink mb-2 uppercase tracking-tight">No Learning Path Initialized</h3>
                 <p className="text-ink-dim text-sm max-w-sm mx-auto">
                   Enter your target role and the skills you wish to acquire to generate a verified learning roadmap.
                 </p>
@@ -276,7 +276,7 @@ export default function LearningPath() {
 
                 <div className="text-center py-12">
                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-surface border border-border rounded-full text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                      <ShieldCheckIcon className="w-4 h-4 text-success" /> Trajectory Validated by Neural Intelligence
+                      <ShieldCheckIcon className="w-4 h-4 text-success" /> Skill Path Verified & Calibrated
                    </div>
                 </div>
               </motion.div>

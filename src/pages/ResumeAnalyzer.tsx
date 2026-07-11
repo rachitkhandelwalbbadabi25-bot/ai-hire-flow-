@@ -174,8 +174,8 @@ export default function ResumeAnalyzer() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
         <div>
-          <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">Resume Intelligence</h1>
-          <p className="text-ink-dim font-medium">Deploying neural analysis on your professional trajectory.</p>
+          <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">Resume Analyzer</h1>
+          <p className="text-ink-dim font-medium">Analyze your resume compatibility with target jobs and build custom cover letters.</p>
         </div>
         <div className="flex gap-3">
           <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3">
@@ -198,7 +198,7 @@ export default function ResumeAnalyzer() {
           {/* Upload Card */}
           <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm">
             <h3 className="font-bold text-ink mb-6 flex items-center gap-2 uppercase text-xs tracking-widest">
-              <FileUp className="w-4 h-4 text-accent" /> Data Ingestion
+              <FileUp className="w-4 h-4 text-accent" /> Upload Resume
             </h3>
             
             <label className={cn(
@@ -212,7 +212,7 @@ export default function ResumeAnalyzer() {
                     <FileText className="w-6 h-6 text-white" />
                   </div>
                   <p className="font-bold text-ink">{file.name}</p>
-                  <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">Vectorized</p>
+                  <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">Uploaded Successfully</p>
                 </div>
               ) : (
                 <div className="text-center px-4">
@@ -235,12 +235,12 @@ export default function ResumeAnalyzer() {
           {/* Job Description Card */}
           <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm flex flex-col relative overflow-hidden">
             <h3 className="font-bold text-ink mb-6 flex items-center gap-2 uppercase text-xs tracking-widest">
-              <Target className="w-4 h-4 text-accent" /> Alignment Target
+              <Target className="w-4 h-4 text-accent" /> Job Description
             </h3>
             <textarea
               value={jobDesc}
               onChange={(e) => setJobDesc(e.target.value)}
-              placeholder="Input target job specification for comparative matching..."
+              placeholder="Paste the target job description here to check compatibility..."
               className="flex-1 w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink disabled:opacity-50"
             />
           </div>
@@ -289,7 +289,7 @@ export default function ResumeAnalyzer() {
           {/* Analysis View */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-surface-light p-10 rounded-3xl border border-border flex flex-col items-center justify-center text-center">
-              <p className="text-ink-dim text-[10px] font-bold uppercase tracking-widest mb-6">Neural Compatibility Score</p>
+              <p className="text-ink-dim text-[10px] font-bold uppercase tracking-widest mb-6">Compatibility Score</p>
               <div className="relative w-32 h-32 rounded-full border-8 border-background flex flex-col items-center justify-center mb-4">
                 <span className="text-4xl font-black text-success leading-none">{analysis.score}</span>
                 <span className="text-[8px] text-ink-dim font-bold mt-1">PERCENT</span>
@@ -300,7 +300,7 @@ export default function ResumeAnalyzer() {
             <div className="md:col-span-2 space-y-8">
                <div className="bg-surface p-8 rounded-3xl border border-border">
                   <h3 className="font-bold text-ink mb-6 flex items-center gap-2 text-xs uppercase tracking-widest">
-                    <CheckCircle2 className="w-4 h-4 text-success" /> Tokenized Strengths
+                    <CheckCircle2 className="w-4 h-4 text-success" /> Identified Keywords
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {(analysis.keywordsFound || []).map((k: string, i: number) => (
@@ -314,7 +314,7 @@ export default function ResumeAnalyzer() {
                 <div className="bg-surface p-8 rounded-3xl border border-border">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="font-bold text-ink flex items-center gap-2 text-xs uppercase tracking-widest">
-                      <AlertCircle className="w-4 h-4 text-rose-500" /> Alignment Gaps
+                      <AlertCircle className="w-4 h-4 text-rose-500" /> Missing Keywords
                     </h3>
                     {(analysis.missingKeywords || []).length > 0 && (
                       <button 

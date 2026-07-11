@@ -189,11 +189,11 @@ export default function InterviewSimulator() {
             <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
               <BrainCircuit className="w-5 h-5 text-accent" />
             </div>
-            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Neural Simulation</span>
+            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Interview Practice</span>
           </div>
-          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">High-Velocity Drill</h1>
+          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Interview Simulator</h1>
           <p className="text-ink-dim font-medium text-lg max-w-2xl">
-            Simulate high-stakes adversarial technical and behavioral vetting sessions.
+            Practice live technical and behavioral interview drills with interactive AI feedback.
           </p>
         </div>
         <div className="px-5 py-3 bg-surface border border-border rounded-2xl flex items-center gap-3 shadow-sm self-start md:self-auto">
@@ -264,7 +264,7 @@ export default function InterviewSimulator() {
               <div className="flex justify-center">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 border border-accent/20 rounded-full text-accent shadow-sm">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Neural Mirroring (Cached Session)</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Cached Session</span>
                 </div>
               </div>
             )}
@@ -280,7 +280,7 @@ export default function InterviewSimulator() {
                   />
                 ))}
               </div>
-              <span className="text-[10px] font-bold text-ink-dim uppercase">Node {currentIdx + 1} of {questions.length}</span>
+              <span className="text-[10px] font-bold text-ink-dim uppercase">Question {currentIdx + 1} of {questions.length}</span>
             </div>
 
             {/* Question Card */}
@@ -301,12 +301,12 @@ export default function InterviewSimulator() {
                   )}
 
                     <div className="space-y-4">
-                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1 font-sans">Neural Transmission (Your Answer)</label>
+                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1 font-sans">Your Response</label>
                       <textarea
                         autoFocus
                         value={userAnswer}
                         onChange={(e) => setUserAnswer(e.target.value)}
-                        placeholder="Synthesize your response..."
+                        placeholder="Type your response here..."
                         className="w-full h-48 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans disabled:opacity-50"
                       />
                     </div>
@@ -318,10 +318,10 @@ export default function InterviewSimulator() {
                       className="bg-accent text-white px-10 py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center gap-2 group disabled:opacity-50"
                     >
                       {isEvaluating ? (
-                        <><Loader2 className="w-5 h-5 animate-spin" /> Analyzing Signal...</>
+                        <><Loader2 className="w-5 h-5 animate-spin" /> Evaluating Response...</>
                       ) : (
                         <>
-                          Finalize Transmission <Send className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          Submit Answer <Send className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                         </>
                       )}
                     </button>
@@ -344,17 +344,17 @@ export default function InterviewSimulator() {
                   <Zap className="w-10 h-10 text-accent animate-pulse" />
                 </div>
                 <h2 className="text-3xl font-bold text-ink uppercase tracking-tight mb-2">Simulation Complete</h2>
-                <p className="text-ink-dim text-sm max-w-md mx-auto">Neural evaluation finished. Total vectors processed: {questions.length}</p>
+                <p className="text-ink-dim text-sm max-w-md mx-auto">AI Evaluation complete! View your results and detailed tips below.</p>
                 
                 <div className="mt-12 flex justify-center gap-12 border-t border-border pt-12">
                    <div>
-                      <p className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2">Aggregate Velocity</p>
+                      <p className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2">Practice Score</p>
                       <p className="text-4xl font-black text-ink">
                         {calculateTotalScore()}%
                       </p>
                    </div>
                    <div>
-                      <p className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2">Nodes Cleared</p>
+                      <p className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2">Questions Answered</p>
                       <p className="text-4xl font-black text-success">{questions.length}</p>
                    </div>
                 </div>
@@ -362,7 +362,7 @@ export default function InterviewSimulator() {
             </div>
 
             <div className="space-y-6">
-              <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] px-2">Detailed Telemetry</h3>
+              <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] px-2">Evaluation Results</h3>
               {questions.map((q) => {
                 const evalData = evaluations[q.id];
                 return (
@@ -377,7 +377,7 @@ export default function InterviewSimulator() {
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border">
                                 <div>
                                    <p className="text-[10px] font-bold text-ink uppercase tracking-widest mb-4 flex items-center gap-2">
-                                      <RotateCcw className="w-3 h-3 text-accent" /> Refactoring Tips
+                                      <RotateCcw className="w-3 h-3 text-accent" /> Recommended Improvements
                                    </p>
                                    <ul className="space-y-2">
                                       {(evalData?.improvementTips || []).map((tip: any, i: number) => (
@@ -389,7 +389,7 @@ export default function InterviewSimulator() {
                                 </div>
                                 <div>
                                    <p className="text-[10px] font-bold text-ink uppercase tracking-widest mb-4 flex items-center gap-2">
-                                      <CheckCircle2 className="w-3 h-3 text-success" /> Integrity Score: {evalData?.score ?? 0}/10
+                                      <CheckCircle2 className="w-3 h-3 text-success" /> Answer Rating: {evalData?.score ?? 0}/10
                                    </p>
                                    {(evalData?.keyPointsMissing?.length ?? 0) > 0 && (
                                      <ul className="space-y-2">
@@ -415,7 +415,7 @@ export default function InterviewSimulator() {
                 onClick={resetSimulator}
                 className="bg-accent/10 text-accent border border-accent/20 px-10 py-4 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-accent/20 transition-all"
                >
-                 Initialize New Simulation Cycle
+                 Start New Interview
                </button>
             </div>
           </motion.div>

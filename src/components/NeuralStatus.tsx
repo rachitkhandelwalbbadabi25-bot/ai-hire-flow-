@@ -22,8 +22,8 @@ export default function NeuralStatus() {
              />
           </div>
           <div className="flex flex-col">
-             <span className="text-[8px] font-black text-ink uppercase tracking-widest leading-none">System Healthy</span>
-             <span className="text-[7px] font-mono text-ink-dim uppercase mt-1">Audit Mode: Active</span>
+             <span className="text-[8px] font-black text-ink uppercase tracking-widest leading-none">Active Sync</span>
+             <span className="text-[7px] font-mono text-ink-dim uppercase mt-1">Status: Online</span>
           </div>
        </motion.div>
     </div>

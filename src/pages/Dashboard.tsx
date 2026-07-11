@@ -184,6 +184,86 @@ export default function Dashboard() {
     }
   };
 
+  const getDynamicRecommendations = () => {
+    const list = [];
+    
+    // 1. Resume Recommendation
+    if (stats.latestResumeScore > 0) {
+      if (stats.missingKeywords.length > 0) {
+        list.push({
+          title: "Optimize resume keywords",
+          tag: "CRITICAL",
+          colorClass: "accent",
+          description: `Your resume is missing key skills: ${stats.missingKeywords.slice(0, 3).join(', ')}. Close the gaps.`,
+          action: () => navigate('/analyzer'),
+          icon: FileText
+        });
+      } else {
+        list.push({
+          title: "Resume is fully optimized!",
+          tag: "EXCELLENT",
+          colorClass: "success",
+          description: `Excellent! Your resume has a high compatibility score of ${stats.latestResumeScore}%.`,
+          action: () => navigate('/editor'),
+          icon: FileText
+        });
+      }
+    } else {
+      list.push({
+        title: "Analyze your first resume",
+        tag: "IMPORTANT",
+        colorClass: "warning",
+        description: "Upload your resume in the Analyzer module to check compatibility and missing keywords.",
+        action: () => navigate('/analyzer'),
+        icon: FileText
+      });
+    }
+
+    // 2. Interview Recommendation
+    if (stats.simulationsRun > 0) {
+      list.push({
+        title: "Perfect your interview skills",
+        tag: "HIGH PAYOFF",
+        colorClass: "success",
+        description: `You've run ${stats.simulationsRun} interview drills. Keep practicing to boost your readiness!`,
+        action: () => navigate('/interview'),
+        icon: Mic
+      });
+    } else {
+      list.push({
+        title: "Practice a mock interview",
+        tag: "RECOMMENDED",
+        colorClass: "accent",
+        description: "Practice answering behavioral and technical questions with interactive AI feedback.",
+        action: () => navigate('/interview'),
+        icon: Mic
+      });
+    }
+
+    // 3. Jobs/Outreach Recommendation
+    if (stats.totalJobs > 0) {
+      list.push({
+        title: "Track your active applications",
+        tag: "PIPELINE",
+        colorClass: "warning",
+        description: `Manage your ${stats.totalJobs} tracked applications in your interactive Kanban board.`,
+        action: () => navigate('/jobs'),
+        icon: Briefcase
+      });
+    } else {
+      list.push({
+        title: "Find and track target jobs",
+        tag: "GET STARTED",
+        colorClass: "accent",
+        description: "Search open roles in the Job Finder and track them in your pipeline.",
+        action: () => navigate('/finder'),
+        icon: Search
+      });
+    }
+
+    return list;
+  };
+
   if (!user) return null;
 
   return (
@@ -345,76 +425,61 @@ export default function Dashboard() {
 
       {/* Grid: Recommended actions & Upcoming Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
-        {/* Today's AI Recommendations */}
+        {/* Today's Recommendations */}
         <div className="lg:col-span-7 glass-panel">
           <div className="flex justify-between items-center mb-8">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-4 h-4 text-accent" />
-                <span className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.2em]">Neural Intelligence Feed</span>
+                <span className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.2em]">Career Action Feed</span>
               </div>
-              <h2 className="text-xl font-bold text-ink tracking-tight uppercase">Today's Operations Feed</h2>
+              <h2 className="text-xl font-bold text-ink tracking-tight uppercase">Recommended Tasks</h2>
             </div>
             <span className="text-xs text-accent font-mono tracking-tighter uppercase">UPDATED LIVE</span>
           </div>
 
           <div className="space-y-4">
-            <div 
-              onClick={() => navigate('/analyzer')}
-              className="flex items-center justify-between p-5 bg-surface/30 hover:bg-surface/80 rounded-2xl border border-border group cursor-pointer transition-all hover:translate-x-1"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-accent/10 text-accent rounded-xl flex items-center justify-center border border-accent/20">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-ink text-sm">Optimize tech stack descriptions</h4>
-                    <span className="text-[8px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full uppercase tracking-widest">CRITICAL</span>
-                  </div>
-                  <p className="text-xs text-ink-dim mt-0.5">Resume ATS compatibility missing 3 specialized industry-standard tags.</p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-ink-dim group-hover:text-accent transition-colors" />
-            </div>
+            {getDynamicRecommendations().map((rec, index) => {
+              const Icon = rec.icon;
+              let bgClass = "bg-accent/10 text-accent border-accent/20 hover:text-accent";
+              let badgeClass = "bg-accent/10 text-accent";
+              let hoverBorderClass = "hover:border-accent/40";
+              let hoverTextClass = "group-hover:text-accent";
 
-            <div 
-              onClick={() => navigate('/interview')}
-              className="flex items-center justify-between p-5 bg-surface/30 hover:bg-surface/80 rounded-2xl border border-border group cursor-pointer transition-all hover:translate-x-1"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-success/10 text-success rounded-xl flex items-center justify-center border border-success/20">
-                  <Mic className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-ink text-sm">Behavioral storytelling simulation</h4>
-                    <span className="text-[8px] font-bold text-success bg-success/10 px-2 py-0.5 rounded-full uppercase tracking-widest">HIGH PAYOFF</span>
-                  </div>
-                  <p className="text-xs text-ink-dim mt-0.5">Practice STAR method alignment for complex conflict resolutions questions.</p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-ink-dim group-hover:text-success transition-colors" />
-            </div>
+              if (rec.colorClass === 'success') {
+                bgClass = "bg-success/10 text-success border-success/20 hover:text-success";
+                badgeClass = "bg-success/10 text-success";
+                hoverBorderClass = "hover:border-success/40";
+                hoverTextClass = "group-hover:text-success";
+              } else if (rec.colorClass === 'warning') {
+                bgClass = "bg-warning/10 text-warning border-warning/20 hover:text-warning";
+                badgeClass = "bg-warning/10 text-warning";
+                hoverBorderClass = "hover:border-warning/40";
+                hoverTextClass = "group-hover:text-warning";
+              }
 
-            <div 
-              onClick={() => navigate('/outreach')}
-              className="flex items-center justify-between p-5 bg-surface/30 hover:bg-surface/80 rounded-2xl border border-border group cursor-pointer transition-all hover:translate-x-1"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-warning/10 text-warning rounded-xl flex items-center justify-center border border-warning/20">
-                  <MessageCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-ink text-sm">Trigger cold referral draft sequence</h4>
-                    <span className="text-[8px] font-bold text-warning bg-warning/10 px-2 py-0.5 rounded-full uppercase tracking-widest">RECOMMENDED</span>
+              return (
+                <div 
+                  key={index}
+                  onClick={rec.action}
+                  className={`flex items-center justify-between p-5 bg-surface/30 hover:bg-surface/80 rounded-2xl border border-border group cursor-pointer transition-all hover:translate-x-1 ${hoverBorderClass}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${bgClass} shrink-0`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-ink text-sm">{rec.title}</h4>
+                        <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest ${badgeClass}`}>{rec.tag}</span>
+                      </div>
+                      <p className="text-xs text-ink-dim mt-0.5">{rec.description}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-ink-dim mt-0.5">Draft cold outbound messages to Google and Stripe engineers for target vacancies.</p>
+                  <ChevronRight className={`w-4 h-4 text-ink-dim ${hoverTextClass} transition-colors`} />
                 </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-ink-dim group-hover:text-warning transition-colors" />
-            </div>
+              );
+            })}
           </div>
         </div>
 

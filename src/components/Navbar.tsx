@@ -76,13 +76,18 @@ export default function Navbar({ user }: NavbarProps) {
                   <Menu className="w-6 h-6" />
                 </button>
               )}
-              <Link to="/" className="flex items-center gap-2">
-                <div className="bg-accent p-1.5 rounded-lg">
-                  <Sparkles className="w-5 h-5 text-white" />
+              <Link to="/" className="flex items-center gap-2.5 group">
+                <div className="bg-accent p-2 rounded-xl flex items-center justify-center shadow-lg shadow-accent/25 transition-transform group-hover:scale-105">
+                  <Briefcase className="w-5 h-5 text-white" />
                 </div>
-                <span className="font-sans font-bold text-xl tracking-tight text-ink">
-                  AI HireFlow
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-sans font-black text-lg tracking-tight text-ink leading-none">
+                    AI HireFlow
+                  </span>
+                  <span className="text-[9px] font-bold text-accent uppercase tracking-wider mt-0.5 font-mono">
+                    Career Cockpit
+                  </span>
+                </div>
               </Link>
             </div>
 

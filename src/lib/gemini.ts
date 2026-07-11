@@ -1,9 +1,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getAI = () => {
-  const key = process.env.GEMINI_API_KEY;
+  let key = undefined;
+  
+  try {
+    key = process.env.GEMINI_API_KEY;
+  } catch (e) {
+    // process.env is not available
+  }
+
   if (!key) {
-    console.error("GEMINI_API_KEY is missing from environment. AI features will not function.");
+    key = import.meta.env?.VITE_GEMINI_API_KEY;
+  }
+
+  if (!key) {
+    console.warn("GEMINI_API_KEY is missing from environment. Standard mock behaviors or placeholder answers will serve as fallbacks.");
   }
   return new GoogleGenAI({ apiKey: key || "" });
 };

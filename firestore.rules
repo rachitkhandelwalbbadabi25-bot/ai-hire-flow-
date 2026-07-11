@@ -10,15 +10,17 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isAdmin() { 
-      return isSignedIn() && (
-        request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com" ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      ); 
+      return isSignedIn() && request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com"; 
     }
     
     function isValidId(id) { return id is string && id.size() <= 128; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
+
+    // Explicit test collection rule for instant connection handshake checks
+    match /test/{docId} {
+      allow read, write: if true;
+    }
 
     // 1. User Profile Rules
     match /users/{userId} {

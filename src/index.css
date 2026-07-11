@@ -10,7 +10,7 @@
   --color-surface-light: var(--surface-light);
   --color-ink: var(--ink);
   --color-ink-dim: var(--ink-dim);
-  --color-accent: #6366F1;
+  --color-accent: #4F46E5;
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-border: var(--border);
@@ -24,7 +24,7 @@
   --surface: #111116;
   --surface-light: #1A1A22;
   --ink: #FFFFFF;
-  --ink-dim: #94949E;
+  --ink-dim: #A9A9B4;
   --border: rgba(255, 255, 255, 0.06);
 }
 
@@ -33,7 +33,7 @@
   --surface: #FFFFFF;
   --surface-light: #EDF0F3;
   --ink: #11111a;
-  --ink-dim: #64748b;
+  --ink-dim: #52525B;
   --border: rgba(0, 0, 0, 0.06);
 }
 

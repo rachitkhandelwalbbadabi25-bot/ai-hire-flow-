@@ -37,7 +37,13 @@ export default function Dashboard() {
     totalJobs: 0,
     resumesAnalyzed: 0,
     interviews: 0,
-    offers: 0
+    offers: 0,
+    latestResumeScore: 0,
+    missingKeywords: [] as string[],
+    interviewReadiness: 0,
+    simulationsRun: 0,
+    weeklyMilestoneCount: 0,
+    upcomingEvents: [] as any[]
   });
   const [loading, setLoading] = useState(true);
 
@@ -63,11 +69,16 @@ export default function Dashboard() {
       try {
         const jobsRef = collection(db, 'users', user.uid, 'jobs');
         const resumesRef = collection(db, 'users', user.uid, 'resumes');
+        const simulationsRef = collection(db, 'users', user.uid, 'simulations');
         
         const jobsSnap = await getDocs(jobsRef);
         const resumesSnap = await getDocs(resumesRef);
+        const simulationsSnap = await getDocs(simulationsRef);
         
-        const jobs = (jobsSnap.docs || []).map(doc => doc.data());
+        const jobs = (jobsSnap.docs || []).map(doc => doc.data() as any);
+        const resumes = (resumesSnap.docs || []).map(doc => doc.data() as any);
+        const simulations = (simulationsSnap.docs || []).map(doc => doc.data() as any);
+        
         const statusCounts = jobs.reduce((acc: any, job: any) => {
           if (job && job.status) {
             acc[job.status] = (acc[job.status] || 0) + 1;
@@ -75,11 +86,74 @@ export default function Dashboard() {
           return acc;
         }, {});
 
+        // 1. Latest Resume Score & Missing Keywords
+        let latestResumeScore = 0;
+        let missingKeywords: string[] = [];
+        const sortedResumes = [...resumes].sort((a, b) => {
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
+        if (sortedResumes[0] && sortedResumes[0].analysis) {
+          latestResumeScore = sortedResumes[0].analysis.score || 0;
+          missingKeywords = sortedResumes[0].analysis.missingKeywords || [];
+        }
+
+        // 2. Interview Readiness from simulations
+        let interviewReadiness = 0;
+        if (simulations.length > 0) {
+          const sum = simulations.reduce((acc, sim) => acc + (sim.score || 0), 0);
+          interviewReadiness = Math.round(sum / simulations.length);
+        }
+
+        // 3. Weekly Milestones (last 7 days actions)
+        const isWithinLast7Days = (dateStr?: string) => {
+          if (!dateStr) return false;
+          const date = new Date(dateStr);
+          const now = new Date();
+          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return date >= sevenDaysAgo;
+        };
+
+        let weeklyMilestoneCount = 0;
+        resumes.forEach((r: any) => {
+          if (isWithinLast7Days(r.createdAt)) weeklyMilestoneCount++;
+        });
+        jobs.forEach((j: any) => {
+          if (isWithinLast7Days(j.appliedDate)) weeklyMilestoneCount++;
+        });
+        simulations.forEach((s: any) => {
+          if (isWithinLast7Days(s.createdAt)) weeklyMilestoneCount++;
+        });
+
+        // 4. Upcoming events from jobs with status 'Interview'
+        const upcomingEvents: any[] = [];
+        const interviewJobs = jobs.filter(j => j.status === 'Interview');
+        
+        interviewJobs.forEach((job) => {
+          const date = job.appliedDate ? new Date(job.appliedDate) : new Date();
+          // Simulate interview date 3 days in the future relative to apply date
+          const interviewDate = new Date(date.getTime() + 3 * 24 * 60 * 60 * 1000);
+          const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+          
+          upcomingEvents.push({
+            month: months[interviewDate.getMonth()],
+            day: interviewDate.getDate().toString(),
+            title: `Interview: ${job.role} at ${job.company}`,
+            description: `Vetting round prep for your application with ${job.company}.`,
+            time: "10:00 AM UTC"
+          });
+        });
+
         setStats({
           totalJobs: jobsSnap.size,
           resumesAnalyzed: resumesSnap.size,
           interviews: statusCounts['Interview'] || 0,
-          offers: statusCounts['Offer'] || 0
+          offers: statusCounts['Offer'] || 0,
+          latestResumeScore,
+          missingKeywords,
+          interviewReadiness,
+          simulationsRun: simulations.length,
+          weeklyMilestoneCount,
+          upcomingEvents
         });
 
         setLoading(false);
@@ -172,11 +246,23 @@ export default function Dashboard() {
             </div>
             <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-2">Resume Compatibility</h3>
             <div className="flex items-baseline gap-2 mb-4">
-              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">82%</span>
-              <span className="text-xs text-success font-semibold flex items-center gap-0.5">↑ 4% this cycle</span>
+              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">
+                {stats.latestResumeScore > 0 ? `${stats.latestResumeScore}%` : 'N/A'}
+              </span>
+              {stats.latestResumeScore > 0 && (
+                <span className="text-xs text-success font-semibold flex items-center gap-0.5">Evaluated</span>
+              )}
             </div>
             <p className="text-xs text-ink-dim leading-relaxed">
-              Your resume index is optimized. Missed keywords: OOPS, React Suspense. Close the gap using the analyzer module.
+              {stats.latestResumeScore > 0 ? (
+                stats.missingKeywords.length > 0 ? (
+                  `Your resume compatibility index is compiled. Missed keywords: ${stats.missingKeywords.slice(0, 4).join(', ')}. Eliminate gaps in the Analyzer module.`
+                ) : (
+                  "Your resume has 100% alignment with your target specifications! Excellent work."
+                )
+              ) : (
+                "No evaluated resumes detected. Upload your first resume to the Analyzer module to baseline your ATS compatibility score."
+              )}
             </p>
           </div>
           <button 
@@ -199,11 +285,19 @@ export default function Dashboard() {
             </div>
             <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-2">Interview Readiness</h3>
             <div className="flex items-baseline gap-2 mb-4">
-              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">78%</span>
-              <span className="text-xs text-success font-semibold flex items-center gap-0.5">Highly Calibrated</span>
+              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">
+                {stats.simulationsRun > 0 ? `${stats.interviewReadiness}%` : '0%'}
+              </span>
+              <span className="text-xs text-success font-semibold flex items-center gap-0.5">
+                {stats.simulationsRun > 0 ? (stats.interviewReadiness >= 80 ? 'Highly Calibrated' : 'Calibrating') : 'No Simulation'}
+              </span>
             </div>
             <p className="text-xs text-ink-dim leading-relaxed">
-              Based on 3 simulation runs. Excellent command of behavioral narratives. Optimize System Design drill modules to breach 85%.
+              {stats.simulationsRun > 0 ? (
+                `Calculated across ${stats.simulationsRun} simulated agent runs. High fidelity behavioral & technical feedback has been compiled.`
+              ) : (
+                "Vetting simulation has not been initiated. Enter the Interview Lab to run real-time interactive questions and calculate your readiness index."
+              )}
             </p>
           </div>
           <button 
@@ -226,14 +320,18 @@ export default function Dashboard() {
             </div>
             <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-2">Weekly Milestones</h3>
             <div className="flex items-baseline gap-2 mb-4">
-              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">14/20</span>
+              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">{stats.weeklyMilestoneCount}/10</span>
               <span className="text-xs text-warning font-semibold">Targets Logged</span>
             </div>
             <div className="w-full bg-surface-light h-1.5 rounded-full overflow-hidden mb-3">
-              <div className="bg-warning h-full rounded-full" style={{ width: '70%' }} />
+              <div className="bg-warning h-full rounded-full" style={{ width: `${Math.min(100, (stats.weeklyMilestoneCount / 10) * 100)}%` }} />
             </div>
             <p className="text-xs text-ink-dim leading-relaxed">
-              Excellent streak. 6 activities remaining to hit your target velocity. Your current profile search score is in the top 5%.
+              {stats.weeklyMilestoneCount > 0 ? (
+                `Excellent activity profile. You logged ${stats.weeklyMilestoneCount} operations in the pipeline over the last 7 days. Keep up your current job acquisition velocity!`
+              ) : (
+                "No operations recorded in the last 7 days. Track target jobs, audit resumes, or initiate simulated interview drills to log weekly milestone targets."
+              )}
             </p>
           </div>
           <button 
@@ -333,33 +431,33 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-4">
-            <div className="p-5 bg-surface/30 rounded-2xl border border-border flex items-start gap-4">
-              <div className="bg-accent/10 px-3 py-2.5 rounded-xl border border-accent/20 flex flex-col items-center">
-                <span className="text-xs font-bold text-accent tracking-tighter uppercase font-mono">JULY</span>
-                <span className="text-lg font-extrabold text-ink font-mono mt-0.5">14</span>
+            {stats.upcomingEvents.length > 0 ? (
+              stats.upcomingEvents.map((event, idx) => (
+                <div key={idx} className="p-5 bg-surface/30 rounded-2xl border border-border flex items-start gap-4">
+                  <div className="bg-accent/10 px-3 py-2.5 rounded-xl border border-accent/20 flex flex-col items-center shrink-0">
+                    <span className="text-[10px] font-bold text-accent tracking-tighter uppercase font-mono">{event.month}</span>
+                    <span className="text-lg font-extrabold text-ink font-mono mt-0.5 leading-none">{event.day}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-ink text-sm">{event.title}</h4>
+                    <p className="text-xs text-ink-dim mt-0.5">{event.description}</p>
+                    <p className="text-[9px] font-bold text-accent uppercase tracking-wider mt-2 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> {event.time}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 bg-surface/10 rounded-2xl border border-border/50 text-center space-y-3">
+                <p className="text-xs text-ink-dim">No upcoming interviews scheduled in your active job pipeline.</p>
+                <button 
+                  onClick={() => navigate('/jobs')}
+                  className="text-[10px] font-bold text-accent uppercase tracking-wider hover:underline"
+                >
+                  Manage Pipeline &rarr;
+                </button>
               </div>
-              <div>
-                <h4 className="font-bold text-ink text-sm">Mock Interview: Tech Lead Simulation</h4>
-                <p className="text-xs text-ink-dim mt-0.5">Focusing on complex distributed systems architecture drills.</p>
-                <p className="text-[9px] font-bold text-accent uppercase tracking-wider mt-2 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent" /> 10:00 AM UTC
-                </p>
-              </div>
-            </div>
-
-            <div className="p-5 bg-surface/30 rounded-2xl border border-border flex items-start gap-4">
-              <div className="bg-success/10 px-3 py-2.5 rounded-xl border border-success/20 flex flex-col items-center">
-                <span className="text-xs font-bold text-success tracking-tighter uppercase font-mono">JULY</span>
-                <span className="text-lg font-extrabold text-ink font-mono mt-0.5">18</span>
-              </div>
-              <div>
-                <h4 className="font-bold text-ink text-sm">System Update: MNC Recruitment Cycle</h4>
-                <p className="text-xs text-ink-dim mt-0.5">Campus prep aptitude and core CS theory batch submission.</p>
-                <p className="text-[9px] font-bold text-success uppercase tracking-wider mt-2 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success" /> 2:00 PM UTC
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

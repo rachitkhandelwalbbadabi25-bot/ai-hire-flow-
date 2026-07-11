@@ -17,7 +17,7 @@ import {
 import { generateInterviewQuestions, evaluateInterviewAnswer } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, addDoc } from 'firebase/firestore';
 
 interface Question {
   id: string;
@@ -135,6 +135,25 @@ export default function InterviewSimulator() {
         setCurrentIdx(prev => prev + 1);
         setUserAnswer('');
       } else {
+        const finalEvaluations = { ...evaluations, [currentQ.id]: evaluation };
+        let scoreSum = 0;
+        Object.values(finalEvaluations).forEach((e: any) => {
+          scoreSum += e.score;
+        });
+        const aggregateScore = questions.length > 0 ? Math.round((scoreSum / questions.length) * 10) : 0;
+
+        try {
+          await addDoc(collection(db, 'users', user.uid, 'simulations'), {
+            jobDescription,
+            questions,
+            evaluations: finalEvaluations,
+            score: aggregateScore,
+            createdAt: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.error('Failed to persist simulation record:', dbErr);
+        }
+
         setStep('results');
       }
     } catch (error) {

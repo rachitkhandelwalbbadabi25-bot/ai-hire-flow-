@@ -430,3 +430,49 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
 export const auditCode = async (code: string, context: any = {}) => {
   throw new Error("Audit Code is currently disabled.");
 };
+
+export const askAICoach = async (question: string, context: string = "") => {
+  const prompt = `
+    You are an elite, highly experienced executive career coach and resume strategist from Stanford Career Labs and McKinsey.
+    Answer the candidate's career question with maximum clarity, punchy formatting, and actionable steps.
+    Use professional, concise, and calm language. Do NOT use emojis. Keep it under 250 words.
+    
+    Candidate Question: ${question}
+    ${context ? `Candidate Context: ${context}` : ''}
+    
+    Return a JSON object with:
+    - answer: string (the structured advice, keep it readable with bullet points and bold headers)
+    - actionItems: string[] (3 specific immediate action steps the candidate should take)
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            answer: { type: Type.STRING },
+            actionItems: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["answer", "actionItems"]
+        }
+      }
+    });
+
+    return JSON.parse(cleanJson(response.text || '{}'));
+  } catch (err) {
+    console.warn("[AI Coach] Fallback to standard advice on error.", err);
+    return {
+      answer: "I am ready to guide you. Focus on strengthening your core projects, refining your ATS keywords, and practicing live mock interviews with our simulation tools. Ensure your resume highlights quantifiable impact like percentage gains or team scope.",
+      actionItems: [
+        "Audit target resume keywords",
+        "Practice a 15-minute mock interview",
+        "Tailor resume impact metrics"
+      ]
+    };
+  }
+};
+

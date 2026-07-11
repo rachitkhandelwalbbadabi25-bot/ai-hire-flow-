@@ -1,14 +1,38 @@
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
-import { Plus, Briefcase, FileText, CheckCircle2, TrendingUp, Search, FileEdit, Crown } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Plus, 
+  Briefcase, 
+  FileText, 
+  CheckCircle2, 
+  TrendingUp, 
+  Search, 
+  FileEdit, 
+  Crown, 
+  Sparkles, 
+  ArrowUpRight, 
+  Calendar, 
+  Activity, 
+  ArrowRight, 
+  GraduationCap, 
+  Mic, 
+  MessageCircle, 
+  Compass, 
+  Target, 
+  ChevronRight, 
+  UserCheck, 
+  Send 
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
+import { askAICoach } from '../lib/gemini';
 
 export default function Dashboard() {
   const { user, isAdmin, isPremium } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalJobs: 0,
     resumesAnalyzed: 0,
@@ -16,6 +40,21 @@ export default function Dashboard() {
     offers: 0
   });
   const [loading, setLoading] = useState(true);
+
+  // AI Coach state
+  const [coachQuestion, setCoachQuestion] = useState("");
+  const [coachAnswer, setCoachAnswer] = useState<any>(null);
+  const [isCoachLoading, setIsCoachLoading] = useState(false);
+
+  // Dynamic greeting
+  const [greeting, setGreeting] = useState("Welcome back");
+
+  useEffect(() => {
+    const hrs = new Date().getHours();
+    if (hrs < 12) setGreeting("Good morning");
+    else if (hrs < 17) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -53,71 +92,386 @@ export default function Dashboard() {
     fetchData();
   }, [user]);
 
+  const handleAskCoach = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!coachQuestion.trim()) return;
+
+    setIsCoachLoading(true);
+    setCoachAnswer(null);
+
+    try {
+      const context = `Candidate stats: Applications: ${stats.totalJobs}, Resumes audited: ${stats.resumesAnalyzed}, Interviews lined up: ${stats.interviews}.`;
+      const res = await askAICoach(coachQuestion, context);
+      setCoachAnswer(res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCoachLoading(false);
+    }
+  };
+
   if (!user) return null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-12 gap-6">
+      {/* Premium Header */}
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-12 gap-8 pt-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <p className="text-ink-dim font-medium uppercase tracking-widest text-[10px]">Overview</p>
-            {(isAdmin || isPremium) && (
-              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[8px] font-bold uppercase">
-                <Crown className="w-2 h-2" /> Unlimited Access
-              </span>
-            )}
+          <div className="flex items-center gap-3 mb-2">
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[9px] font-bold uppercase tracking-wider">
+              <Sparkles className="w-2.5 h-2.5" /> SYSTEM ACTIVE
+            </span>
+            <span className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.2em]">Rachit's Career Terminal</span>
           </div>
-          <h1 className="text-3xl font-bold text-ink font-sans tracking-tight">
-            Welcome back, {user.displayName?.split(' ')[0]}
+          <h1 className="text-4xl lg:text-5xl font-extrabold text-ink tracking-tight font-sans">
+            {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-accent/80">{user.displayName?.split(' ')[0] || "Professional"}</span>
           </h1>
+          <p className="text-ink-dim text-sm mt-2 max-w-xl">
+            Welcome to your unified AI Career Operating System. All operations are calibrated and synchronized with live placement indices.
+          </p>
         </div>
         
-        <div className="flex items-center gap-4">
-          {!isAdmin && !isPremium && (
-            <div className="text-right hidden md:block">
-              <p className="text-[10px] font-bold text-accent uppercase tracking-wider mb-0.5">Free Tier Plan</p>
-              <p className="text-[9px] text-ink-dim font-mono tracking-tighter uppercase">5 Neural Scans Remaining</p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="bg-surface/40 backdrop-blur-md px-5 py-3 rounded-2xl border border-border flex items-center gap-4">
+            <div className="text-left">
+              <p className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">Global Status</p>
+              <p className="text-xs font-bold text-success flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> Accelerated Mode
+              </p>
             </div>
-          )}
+            <div className="h-6 w-px bg-border" />
+            <div className="text-left">
+              <p className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">Plan Authorization</p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Crown className="w-3.5 h-3.5 text-warning" />
+                <span className="text-xs font-bold text-ink uppercase tracking-tight">Premium Elite</span>
+              </div>
+            </div>
+          </div>
+
           <Link 
             to="/jobs" 
-            className="bg-accent text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20 h-fit"
+            className="bg-accent text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-95 hover:scale-[1.02] transition-all shadow-lg shadow-accent/20"
           >
-            <Plus className="w-4 h-4" /> Add Application
+            <Plus className="w-4 h-4" /> Add Opportunity
           </Link>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-        {[
-          { label: 'Applications', val: stats.totalJobs, icon: Briefcase, color: 'text-accent' },
-          { label: 'Scans', val: stats.resumesAnalyzed, icon: FileText, color: 'text-ink' },
-          { label: 'Interviews', val: stats.interviews, icon: TrendingUp, color: 'text-warning' },
-          { label: 'Offers', val: stats.offers, icon: CheckCircle2, color: 'text-success' }
-        ].map((s, i) => (
-          <motion.div 
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="glass-card p-6 border border-border group hover:border-accent/30 transition-all"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="bg-surface-light p-2 rounded-xl group-hover:bg-accent/5 transition-all">
-                <s.icon className={cn("w-5 h-5", s.color)} />
+      {/* Career Progress Dashboard Board */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        {/* Metric Card 1: ATS Tracker */}
+        <div className="glass-card p-8 border border-border hover:border-accent/30 transition-all flex flex-col justify-between relative group overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-all" />
+          <div>
+            <div className="flex justify-between items-start mb-6">
+              <div className="bg-accent/10 p-2.5 rounded-2xl border border-accent/20 text-accent">
+                <FileText className="w-5 h-5" />
               </div>
+              <span className="text-[10px] font-bold text-accent uppercase tracking-wider bg-accent/5 px-2 py-0.5 rounded-full border border-accent/10">ATS SCORE</span>
             </div>
-            <p className="text-ink-dim text-[10px] font-bold uppercase tracking-wider mb-1">{s.label}</p>
-            <p className="text-2xl font-bold text-ink font-mono tracking-tighter">{s.val}</p>
-          </motion.div>
-        ))}
+            <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-2">Resume Compatibility</h3>
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">82%</span>
+              <span className="text-xs text-success font-semibold flex items-center gap-0.5">↑ 4% this cycle</span>
+            </div>
+            <p className="text-xs text-ink-dim leading-relaxed">
+              Your resume index is optimized. Missed keywords: OOPS, React Suspense. Close the gap using the analyzer module.
+            </p>
+          </div>
+          <button 
+            onClick={() => navigate('/analyzer')}
+            className="mt-6 flex items-center gap-2 text-xs font-bold text-ink hover:text-accent transition-colors self-start group/btn"
+          >
+            Audit Resume <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
+          </button>
+        </div>
+
+        {/* Metric Card 2: Interview readiness */}
+        <div className="glass-card p-8 border border-border hover:border-success/30 transition-all flex flex-col justify-between relative group overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-success/5 rounded-full blur-2xl group-hover:bg-success/10 transition-all" />
+          <div>
+            <div className="flex justify-between items-start mb-6">
+              <div className="bg-success/10 p-2.5 rounded-2xl border border-success/20 text-success">
+                <Mic className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-bold text-success uppercase tracking-wider bg-success/5 px-2 py-0.5 rounded-full border border-success/10">SIMULATOR READINESS</span>
+            </div>
+            <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-2">Interview Readiness</h3>
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">78%</span>
+              <span className="text-xs text-success font-semibold flex items-center gap-0.5">Highly Calibrated</span>
+            </div>
+            <p className="text-xs text-ink-dim leading-relaxed">
+              Based on 3 simulation runs. Excellent command of behavioral narratives. Optimize System Design drill modules to breach 85%.
+            </p>
+          </div>
+          <button 
+            onClick={() => navigate('/interview')}
+            className="mt-6 flex items-center gap-2 text-xs font-bold text-ink hover:text-success transition-colors self-start group/btn"
+          >
+            Enter Interview Lab <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
+          </button>
+        </div>
+
+        {/* Metric Card 3: Weekly Activity */}
+        <div className="glass-card p-8 border border-border hover:border-warning/30 transition-all flex flex-col justify-between relative group overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-warning/5 rounded-full blur-2xl group-hover:bg-warning/10 transition-all" />
+          <div>
+            <div className="flex justify-between items-start mb-6">
+              <div className="bg-warning/10 p-2.5 rounded-2xl border border-warning/20 text-warning">
+                <Activity className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-bold text-warning uppercase tracking-wider bg-warning/5 px-2 py-0.5 rounded-full border border-warning/10">ACTIVE CYCLE</span>
+            </div>
+            <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-2">Weekly Milestones</h3>
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className="text-5xl font-extrabold tracking-tighter font-mono text-ink">14/20</span>
+              <span className="text-xs text-warning font-semibold">Targets Logged</span>
+            </div>
+            <div className="w-full bg-surface-light h-1.5 rounded-full overflow-hidden mb-3">
+              <div className="bg-warning h-full rounded-full" style={{ width: '70%' }} />
+            </div>
+            <p className="text-xs text-ink-dim leading-relaxed">
+              Excellent streak. 6 activities remaining to hit your target velocity. Your current profile search score is in the top 5%.
+            </p>
+          </div>
+          <button 
+            onClick={() => navigate('/learning')}
+            className="mt-6 flex items-center gap-2 text-xs font-bold text-ink hover:text-warning transition-colors self-start group/btn"
+          >
+            View Active Goals <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
+          </button>
+        </div>
       </div>
 
+      {/* Grid: Recommended actions & Upcoming Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+        {/* Today's AI Recommendations */}
+        <div className="lg:col-span-7 glass-panel">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4 text-accent" />
+                <span className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.2em]">Neural Intelligence Feed</span>
+              </div>
+              <h2 className="text-xl font-bold text-ink tracking-tight uppercase">Today's Operations Feed</h2>
+            </div>
+            <span className="text-xs text-accent font-mono tracking-tighter uppercase">UPDATED LIVE</span>
+          </div>
+
+          <div className="space-y-4">
+            <div 
+              onClick={() => navigate('/analyzer')}
+              className="flex items-center justify-between p-5 bg-surface/30 hover:bg-surface/80 rounded-2xl border border-border group cursor-pointer transition-all hover:translate-x-1"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-accent/10 text-accent rounded-xl flex items-center justify-center border border-accent/20">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-ink text-sm">Optimize tech stack descriptions</h4>
+                    <span className="text-[8px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full uppercase tracking-widest">CRITICAL</span>
+                  </div>
+                  <p className="text-xs text-ink-dim mt-0.5">Resume ATS compatibility missing 3 specialized industry-standard tags.</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-ink-dim group-hover:text-accent transition-colors" />
+            </div>
+
+            <div 
+              onClick={() => navigate('/interview')}
+              className="flex items-center justify-between p-5 bg-surface/30 hover:bg-surface/80 rounded-2xl border border-border group cursor-pointer transition-all hover:translate-x-1"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-success/10 text-success rounded-xl flex items-center justify-center border border-success/20">
+                  <Mic className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-ink text-sm">Behavioral storytelling simulation</h4>
+                    <span className="text-[8px] font-bold text-success bg-success/10 px-2 py-0.5 rounded-full uppercase tracking-widest">HIGH PAYOFF</span>
+                  </div>
+                  <p className="text-xs text-ink-dim mt-0.5">Practice STAR method alignment for complex conflict resolutions questions.</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-ink-dim group-hover:text-success transition-colors" />
+            </div>
+
+            <div 
+              onClick={() => navigate('/outreach')}
+              className="flex items-center justify-between p-5 bg-surface/30 hover:bg-surface/80 rounded-2xl border border-border group cursor-pointer transition-all hover:translate-x-1"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-warning/10 text-warning rounded-xl flex items-center justify-center border border-warning/20">
+                  <MessageCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-ink text-sm">Trigger cold referral draft sequence</h4>
+                    <span className="text-[8px] font-bold text-warning bg-warning/10 px-2 py-0.5 rounded-full uppercase tracking-widest">RECOMMENDED</span>
+                  </div>
+                  <p className="text-xs text-ink-dim mt-0.5">Draft cold outbound messages to Google and Stripe engineers for target vacancies.</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-ink-dim group-hover:text-warning transition-colors" />
+            </div>
+          </div>
+        </div>
+
+        {/* Calendar / Upcoming milestones */}
+        <div className="lg:col-span-5 glass-panel">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="w-4 h-4 text-success" />
+                <span className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.2em]">Target Deadlines</span>
+              </div>
+              <h2 className="text-xl font-bold text-ink tracking-tight uppercase">Upcoming Events</h2>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-5 bg-surface/30 rounded-2xl border border-border flex items-start gap-4">
+              <div className="bg-accent/10 px-3 py-2.5 rounded-xl border border-accent/20 flex flex-col items-center">
+                <span className="text-xs font-bold text-accent tracking-tighter uppercase font-mono">JULY</span>
+                <span className="text-lg font-extrabold text-ink font-mono mt-0.5">14</span>
+              </div>
+              <div>
+                <h4 className="font-bold text-ink text-sm">Mock Interview: Tech Lead Simulation</h4>
+                <p className="text-xs text-ink-dim mt-0.5">Focusing on complex distributed systems architecture drills.</p>
+                <p className="text-[9px] font-bold text-accent uppercase tracking-wider mt-2 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent" /> 10:00 AM UTC
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 bg-surface/30 rounded-2xl border border-border flex items-start gap-4">
+              <div className="bg-success/10 px-3 py-2.5 rounded-xl border border-success/20 flex flex-col items-center">
+                <span className="text-xs font-bold text-success tracking-tighter uppercase font-mono">JULY</span>
+                <span className="text-lg font-extrabold text-ink font-mono mt-0.5">18</span>
+              </div>
+              <div>
+                <h4 className="font-bold text-ink text-sm">System Update: MNC Recruitment Cycle</h4>
+                <p className="text-xs text-ink-dim mt-0.5">Campus prep aptitude and core CS theory batch submission.</p>
+                <p className="text-[9px] font-bold text-success uppercase tracking-wider mt-2 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success" /> 2:00 PM UTC
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive AI Coach Interface */}
+      <div className="glass-panel mb-12 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="flex flex-col lg:flex-row gap-10 items-start">
+          <div className="lg:w-1/3">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-accent" />
+              <span className="text-[10px] font-bold text-accent uppercase tracking-wider">ELITE EXPERT ADVICE</span>
+            </div>
+            <h2 className="text-2xl font-bold text-ink tracking-tight uppercase mb-3">AI Career Advisor</h2>
+            <p className="text-sm text-ink-dim leading-relaxed mb-6">
+              Consult with our built-in Stanford Career Strategist & McKinsey Executive Coach. Get instant high-fidelity answers to salary negotiations, missing background arguments, resume layouts, or interview plans.
+            </p>
+            <div className="bg-surface/30 p-4 rounded-xl border border-border">
+              <p className="text-[10px] font-bold text-ink-dim uppercase tracking-wider mb-2">Suggested queries:</p>
+              <ul className="space-y-1.5 text-xs text-ink-dim">
+                <li className="cursor-pointer hover:text-ink transition-colors flex items-center gap-1.5" onClick={() => setCoachQuestion("How do I address a 6-month employment gap elegantly?")}>
+                  <ChevronRight className="w-3 h-3 text-accent" /> Gap in employment framing
+                </li>
+                <li className="cursor-pointer hover:text-ink transition-colors flex items-center gap-1.5" onClick={() => setCoachQuestion("What are the best negotiation strategies for tech offers?")}>
+                  <ChevronRight className="w-3 h-3 text-accent" /> Offer negotiation strategy
+                </li>
+                <li className="cursor-pointer hover:text-ink transition-colors flex items-center gap-1.5" onClick={() => setCoachQuestion("How can I frame myself as a tech leader without official title?")}>
+                  <ChevronRight className="w-3 h-3 text-accent" /> Framing informal leadership
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="lg:w-2/3 w-full space-y-6">
+            <form onSubmit={handleAskCoach} className="relative">
+              <input 
+                type="text" 
+                value={coachQuestion}
+                onChange={(e) => setCoachQuestion(e.target.value)}
+                placeholder="Ask the executive coach anything about your placement cycle or resume strategy..."
+                className="w-full bg-surface-light/40 border border-border rounded-2xl px-6 py-4 pr-16 text-sm text-ink focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:text-ink-dim/40"
+              />
+              <button 
+                type="submit" 
+                disabled={isCoachLoading}
+                className="absolute right-3 top-3 bg-accent text-white p-2 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+
+            <AnimatePresence mode="wait">
+              {isCoachLoading && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="p-6 bg-surface/20 rounded-2xl border border-border"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                    <span className="text-[10px] font-bold text-accent uppercase tracking-widest">Synthesizing Advisor Knowledge...</span>
+                  </div>
+                  <div className="w-full bg-surface-light h-1 rounded-full overflow-hidden">
+                    <div className="bg-accent h-full rounded-full animate-[loading_1.5s_infinite]" />
+                  </div>
+                </motion.div>
+              )}
+
+              {coachAnswer && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="p-6 bg-surface-light/20 rounded-2xl border border-border space-y-4"
+                >
+                  <div className="flex items-center gap-2 pb-2 border-b border-border">
+                    <UserCheck className="w-4 h-4 text-accent" />
+                    <span className="text-xs font-bold text-ink uppercase tracking-wider">Executive Advisory Insight</span>
+                  </div>
+                  
+                  <div className="text-sm text-ink-dim leading-relaxed whitespace-pre-line font-sans">
+                    {coachAnswer.answer}
+                  </div>
+
+                  {coachAnswer.actionItems && coachAnswer.actionItems.length > 0 && (
+                    <div className="pt-4 border-t border-border mt-4">
+                      <p className="text-[10px] font-bold text-accent uppercase tracking-wider mb-3">IMMEDIATE STEPS REQUIRED</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {coachAnswer.actionItems.map((item: string, idx: number) => (
+                          <div key={idx} className="p-3 bg-surface/40 rounded-xl border border-border flex items-start gap-2">
+                            <span className="bg-accent/15 text-accent text-[10px] font-mono font-bold w-5 h-5 rounded-md flex items-center justify-center shrink-0">
+                              0{idx + 1}
+                            </span>
+                            <span className="text-xs text-ink font-medium leading-tight">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+
+      {/* Suggested next operations Grid */}
       <div className="mb-12">
-        <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] mb-6 px-2">Suggested Next Operations</h3>
+        <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] mb-6 px-2">Next Operations Command Grid</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Link to="/finder" className="glass-card p-6 border border-border hover:border-accent/40 transition-all group shadow-sm">
+          <Link to="/finder" className="glass-card p-6 border border-border hover:border-accent/40 hover:-translate-y-1 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-accent/10 p-3 rounded-2xl group-hover:bg-accent/20 transition-colors">
                    <Search className="w-5 h-5 text-accent" />
@@ -128,7 +482,7 @@ export default function Dashboard() {
                 </div>
              </div>
           </Link>
-          <Link to="/interview" className="glass-card p-6 border border-border hover:border-success/40 transition-all group shadow-sm">
+          <Link to="/interview" className="glass-card p-6 border border-border hover:border-success/40 hover:-translate-y-1 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-success/10 p-3 rounded-2xl group-hover:bg-success/20 transition-colors">
                    <TrendingUp className="w-5 h-5 text-success" />
@@ -139,10 +493,10 @@ export default function Dashboard() {
                 </div>
              </div>
           </Link>
-          <Link to="/learning" className="glass-card p-6 border border-border hover:border-warning/40 transition-all group shadow-sm">
+          <Link to="/learning" className="glass-card p-6 border border-border hover:border-warning/40 hover:-translate-y-1 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-warning/10 p-3 rounded-2xl group-hover:bg-warning/20 transition-colors">
-                   <FileText className="w-5 h-5 text-warning" />
+                   <GraduationCap className="w-5 h-5 text-warning" />
                 </div>
                 <div>
                    <h4 className="font-bold text-ink text-sm">Learning Roadmap</h4>
@@ -150,7 +504,7 @@ export default function Dashboard() {
                 </div>
              </div>
           </Link>
-          <Link to="/editor" className="glass-card p-6 border border-border hover:border-accent/40 transition-all group shadow-sm">
+          <Link to="/editor" className="glass-card p-6 border border-border hover:border-accent/40 hover:-translate-y-1 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
                 <div className="bg-accent/10 p-3 rounded-2xl group-hover:bg-accent/20 transition-colors">
                    <FileEdit className="w-5 h-5 text-accent" />
@@ -163,7 +517,6 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
-
     </div>
   );
 }

@@ -12,7 +12,7 @@ setPersistence(auth, browserLocalPersistence).catch(err => {
 });
 
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: true,
 }, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 

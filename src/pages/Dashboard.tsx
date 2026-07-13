@@ -23,7 +23,8 @@ import {
   Target, 
   ChevronRight, 
   UserCheck, 
-  Send 
+  Send,
+  Loader2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -276,6 +277,17 @@ export default function Dashboard() {
   };
 
   if (!user) return null;
+
+  if (loading) {
+    return (
+      <div className="h-96 w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Synchronizing Career Terminal...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

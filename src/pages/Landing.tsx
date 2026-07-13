@@ -51,7 +51,7 @@ export default function Landing() {
           </div>
 
           {/* Social Proof */}
-          <div className="mt-20 pt-8 border-t border-white/5 flex flex-col items-center justify-center gap-4 opacity-50">
+          <div className="mt-20 pt-8 border-t border-white/5 flex flex-col items-center justify-center gap-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-ink-dim">TRUSTED BY SOFTWARE ENGINEERS AND STUDENTS PLACED AT</p>
             <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 font-mono text-xs font-bold text-ink-dim tracking-tighter">
               <span>MCKINSEY</span>

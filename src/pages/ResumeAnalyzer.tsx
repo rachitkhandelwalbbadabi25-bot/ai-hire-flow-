@@ -136,6 +136,7 @@ export default function ResumeAnalyzer() {
       const resumeRef = await addDoc(collection(db, 'users', user.uid, 'resumes'), {
         fileName: file.name,
         content: text,
+        jobDesc: jobDesc,
         createdAt: new Date().toISOString()
       });
 
@@ -318,7 +319,22 @@ export default function ResumeAnalyzer() {
                     </h3>
                     {(analysis.missingKeywords || []).length > 0 && (
                       <button 
-                        onClick={() => navigate('/learning')}
+                        onClick={() => {
+                          const getJobTitle = (desc: string) => {
+                            if (!desc) return '';
+                            const firstLine = desc.split('\n')[0].trim();
+                            if (firstLine.length > 50) {
+                              return firstLine.substring(0, 50) + '...';
+                            }
+                            return firstLine;
+                          };
+                          navigate('/learning', {
+                            state: {
+                              missingSkills: analysis.missingKeywords,
+                              targetRole: getJobTitle(jobDesc)
+                            }
+                          });
+                        }}
                         className="text-[9px] font-bold text-accent px-3 py-1 bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-all uppercase tracking-widest"
                       >
                         Generate roadmap
@@ -389,7 +405,7 @@ export default function ResumeAnalyzer() {
 
           <div className="flex justify-center pt-8">
             <button 
-              onClick={() => { setAnalysis(null); setCoverLetter(null); setFile(null); }}
+              onClick={() => { setAnalysis(null); setCoverLetter(null); setFile(null); setJobDesc(''); }}
               className="text-ink-dim hover:text-accent font-bold transition-all flex items-center gap-2 uppercase text-[10px] tracking-widest"
             >
               Reset Terminal

@@ -438,6 +438,38 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
+export const generateOutreachEmail = async (candidateContext: string, company: string, contactName: string) => {
+  const prompt = `
+    You are an elite career advisor. Craft a professional, high-converting cold email seeking a referral or a quick virtual coffee to ask about career opportunities.
+    
+    Candidate Context: ${candidateContext}
+    Target Company: ${company}
+    Contact Person: ${contactName}
+    
+    Return a JSON object with:
+    - subject: string (a professional, eye-catching subject line)
+    - body: string (the full cold outreach email body, keep it punchy, polite, and under 150 words)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          subject: { type: Type.STRING },
+          body: { type: Type.STRING }
+        },
+        required: ["subject", "body"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};
+
 export const auditCode = async (code: string, context: any = {}) => {
   throw new Error("Audit Code is currently disabled.");
 };
@@ -486,4 +518,193 @@ export const askAICoach = async (question: string, context: string = "") => {
     };
   }
 };
+
+export const generateCompanyPrep = async (companyName: string) => {
+  const prompt = `
+    You are an elite Indian tech campus placement consultant and recruitment lead.
+    Generate a tailored preparation bundle for the target company: "${companyName}".
+    
+    Return a JSON object with:
+    - companyName: string
+    - difficulty: string (e.g. "Easy", "Medium", "Hard")
+    - estimatedPrepTime: string (e.g. "2-3 Weeks", "1 Month")
+    - roundBreakdown: array of objects:
+      - roundName: string (e.g. "Round 1: Online Assessment")
+      - description: string (briefly what they ask)
+      - focusTopics: array of strings (specific sub-topics)
+    - topQuestions: array of objects:
+      - question: string (frequently asked coding or core conceptual question for this company)
+      - topic: string
+      - tip: string (how to tackle this)
+    - prepStrategy: string (holistic advice on how to secure an offer here)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          companyName: { type: Type.STRING },
+          difficulty: { type: Type.STRING },
+          estimatedPrepTime: { type: Type.STRING },
+          roundBreakdown: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                roundName: { type: Type.STRING },
+                description: { type: Type.STRING },
+                focusTopics: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["roundName", "description", "focusTopics"]
+            }
+          },
+          topQuestions: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                question: { type: Type.STRING },
+                topic: { type: Type.STRING },
+                tip: { type: Type.STRING }
+              },
+              required: ["question", "topic", "tip"]
+            }
+          },
+          prepStrategy: { type: Type.STRING }
+        },
+        required: ["companyName", "difficulty", "estimatedPrepTime", "roundBreakdown", "topQuestions", "prepStrategy"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};
+
+export const generateAptitudeQuestions = async (topic: string) => {
+  const prompt = `
+    Generate 5 highly-challenging, realistic technical placement interview questions or aptitude questions for the topic: "${topic}".
+    These should replicate actual questions asked in MNCs and top tech firms (TCS, Infosys, Zoho, Cognizant, Amazon, etc.).
+    
+    Return a JSON object with:
+    - topicName: string
+    - questions: array of objects:
+      - question: string
+      - options: array of 4 strings
+      - correctIndex: number (0 to 3)
+      - explanation: string (detailed step-by-step logic)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          topicName: { type: Type.STRING },
+          questions: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                question: { type: Type.STRING },
+                options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                correctIndex: { type: Type.NUMBER },
+                explanation: { type: Type.STRING }
+              },
+              required: ["question", "options", "correctIndex", "explanation"]
+            }
+          }
+        },
+        required: ["topicName", "questions"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};
+
+export const generateStartupChallenge = async (specialization: string) => {
+  const prompt = `
+    Generate a real-world, hands-on startup software development interview challenge for a candidate specializing in: "${specialization}".
+    Startups look for rapid prototyping, robust edge-case handling, performance optimization, and architectural speed.
+    
+    Return a JSON object with:
+    - title: string
+    - description: string (the functional product requirements)
+    - scaleContext: string (e.g., "Must handle 1M webhooks per hour under $10 monthly budget")
+    - coreTask: string (explicit step-by-step instructions of what they must propose or implement)
+    - checklist: array of strings (criteria for passing)
+    - modelSolutionArchitecture: string (a concise summary of how an expert would build it in modern tech stacks, like React, Node, Redis, PostgreSQL)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          description: { type: Type.STRING },
+          scaleContext: { type: Type.STRING },
+          coreTask: { type: Type.STRING },
+          checklist: { type: Type.ARRAY, items: { type: Type.STRING } },
+          modelSolutionArchitecture: { type: Type.STRING }
+        },
+        required: ["title", "description", "scaleContext", "coreTask", "checklist", "modelSolutionArchitecture"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};
+
+export const evaluateStartupSolution = async (challengeTitle: string, challengeRequirements: string, proposedSolution: string) => {
+  const prompt = `
+    You are a legendary CTO from a high-growth, top-tier silicon valley or Indian startup (like Stripe, Razorpay, Zerodha).
+    Evaluate the candidate's proposed solution/architecture for the startup challenge: "${challengeTitle}".
+    
+    Challenge Context & Requirements:
+    ${challengeRequirements}
+    
+    Candidate's Proposed Solution:
+    ${proposedSolution}
+    
+    Provide constructive, direct, no-nonsense feedback. Startups care about speed, production-readiness, pragmatic tradeoffs, and cost/performance efficiency.
+    
+    Return a JSON object with:
+    - score: number (from 0 to 100)
+    - grade: string (e.g. "Elite", "Strong Pass", "Needs Revision")
+    - feedback: string (CTO level technical assessment, bullet points on strengths and bottlenecks)
+    - scaleCheck: string (specific critique on how well they handled the scaling context)
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          score: { type: Type.NUMBER },
+          grade: { type: Type.STRING },
+          feedback: { type: Type.STRING },
+          scaleCheck: { type: Type.STRING }
+        },
+        required: ["score", "grade", "feedback", "scaleCheck"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '{}'));
+};
+
 

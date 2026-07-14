@@ -63,6 +63,19 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
+    "OutreachContact": {
+      "title": "Outreach Contact",
+      "description": "Dynamic referral/outreach contact details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "company": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending Response", "Requested", "Referred"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "company", "email", "status"]
+    },
     "Cache": {
       "title": "Operation Cache",
       "description": "Persistent cache for expensive AI operations",
@@ -95,6 +108,10 @@
     "/users/{userId}/simulations/{simulationId}": {
       "schema": "Simulation",
       "description": "Interview practice sessions"
+    },
+    "/users/{userId}/outreach_contacts/{contactId}": {
+      "schema": "OutreachContact",
+      "description": "Dynamic referral/outreach contact details"
     },
     "/users/{userId}/cache/{cacheId}": {
       "schema": "Cache",

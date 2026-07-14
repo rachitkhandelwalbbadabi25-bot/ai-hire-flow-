@@ -44,12 +44,13 @@ interface LearningPathProps {
 
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function LearningPath() {
   const { user } = useAuth();
   if (!user) return null;
   const { plan, checkAccess, openUpgradeModal } = usePlan();
+  const location = useLocation();
   
   const { remaining: roadmapType } = checkAccess('learningPath'); // Basic, Full, Personalized
   const isFree = plan === 'free';
@@ -60,6 +61,24 @@ export default function LearningPath() {
   const [loading, setLoading] = useState(false);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [recentAnalysis, setRecentAnalysis] = useState<any>(null);
+
+  const getJobTitle = (fullDesc: string) => {
+    if (!fullDesc) return '';
+    const firstLine = fullDesc.split('\n')[0].trim();
+    if (firstLine.length > 50) {
+      return firstLine.substring(0, 50) + '...';
+    }
+    return firstLine;
+  };
+
+  useEffect(() => {
+    if (location.state?.missingSkills) {
+      setSkillsStr(location.state.missingSkills.join(', '));
+    }
+    if (location.state?.targetRole) {
+      setTargetRole(location.state.targetRole);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const fetchRecentAnalysis = async () => {
@@ -73,12 +92,17 @@ export default function LearningPath() {
         const data = snapshot.docs[0].data();
         if (data.analysis && data.analysis.missingKeywords) {
           setRecentAnalysis(data.analysis);
-          setSkillsStr(data.analysis.missingKeywords.join(', '));
+          if (!location.state?.missingSkills) {
+            setSkillsStr(data.analysis.missingKeywords.join(', '));
+          }
+          if (!location.state?.targetRole && data.jobDesc) {
+            setTargetRole(getJobTitle(data.jobDesc));
+          }
         }
       }
     };
     fetchRecentAnalysis();
-  }, [user.uid]);
+  }, [user.uid, location.state]);
 
   const generatePath = async () => {
     if (!skillsStr || !targetRole) return;
@@ -113,7 +137,7 @@ export default function LearningPath() {
           </div>
           <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Learning Roadmap</span>
         </div>
-        <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Skill Acquisition Path</h1>
+        <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Learning Path</h1>
         <p className="text-ink-dim font-medium text-lg max-w-2xl">
           Convert alignment gaps into strategic growth trajectories using validated career requirements.
         </p>

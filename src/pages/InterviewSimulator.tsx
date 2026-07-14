@@ -57,6 +57,7 @@ export default function InterviewSimulator() {
   const [evaluations, setEvaluations] = useState<Record<string, Evaluation>>({});
   const [recentResumeText, setRecentResumeText] = useState('');
   const [isFromCache, setIsFromCache] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Auto-load most recent resume for context if available
   useEffect(() => {
@@ -79,6 +80,7 @@ export default function InterviewSimulator() {
     
     setIsGenerating(true);
     setIsFromCache(false);
+    setError(null);
 
     try {
       // Key on combined JD + difficulty (or just JD part for simplicity)
@@ -101,7 +103,7 @@ export default function InterviewSimulator() {
       }
 
       if (!hasAccess) {
-        alert(`Simulation bandwidth reached: ${remaining}/${sessionLimit} sessions remaining. Please upgrade for more access.`);
+        setError(`Simulation bandwidth reached: ${remaining}/${sessionLimit} sessions remaining. Please upgrade for more access.`);
         setIsGenerating(false);
         return;
       }
@@ -117,7 +119,7 @@ export default function InterviewSimulator() {
       setCurrentIdx(0);
     } catch (error: any) {
       console.error('Failed to generate questions:', error);
-      alert(error.message || "Question Synthesis Failure.");
+      setError(error.message || "Question Synthesis Failure.");
     } finally {
       setIsGenerating(false);
     }
@@ -223,6 +225,13 @@ export default function InterviewSimulator() {
                 className="w-full h-64 p-6 bg-background border border-border rounded-3xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed"
               />
             </div>
+
+            {error && (
+              <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl flex items-center gap-3 text-xs">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-ink-dim italic text-xs">

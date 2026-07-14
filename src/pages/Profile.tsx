@@ -3,13 +3,24 @@ import { User as UserIcon, LogOut, Zap, Shield, Sparkles } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
+import { usePlan, PLAN_LIMITS } from '../context/PlanContext';
 
 export default function Profile() {
   const { user, plan, isAdmin, isPremium } = useAuth();
+  const { credits } = usePlan();
 
   if (!user) return null;
 
   const planDisplay = isAdmin ? 'System Administrator' : isPremium ? 'Premium Architect' : 'Free Tier';
+
+  // Dynamic system allocations
+  const scanLimit = PLAN_LIMITS[plan]?.resumeScans ?? 0;
+  const scansUsed = credits?.resumeScans ?? 0;
+  const scanPercent = scanLimit === Infinity ? 100 : Math.min(100, (scansUsed / scanLimit) * 100);
+
+  const trackerLimit = PLAN_LIMITS[plan]?.jobsTracked ?? 0;
+  const trackerUsed = credits?.jobsTracked ?? 0;
+  const trackerPercent = trackerLimit === Infinity ? 100 : Math.min(100, (trackerUsed / trackerLimit) * 100);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -83,13 +94,13 @@ export default function Profile() {
                 <div className="flex justify-between items-end mb-3">
                   <p className="text-[10px] font-bold text-ink uppercase tracking-widest">Neural Scan Bandwidth</p>
                   <p className="text-[10px] font-mono text-ink-dim uppercase">
-                    {(isAdmin || isPremium) ? 'Unlimited' : '3 / 10 Active'}
+                    {(isAdmin || isPremium) ? 'Unlimited' : `${scansUsed} / ${scanLimit} Active`}
                   </p>
                 </div>
                 <div className="h-2 w-full bg-background rounded-full overflow-hidden border border-border">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: (isAdmin || isPremium) ? '100%' : '30%' }}
+                    animate={{ width: `${scanPercent}%` }}
                     className={`h-full rounded-full ${isAdmin ? 'bg-rose-500' : 'bg-accent'}`}
                   />
                 </div>
@@ -99,13 +110,13 @@ export default function Profile() {
                 <div className="flex justify-between items-end mb-3">
                   <p className="text-[10px] font-bold text-ink uppercase tracking-widest">Job Pipeline Slots</p>
                   <p className="text-[10px] font-mono text-ink-dim uppercase">
-                    {(isAdmin || isPremium) ? 'Unlimited' : '5 / 10 slots'}
+                    {(isAdmin || isPremium) ? 'Unlimited' : `${trackerUsed} / ${trackerLimit} slots`}
                   </p>
                 </div>
                 <div className="h-2 w-full bg-background rounded-full overflow-hidden border border-border">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: (isAdmin || isPremium) ? '100%' : '50%' }}
+                    animate={{ width: `${trackerPercent}%` }}
                     className={`h-full rounded-full ${isAdmin ? 'bg-rose-500' : 'bg-success'}`}
                   />
                 </div>

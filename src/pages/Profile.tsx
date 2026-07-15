@@ -1,47 +1,68 @@
 import { motion } from 'motion/react';
-import { User as UserIcon, LogOut, Zap, Shield, Sparkles } from 'lucide-react';
+import { User as UserIcon, LogOut, Zap, Shield, Sparkles, Award, Flame, Star, Coins } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
-import { usePlan, PLAN_LIMITS } from '../context/PlanContext';
+import { usePlan } from '../context/PlanContext';
+import { Link } from 'react-router-dom';
 
 export default function Profile() {
   const { user, plan, isAdmin, isPremium } = useAuth();
-  const { credits } = usePlan();
+  const { creditWallet } = usePlan();
 
   if (!user) return null;
 
-  const planDisplay = isAdmin ? 'System Administrator' : isPremium ? 'Premium Architect' : 'Free Tier';
+  const planDisplay = isAdmin ? 'System Administrator' : isPremium ? 'Premium Member' : 'Free Tier Member';
 
-  // Dynamic system allocations
-  const scanLimit = PLAN_LIMITS[plan]?.resumeScans ?? 0;
-  const scansUsed = credits?.resumeScans ?? 0;
-  const scanPercent = scanLimit === Infinity ? 100 : Math.min(100, (scansUsed / scanLimit) * 100);
+  // Available Profile Badges based on accomplishments
+  const premiumBadges = [
+    { id: 'verified', label: 'Verified Candidate', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
+    { id: 'resume', label: 'Resume Master', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+    { id: 'interview', label: 'Interview Champion', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
+    { id: 'explorer', label: 'Career Explorer', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
+    { id: 'ats', label: 'ATS Expert', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+    { id: 'premium', label: 'Premium Member', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+    { id: 'performer', label: 'Top Performer', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
+    { id: 'recruiter', label: 'Recruiter Favorite', color: 'bg-pink-500/10 text-pink-400 border-pink-500/20' }
+  ];
 
-  const trackerLimit = PLAN_LIMITS[plan]?.jobsTracked ?? 0;
-  const trackerUsed = credits?.jobsTracked ?? 0;
-  const trackerPercent = trackerLimit === Infinity ? 100 : Math.min(100, (trackerUsed / trackerLimit) * 100);
+  // User unlocked badges
+  const unlockedBadges = creditWallet?.unlockedBadges || ['Verified Candidate'];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-12">
         <h1 className="text-3xl font-bold text-ink tracking-tight uppercase">User Profile</h1>
-        <p className="text-ink-dim font-medium text-sm mt-1">Identity configuration and terminal settings.</p>
+        <p className="text-ink-dim font-medium text-sm mt-1">Identity configurations and gamified career dashboard.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Profile Card */}
         <div className="md:col-span-1">
-          <div className="bg-surface rounded-3xl border border-border p-8 flex flex-col items-center text-center shadow-sm">
-            <div className="w-24 h-24 rounded-full bg-accent/10 flex items-center justify-center mb-6 border-2 border-accent/20">
+          <div className="bg-surface rounded-[2.5rem] border border-border p-8 flex flex-col items-center text-center shadow-lg">
+            <div className="w-24 h-24 rounded-full bg-accent/10 flex items-center justify-center mb-6 border-2 border-accent/20 relative">
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || ''} className="w-full h-full rounded-full" referrerPolicy="no-referrer" />
               ) : (
                 <UserIcon className="w-10 h-10 text-accent" />
               )}
+              {creditWallet?.level && (
+                <span className="absolute -bottom-2 -right-2 bg-amber-500 text-black text-[10px] font-black w-8 h-8 rounded-full flex items-center justify-center border-2 border-surface font-mono">
+                  L{creditWallet.level}
+                </span>
+              )}
             </div>
             <h2 className="text-xl font-bold text-ink mb-1">{user.displayName}</h2>
             <p className="text-xs text-ink-dim font-mono mb-6">{user.email}</p>
+            
+            {/* Streak widget */}
+            <div className="bg-surface-light border border-border/80 px-4 py-2 rounded-2xl flex items-center gap-2 mb-6 w-full justify-center">
+              <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+              <span className="text-xs font-bold text-ink uppercase tracking-wider font-mono">
+                {creditWallet?.streak ?? 1} Day Streak
+              </span>
+            </div>
+
             <button
               onClick={() => signOut(auth)}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-rose-500/20 text-rose-400 hover:bg-rose-500/10 transition-all font-bold text-[10px] uppercase tracking-widest"
@@ -53,8 +74,9 @@ export default function Profile() {
 
         {/* Details Card */}
         <div className="md:col-span-2 space-y-8">
-          <div className="bg-surface rounded-3xl border border-border p-8 shadow-sm">
-            <h3 className="text-xs font-bold text-ink uppercase tracking-widest mb-8 border-b border-border pb-4 flex items-center gap-2">
+          {/* Active Level */}
+          <div className="bg-surface rounded-[2.5rem] border border-border p-8 shadow-lg">
+            <h3 className="text-xs font-black text-ink uppercase tracking-widest mb-8 border-b border-border pb-4 flex items-center gap-2">
               <Zap className="w-4 h-4 text-accent" /> Active Access Level
             </h3>
             
@@ -67,60 +89,88 @@ export default function Profile() {
                 }`}>
                   {planDisplay}
                 </p>
-                <p className="text-sm text-ink-dim font-medium">
-                  {isAdmin ? 'Complete system override. All neural pathways unlocked.' : 
-                   isPremium ? 'Enterprise-grade AI intelligence and priority processing.' : 
-                   'Standard intelligence processing with daily throughput quotas.'}
+                <p className="text-sm text-ink-dim font-semibold mt-1">
+                  {isAdmin ? 'System Override Authorized. Total core database permissions granted.' : 
+                   isPremium ? 'Premium AI intelligence modules and priority processing unlocked.' : 
+                   'Standard intelligence processing with dynamic allowance bounds.'}
                 </p>
               </div>
               <div className="text-right">
                 <p className={`text-xs font-bold mb-1 uppercase ${isAdmin || isPremium ? 'text-success' : 'text-accent'}`}>
                   {isAdmin ? 'Master' : isPremium ? 'Verified' : 'Limited'}
                 </p>
-                <p className="text-[10px] text-ink-dim font-mono tracking-tighter">
-                  {isAdmin ? 'Permanent' : 'Neural Uplink Stable'}
-                </p>
+                <Link to="/credits" className="text-[10px] text-accent font-mono tracking-tighter uppercase font-bold underline">
+                  Upgrade Plan
+                </Link>
               </div>
             </div>
           </div>
 
-          <div className="bg-surface rounded-3xl border border-border p-8 shadow-sm">
-            <h3 className="text-xs font-bold text-ink uppercase tracking-widest mb-8 border-b border-border pb-4 flex items-center gap-2">
-               System Resource Allocation
+          {/* Gamified leveling and credits */}
+          <div className="bg-surface rounded-[2.5rem] border border-border p-8 shadow-lg">
+            <h3 className="text-xs font-black text-ink uppercase tracking-widest mb-8 border-b border-border pb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2"><Award className="w-4 h-4 text-amber-500" /> Rank & Neural XP</span>
+              <span className="text-amber-500 font-mono font-bold text-xs">{creditWallet?.xp ?? 0} XP</span>
             </h3>
-            
-            <div className="space-y-8">
+
+            <div className="space-y-6">
               <div>
                 <div className="flex justify-between items-end mb-3">
-                  <p className="text-[10px] font-bold text-ink uppercase tracking-widest">Neural Scan Bandwidth</p>
+                  <p className="text-[10px] font-black text-ink uppercase tracking-widest">Experience Level Progress</p>
                   <p className="text-[10px] font-mono text-ink-dim uppercase">
-                    {(isAdmin || isPremium) ? 'Unlimited' : `${scansUsed} / ${scanLimit} Active`}
+                    Level {creditWallet?.level ?? 1} / 5
                   </p>
                 </div>
                 <div className="h-2 w-full bg-background rounded-full overflow-hidden border border-border">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: `${scanPercent}%` }}
-                    className={`h-full rounded-full ${isAdmin ? 'bg-rose-500' : 'bg-accent'}`}
+                    animate={{ width: `${Math.min(100, ((creditWallet?.xp ?? 0) / 1000) * 100)}%` }}
+                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300"
                   />
                 </div>
               </div>
 
-              <div>
-                <div className="flex justify-between items-end mb-3">
-                  <p className="text-[10px] font-bold text-ink uppercase tracking-widest">Job Pipeline Slots</p>
-                  <p className="text-[10px] font-mono text-ink-dim uppercase">
-                    {(isAdmin || isPremium) ? 'Unlimited' : `${trackerUsed} / ${trackerLimit} slots`}
-                  </p>
+              <div className="bg-black/30 border border-border p-6 rounded-2xl flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Coins className="w-5 h-5 text-accent" />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-tight text-white">Neural Credit Wallet</p>
+                    <p className="text-[10px] text-ink-dim font-bold uppercase mt-0.5">Available for intelligence requests</p>
+                  </div>
                 </div>
-                <div className="h-2 w-full bg-background rounded-full overflow-hidden border border-border">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${trackerPercent}%` }}
-                    className={`h-full rounded-full ${isAdmin ? 'bg-rose-500' : 'bg-success'}`}
-                  />
+                <div className="text-right">
+                  <span className="text-xl font-black font-mono text-white block">{creditWallet?.balance ?? 250}</span>
+                  <Link to="/credits" className="text-[9px] text-accent font-black uppercase tracking-widest hover:underline">
+                    Manage Wallet &rarr;
+                  </Link>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Premium Profile Badges (Part 11) */}
+          <div className="bg-surface rounded-[2.5rem] border border-border p-8 shadow-lg">
+            <h3 className="text-xs font-black text-ink uppercase tracking-widest mb-6 border-b border-border pb-4 flex items-center gap-2">
+              <Star className="w-4 h-4 text-indigo-500" /> Earned Profile Badges
+            </h3>
+
+            <div className="flex flex-wrap gap-3">
+              {premiumBadges.map((badge) => {
+                const isUnlocked = unlockedBadges.some(b => b.toLowerCase().includes(badge.label.toLowerCase()) || badge.label.toLowerCase().includes(b.toLowerCase()));
+                return (
+                  <div 
+                    key={badge.id}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-2xl border text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      isUnlocked 
+                        ? badge.color + ' opacity-100 shadow-sm' 
+                        : 'bg-black/10 text-ink-dim border-border/40 opacity-40 hover:opacity-50'
+                    }`}
+                  >
+                    <span>{isUnlocked ? '✦' : '✧'}</span>
+                    <span>{badge.label}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

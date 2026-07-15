@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, Zap, Sparkles, Shield, Crown, CreditCard } from 'lucide-react';
-import { usePlan, PLAN_LIMITS } from '../context/PlanContext';
+import { usePlan } from '../context/PlanContext';
 import { useAuth, UserPlan } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';

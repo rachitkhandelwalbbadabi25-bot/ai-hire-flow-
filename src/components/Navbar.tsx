@@ -53,6 +53,7 @@ export default function Navbar({ user }: NavbarProps) {
     { name: t('learningPath'), path: '/learning', icon: GraduationCap },
     { name: t('resumeEditor'), path: '/editor', icon: FileEdit },
     { name: t('jobTracker'), path: '/jobs', icon: Briefcase },
+    { name: 'AI Credit Wallet', path: '/credits', icon: Sparkles },
     { name: t('profile'), path: '/profile', icon: UserIcon },
   ];
 

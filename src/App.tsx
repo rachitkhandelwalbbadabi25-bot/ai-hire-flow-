@@ -14,6 +14,7 @@ import ResumeEditor from './pages/ResumeEditor';
 import Profile from './pages/Profile';
 import CampusPlacement from './pages/CampusPlacement';
 import OutreachHub from './pages/OutreachHub';
+import CreditsPage from './pages/Credits';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { PlanProvider } from './context/PlanContext';
@@ -68,6 +69,7 @@ function AppRoutes() {
           <Route path="/campus" element={user ? <CampusPlacement /> : <Navigate to="/" />} />
           <Route path="/outreach" element={user ? <OutreachHub /> : <Navigate to="/" />} />
           <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
+          <Route path="/credits" element={user ? <CreditsPage /> : <Navigate to="/" />} />
         </Routes>
       </Layout>
     </Router>

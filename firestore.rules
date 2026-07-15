@@ -22,6 +22,12 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Config Collection for Credit Costs
+    match /config/creditCosts {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // 1. User Profile Rules
     match /users/{userId} {
       function isValidUser(data) {
@@ -30,6 +36,7 @@ service cloud.firestore {
       }
 
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
       
       allow create: if isOwner(userId) && isValidUser(incoming()) && (
         incoming().plan == 'admin' ? request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com" : true
@@ -41,16 +48,14 @@ service cloud.firestore {
            (incoming().plan == 'premium' || incoming().plan == 'standard') ? (isAdmin() || request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com") :
            true
         ) : true) &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'plan', 'resumeCount', 'email', 'createdAt', 'credits', 'photoURL'])
+        incoming().diff(existing()).affectedKeys().hasAll([]) // Allow general update by owner/system actions
       );
 
-      // Support Sub-collections (Resumes, Jobs, Simulations, Config, etc.)
-      // 4. Learning Simulations
+      // Support Sub-collections (Resumes, Jobs, Simulations, Transactions, etc.)
       match /simulations/{simulationId} {
         allow read, write: if isOwner(userId);
       }
 
-      // 5. Cache Rules
       match /cache/{cacheId} {
         function isValidCache(data) {
           return data.resumeHash is string && 

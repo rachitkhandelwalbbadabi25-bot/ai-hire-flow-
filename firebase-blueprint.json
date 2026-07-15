@@ -2,30 +2,47 @@
   "entities": {
     "User": {
       "title": "User Profile",
-      "description": "User profile and metadata",
+      "description": "User profile with full Credit Economy integration",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
         "displayName": { "type": "string" },
         "plan": { "type": "string", "enum": ["free", "standard", "premium", "admin"] },
-        "credits": {
+        "creditWallet": {
           "type": "object",
           "properties": {
-            "jobSearches": { "type": "integer" },
-            "jobSearchesLastReset": { "type": "string", "format": "date-time" },
-            "resumeScans": { "type": "integer" },
-            "resumeScansLastReset": { "type": "string", "format": "date-time" },
-            "interviewSessions": { "type": "integer" },
-            "interviewSessionsLastReset": { "type": "string", "format": "date-time" },
-            "coverLetters": { "type": "integer" },
-            "coverLettersLastReset": { "type": "string", "format": "date-time" },
-            "jobsTracked": { "type": "integer" }
+            "balance": { "type": "integer" },
+            "usedThisMonth": { "type": "integer" },
+            "totalEarned": { "type": "integer" },
+            "expiringSoon": { "type": "integer" },
+            "lastMonthlyGrant": { "type": "string", "format": "date-time" },
+            "streak": { "type": "integer" },
+            "lastLoginDate": { "type": "string", "format": "date" },
+            "xp": { "type": "integer" },
+            "level": { "type": "integer" },
+            "referralCode": { "type": "string" },
+            "referredBy": { "type": "string" },
+            "hasUploadedResume": { "type": "boolean" },
+            "hasCompletedAnalysis": { "type": "boolean" },
+            "banReferrals": { "type": "boolean" },
+            "unlockedBadges": { "type": "array", "items": { "type": "string" } }
           }
         },
-        "resumeCount": { "type": "integer" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "plan"]
+    },
+    "Transaction": {
+      "title": "Credit Transaction",
+      "description": "Record of credit spend or grant",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "integer" },
+        "type": { "type": "string", "enum": ["grant", "referral", "achievement", "spend", "purchase", "refund", "bonus"] },
+        "label": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount", "type", "label", "timestamp"]
     },
     "Resume": {
       "title": "Resume Data",
@@ -75,27 +92,16 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "company", "email", "status"]
-    },
-    "Cache": {
-      "title": "Operation Cache",
-      "description": "Persistent cache for expensive AI operations",
-      "type": "object",
-      "properties": {
-        "result": { "type": "object" },
-        "resumeHash": { "type": "string" },
-        "jobDescHash": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "expiresAt": { "type": "string", "format": "date-time" },
-        "model": { "type": "string" },
-        "tokensUsed": { "type": "integer" }
-      },
-      "required": ["result", "resumeHash", "jobDescHash", "expiresAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User profile document"
+      "description": "User profile document with Credit details"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Ledger of user credit debits and credits"
     },
     "/users/{userId}/resumes/{resumeId}": {
       "schema": "Resume",
@@ -113,9 +119,9 @@
       "schema": "OutreachContact",
       "description": "Dynamic referral/outreach contact details"
     },
-    "/users/{userId}/cache/{cacheId}": {
-      "schema": "Cache",
-      "description": "Persistent AI result cache"
+    "/config/creditCosts": {
+      "schema": "object",
+      "description": "Global configured credit costs"
     }
   }
 }

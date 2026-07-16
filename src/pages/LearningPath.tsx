@@ -49,7 +49,7 @@ import { Link, useLocation } from 'react-router-dom';
 export default function LearningPath() {
   const { user } = useAuth();
   if (!user) return null;
-  const { plan, checkAccess, openUpgradeModal } = usePlan();
+  const { plan, checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const location = useLocation();
   
   const { remaining: roadmapType } = checkAccess('learningPath'); // Basic, Full, Personalized
@@ -106,8 +106,17 @@ export default function LearningPath() {
 
   const generatePath = async () => {
     if (!skillsStr || !targetRole) return;
+    
+    // Check credits for careerRoadmap
+    const access = checkAccess('careerRoadmap');
+    if (!access.hasAccess) {
+      openUpgradeModal('careerRoadmap');
+      return;
+    }
+
     setLoading(true);
     try {
+      await deductCredit('careerRoadmap');
       const missingSkills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
       const result = await generateLearningPath(missingSkills, targetRole);
       setRoadmap(result);

@@ -29,7 +29,7 @@ interface AuditResult {
 export default function CodeRabbit() {
   const { user } = useAuth();
   if (!user) return null;
-  const { checkAccess } = usePlan();
+  const { checkAccess, deductCredit, openUpgradeModal } = usePlan();
   
   const [code, setCode] = useState('');
   const [isAuditing, setIsAuditing] = useState(false);
@@ -44,6 +44,13 @@ export default function CodeRabbit() {
   const handleAudit = async () => {
     if (!code.trim()) return;
     
+    // Check credit access for code auditing (mapped to portfolioReview, 30 CR)
+    const access = checkAccess('portfolioReview');
+    if (!access.hasAccess) {
+      openUpgradeModal('portfolioReview');
+      return;
+    }
+    
     setIsAuditing(true);
     setError(null);
     setResult(null);
@@ -57,6 +64,7 @@ export default function CodeRabbit() {
         throw new Error("Neural Authorization Key missing. Please check your system settings.");
       }
 
+      await deductCredit('portfolioReview');
       await new Promise(r => setTimeout(r, 800));
       addLog("Analyzing Syntax Tree...");
       

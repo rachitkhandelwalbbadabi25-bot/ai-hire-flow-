@@ -918,15 +918,46 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   // Backward-compatible checking methods
   const checkAccess = (feature: keyof CreditCosts | string, currentCount?: number) => {
-    if (plan === 'admin') return { hasAccess: true, remaining: 'Unlimited', limit: 'Unlimited' };
+    if ((plan as string) === 'admin') return { hasAccess: true, remaining: 'Unlimited', limit: 'Unlimited' };
     
+    // 1. Resume Editor check
+    if (feature === 'resumeEditor') {
+      const hasAccess = plan === 'standard' || plan === 'premium' || (plan as string) === 'admin';
+      return {
+        hasAccess,
+        remaining: hasAccess ? 1 : 0,
+        limit: 1
+      };
+    }
+
+    // 2. Learning Path check
+    if (feature === 'learningPath') {
+      const type = plan === 'premium' || (plan as string) === 'admin' ? 'personalized' : plan === 'standard' ? 'full' : 'basic';
+      return {
+        hasAccess: plan !== 'free',
+        remaining: type,
+        limit: type
+      };
+    }
+
+    // 3. Jobs Tracked check
+    if (feature === 'jobsTracked') {
+      const trackedCount = currentCount || 0;
+      const limitVal = plan === 'premium' || (plan as string) === 'admin' ? 99999 : plan === 'standard' ? 25 : 5;
+      return {
+        hasAccess: trackedCount < limitVal,
+        remaining: Math.max(0, limitVal - trackedCount),
+        limit: limitVal
+      };
+    }
+
     // Check key mapping
     let key: keyof CreditCosts = 'resumeScan';
     if (feature === 'resumeScans' || feature === 'resumeScan') key = 'resumeScan';
     else if (feature === 'interviewSessions' || feature === 'interviewSession') key = 'interviewSession';
     else if (feature === 'coverLetters' || feature === 'coverLetter') key = 'coverLetter';
     else if (feature === 'jobSearches' || feature === 'jobMatchAnalysis') key = 'jobMatchAnalysis';
-    else if (feature === 'jobsTracked') key = 'jobMatchAnalysis'; // simple mapping fallback
+    else if (feature === 'careerRoadmap') key = 'careerRoadmap';
     else if (feature in creditCosts) key = feature as keyof CreditCosts;
 
     const cost = creditCosts[key] || 0;
@@ -947,6 +978,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     else if (feature === 'coverLetters' || feature === 'coverLetter') key = 'coverLetter';
     else if (feature === 'jobSearches' || feature === 'jobMatchAnalysis') key = 'jobMatchAnalysis';
     else if (feature === 'jobsTracked') key = 'jobMatchAnalysis';
+    else if (feature === 'careerRoadmap' || feature === 'learningPath') key = 'careerRoadmap';
     else if (feature in creditCosts) key = feature as keyof CreditCosts;
 
     await spendCredits(key, `Triggered Feature: ${feature}`);

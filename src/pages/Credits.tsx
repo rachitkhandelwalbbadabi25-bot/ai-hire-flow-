@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePlan, DEFAULT_CREDIT_COSTS, PLAN_CREDITS, CreditCosts } from '../context/PlanContext';
 import { db } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -172,13 +172,222 @@ export default function CreditsPage() {
     await loadAdminPanel();
   };
 
-  const handleUpgradeSubscription = async (tier: 'standard' | 'premium') => {
+  // Stripe Paywall states
+  const [stripeConfig, setStripeConfig] = useState<{ configured: boolean; publishableKey: string } | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check Stripe server-side config
+    fetch('/api/stripe/config')
+      .then(res => res.json())
+      .then(data => setStripeConfig(data))
+      .catch(err => console.error("Stripe config check failed:", err));
+  }, []);
+
+  useEffect(() => {
+    // Handle redirect query parameters from Stripe checkout completion
+    const urlParams = new URLSearchParams(window.location.search);
+    const checkoutStatus = urlParams.get('checkout_status');
+    const sessionId = urlParams.get('session_id');
+    const type = urlParams.get('type');
+    const item = urlParams.get('item');
+    const uidParam = urlParams.get('uid');
+
+    if (checkoutStatus === 'success' && sessionId && user) {
+      if (uidParam !== user.uid) {
+        setPaymentStatus('error');
+        setPaymentError('Authorized Identity mismatch. Checkout aborted for security reasons.');
+        return;
+      }
+
+      setPaymentStatus('verifying');
+      
+      // Verify session securely on our server
+      fetch('/api/stripe/verify-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, userId: user.uid })
+      })
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || 'Verification failed');
+        }
+        return res.json();
+      })
+      .then(async (data) => {
+        if (data.success) {
+          // Successfully verified! Apply the plan upgrade or credit top-up!
+          const userRef = doc(db, 'users', user.uid);
+          
+          if (data.type === 'subscription') {
+            const addedCredits = data.item === 'premium' ? 8000 : 2000;
+            const updatedWallet = {
+              ...creditWallet,
+              balance: (creditWallet?.balance ?? 0) + addedCredits,
+              totalEarned: (creditWallet?.totalEarned ?? 0) + addedCredits,
+              usedThisMonth: creditWallet?.usedThisMonth ?? 0,
+              referralCode: creditWallet?.referralCode ?? ''
+            };
+
+            await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+              amount: addedCredits,
+              type: 'purchase',
+              label: `Stripe Verified Upgrade to ${data.item.toUpperCase()} Plan`,
+              timestamp: new Date().toISOString()
+            });
+
+            await updateDoc(userRef, { 
+              plan: data.item,
+              creditWallet: updatedWallet
+            });
+          } else {
+            // Credit top-up
+            const creditsAmount = data.credits;
+            const updatedWallet = {
+              ...creditWallet,
+              balance: (creditWallet?.balance ?? 0) + creditsAmount,
+              totalEarned: (creditWallet?.totalEarned ?? 0) + creditsAmount,
+              usedThisMonth: creditWallet?.usedThisMonth ?? 0,
+              referralCode: creditWallet?.referralCode ?? ''
+            };
+
+            await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+              amount: creditsAmount,
+              type: 'purchase',
+              label: `Stripe Verified Purchase of ${creditsAmount} Credits Pack`,
+              timestamp: new Date().toISOString()
+            });
+
+            await updateDoc(userRef, { 
+              creditWallet: updatedWallet
+            });
+          }
+
+          setPaymentStatus('success');
+          // Clear query params
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          setPaymentStatus('error');
+          setPaymentError('Verification failed. Invalid session state returned.');
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setPaymentStatus('error');
+        setPaymentError(err.message || 'Payment verification encountered an error.');
+      });
+    } else if (checkoutStatus === 'cancel') {
+      setPaymentStatus('error');
+      setPaymentError('The checkout flow was canceled. Your card was not charged.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [user, creditWallet]);
+
+  const handlePaymentInitiation = async (params: {
+    type: 'subscription' | 'credits';
+    item: string;
+    price: number;
+    credits: number;
+  }) => {
     if (!user) return;
+    setCheckingOut(true);
+    setPaymentError(null);
+
     try {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, { plan: tier });
-    } catch (err) {
+      // Apply promo discount if any
+      let finalPrice = params.price;
+      if (promoCode && params.type === 'credits') {
+        const pCheck = applyPromoCode(promoCode);
+        if (pCheck.valid) {
+          finalPrice = Math.round(params.price * (1 - pCheck.discountPercent / 100));
+        }
+      }
+
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          type: params.type,
+          item: params.item,
+          price: finalPrice,
+          credits: params.credits,
+          email: user.email
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        // Stripe configured! Redirect to secure payment gateway
+        window.location.href = data.url;
+      } else if (data.isSandbox) {
+        // Server indicates Stripe key is not configured, trigger the instant Sandbox bypass.
+        setCheckingOut(false);
+        setPaymentStatus('verifying');
+        
+        // Simulate a Stripe transaction securely inside the sandbox environment
+        setTimeout(async () => {
+          try {
+            const userRef = doc(db, 'users', user.uid);
+            if (params.type === 'subscription') {
+              const updatedWallet = {
+                ...creditWallet,
+                balance: (creditWallet?.balance ?? 0) + params.credits,
+                totalEarned: (creditWallet?.totalEarned ?? 0) + params.credits,
+                usedThisMonth: creditWallet?.usedThisMonth ?? 0,
+                referralCode: creditWallet?.referralCode ?? ''
+              };
+
+              await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+                amount: params.credits,
+                type: 'purchase',
+                label: `Sandbox Instant Bypass Upgrade: ${params.item.toUpperCase()} Tier`,
+                timestamp: new Date().toISOString()
+              });
+
+              await updateDoc(userRef, { 
+                plan: params.item,
+                creditWallet: updatedWallet
+              });
+            } else {
+              const updatedWallet = {
+                ...creditWallet,
+                balance: (creditWallet?.balance ?? 0) + params.credits,
+                totalEarned: (creditWallet?.totalEarned ?? 0) + params.credits,
+                usedThisMonth: creditWallet?.usedThisMonth ?? 0,
+                referralCode: creditWallet?.referralCode ?? ''
+              };
+
+              await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+                amount: params.credits,
+                type: 'purchase',
+                label: `Sandbox Instant Bypass: Purchased ${params.credits} Credits Pack`,
+                timestamp: new Date().toISOString()
+              });
+
+              await updateDoc(userRef, { 
+                creditWallet: updatedWallet
+              });
+            }
+            setPaymentStatus('success');
+          } catch (err) {
+            console.error(err);
+            setPaymentStatus('error');
+            setPaymentError('Failed to execute Sandbox bypass transaction.');
+          }
+        }, 1200);
+      } else {
+        throw new Error(data.error || 'Failed to initiate Stripe Session');
+      }
+    } catch (err: any) {
       console.error(err);
+      setCheckingOut(false);
+      setPaymentStatus('error');
+      setPaymentError(err.message || 'Failed to initiate payment gateway connection.');
     }
   };
 
@@ -261,6 +470,33 @@ export default function CreditsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto">
+        {/* Stripe Gateway Status Banner */}
+        {stripeConfig && (
+          <div className="mb-8 p-4 bg-surface border border-border/80 rounded-[1.5rem] flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-black uppercase tracking-tight text-white">Stripe Core Paywall System</p>
+                <p className="text-[10px] text-ink-dim font-bold uppercase tracking-wider">
+                  {stripeConfig.configured 
+                    ? '🔒 Secured by 256-bit SSL Cryptographic Bank Uplink (Live mode)' 
+                    : '🧪 Sandbox Bypass active — Instant transaction simulation enabled for developer preview'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className={`px-3 py-1 rounded-full text-[8px] font-mono font-black uppercase tracking-widest border ${
+              stripeConfig.configured 
+                ? 'bg-success/10 text-success border-success/30' 
+                : 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+            }`}>
+              {stripeConfig.configured ? 'UPLINK LIVE' : 'SANDBOX SIMULATOR'}
+            </div>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {/* WALLET TAB */}
           {activeTab === 'wallet' && (
@@ -397,7 +633,7 @@ export default function CreditsPage() {
                         </div>
 
                         <button 
-                          onClick={() => buyCredits(pack.credits, pack.price, promoCode)}
+                          onClick={() => handlePaymentInitiation({ type: 'credits', item: pack.id, price: pack.price, credits: pack.credits })}
                           className="mt-6 w-full bg-surface-light border border-border hover:bg-white hover:text-black transition-all py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em]"
                         >
                           Buy for ₹{promoCode && applyPromoCode(promoCode).valid ? Math.round(pack.price * (1 - applyPromoCode(promoCode).discountPercent / 100)) : pack.price}
@@ -846,7 +1082,7 @@ export default function CreditsPage() {
                 </div>
 
                 <button 
-                  onClick={() => handleUpgradeSubscription('standard')}
+                  onClick={() => handlePaymentInitiation({ type: 'subscription', item: 'standard', price: 200, credits: 2000 })}
                   disabled={plan === 'standard' || plan === 'premium' || plan === 'admin'}
                   className={`mt-10 w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
                     plan === 'standard' 
@@ -892,7 +1128,7 @@ export default function CreditsPage() {
                 </div>
 
                 <button 
-                  onClick={() => handleUpgradeSubscription('premium')}
+                  onClick={() => handlePaymentInitiation({ type: 'subscription', item: 'premium', price: 299, credits: 8000 })}
                   disabled={plan === 'premium' || plan === 'admin'}
                   className={`mt-10 w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
                     plan === 'premium' 
@@ -1116,6 +1352,68 @@ export default function CreditsPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Stripe Secure Payment Overlay Notification */}
+      <AnimatePresence>
+        {(checkingOut || paymentStatus !== 'idle') && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface border border-border/80 p-8 rounded-[2.5rem] max-w-md w-full text-center relative shadow-2xl"
+            >
+              {checkingOut && (
+                <div className="flex flex-col items-center py-6">
+                  <RefreshCw className="w-12 h-12 text-accent animate-spin mb-4" />
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Connecting Stripe...</h3>
+                  <p className="text-xs text-ink-dim mt-2 uppercase tracking-widest font-bold">Initializing Secure Checkout Matrix</p>
+                </div>
+              )}
+
+              {paymentStatus === 'verifying' && (
+                <div className="flex flex-col items-center py-6">
+                  <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Verifying Transaction...</h3>
+                  <p className="text-xs text-ink-dim mt-2 uppercase tracking-widest font-bold font-mono">Verifying secure ledger transaction</p>
+                </div>
+              )}
+
+              {paymentStatus === 'success' && (
+                <div className="flex flex-col items-center py-6">
+                  <div className="w-16 h-16 bg-success/10 border border-success/30 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-success animate-pulse" />
+                  </div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-success">Uplink Established!</h3>
+                  <p className="text-xs text-ink mt-2 font-bold uppercase tracking-wide">Stripe transaction verified successfully. Your resources have been updated.</p>
+                  <button 
+                    onClick={() => setPaymentStatus('idle')}
+                    className="mt-6 px-6 py-2.5 bg-white text-black font-bold uppercase text-[10px] tracking-widest rounded-xl hover:opacity-95 transition-all"
+                  >
+                    Enter System
+                  </button>
+                </div>
+              )}
+
+              {paymentStatus === 'error' && (
+                <div className="flex flex-col items-center py-6">
+                  <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/30 rounded-full flex items-center justify-center mb-4">
+                    <MinusCircle className="w-8 h-8 text-rose-500" />
+                  </div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-rose-500 font-mono">Routing Blocked</h3>
+                  <p className="text-xs text-ink-dim mt-2 font-semibold uppercase leading-relaxed font-mono">{paymentError || 'An unexpected error occurred during routing.'}</p>
+                  <button 
+                    onClick={() => setPaymentStatus('idle')}
+                    className="mt-6 px-6 py-2.5 bg-surface border border-border text-white font-bold uppercase text-[10px] tracking-widest rounded-xl hover:bg-white hover:text-black transition-all"
+                  >
+                    Acknowledge
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

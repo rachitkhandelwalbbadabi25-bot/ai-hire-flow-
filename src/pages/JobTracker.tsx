@@ -15,6 +15,7 @@ import {
 import { cn, formatDate } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
+import EmptyState from '../components/EmptyState';
 
 export default function JobTracker() {
   const { user } = useAuth();
@@ -267,19 +268,15 @@ export default function JobTracker() {
               </table>
             </div>
           ) : (
-            <div className="py-24 text-center bg-surface border border-border rounded-3xl">
-              <div className="bg-surface-light w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Briefcase className="w-8 h-8 text-ink-dim" />
-              </div>
-              <h3 className="text-ink font-bold text-lg mb-2 uppercase tracking-tight">Registry Empty</h3>
-              <p className="text-ink-dim text-sm mb-8 font-medium">No active acquisitions recorded in standard sub-sectors.</p>
-              <button 
-                onClick={() => setIsAdding(true)}
-                className="bg-accent text-white px-8 py-3 rounded-xl text-xs font-bold inline-flex items-center gap-2 uppercase tracking-widest shadow-lg shadow-accent/20"
-              >
-                <Plus className="w-4 h-4" /> Initialize Acquisition
-              </button>
-            </div>
+            <EmptyState
+              icon={Briefcase}
+              title="No Tracked Jobs Yet"
+              description="Save applications from Job Finder or add custom target roles manually to keep your pipeline organized."
+              action={{
+                label: "Add Your First Job",
+                onClick: () => setIsAdding(true)
+              }}
+            />
           )}
         </div>
       )}

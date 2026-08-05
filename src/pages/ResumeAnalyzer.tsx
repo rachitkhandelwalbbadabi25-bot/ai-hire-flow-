@@ -29,11 +29,13 @@ interface ResumeAnalyzerProps {
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { Link } from 'react-router-dom';
+import { formatCreditAvailability } from '../utils/formatters';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function ResumeAnalyzer() {
   const { user } = useAuth();
   if (!user) return null;
-  const { checkAccess, deductCredit } = usePlan();
+  const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const location = useLocation();
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
@@ -178,19 +180,32 @@ export default function ResumeAnalyzer() {
           <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">Resume Analyzer</h1>
           <p className="text-ink-dim font-medium">Analyze your resume compatibility with target jobs and build custom cover letters.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3">
              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">Scans: {scansLeft} / {scanLimit}</span>
+             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">
+               {formatCreditAvailability(creditWallet?.balance, creditCosts?.resumeScan ?? 20, 'scans')}
+             </span>
           </div>
           <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3">
              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">Letters: {clLeft} / {clLimit}</span>
+             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">
+               {formatCreditAvailability(creditWallet?.balance, creditCosts?.coverLetter ?? 15, 'letters')}
+             </span>
           </div>
         </div>
       </div>
 
-      {!analysis ? (
+      {isAnalyzing && (
+        <div className="my-8">
+          <p className="text-xs font-bold text-accent uppercase tracking-widest mb-3 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Analyzing resume against target parameters...
+          </p>
+          <SkeletonLoader type="card" lines={6} />
+        </div>
+      )}
+
+      {!analysis && !isAnalyzing ? (
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -227,8 +242,17 @@ export default function ResumeAnalyzer() {
             </label>
             
             {error && (
-              <div className="mt-4 p-3 bg-rose-500/10 text-rose-400 text-sm rounded-xl flex items-center gap-2 font-medium border border-rose-500/20">
-                <AlertCircle className="w-4 h-4" /> {error}
+              <div className="mt-4 p-4 bg-rose-500/10 text-rose-400 text-sm rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-rose-500/20">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+                <button
+                  onClick={handleStartAnalysis}
+                  className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors shrink-0"
+                >
+                  Retry Analysis
+                </button>
               </div>
             )}
           </div>
@@ -242,7 +266,7 @@ export default function ResumeAnalyzer() {
               value={jobDesc}
               onChange={(e) => setJobDesc(e.target.value)}
               placeholder="Paste the target job description here to check compatibility..."
-              className="flex-1 w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink disabled:opacity-50"
+              className="flex-1 w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink disabled:opacity-50 min-h-[160px]"
             />
           </div>
 
@@ -250,17 +274,17 @@ export default function ResumeAnalyzer() {
             <button
               onClick={handleStartAnalysis}
               disabled={isAnalyzing}
-              className="w-full bg-accent text-white p-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xl shadow-accent/20 overflow-hidden relative"
+              className="w-full bg-accent text-white p-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xl shadow-accent/20 overflow-hidden relative cursor-pointer"
             >
               {isAnalyzing ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin" />
-                  <span className="animate-pulse">Synthesizing Report...</span>
+                  <span className="animate-pulse">Analyzing Resume...</span>
                 </>
               ) : (
                 <>
                   <BrainCircuit className="w-6 h-6" />
-                  Initiate AI Audit
+                  Analyze Resume
                 </>
               )}
             </button>

@@ -8,6 +8,9 @@ import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
+import { formatCreditAvailability } from '../utils/formatters';
+import SkeletonLoader from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 interface Job {
   title: string;
@@ -20,7 +23,7 @@ interface Job {
 
 export default function JobFinder() {
   const { user } = useAuth();
-  const { checkAccess, deductCredit } = usePlan();
+  const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -32,11 +35,29 @@ export default function JobFinder() {
 
   const { hasAccess, remaining, limit } = checkAccess('jobSearches');
 
+  const popularSearches = [
+    'Frontend Developer',
+    'Full Stack Engineer',
+    'Data Analyst',
+    'Backend Engineer',
+    'DevOps Engineer',
+    'Product Manager',
+    'Software Engineer',
+  ];
+
   if (!user) return null;
 
-  const handleSearch = async (e: FormEvent) => {
+  const handlePopularSearch = (searchQuery: string) => {
+    setQuery(searchQuery);
+    setTimeout(() => {
+      const formEvent = { preventDefault: () => {} } as FormEvent;
+      handleSearchWithQuery(searchQuery, location, formEvent);
+    }, 0);
+  };
+
+  const handleSearchWithQuery = async (searchQuery: string, searchLoc: string, e: FormEvent) => {
     e.preventDefault();
-    if (!query) return;
+    if (!searchQuery) return;
 
     setLoading(true);
     setError(null);
@@ -44,13 +65,13 @@ export default function JobFinder() {
     setIsFromCache(false);
 
     try {
-      const cacheKey = cacheManager.generateJobKey(query, location);
+      const cacheKey = cacheManager.generateJobKey(searchQuery, searchLoc);
       
       let cached = null;
       try {
         cached = cacheManager.get<Job[]>(cacheKey);
-      } catch (e) {
-        console.warn('Cache access failure:', e);
+      } catch (err) {
+        console.warn('Cache access failure:', err);
       }
 
       if (cached && Array.isArray(cached)) {
@@ -61,24 +82,25 @@ export default function JobFinder() {
       }
 
       if (!hasAccess) {
-        setError(`Search capacity exceeded. Remaining scans: ${remaining}/${limit}. Please upgrade for more bandwidth.`);
+        setError(`Search limit reached. Upgrade your wallet to unlock extra job scans.`);
         setLoading(false);
         return;
       }
 
       await deductCredit('jobSearches');
-      const results = await findJobs(query, location);
+      const results = await findJobs(searchQuery, searchLoc);
       setJobs(results);
       
-      // Cache for 30 minutes
       cacheManager.set(cacheKey, results, 30 * 60 * 1000);
-    } catch (error: any) {
-      console.error('Search failed:', error);
-      setError(error.message || "Failed to retrieve job listings. Please check your query and try again.");
+    } catch (err: any) {
+      console.error('Search failed:', err);
+      setError(err.message || "Failed to retrieve job listings. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSearch = (e: FormEvent) => handleSearchWithQuery(query, location, e);
 
   const trackJob = async (job: Job) => {
     try {
@@ -113,7 +135,9 @@ export default function JobFinder() {
           </div>
           <div className="px-4 py-2 glass border border-border rounded-xl flex items-center gap-3">
              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">Scans Available: {remaining} / {limit}</span>
+             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">
+               {formatCreditAvailability(creditWallet?.balance, creditCosts?.jobMatchAnalysis ?? 20, 'searches')}
+             </span>
           </div>
         </div>
         <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Job Finder</h1>
@@ -123,7 +147,7 @@ export default function JobFinder() {
       </div>
 
       {/* Search Bar */}
-      <div className="glass-panel mb-12">
+      <div className="glass-panel mb-12 p-8 rounded-3xl border border-border bg-surface">
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
           <div className="md:col-span-5">
             <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Job Role / Title</label>
@@ -156,18 +180,37 @@ export default function JobFinder() {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+              className="w-full bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
-                <LoaderCircle className="w-5 h-5 animate-spin" />
+                <>
+                  <LoaderCircle className="w-5 h-5 animate-spin" />
+                  Searching...
+                </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" /> Initialize Scan
+                  <Search className="w-4 h-4" /> Search Jobs
                 </>
               )}
             </button>
           </div>
         </form>
+
+        {/* Popular Searches */}
+        <div className="mt-6 pt-6 border-t border-border/50">
+          <span className="text-[10px] font-bold text-ink-dim uppercase tracking-wider block mb-3">Popular Searches:</span>
+          <div className="flex flex-wrap gap-2">
+            {popularSearches.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => handlePopularSearch(chip)}
+                className="px-3 py-1.5 bg-background hover:bg-accent/10 hover:border-accent/30 text-ink-dim hover:text-accent border border-border rounded-xl text-xs font-medium transition-all cursor-pointer"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Results */}
@@ -181,40 +224,48 @@ export default function JobFinder() {
           </div>
         )}
         {loading ? (
-          <div className="py-24 text-center">
-            <div className="inline-flex items-center gap-3 px-6 py-3 bg-surface border border-border rounded-full mb-6">
-              <LoaderCircle className="w-4 h-4 animate-spin text-accent" />
-              <span className="text-[10px] font-bold text-ink uppercase tracking-widest">Parsing Real-Time Global Telemetry...</span>
-            </div>
-            <div className="animate-pulse space-y-4 max-w-2xl mx-auto">
-              <div className="h-4 bg-surface-light rounded w-3/4 mx-auto"></div>
-              <div className="h-4 bg-surface-light rounded w-1/2 mx-auto"></div>
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2">
+              <LoaderCircle className="w-4 h-4 animate-spin" /> Searching job index...
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <SkeletonLoader type="card" lines={4} />
+              <SkeletonLoader type="card" lines={4} />
+              <SkeletonLoader type="card" lines={4} />
             </div>
           </div>
         ) : error ? (
-          <div className="py-24 text-center">
-            <div className="bg-rose-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-rose-500/20">
+          <div className="py-16 text-center bg-surface border border-border rounded-3xl p-8 max-w-lg mx-auto">
+            <div className="bg-rose-500/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
               <AlertCircle className="w-8 h-8 text-rose-400" />
             </div>
-            <h3 className="text-xl font-bold text-ink mb-2 uppercase tracking-tight">System Interference</h3>
-            <p className="text-rose-400/80 text-sm max-w-md mx-auto px-4">
+            <h3 className="text-lg font-bold text-ink mb-2">Search Error</h3>
+            <p className="text-rose-400/80 text-sm mb-6">
               {error}
             </p>
             <button 
-              onClick={() => handleSearch({ preventDefault: () => {} } as any)}
-              className="mt-6 text-[10px] font-bold text-accent uppercase tracking-widest hover:underline"
+              onClick={(e) => handleSearch(e as any)}
+              className="px-6 py-2.5 bg-accent text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:opacity-90 transition-all cursor-pointer"
             >
-              Re-initialize Scanning
+              Retry Search
             </button>
           </div>
         ) : hasSearched && jobs.length === 0 ? (
-          <div className="py-24 text-center">
-            <div className="bg-surface w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-border">
-              <Search className="w-8 h-8 text-ink-dim" />
-            </div>
-            <h3 className="text-xl font-bold text-ink mb-2 uppercase tracking-tight">Access Restricted / No Signals</h3>
-            <p className="text-ink-dim text-sm max-w-md mx-auto">
-              Our agents were unable to locate opportunities matching those specific parameters in the current cycle.
+          <EmptyState
+            icon={Search}
+            title="No Jobs Found"
+            description="Try adjusting your query or location parameters to discover active career postings."
+            action={{
+              label: "Try 'Frontend Developer'",
+              onClick: () => handlePopularSearch("Frontend Developer")
+            }}
+          />
+        ) : !hasSearched ? (
+          <div className="py-16 text-center border border-dashed border-border rounded-3xl p-8">
+            <Building2 className="w-12 h-12 text-ink-dim mx-auto mb-4 opacity-50" />
+            <h3 className="text-base font-bold text-ink mb-2">Find Active Opportunities</h3>
+            <p className="text-ink-dim text-sm max-w-md mx-auto mb-6">
+              Type a role title above or pick one of the popular search chips to view job matches.
             </p>
           </div>
         ) : (

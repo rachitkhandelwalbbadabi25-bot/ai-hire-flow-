@@ -2,6 +2,7 @@ import { User } from 'firebase/auth';
 import Navbar from './Navbar';
 import UpgradeModal from './UpgradeModal';
 import NeuralStatus from './NeuralStatus';
+import OnboardingTour from './OnboardingTour';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation } from 'react-router-dom';
 import { ReactNode } from 'react';
@@ -19,7 +20,8 @@ export default function Layout({ user, children }: LayoutProps) {
       <Navbar user={user} />
       <UpgradeModal />
       <NeuralStatus />
-      <main className={user ? "pt-24 pb-12" : ""}>
+      {user && <OnboardingTour />}
+      <main className={user ? "pt-24 pb-12 lg:ml-64 transition-all" : ""}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -32,7 +34,7 @@ export default function Layout({ user, children }: LayoutProps) {
           </motion.div>
         </AnimatePresence>
       </main>
-      <footer className="py-12 border-t border-border bg-surface">
+      <footer className={`py-12 border-t border-border bg-surface ${user ? "lg:ml-64" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-4">
           <p className="text-ink-dim text-sm font-sans">
             © 2026 AI HireFlow. Precision engineered for the bold.

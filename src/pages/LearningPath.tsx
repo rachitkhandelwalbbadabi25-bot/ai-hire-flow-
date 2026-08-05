@@ -45,6 +45,8 @@ interface LearningPathProps {
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { Link, useLocation } from 'react-router-dom';
+import SkeletonLoader from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 export default function LearningPath() {
   const { user } = useAuth();
@@ -158,7 +160,7 @@ export default function LearningPath() {
           <div className="bg-surface p-8 rounded-[2rem] border border-border shadow-2xl sticky top-24">
             <div className="space-y-6">
               <div>
-                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Target Mission (Role)</label>
+                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Target Role</label>
                 <input 
                   value={targetRole}
                   onChange={(e) => setTargetRole(e.target.value)}
@@ -173,7 +175,7 @@ export default function LearningPath() {
                   {recentAnalysis && (
                     <button 
                       onClick={() => setSkillsStr(recentAnalysis.missingKeywords.join(', '))}
-                      className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline"
+                      className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
                     >
                       Load Analysis Gaps
                     </button>
@@ -184,16 +186,16 @@ export default function LearningPath() {
                   disabled={isFree}
                   onChange={(e) => setSkillsStr(e.target.value)}
                   className="w-full h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed disabled:opacity-50"
-                  placeholder={!isFree ? "Enter skills separated by commas..." : "Premium trajectory mapping locked."}
+                  placeholder={!isFree ? "Enter skills separated by commas..." : "Upgrade plan to unlock customized roadmaps."}
                 />
               </div>
 
               {isFree && (
                 <div className="p-4 bg-accent/5 border border-accent/20 rounded-2xl text-center space-y-3 shadow-sm">
-                  <p className="text-[10px] font-bold text-ink uppercase tracking-wider">Complex Roadmap Generation Locked</p>
+                  <p className="text-[10px] font-bold text-ink uppercase tracking-wider">Roadmap Generation Locked</p>
                   <button 
                     onClick={() => openUpgradeModal('learningPath')}
-                    className="block w-full text-[9px] font-bold text-white bg-accent py-3 rounded-xl uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-accent/20"
+                    className="block w-full text-[9px] font-bold text-white bg-accent py-3 rounded-xl uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer"
                   >
                     Upgrade to Premium
                   </button>
@@ -203,10 +205,10 @@ export default function LearningPath() {
               <button 
                 onClick={generatePath}
                 disabled={loading || !targetRole || !skillsStr || isFree}
-                className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {loading ? 'Synthesizing Roadmap...' : 'Generate Learning Path'}
+                {loading ? 'Generating Learning Path...' : 'Generate Learning Path'}
               </button>
             </div>
           </div>
@@ -216,30 +218,25 @@ export default function LearningPath() {
         <div className="lg:col-span-8">
           <AnimatePresence mode="wait">
             {!roadmap && !loading ? (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-surface/50 border-2 border-dashed border-border rounded-[3rem] p-12 text-center"
-              >
-                <div className="bg-surface w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-border">
-                  <Search className="w-8 h-8 text-ink-dim" />
-                </div>
-                <h3 className="text-xl font-bold text-ink mb-2 uppercase tracking-tight">No Learning Path Initialized</h3>
-                <p className="text-ink-dim text-sm max-w-sm mx-auto">
-                  Enter your target role and the skills you wish to acquire to generate a verified learning roadmap.
-                </p>
-              </motion.div>
+              <EmptyState
+                icon={GraduationCap}
+                title="No Learning Path Created Yet"
+                description="Enter your target role and current skill level above to build a customized engineering curriculum."
+                action={{
+                  label: "Build Sample Roadmap",
+                  onClick: () => {
+                    setTargetRole('Full Stack Engineer');
+                    setSkillsStr('React, Node.js, TypeScript, PostgreSQL');
+                  }
+                }}
+              />
             ) : loading ? (
               <div className="space-y-6">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-surface p-8 rounded-[2rem] border border-border animate-pulse">
-                    <div className="h-6 bg-surface-light rounded w-1/3 mb-6"></div>
-                    <div className="space-y-4">
-                      <div className="h-4 bg-surface-light rounded w-3/4"></div>
-                      <div className="h-4 bg-surface-light rounded w-1/2"></div>
-                    </div>
-                  </div>
-                ))}
+                <p className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2 mb-4">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Curating personalized learning modules...
+                </p>
+                <SkeletonLoader type="card" lines={5} />
+                <SkeletonLoader type="card" lines={4} />
               </div>
             ) : (
               <motion.div 

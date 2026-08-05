@@ -14,16 +14,16 @@ export default function Profile() {
 
   const planDisplay = isAdmin ? 'System Administrator' : isPremium ? 'Premium Member' : 'Free Tier Member';
 
-  // Available Profile Badges based on accomplishments
+  // Available Profile Badges based on accomplishments with requirements and rewards
   const premiumBadges = [
-    { id: 'verified', label: 'Verified Candidate', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
-    { id: 'resume', label: 'Resume Master', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-    { id: 'interview', label: 'Interview Champion', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-    { id: 'explorer', label: 'Career Explorer', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
-    { id: 'ats', label: 'ATS Expert', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
-    { id: 'premium', label: 'Premium Member', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-    { id: 'performer', label: 'Top Performer', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
-    { id: 'recruiter', label: 'Recruiter Favorite', color: 'bg-pink-500/10 text-pink-400 border-pink-500/20' }
+    { id: 'verified', label: 'Verified Candidate', color: 'bg-green-500/10 text-green-400 border-green-500/20', req: 'Verify your account email address', reward: '100 XP' },
+    { id: 'resume', label: 'Resume Master', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', req: 'Analyze 3 resumes in AI Resume Analyzer', reward: '250 XP' },
+    { id: 'interview', label: 'Interview Champion', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20', req: 'Complete 1 mock interview session', reward: '300 XP' },
+    { id: 'explorer', label: 'Career Explorer', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20', req: 'Generate a customized learning roadmap', reward: '200 XP' },
+    { id: 'ats', label: 'ATS Expert', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20', req: 'Score 80+ on any resume optimization scan', reward: '500 XP' },
+    { id: 'premium', label: 'Premium Member', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', req: 'Upgrade to Pro or Elite plan tier', reward: '1,000 XP' },
+    { id: 'performer', label: 'Top Performer', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', req: 'Reach Level 3 or higher', reward: '500 XP' },
+    { id: 'recruiter', label: 'Recruiter Favorite', color: 'bg-pink-500/10 text-pink-400 border-pink-500/20', req: 'Generate 5 referral pitches in Outreach Hub', reward: '250 XP' }
   ];
 
   // User unlocked badges
@@ -148,10 +148,11 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Premium Profile Badges (Part 11) */}
+          {/* Premium Profile Badges */}
           <div className="bg-surface rounded-[2.5rem] border border-border p-8 shadow-lg">
-            <h3 className="text-xs font-black text-ink uppercase tracking-widest mb-6 border-b border-border pb-4 flex items-center gap-2">
-              <Star className="w-4 h-4 text-indigo-500" /> Earned Profile Badges
+            <h3 className="text-xs font-black text-ink uppercase tracking-widest mb-6 border-b border-border pb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2"><Star className="w-4 h-4 text-indigo-500" /> Profile Badges & Rewards</span>
+              <span className="text-[10px] text-ink-dim font-bold uppercase">{unlockedBadges.length} / {premiumBadges.length} Unlocked</span>
             </h3>
 
             <div className="flex flex-wrap gap-3">
@@ -160,14 +161,33 @@ export default function Profile() {
                 return (
                   <div 
                     key={badge.id}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-2xl border text-[10px] font-bold uppercase tracking-wider transition-all ${
+                    className="relative group cursor-pointer"
+                  >
+                    <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-[10px] font-bold uppercase tracking-wider transition-all ${
                       isUnlocked 
                         ? badge.color + ' opacity-100 shadow-sm' 
-                        : 'bg-black/10 text-ink-dim border-border/40 opacity-40 hover:opacity-50'
-                    }`}
-                  >
-                    <span>{isUnlocked ? '✦' : '✧'}</span>
-                    <span>{badge.label}</span>
+                        : 'bg-surface-light/40 text-ink-dim border-border/60 opacity-50 hover:opacity-80'
+                    }`}>
+                      <span>{isUnlocked ? '✦' : '🔒'}</span>
+                      <span>{badge.label}</span>
+                    </div>
+
+                    {/* Tooltip on hover */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 w-56 p-3 bg-surface border border-border rounded-xl shadow-2xl text-left pointer-events-none">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold text-ink uppercase tracking-tight">{badge.label}</span>
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${isUnlocked ? 'bg-success/20 text-success' : 'bg-surface-light text-ink-dim'}`}>
+                          {isUnlocked ? 'UNLOCKED' : 'LOCKED'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-ink-dim font-medium leading-normal mb-2">
+                        {badge.req}
+                      </p>
+                      <div className="text-[9px] font-bold text-amber-500 flex items-center gap-1 border-t border-border/50 pt-1.5">
+                        <span>Reward:</span>
+                        <span className="font-mono">+{badge.reward}</span>
+                      </div>
+                    </div>
                   </div>
                 );
               })}

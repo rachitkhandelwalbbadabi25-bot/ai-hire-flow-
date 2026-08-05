@@ -172,119 +172,33 @@ export default function CreditsPage() {
     await loadAdminPanel();
   };
 
-  // Stripe Paywall states
-  const [stripeConfig, setStripeConfig] = useState<{ configured: boolean; publishableKey: string } | null>(null);
+  // Razorpay Paywall states
+  const [razorpayConfig, setRazorpayConfig] = useState<{ configured: boolean; keyId: string } | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check Stripe server-side config
-    fetch('/api/stripe/config')
+    // Check Razorpay server-side config
+    fetch('/api/razorpay/config')
       .then(res => res.json())
-      .then(data => setStripeConfig(data))
-      .catch(err => console.error("Stripe config check failed:", err));
+      .then(data => setRazorpayConfig(data))
+      .catch(err => console.error("Razorpay config check failed:", err));
   }, []);
 
-  useEffect(() => {
-    // Handle redirect query parameters from Stripe checkout completion
-    const urlParams = new URLSearchParams(window.location.search);
-    const checkoutStatus = urlParams.get('checkout_status');
-    const sessionId = urlParams.get('session_id');
-    const type = urlParams.get('type');
-    const item = urlParams.get('item');
-    const uidParam = urlParams.get('uid');
-
-    if (checkoutStatus === 'success' && sessionId && user) {
-      if (uidParam !== user.uid) {
-        setPaymentStatus('error');
-        setPaymentError('Authorized Identity mismatch. Checkout aborted for security reasons.');
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
         return;
       }
-
-      setPaymentStatus('verifying');
-      
-      // Verify session securely on our server
-      fetch('/api/stripe/verify-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, userId: user.uid })
-      })
-      .then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || 'Verification failed');
-        }
-        return res.json();
-      })
-      .then(async (data) => {
-        if (data.success) {
-          // Successfully verified! Apply the plan upgrade or credit top-up!
-          const userRef = doc(db, 'users', user.uid);
-          
-          if (data.type === 'subscription') {
-            const addedCredits = data.item === 'premium' ? 8000 : 2000;
-            const updatedWallet = {
-              ...creditWallet,
-              balance: (creditWallet?.balance ?? 0) + addedCredits,
-              totalEarned: (creditWallet?.totalEarned ?? 0) + addedCredits,
-              usedThisMonth: creditWallet?.usedThisMonth ?? 0,
-              referralCode: creditWallet?.referralCode ?? ''
-            };
-
-            await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-              amount: addedCredits,
-              type: 'purchase',
-              label: `Stripe Verified Upgrade to ${data.item.toUpperCase()} Plan`,
-              timestamp: new Date().toISOString()
-            });
-
-            await updateDoc(userRef, { 
-              plan: data.item,
-              creditWallet: updatedWallet
-            });
-          } else {
-            // Credit top-up
-            const creditsAmount = data.credits;
-            const updatedWallet = {
-              ...creditWallet,
-              balance: (creditWallet?.balance ?? 0) + creditsAmount,
-              totalEarned: (creditWallet?.totalEarned ?? 0) + creditsAmount,
-              usedThisMonth: creditWallet?.usedThisMonth ?? 0,
-              referralCode: creditWallet?.referralCode ?? ''
-            };
-
-            await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-              amount: creditsAmount,
-              type: 'purchase',
-              label: `Stripe Verified Purchase of ${creditsAmount} Credits Pack`,
-              timestamp: new Date().toISOString()
-            });
-
-            await updateDoc(userRef, { 
-              creditWallet: updatedWallet
-            });
-          }
-
-          setPaymentStatus('success');
-          // Clear query params
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-          setPaymentStatus('error');
-          setPaymentError('Verification failed. Invalid session state returned.');
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        setPaymentStatus('error');
-        setPaymentError(err.message || 'Payment verification encountered an error.');
-      });
-    } else if (checkoutStatus === 'cancel') {
-      setPaymentStatus('error');
-      setPaymentError('The checkout flow was canceled. Your card was not charged.');
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [user, creditWallet]);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const handlePaymentInitiation = async (params: {
     type: 'subscription' | 'credits';
@@ -306,7 +220,7 @@ export default function CreditsPage() {
         }
       }
 
-      const response = await fetch('/api/stripe/create-checkout-session', {
+      const response = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -314,36 +228,146 @@ export default function CreditsPage() {
           type: params.type,
           item: params.item,
           price: finalPrice,
-          credits: params.credits,
-          email: user.email
+          credits: params.credits
         })
       });
 
       const data = await response.json();
 
-      if (data.url) {
-        // Stripe configured! Redirect to secure payment gateway
-        window.location.href = data.url;
+      if (data.orderId) {
+        // Razorpay order created on backend! Load Checkout JS
+        const isLoaded = await loadRazorpayScript();
+        if (!isLoaded) {
+          throw new Error('Failed to load Razorpay payment SDK script.');
+        }
+
+        const options = {
+          key: data.keyId,
+          amount: data.amount,
+          currency: data.currency,
+          name: "Neural Career Gateway",
+          description: params.type === 'subscription' 
+            ? `Neural Career ${params.item === 'premium' ? 'Premium' : 'Standard'} Plan`
+            : `${params.credits} Credits Pack Wallet Top-up`,
+          order_id: data.orderId,
+          handler: async function (paymentResponse: any) {
+            setCheckingOut(false);
+            setPaymentStatus('verifying');
+
+            try {
+              const verifyResponse = await fetch('/api/razorpay/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: paymentResponse.razorpay_order_id,
+                  razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                  razorpay_signature: paymentResponse.razorpay_signature,
+                  userId: user.uid,
+                  type: params.type,
+                  item: params.item,
+                  credits: params.credits,
+                  price: finalPrice
+                })
+              });
+
+              const verifyData = await verifyResponse.json();
+              if (verifyData.success) {
+                const userRef = doc(db, 'users', user.uid);
+                
+                if (params.type === 'subscription') {
+                  const addedCredits = params.item === 'premium' ? 8000 : 2000;
+                  const updatedWallet = {
+                    ...creditWallet,
+                    balance: (creditWallet?.balance ?? 0) + addedCredits,
+                    totalEarned: (creditWallet?.totalEarned ?? 0) + addedCredits,
+                    usedThisMonth: creditWallet?.usedThisMonth ?? 0,
+                    referralCode: creditWallet?.referralCode ?? ''
+                  };
+
+                  await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+                    amount: addedCredits,
+                    type: 'purchase',
+                    label: `Razorpay Verified Upgrade to ${params.item.toUpperCase()} Plan`,
+                    timestamp: new Date().toISOString()
+                  });
+
+                  await updateDoc(userRef, { 
+                    plan: params.item,
+                    creditWallet: updatedWallet
+                  });
+                } else {
+                  // Credit top-up
+                  const updatedWallet = {
+                    ...creditWallet,
+                    balance: (creditWallet?.balance ?? 0) + params.credits,
+                    totalEarned: (creditWallet?.totalEarned ?? 0) + params.credits,
+                    usedThisMonth: creditWallet?.usedThisMonth ?? 0,
+                    referralCode: creditWallet?.referralCode ?? ''
+                  };
+
+                  await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+                    amount: params.credits,
+                    type: 'purchase',
+                    label: `Razorpay Verified Purchase of ${params.credits} Credits Pack`,
+                    timestamp: new Date().toISOString()
+                  });
+
+                  await updateDoc(userRef, { 
+                    creditWallet: updatedWallet
+                  });
+                }
+
+                setPaymentStatus('success');
+              } else {
+                setPaymentStatus('error');
+                setPaymentError(verifyData.error || 'Payment verification failed.');
+              }
+            } catch (vErr: any) {
+              console.error(vErr);
+              setPaymentStatus('error');
+              setPaymentError(vErr.message || 'Payment verification request failed.');
+            }
+          },
+          prefill: {
+            email: user.email || '',
+          },
+          theme: {
+            color: "#6366f1",
+          },
+          modal: {
+            ondismiss: function () {
+              setCheckingOut(false);
+              setPaymentStatus('error');
+              setPaymentError('Payment window closed by user.');
+            }
+          }
+        };
+
+        setCheckingOut(false);
+        const rzp1 = new (window as any).Razorpay(options);
+        rzp1.open();
+
       } else if (data.isSandbox) {
-        // Server indicates Stripe key is not configured, trigger the instant Sandbox bypass.
+        // Server indicates Razorpay keys are not configured, trigger sandbox bypass.
         setCheckingOut(false);
         setPaymentStatus('verifying');
         
-        // Simulate a Stripe transaction securely inside the sandbox environment
+        // Simulate a transaction securely inside the sandbox environment
         setTimeout(async () => {
           try {
             const userRef = doc(db, 'users', user.uid);
             if (params.type === 'subscription') {
+              const addedCredits = params.item === 'premium' ? 8000 : 2000;
               const updatedWallet = {
                 ...creditWallet,
-                balance: (creditWallet?.balance ?? 0) + params.credits,
-                totalEarned: (creditWallet?.totalEarned ?? 0) + params.credits,
+                balance: (creditWallet?.balance ?? 0) + addedCredits,
+                totalEarned: (creditWallet?.totalEarned ?? 0) + addedCredits,
                 usedThisMonth: creditWallet?.usedThisMonth ?? 0,
                 referralCode: creditWallet?.referralCode ?? ''
               };
 
               await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-                amount: params.credits,
+                amount: addedCredits,
                 type: 'purchase',
                 label: `Sandbox Instant Bypass Upgrade: ${params.item.toUpperCase()} Tier`,
                 timestamp: new Date().toISOString()
@@ -381,7 +405,7 @@ export default function CreditsPage() {
           }
         }, 1200);
       } else {
-        throw new Error(data.error || 'Failed to initiate Stripe Session');
+        throw new Error(data.error || 'Failed to initiate Razorpay Session');
       }
     } catch (err: any) {
       console.error(err);
@@ -470,29 +494,29 @@ export default function CreditsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        {/* Stripe Gateway Status Banner */}
-        {stripeConfig && (
+        {/* Razorpay Gateway Status Banner */}
+        {razorpayConfig && (
           <div className="mb-8 p-4 bg-surface border border-border/80 rounded-[1.5rem] flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
                 <CreditCard className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-black uppercase tracking-tight text-white">Stripe Core Paywall System</p>
+                <p className="text-xs font-black uppercase tracking-tight text-white">Razorpay Core Paywall System</p>
                 <p className="text-[10px] text-ink-dim font-bold uppercase tracking-wider">
-                  {stripeConfig.configured 
-                    ? '🔒 Secured by 256-bit SSL Cryptographic Bank Uplink (Live mode)' 
+                  {razorpayConfig.configured 
+                    ? '🔒 Secured by 256-bit SSL Cryptographic Bank Uplink (Razorpay Live Mode)' 
                     : '🧪 Sandbox Bypass active — Instant transaction simulation enabled for developer preview'
                   }
                 </p>
               </div>
             </div>
             <div className={`px-3 py-1 rounded-full text-[8px] font-mono font-black uppercase tracking-widest border ${
-              stripeConfig.configured 
+              razorpayConfig.configured 
                 ? 'bg-success/10 text-success border-success/30' 
                 : 'bg-amber-500/10 text-amber-500 border-amber-500/30'
             }`}>
-              {stripeConfig.configured ? 'UPLINK LIVE' : 'SANDBOX SIMULATOR'}
+              {razorpayConfig.configured ? 'RAZORPAY LIVE' : 'SANDBOX SIMULATOR'}
             </div>
           </div>
         )}
@@ -1353,7 +1377,7 @@ export default function CreditsPage() {
         </AnimatePresence>
       </div>
 
-      {/* Stripe Secure Payment Overlay Notification */}
+      {/* Razorpay Secure Payment Overlay Notification */}
       <AnimatePresence>
         {(checkingOut || paymentStatus !== 'idle') && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
@@ -1366,7 +1390,7 @@ export default function CreditsPage() {
               {checkingOut && (
                 <div className="flex flex-col items-center py-6">
                   <RefreshCw className="w-12 h-12 text-accent animate-spin mb-4" />
-                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Connecting Stripe...</h3>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Connecting Razorpay...</h3>
                   <p className="text-xs text-ink-dim mt-2 uppercase tracking-widest font-bold">Initializing Secure Checkout Matrix</p>
                 </div>
               )}
@@ -1385,7 +1409,7 @@ export default function CreditsPage() {
                     <CheckCircle2 className="w-8 h-8 text-success animate-pulse" />
                   </div>
                   <h3 className="text-lg font-black uppercase tracking-tight text-success">Uplink Established!</h3>
-                  <p className="text-xs text-ink mt-2 font-bold uppercase tracking-wide">Stripe transaction verified successfully. Your resources have been updated.</p>
+                  <p className="text-xs text-ink mt-2 font-bold uppercase tracking-wide">Razorpay transaction verified successfully. Your resources have been updated.</p>
                   <button 
                     onClick={() => setPaymentStatus('idle')}
                     className="mt-6 px-6 py-2.5 bg-white text-black font-bold uppercase text-[10px] tracking-widest rounded-xl hover:opacity-95 transition-all"

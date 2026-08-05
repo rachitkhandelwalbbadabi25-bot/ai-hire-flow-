@@ -26,135 +26,138 @@ async function startServer() {
     res.json({ status: 'ok' });
   });
 
-  app.get('/api/stripe/config', (req, res) => {
+  app.get('/api/razorpay/config', (req, res) => {
     res.json({ 
-      configured: !!process.env.STRIPE_SECRET_KEY,
-      publishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
+      configured: !!process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_KEY_ID || ''
     });
   });
 
-  // Stripe Lazy Initialization
-  let stripeClient: any = null;
-  function getStripe() {
-    if (!stripeClient) {
-      const key = process.env.STRIPE_SECRET_KEY;
-      if (key) {
-        // Dynamic import / initialization to support clean startup if Stripe key is missing
-        import('stripe').then(({ default: Stripe }) => {
-          stripeClient = new Stripe(key);
-        }).catch(err => {
-          console.error('Failed to import Stripe:', err);
-        });
+  // Razorpay Lazy Initialization
+  let razorpayClient: any = null;
+  async function getRazorpay() {
+    if (!razorpayClient) {
+      const keyId = process.env.RAZORPAY_KEY_ID;
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      if (keyId && keySecret) {
+        try {
+          const { default: Razorpay } = await import('razorpay');
+          razorpayClient = new Razorpay({
+            key_id: keyId,
+            key_secret: keySecret
+          });
+        } catch (err) {
+          console.error('Failed to initialize Razorpay:', err);
+        }
       }
     }
-    return stripeClient;
+    return razorpayClient;
   }
 
-  // Pre-try to setup stripe if key is present
-  getStripe();
-
-  // Create Stripe Checkout Session
-  app.post('/api/stripe/create-checkout-session', async (req, res) => {
+  // Create Razorpay Order
+  app.post(['/api/razorpay/create-order', '/api/create-order'], async (req, res) => {
     try {
-      const { userId, type, item, price, credits, email } = req.body;
-      const key = process.env.STRIPE_SECRET_KEY;
-      if (!key) {
+      const { amount, currency, receipt, userId, type, item, price, credits } = req.body;
+      const keyId = process.env.RAZORPAY_KEY_ID;
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+      if (!keyId || !keySecret) {
         return res.json({ 
-          error: 'Stripe API key is not configured on the server.',
+          error: 'Razorpay API keys are not configured on the server.',
           isSandbox: true 
         });
       }
 
-      // Ensure Stripe is initialized
-      if (!stripeClient) {
-        const { default: Stripe } = await import('stripe');
-        stripeClient = new Stripe(key);
+      // Ensure Razorpay client is initialized
+      const client = await getRazorpay();
+      if (!client) {
+        return res.status(500).json({ error: 'Failed to initialize Razorpay client' });
       }
 
-      const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-      let itemName = '';
-      let itemDescription = '';
-      const priceInPaise = Math.round(price * 100);
-
-      if (type === 'subscription') {
-        itemName = `Neural Career ${item === 'premium' ? 'Premium' : 'Standard'} Plan`;
-        itemDescription = `${item === 'premium' ? '8000 credits/mo, personalized roadmap' : '2000 credits/mo, full roadmap'}`;
+      // Determine amount in paise
+      let amountInPaisa = 0;
+      if (amount !== undefined) {
+        amountInPaisa = Math.round(Number(amount));
+      } else if (price !== undefined) {
+        amountInPaisa = Math.round(Number(price) * 100);
       } else {
-        itemName = `${credits} Credits Pack`;
-        itemDescription = `Neural Credit Wallet Top-up pack`;
+        return res.status(400).json({ error: 'Amount in paise or price in rupees is required.' });
       }
 
-      const session = await stripeClient.checkout.sessions.create({
-        payment_method_types: ['card'],
-        customer_email: email || undefined,
-        line_items: [{
-          price_data: {
-            currency: 'inr',
-            product_data: {
-              name: itemName,
-              description: itemDescription,
-            },
-            unit_amount: priceInPaise,
-          },
-          quantity: 1,
-        }],
-        mode: 'payment',
-        success_url: `${appUrl}/credits?checkout_status=success&session_id={CHECKOUT_SESSION_ID}&type=${type}&item=${item}&credits=${credits}&price=${price}&uid=${userId}`,
-        cancel_url: `${appUrl}/credits?checkout_status=cancel`,
-        metadata: {
-          userId,
-          type,
-          item,
-          credits: String(credits),
-          price: String(price),
-        },
-      });
+      if (amountInPaisa < 100) {
+        return res.status(400).json({ error: 'Minimum amount must be 100 paise (₹1).' });
+      }
 
-      res.json({ url: session.url, sessionId: session.id });
+      const options = {
+        amount: amountInPaisa,
+        currency: currency || 'INR',
+        receipt: receipt || `rcpt_${(userId || 'guest').substring(0, 5)}_${Date.now().toString().slice(-6)}`,
+        notes: {
+          userId: userId || 'guest',
+          type: type || 'custom',
+          item: item || 'custom_item',
+          credits: String(credits || '0'),
+          price: String(price || (amountInPaisa / 100))
+        }
+      };
+
+      const order = await client.orders.create(options);
+      res.json({ 
+        orderId: order.id, 
+        amount: order.amount, 
+        currency: order.currency, 
+        keyId 
+      });
     } catch (err: any) {
-      console.error('Stripe session creation error:', err);
-      res.status(500).json({ error: err.message || 'Failed to create Stripe Session' });
+      console.error('Razorpay order creation error:', err);
+      res.status(500).json({ error: err.message || 'Failed to create Razorpay Order' });
     }
   });
 
-  // Verify Stripe Checkout Session
-  app.post('/api/stripe/verify-session', async (req, res) => {
+  // Verify Razorpay Signature
+  app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, res) => {
     try {
-      const { sessionId, userId } = req.body;
-      const key = process.env.STRIPE_SECRET_KEY;
-      if (!key) {
-        return res.status(400).json({ error: 'Stripe is not configured in this workspace' });
+      const { 
+        razorpay_order_id, 
+        razorpay_payment_id, 
+        razorpay_signature,
+        userId,
+        type,
+        item,
+        credits,
+        price
+      } = req.body;
+
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return res.status(400).json({ error: 'Missing required validation fields' });
       }
 
-      if (!stripeClient) {
-        const { default: Stripe } = await import('stripe');
-        stripeClient = new Stripe(key);
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      if (!keySecret) {
+        return res.status(400).json({ error: 'Razorpay is not configured on this server' });
       }
 
-      const session = await stripeClient.checkout.sessions.retrieve(sessionId);
-      if (!session) {
-        return res.status(404).json({ error: 'Stripe Session not found' });
-      }
+      const crypto = await import('crypto');
+      const text = razorpay_order_id + '|' + razorpay_payment_id;
+      const generated_signature = crypto
+        .createHmac('sha256', keySecret)
+        .update(text)
+        .digest('hex');
 
-      if (session.payment_status !== 'paid') {
-        return res.status(400).json({ error: 'Stripe Session has not been completed/paid' });
-      }
-
-      const metadata = session.metadata || {};
-      if (metadata.userId !== userId) {
-        return res.status(403).json({ error: 'Authorized session user ID mismatch' });
+      if (generated_signature !== razorpay_signature) {
+        return res.status(400).json({ error: 'Cryptographic signature verification failed' });
       }
 
       res.json({ 
         success: true, 
-        type: metadata.type, 
-        item: metadata.item, 
-        credits: parseInt(metadata.credits || '0'), 
-        price: parseFloat(metadata.price || '0') 
+        type: type || 'custom', 
+        item: item || 'custom_item', 
+        credits: parseInt(credits || '0'), 
+        price: parseFloat(price || '0') 
       });
     } catch (err: any) {
-      console.error('Stripe verification error:', err);
-      res.status(500).json({ error: err.message || 'Failed to verify Stripe payment' });
+      console.error('Razorpay signature verification error:', err);
+      res.status(500).json({ error: err.message || 'Failed to verify payment signature' });
     }
   });
 

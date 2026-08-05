@@ -29,11 +29,15 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../context/PlanContext';
 import { askAICoach } from '../lib/gemini';
 
 export default function Dashboard() {
   const { user, isAdmin, isPremium } = useAuth();
+  const { plan } = usePlan();
   const navigate = useNavigate();
+
+  const planBadgeLabel = isAdmin ? 'Admin Master' : plan === 'premium' ? 'Premium Tier' : plan === 'standard' ? 'Standard Tier' : 'Free Tier';
   const [stats, setStats] = useState({
     totalJobs: 0,
     resumesAnalyzed: 0,
@@ -321,7 +325,7 @@ export default function Dashboard() {
               <p className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">Plan Authorization</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <Crown className="w-3.5 h-3.5 text-warning" />
-                <span className="text-xs font-bold text-ink uppercase tracking-tight">Premium Elite</span>
+                <span className="text-xs font-bold text-ink uppercase tracking-tight">{planBadgeLabel}</span>
               </div>
             </div>
           </div>

@@ -546,7 +546,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       ...state,
       progress: Math.min(targetAch.maxProgress, newProgress),
       unlocked: isUnlocked,
-      unlockedAt: isUnlocked ? new Date().toISOString() : undefined
+      ...(isUnlocked ? { unlockedAt: new Date().toISOString() } : {})
     };
 
     const newAchievementsState = {

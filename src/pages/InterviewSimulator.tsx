@@ -40,11 +40,13 @@ interface InterviewSimulatorProps {
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { Link } from 'react-router-dom';
+import { formatCreditAvailability } from '../utils/formatters';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function InterviewSimulator() {
   const { user } = useAuth();
   if (!user) return null;
-  const { checkAccess, deductCredit } = usePlan();
+  const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
   
   const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
@@ -201,14 +203,25 @@ export default function InterviewSimulator() {
         <div className="px-5 py-3 bg-surface border border-border rounded-2xl flex items-center gap-3 shadow-sm self-start md:self-auto">
            <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-ink uppercase tracking-wider">Sessions Ready</span>
-              <span className="text-[10px] font-bold text-ink-dim uppercase">{remaining} / {sessionLimit} Units</span>
+              <span className="text-[10px] font-bold text-ink uppercase tracking-wider">Sessions Ready</span>
+              <span className="text-[10px] font-bold text-ink-dim uppercase">
+                {formatCreditAvailability(creditWallet?.balance, creditCosts?.interviewSession ?? 25, 'sessions')}
+              </span>
            </div>
         </div>
       </div>
 
+      {isGenerating && (
+        <div className="my-8">
+          <p className="text-xs font-bold text-accent uppercase tracking-widest mb-3 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Preparing AI interview questions...
+          </p>
+          <SkeletonLoader type="card" lines={5} />
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
-        {step === 'setup' && (
+        {step === 'setup' && !isGenerating && (
           <motion.div
             key="setup"
             initial={{ opacity: 0, y: 20 }}
@@ -217,19 +230,27 @@ export default function InterviewSimulator() {
             className="bg-surface p-8 rounded-[2rem] border border-border shadow-2xl"
           >
             <div className="mb-8">
-              <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-4 block px-1">Target Intelligence (Job Description)</label>
+              <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-4 block px-1">Job Description</label>
               <textarea
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the target job description to vectorize simulation parameters..."
+                placeholder="Paste the target job description to build your customized interview simulation..."
                 className="w-full h-64 p-6 bg-background border border-border rounded-3xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed"
               />
             </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl flex items-center gap-3 text-xs">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <span>{error}</span>
+              <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+                <button
+                  onClick={startInterview}
+                  className="px-3 py-1.5 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors shrink-0"
+                >
+                  Retry
+                </button>
               </div>
             )}
 
@@ -244,16 +265,16 @@ export default function InterviewSimulator() {
               <button
                 onClick={startInterview}
                 disabled={!jobDescription || isGenerating}
-                className="bg-accent text-white px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center gap-3 disabled:opacity-50"
+                className="bg-accent text-white px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center gap-3 disabled:opacity-50 cursor-pointer"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Initializing Agents...
+                    Starting Interview...
                   </>
                 ) : (
                   <>
-                    Deploy Simulation <ArrowRight className="w-4 h-4" />
+                    Start Interview <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>

@@ -1,11 +1,11 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap, AlertCircle } from 'lucide-react';
+import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target } from 'lucide-react';
 import { findJobs } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query as fsQuery, orderBy, limit as fsLimit } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { formatCreditAvailability } from '../utils/formatters';
@@ -19,6 +19,10 @@ interface Job {
   link: string;
   description: string;
   datePosted: string;
+  matchScore?: number;
+  roleTier?: 'safe' | 'stretch' | 'reach' | string;
+  matchExplanation?: string;
+  isPoorFit?: boolean;
 }
 
 export default function JobFinder() {
@@ -31,9 +35,34 @@ export default function JobFinder() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [isFromCache, setIsFromCache] = useState(false);
+  const [candidateProfile, setCandidateProfile] = useState('');
   const navigate = useNavigate();
 
-  const { hasAccess, remaining, limit } = checkAccess('jobSearches');
+  const { hasAccess } = checkAccess('jobSearches');
+
+  useEffect(() => {
+    async function fetchCandidateProfile() {
+      if (!user) return;
+      try {
+        const resumesSnap = await getDocs(
+          fsQuery(
+            collection(db, 'users', user.uid, 'resumes'),
+            orderBy('createdAt', 'desc'),
+            fsLimit(1)
+          )
+        );
+        if (!resumesSnap.empty) {
+          const docData = resumesSnap.docs[0].data() as any;
+          setCandidateProfile(
+            docData.rawText || docData.text || docData.extractedText || docData.analysis?.summary || ''
+          );
+        }
+      } catch (err) {
+        console.warn('Could not fetch candidate profile for job matching:', err);
+      }
+    }
+    fetchCandidateProfile();
+  }, [user]);
 
   const popularSearches = [
     'Frontend Developer',
@@ -88,7 +117,7 @@ export default function JobFinder() {
       }
 
       await deductCredit('jobSearches');
-      const results = await findJobs(searchQuery, searchLoc);
+      const results = await findJobs(searchQuery, searchLoc, candidateProfile);
       setJobs(results);
       
       cacheManager.set(cacheKey, results, 30 * 60 * 1000);
@@ -283,20 +312,40 @@ export default function JobFinder() {
                     <div className="bg-background/80 p-3 rounded-2xl border border-border">
                       <Building2 className="w-6 h-6 text-accent" />
                     </div>
-                    <a 
-                      href={job.link} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-ink-dim hover:text-accent transition-colors"
-                    >
-                      <ExternalLink className="w-5 h-5" />
-                    </a>
+                    <div className="flex items-center gap-2">
+                      {job.matchScore !== undefined && (
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                          job.matchScore >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          job.matchScore >= 60 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                          'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                          {job.matchScore}% FIT
+                        </span>
+                      )}
+                      {job.roleTier && (
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                          job.roleTier.toLowerCase() === 'safe' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          job.roleTier.toLowerCase() === 'stretch' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                          'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                        }`}>
+                          {job.roleTier} ROLE
+                        </span>
+                      )}
+                      <a 
+                        href={job.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-ink-dim hover:text-accent transition-colors p-1"
+                      >
+                        <ExternalLink className="w-5 h-5" />
+                      </a>
+                    </div>
                   </div>
 
                   <h3 className="text-lg font-bold text-ink group-hover:text-accent transition-colors mb-1 leading-tight">{job.title}</h3>
                   <p className="text-sm font-bold text-ink-dim mb-4">{job.company}</p>
 
-                  <div className="flex flex-wrap gap-2 mb-6">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     <div className="px-3 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
                       <MapPin className="w-3 h-3 text-ink-dim" />
                       <span className="text-[10px] font-bold text-ink-dim uppercase">{job.location}</span>
@@ -309,7 +358,18 @@ export default function JobFinder() {
                     )}
                   </div>
 
-                  <p className="text-sm text-ink-dim line-clamp-3 mb-8 flex-1 leading-relaxed italic">
+                  {job.matchExplanation && (
+                    <div className="mb-4 p-3 rounded-2xl bg-accent/5 border border-accent/15 text-xs text-ink-dim font-medium">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
+                        <Sparkles className="w-3 h-3" /> Fit Assessment
+                      </div>
+                      <p className="italic text-ink leading-relaxed">
+                        "{job.matchExplanation}"
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="text-sm text-ink-dim line-clamp-3 mb-6 flex-1 leading-relaxed">
                     "{job.description}"
                   </p>
 

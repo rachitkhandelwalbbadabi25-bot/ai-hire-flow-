@@ -34,7 +34,7 @@ import { askAICoach } from '../lib/gemini';
 
 export default function Dashboard() {
   const { user, isAdmin, isPremium } = useAuth();
-  const { plan } = usePlan();
+  const { plan, creditWallet } = usePlan();
   const navigate = useNavigate();
 
   const planBadgeLabel = isAdmin ? 'Admin Master' : plan === 'premium' ? 'Premium Tier' : plan === 'standard' ? 'Standard Tier' : 'Free Tier';
@@ -190,7 +190,14 @@ export default function Dashboard() {
     setCoachAnswer(null);
 
     try {
-      const context = `Candidate stats: Applications: ${stats.totalJobs}, Resumes audited: ${stats.resumesAnalyzed}, Interviews lined up: ${stats.interviews}.`;
+      const context = `
+- User Name: ${user?.displayName || 'Candidate'}
+- Target Role: ${stats.missingKeywords?.length ? 'Roles requiring ' + stats.missingKeywords.slice(0, 3).join(', ') : 'Software Engineering & Tech Roles'}
+- Resume Summary: ATS Audit Score: ${stats.latestResumeScore || 0}/100. Resumes Audited: ${stats.resumesAnalyzed}. Missing Keywords: ${stats.missingKeywords?.length ? stats.missingKeywords.join(', ') : 'None identified'}.
+- Current Job Pipeline Status: Total Applied/Tracked: ${stats.totalJobs}, Interviews Lined Up: ${stats.interviews}, Offers Received: ${stats.offers}.
+- Recent Interview Scores: Interview Readiness Index: ${stats.interviewReadiness}%, Total Simulations Completed: ${stats.simulationsRun}.
+- Credit Balance & Tier: Balance: ${creditWallet?.balance ?? 0} CR, Membership Tier: ${planBadgeLabel}.
+      `.trim();
       const res = await askAICoach(coachQuestion, context);
       setCoachAnswer(res);
     } catch (err) {

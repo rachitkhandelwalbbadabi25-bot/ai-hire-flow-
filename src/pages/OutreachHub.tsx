@@ -64,6 +64,7 @@ export default function OutreachHub() {
   const [generatingPitch, setGeneratingPitch] = useState(false);
   const [generatedSubject, setGeneratedSubject] = useState("");
   const [generatedBody, setGeneratedBody] = useState("");
+  const [outreachTone, setOutreachTone] = useState("Professional yet warm");
 
   // Copy feedback triggers
   const [copiedSubject, setCopiedSubject] = useState(false);
@@ -214,7 +215,7 @@ export default function OutreachHub() {
     }
   };
 
-  const handleGeneratePitch = async (contact: any) => {
+  const handleGeneratePitch = async (contact: any, selectedTone: string = outreachTone) => {
     setSelectedContact(contact);
     setShowGenModal(true);
     setGeneratingPitch(true);
@@ -226,21 +227,23 @@ export default function OutreachHub() {
         candidateContext,
         contact.company,
         contact.name,
+        selectedTone,
+        contact.role || contact.title || "Team Leader"
       );
       setGeneratedSubject(
-        pitch.subject || `Referral request: ${contact.company} career pathways`,
+        pitch.subject || `${contact.company} tech initiatives / quick 15-min chat`,
       );
       setGeneratedBody(
         pitch.body ||
-          `Hi ${contact.name},\n\nI hope this email finds you well.\n\nI am reaching out because I am very interested in learning about career opportunities or potential referrals at ${contact.company}.\n\nWarm regards,\n[Your Name]`,
+          `Hi ${contact.name},\n\nLoved ${contact.company}'s recent technical scaling engineering milestones.\n\nWould love to learn about your team's workflow and share a quick bit about my background in full-stack architecture.\n\nDo you have 15 minutes for a quick virtual coffee next week?\n\nBest,\n[Your Name]`,
       );
     } catch (error) {
       console.error("Failed generating neural pitch:", error);
       setGeneratedSubject(
-        `Referral inquiry / connection at ${contact.company}`,
+        `Quick question on ${contact.company}'s engineering focus`,
       );
       setGeneratedBody(
-        `Hi ${contact.name},\n\nHope you are having a great week!\n\nI'm seeking potential opportunities or referral connections at ${contact.company}. I'd love to learn more about the team culture.\n\nBest,\n[Your Name]`,
+        `Hi ${contact.name},\n\nImpressed by the product developments happening at ${contact.company}.\n\nI'm building scalable web platforms and would appreciate 15 minutes to learn about your engineering culture.\n\nWould a brief 15-min chat next week fit your calendar?\n\nBest,\n[Your Name]`,
       );
     } finally {
       setGeneratingPitch(false);

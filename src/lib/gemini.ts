@@ -27,16 +27,27 @@ const cleanJson = (text: string): string => {
 
 export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
   const prompt = `
-    You are an expert ATS (Applicant Tracking System) optimizer and professional resume auditor. 
-    Analyze the provided resume text with extreme critical detail. 
+    You are an elite ATS (Applicant Tracking System) engine and former FAANG recruiter. Analyze the provided resume against the job description (if provided) or industry standards.
+
+    OUTPUT RULES:
+    - Score 0-100. Be brutally honest. A generic resume should score 40-60.
+    - Identify EXACT missing keywords with frequency weights.
+    - Detect keyword stuffing vs genuine experience.
+    - Suggest specific bullet rewrites with metrics, not generic advice.
+    - Return JSON only.
+
+    SCORING RUBRIC:
+    - Keyword Match (40%): Hard skills, tools, certifications
+    - Semantic Relevance (30%): Role alignment, industry context
+    - Format/Structure (20%): Length, sections, readability
+    - Impact Metrics (10%): Quantified achievements
 
     ${jobDescription ? `
-    STRATEGY: Conduct a rigorous gap analysis against this Job Description: ${jobDescription}.
-    - Identify specific technical and soft skills missing.
-    - Evaluate the 'Semantic Match' between the candidate's experience and the JD requirements.
-    ` : 'STRATEGY: Perform a comprehensive general audit based on industry best practices.'}
-    
-    Return a JSON object with results.
+    JOB DESCRIPTION:
+    ${jobDescription}
+    ` : 'STRATEGY: Perform an elite FAANG recruiter audit based on top-tier engineering standards.'}
+
+    Return a JSON object matching the requested schema.
   `;
 
   const response = await ai.models.generateContent({
@@ -71,13 +82,15 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
-export const findJobs = async (queryStr: string, location: string = "") => {
+export const findJobs = async (queryStr: string, location: string = "", candidateProfileText: string = "") => {
   const isIndianContext = location.toLowerCase().includes('india') || 
                           queryStr.toLowerCase().includes('india') ||
                           queryStr.toLowerCase().includes('tcs') ||
                           queryStr.toLowerCase().includes('infosys');
 
   const prompt = `
+    You are a semantic job matching engine. Compare candidate profile against job listings and rank by true fit, not keyword overlap.
+
     Find recent job listings for "${queryStr}" in "${location}". 
     
     ${isIndianContext ? `
@@ -91,6 +104,18 @@ export const findJobs = async (queryStr: string, location: string = "") => {
     Context: Analyze the roles based on Indian corporate standards. 
     Distinguish between 'Service-based MNC' (e.g. TCS, Infosys, Wipro) roles and 'Product-based Startup' (e.g. Zomato, CRED, Swiggy) roles.
     ` : ''}
+
+    ${candidateProfileText ? `
+    CANDIDATE PROFILE FOR SEMANTIC MATCHING:
+    ${candidateProfileText}
+    ` : ''}
+
+    EVALUATION & SCORING RULES:
+    - Score 0-100 based on: skills transferability (40%), experience level match (30%), culture/scope fit (20%), location/salary alignment (10%).
+    - Flag "reach" roles vs "safe" roles vs "stretch" roles.
+    - Explain the match in one sentence referencing specific user skills.
+    - If a job is a poor fit, say why honestly.
+    - Output JSON array ranked by true fit.
     
     Return a JSON array of specific job opportunities.
     For each job, include:
@@ -100,6 +125,10 @@ export const findJobs = async (queryStr: string, location: string = "") => {
     - link: The direct URL to the job posting
     - description: A short summary of the role and requirements. If it's a campus placement role, mention 'Campus' in description.
     - datePosted: When it was posted if known
+    - matchScore: number (0-100)
+    - roleTier: "safe" | "stretch" | "reach"
+    - matchExplanation: string (One sentence referencing candidate's specific skills and fit assessment, or explaining why it is a poor fit)
+    - isPoorFit: boolean
   `;
 
   const config = {
@@ -114,7 +143,11 @@ export const findJobs = async (queryStr: string, location: string = "") => {
           location: { type: Type.STRING },
           link: { type: Type.STRING },
           description: { type: Type.STRING },
-          datePosted: { type: Type.STRING }
+          datePosted: { type: Type.STRING },
+          matchScore: { type: Type.NUMBER },
+          roleTier: { type: Type.STRING, description: "safe, stretch, or reach" },
+          matchExplanation: { type: Type.STRING },
+          isPoorFit: { type: Type.BOOLEAN }
         },
         required: ["title", "company", "link", "location", "description"]
       }
@@ -144,9 +177,69 @@ export const findJobs = async (queryStr: string, location: string = "") => {
       return JSON.parse(cleanJson(response.text || '[]'));
     } catch (fallbackError) {
       console.error("[Neural Search] Critical API failure.", fallbackError);
-      throw error; // Throw the original error or a meaningful descriptive one
+      throw error;
     }
   }
+};
+
+export const matchJobsWithProfile = async (userProfileText: string, jobListings: any[]) => {
+  const prompt = `
+    You are a semantic job matching engine. Compare user's profile against job listings and rank by true fit, not keyword overlap.
+
+    RULES:
+    - Score 0-100 based on: skills transferability (40%), experience level match (30%), culture/scope fit (20%), location/salary alignment (10%).
+    - Flag "reach" roles vs "safe" roles vs "stretch" roles.
+    - Explain the match in one sentence referencing specific user skills.
+    - If a job is a poor fit, say why honestly.
+    - Output JSON array.
+
+    User Profile:
+    ${userProfileText}
+
+    Job Listings:
+    ${JSON.stringify(jobListings)}
+
+    Return a JSON array of objects ranked by matchScore (highest match first):
+    - title: string
+    - company: string
+    - location: string
+    - link: string
+    - description: string
+    - datePosted: string
+    - matchScore: number (0-100 score based on 40% skills transferability, 30% experience level match, 20% culture/scope fit, 10% location/salary alignment)
+    - roleTier: "safe" | "stretch" | "reach"
+    - matchExplanation: string (One sentence referencing specific candidate skills and fit assessment, or explaining why it is a poor fit)
+    - isPoorFit: boolean
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            company: { type: Type.STRING },
+            location: { type: Type.STRING },
+            link: { type: Type.STRING },
+            description: { type: Type.STRING },
+            datePosted: { type: Type.STRING },
+            matchScore: { type: Type.NUMBER },
+            roleTier: { type: Type.STRING, description: "safe, stretch, or reach" },
+            matchExplanation: { type: Type.STRING },
+            isPoorFit: { type: Type.BOOLEAN }
+          },
+          required: ["title", "company", "matchScore", "roleTier", "matchExplanation"]
+        }
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '[]'));
 };
 
 export const generateInterviewQuestions = async (jobDescription: string, resumeText: string = "") => {
@@ -316,15 +409,19 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
 
 export const refactorResumeText = async (text: string, context: string = "") => {
   const prompt = `
-    Refactor the following resume text to be more impactful, professional, and result-oriented.
-    Use strong action verbs and quantify achievements where possible.
+    You are a resume copyeditor who specializes in quantified impact. 
+
+    RULES:
+    - Rewrite bullets using the XYZ formula: "Accomplished [X] as measured by [Y] by doing [Z]"
+    - Never fabricate numbers. If no metric exists, suggest a reasonable proxy or ask user for clarification.
+    - Maintain tense consistency.
     
     Current Text: ${text}
     ${context ? `Target Role Context: ${context}` : ''}
     
     Return a JSON object with:
-    - refactoredText: string
-    - explanation: string (why these changes were made)
+    - refactoredText: string (the polished bullet point in XYZ format)
+    - explanation: string (why these changes were made, detailing X, Y, Z components)
   `;
 
   const response = await ai.models.generateContent({
@@ -344,6 +441,50 @@ export const refactorResumeText = async (text: string, context: string = "") => 
   });
 
   return JSON.parse(cleanJson(response.text || '{}'));
+};
+
+export const rewriteResumeBullets = async (bullets: string[], targetRoleContext: string = "") => {
+  const prompt = `
+    You are a resume copyeditor who specializes in quantified impact. 
+
+    RULES:
+    - Rewrite bullets using the XYZ formula: "Accomplished [X] as measured by [Y] by doing [Z]"
+    - Never fabricate numbers. If no metric exists, suggest a reasonable proxy or ask user.
+    - Maintain tense consistency.
+    - Output as JSON array of suggestions.
+    - Rank by impact potential (high/medium/low).
+
+    Input Bullets:
+    ${JSON.stringify(bullets)}
+
+    ${targetRoleContext ? `Target Role Context: ${targetRoleContext}` : ''}
+
+    Return a JSON array of suggestion objects.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            originalBullet: { type: Type.STRING },
+            rewrittenBullet: { type: Type.STRING },
+            impactPotential: { type: Type.STRING, description: "high, medium, or low" },
+            explanation: { type: Type.STRING },
+            suggestedMetricProxy: { type: Type.STRING }
+          },
+          required: ["originalBullet", "rewrittenBullet", "impactPotential", "explanation"]
+        }
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '[]'));
 };
 
 export const generateResume = async (userData: any) => {
@@ -438,17 +579,36 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
-export const generateOutreachEmail = async (candidateContext: string, company: string, contactName: string) => {
+export const generateOutreachEmail = async (
+  candidateContext: string, 
+  company: string, 
+  contactName: string, 
+  tone: string = "Professional yet warm",
+  contactRole: string = "Team Member / Leader"
+) => {
   const prompt = `
-    You are an elite career advisor. Craft a professional, high-converting cold email seeking a referral or a quick virtual coffee to ask about career opportunities.
-    
-    Candidate Context: ${candidateContext}
-    Target Company: ${company}
-    Contact Person: ${contactName}
-    
+    You are a networking strategist who writes cold emails with 40%+ response rates. 
+
+    RULES:
+    - Max 120 words. 3 short paragraphs.
+    - First line must be a personalized hook based on recipient's work/company/news.
+    - Never use "I am writing to inquire about..." or "I came across your profile..."
+    - Include a specific, low-friction ask (15-min chat, not "refer me").
+    - Match the user's communication style: ${tone}.
+    - If no mutual connection, find a genuine point of interest from recipient's background.
+    - Output JSON with subject + body.
+
+    Candidate Context:
+    ${candidateContext}
+
+    Recipient Details:
+    - Name: ${contactName}
+    - Company: ${company}
+    - Role: ${contactRole}
+
     Return a JSON object with:
-    - subject: string (a professional, eye-catching subject line)
-    - body: string (the full cold outreach email body, keep it punchy, polite, and under 150 words)
+    - subject: string (concise, high-converting subject line)
+    - body: string (the cold outreach email text following the exact 3-paragraph, max 120-word structure)
   `;
 
   const response = await ai.models.generateContent({
@@ -476,16 +636,31 @@ export const auditCode = async (code: string, context: any = {}) => {
 
 export const askAICoach = async (question: string, context: string = "") => {
   const prompt = `
-    You are an elite, highly experienced executive career coach and resume strategist from Stanford Career Labs and McKinsey.
-    Answer the candidate's career question with maximum clarity, punchy formatting, and actionable steps.
-    Use professional, concise, and calm language. Do NOT use emojis. Keep it under 250 words.
-    
+    You are a Stanford Career Strategist and former McKinsey executive coach embedded in AI HireFlow. 
+
+    CONTEXT YOU HAVE ACCESS TO:
+    - User's resume summary
+    - Current job pipeline status
+    - Recent interview scores
+    - Credit balance and tier
+    - Target role
+
+    Actual Candidate Context:
+    ${context || 'No specific candidate context provided.'}
+
+    RULES:
+    - Always reference their actual data in answers. Never give generic advice.
+    - If they ask about salary negotiation, ask for their current offer details first.
+    - If they ask about switching careers, reference their transferable skills from resume.
+    - Keep responses under 150 words unless they ask for detail.
+    - Suggest specific next actions in the app when relevant (e.g. Resume Analyzer, Interview Lab, Job Tracker, Outreach Hub, Campus Placement).
+    - Tone: Strategic, empathetic, direct.
+
     Candidate Question: ${question}
-    ${context ? `Candidate Context: ${context}` : ''}
-    
+
     Return a JSON object with:
-    - answer: string (the structured advice, keep it readable with bullet points and bold headers)
-    - actionItems: string[] (3 specific immediate action steps the candidate should take)
+    - answer: string (the structured, strategic advice adhering strictly to the rules and word count under 150 words)
+    - actionItems: string[] (3 specific immediate action steps in the app or job search)
   `;
 
   try {
@@ -509,11 +684,11 @@ export const askAICoach = async (question: string, context: string = "") => {
   } catch (err) {
     console.warn("[AI Coach] Fallback to standard advice on error.", err);
     return {
-      answer: "I am ready to guide you. Focus on strengthening your core projects, refining your ATS keywords, and practicing live mock interviews with our simulation tools. Ensure your resume highlights quantifiable impact like percentage gains or team scope.",
+      answer: "I am ready to guide you. Based on your current pipeline and resume scores, focus on refining ATS keywords in Resume Analyzer, practicing mock interviews in Interview Lab, and sending targeted outreach pitches in Outreach Hub.",
       actionItems: [
-        "Audit target resume keywords",
-        "Practice a 15-minute mock interview",
-        "Tailor resume impact metrics"
+        "Audit resume for missing keywords in Resume Analyzer",
+        "Practice a 15-minute mock interview in Interview Lab",
+        "Send 3 targeted outreach pitches in Outreach Hub"
       ]
     };
   }
@@ -666,6 +841,57 @@ export const generateStartupChallenge = async (specialization: string) => {
   return JSON.parse(cleanJson(response.text || '{}'));
 };
 
+export const generateOnboardingPlan = async (resumeText: string, careerGoals: string) => {
+  const prompt = `
+    You are the AI Career Strategist for AI HireFlow. Your job is to analyze a user's resume and career goals, then output a hyper-personalized 7-day onboarding action plan.
+
+    RULES:
+    - Be direct, motivating, and specific. No generic advice.
+    - Every task must reference actual data from their resume or goals.
+    - Output strictly as a JSON array of objects.
+    - Keep task descriptions under 120 characters.
+    - Assign credit costs realistically (5-25 CR).
+    - Prioritize tasks that unlock other features (upload resume -> analyze -> apply).
+
+    SAFETY:
+    - Never hallucinate companies or job titles not mentioned.
+    - If resume data is missing, note it in the "note" field.
+
+    Candidate Resume Context:
+    ${resumeText || 'No resume uploaded yet.'}
+
+    Candidate Career Goals:
+    ${careerGoals || 'Targeting full stack engineering roles and top tier software opportunities.'}
+
+    Return a JSON array of objects representing Day 1 through Day 7 tasks.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            day: { type: Type.NUMBER },
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            creditCost: { type: Type.NUMBER },
+            unlockedFeature: { type: Type.STRING },
+            note: { type: Type.STRING }
+          },
+          required: ["day", "title", "description", "creditCost", "unlockedFeature"]
+        }
+      }
+    }
+  });
+
+  return JSON.parse(cleanJson(response.text || '[]'));
+};
+
 export const evaluateStartupSolution = async (challengeTitle: string, challengeRequirements: string, proposedSolution: string) => {
   const prompt = `
     You are a legendary CTO from a high-growth, top-tier silicon valley or Indian startup (like Stripe, Razorpay, Zerodha).
@@ -706,5 +932,7 @@ export const evaluateStartupSolution = async (challengeTitle: string, challengeR
 
   return JSON.parse(cleanJson(response.text || '{}'));
 };
+
+
 
 

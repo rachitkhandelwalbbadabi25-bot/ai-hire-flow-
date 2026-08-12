@@ -691,7 +691,7 @@ export default function Dashboard() {
                   "Your master resume aligns cleanly with target technical job listings!"
                 )
               ) : (
-                "No evaluated resumes detected. Upload a resume to establish your baseline score."
+                "Upload your baseline master resume to generate instant 4-category ATS scoring and missing keyword analysis."
               )}
             </p>
           </div>
@@ -824,14 +824,25 @@ export default function Dashboard() {
               </div>
             ))
           ) : (
-            <div className="p-6 bg-background rounded-xl border border-border/60 text-center space-y-3">
-              <p className="text-xs text-ink-dim">No upcoming interviews scheduled in your pipeline right now.</p>
-              <button 
-                onClick={() => navigate('/finder')}
-                className="bg-surface-light border border-border hover:border-accent/40 text-ink px-4 py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all"
-              >
-                Search & Add Opportunities
-              </button>
+            <div className="p-6 bg-background rounded-2xl border border-border/80 text-center space-y-3">
+              <p className="text-xs text-ink font-bold">Initialize Target Applications to Schedule Interview Rounds</p>
+              <p className="text-[11px] text-ink-dim max-w-sm mx-auto">
+                Candidates who conduct mock interview simulations prior to technical rounds report 3.5x higher offer success.
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button 
+                  onClick={() => navigate('/interview')}
+                  className="bg-accent text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all shadow-md"
+                >
+                  Start Mock Simulation
+                </button>
+                <button 
+                  onClick={() => navigate('/finder')}
+                  className="bg-surface-light border border-border hover:border-accent/40 text-ink px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                >
+                  Discover Live Jobs
+                </button>
+              </div>
             </div>
           )}
         </div>

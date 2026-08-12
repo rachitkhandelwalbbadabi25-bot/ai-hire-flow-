@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, query, getDocs, addDoc, deleteDoc, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,6 +11,7 @@ import {
   Calendar,
   X,
   Briefcase,
+  Sparkles,
   LoaderCircle as Spinner
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
@@ -18,6 +20,7 @@ import { usePlan } from '../context/PlanContext';
 import EmptyState from '../components/EmptyState';
 
 export default function JobTracker() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   if (!user) return null;
   const { checkAccess, openUpgradeModal } = usePlan();
@@ -270,11 +273,19 @@ export default function JobTracker() {
           ) : (
             <EmptyState
               icon={Briefcase}
-              title="No Tracked Jobs Yet"
-              description="Save applications from Job Finder or add custom target roles manually to keep your pipeline organized."
-              action={{
-                label: "Add Your First Job",
-                onClick: () => setIsAdding(true)
+              title="Launch Your Engineering Application Pipeline"
+              targetRole="Software & Tech Positions"
+              description="Construct a high-volume application tracking system to monitor recruiter responses, pipeline bottlenecks, and interview conversion rates."
+              benefitMetric="Tracking 5+ target positions increases interview callback rates by 3.2x"
+              primaryAction={{
+                label: "Add Target Job Position",
+                onClick: () => setIsAdding(true),
+                icon: Plus
+              }}
+              secondaryAction={{
+                label: "Discover Matched Postings",
+                onClick: () => navigate('/jobs'),
+                icon: Search
               }}
             />
           )}

@@ -157,7 +157,7 @@ export default function ResumeEditor() {
               </div>
               <h2 className="text-3xl font-bold text-ink uppercase tracking-tight mb-4">Master Editor Restricted</h2>
               <p className="text-ink-dim text-sm mb-10 leading-relaxed">
-                Unlock the Neural Resume Editor to synchronize your master manifest across all application sectors. Standard tier access required.
+                Unlock the AI Resume Editor to sync your master resume across all application areas. Standard tier access required.
               </p>
               <button 
                 onClick={() => openUpgradeModal('resumeEditor')}
@@ -174,11 +174,11 @@ export default function ResumeEditor() {
             <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
               <FileEdit className="w-5 h-5 text-accent" />
             </div>
-            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Master Manifest</span>
+            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Master Resume</span>
           </div>
-          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-2">Neural Resume Editor</h1>
+          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-2">Resume Editor</h1>
           <p className="text-ink-dim font-medium text-lg">
-            Craft your professional DNA with real-time AI-driven refactoring.
+            Refine your experience with real-time AI assistance.
           </p>
         </div>
         <button
@@ -187,7 +187,7 @@ export default function ResumeEditor() {
           className="bg-accent text-white px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl shadow-accent/40 hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50"
         >
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {isSaving ? 'Syncing...' : 'Save Manifest'}
+          {isSaving ? 'Syncing...' : 'Save Resume'}
         </button>
       </div>
 
@@ -196,7 +196,7 @@ export default function ResumeEditor() {
         <section className="bg-surface p-10 rounded-[3rem] border border-border shadow-sm">
           <div className="flex justify-between items-center mb-8">
             <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-[0.2em]">
-              <BrainCircuit className="w-4 h-4 text-accent" /> Professional DNA (Summary)
+              <BrainCircuit className="w-4 h-4 text-accent" /> Professional Summary
             </h3>
             <button
               onClick={() => handleRefactor(data.summary, 'summary')}
@@ -211,7 +211,7 @@ export default function ResumeEditor() {
             <textarea
               value={data.summary}
               onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
-              placeholder="Introduce your trajectory..."
+              placeholder="Introduce your background..."
               className="w-full h-40 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
             />
             {!canRefactor && (
@@ -228,7 +228,7 @@ export default function ResumeEditor() {
         <section className="space-y-6">
           <div className="flex justify-between items-center px-4">
             <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-[0.2em]">
-              <Briefcase className="w-4 h-4 text-accent" /> Operational History
+              <Briefcase className="w-4 h-4 text-accent" /> Work Experience
             </h3>
             <button
               onClick={addExperience}
@@ -336,7 +336,7 @@ export default function ResumeEditor() {
                                   onClick={() => handleRefactor(bullet, 'bullet', exp.id, bIdx)}
                                   disabled={refactoringId === `${exp.id}-${bIdx}` || !canRefactor}
                                   className="p-1.5 bg-accent/10 border border-accent/20 rounded-lg text-accent hover:bg-accent/20 transition-all disabled:opacity-50 disabled:grayscale"
-                                  title={canRefactor ? "Neural Refactor" : "Premium Feature Locked"}
+                                  title={canRefactor ? "AI Refactor" : "Premium Feature Locked"}
                                 >
                                   <Wand2 className={cn("w-3.5 h-3.5", refactoringId === `${exp.id}-${bIdx}` && "animate-pulse")} />
                                 </button>
@@ -403,7 +403,7 @@ export default function ResumeEditor() {
       <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-40 bg-surface border border-border p-4 rounded-3xl shadow-2xl flex items-center gap-6">
          <div className="flex items-center gap-3 px-4 border-r border-border">
             <div className="w-4 h-4 bg-success rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-            <span className="text-[10px] font-bold text-ink uppercase tracking-widest">Master Manifest v1.02</span>
+            <span className="text-[10px] font-bold text-ink uppercase tracking-widest">Master Resume v1.0</span>
          </div>
          <div className="flex items-center gap-6 pr-4">
             <div className="flex flex-col">

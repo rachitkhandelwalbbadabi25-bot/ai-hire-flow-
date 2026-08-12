@@ -109,7 +109,7 @@ export default function Profile() {
           {/* Gamified leveling and credits */}
           <div className="bg-surface rounded-[2.5rem] border border-border p-8 shadow-lg">
             <h3 className="text-xs font-black text-ink uppercase tracking-widest mb-8 border-b border-border pb-4 flex items-center justify-between">
-              <span className="flex items-center gap-2"><Award className="w-4 h-4 text-amber-500" /> Rank & Neural XP</span>
+              <span className="flex items-center gap-2"><Award className="w-4 h-4 text-amber-500" /> Rank & Experience Points</span>
               <span className="text-amber-500 font-mono font-bold text-xs">{creditWallet?.xp ?? 0} XP</span>
             </h3>
 
@@ -134,8 +134,8 @@ export default function Profile() {
                 <div className="flex items-center gap-3">
                   <Coins className="w-5 h-5 text-accent" />
                   <div>
-                    <p className="text-xs font-black uppercase tracking-tight text-white">Neural Credit Wallet</p>
-                    <p className="text-[10px] text-ink-dim font-bold uppercase mt-0.5">Available for intelligence requests</p>
+                    <p className="text-xs font-black uppercase tracking-tight text-white">Credit Wallet</p>
+                    <p className="text-[10px] text-ink-dim font-bold uppercase mt-0.5">Available for AI requests</p>
                   </div>
                 </div>
                 <div className="text-right">

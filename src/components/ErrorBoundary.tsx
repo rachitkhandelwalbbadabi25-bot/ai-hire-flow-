@@ -38,9 +38,9 @@ export default class ErrorBoundary extends Component<Props, State> {
               <AlertCircle className="w-10 h-10 text-rose-500" />
             </div>
             
-            <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Neural Fracture Detected</h1>
+            <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Unexpected Error Detected</h1>
             <p className="text-zinc-500 text-sm mb-10 leading-relaxed">
-              A logical anomaly has breached the system core. Our AI agents are ready to re-synchronize the codebase.
+              An unexpected application error occurred. Please refresh or return home to restore your session.
             </p>
 
             <div className="bg-black/50 border border-zinc-800 rounded-2xl p-6 mb-8 text-left font-mono">

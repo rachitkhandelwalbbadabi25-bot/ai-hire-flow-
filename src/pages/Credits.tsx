@@ -245,9 +245,9 @@ export default function CreditsPage() {
           key: data.keyId,
           amount: data.amount,
           currency: data.currency,
-          name: "Neural Career Gateway",
+          name: "Career Gateway",
           description: params.type === 'subscription' 
-            ? `Neural Career ${params.item === 'premium' ? 'Premium' : 'Standard'} Plan`
+            ? `Career ${params.item === 'premium' ? 'Premium' : 'Standard'} Plan`
             : `${params.credits} Credits Pack Wallet Top-up`,
           order_id: data.orderId,
           handler: async function (paymentResponse: any) {
@@ -441,10 +441,10 @@ export default function CreditsPage() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-5 h-5 text-accent animate-pulse" />
-              <span className="text-xs font-bold text-accent uppercase tracking-[0.25em] font-mono">Neural Economy Matrix</span>
+              <span className="text-xs font-bold text-accent uppercase tracking-[0.25em] font-mono">Credits & Usage</span>
             </div>
             <h1 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
-              Neural Credit Hub
+              Credit Hub
             </h1>
             <p className="text-sm text-ink-dim uppercase tracking-widest font-bold mt-1">
               Powering AI HireFlow's Career Accelerator Systems
@@ -474,7 +474,7 @@ export default function CreditsPage() {
             { id: 'wallet', label: 'Credit Wallet', icon: Wallet },
             { id: 'missions', label: 'Missions & Rank', icon: Award },
             { id: 'referrals', label: 'Referral Engine', icon: UserPlus },
-            { id: 'pricing', label: 'Neural Pricing', icon: Zap },
+            { id: 'pricing', label: 'Plans & Pricing', icon: Zap },
             ...(plan === 'admin' ? [{ id: 'admin', label: 'Admin Matrix', icon: Crown }] : [])
           ].map((tab) => (
             <button
@@ -564,7 +564,7 @@ export default function CreditsPage() {
                   {/* Summary Stats */}
                   <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem] flex flex-col justify-between">
                     <div>
-                      <h3 className="text-xs font-black uppercase tracking-widest text-ink-dim mb-6">Wallet Telemetry</h3>
+                      <h3 className="text-xs font-black uppercase tracking-widest text-ink-dim mb-6">Usage History</h3>
                       <div className="space-y-4">
                         <div className="flex justify-between items-center border-b border-border/30 pb-3">
                           <span className="text-xs text-ink-dim font-bold uppercase">Plan Tier</span>
@@ -768,7 +768,7 @@ export default function CreditsPage() {
               <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
                   <div>
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Neural Level Index</span>
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Level Index</span>
                     <h2 className="text-2xl font-black uppercase tracking-tight mt-1">Level {creditWallet?.level ?? 1}</h2>
                     <p className="text-sm text-ink-dim font-bold uppercase mt-0.5">
                       Ranks unlocked: {creditWallet?.unlockedBadges?.join(' • ') || 'Verified Candidate'}
@@ -999,7 +999,7 @@ export default function CreditsPage() {
                   <Users className="w-5 h-5 text-accent" />
                   <div>
                     <h3 className="text-sm font-black uppercase tracking-tight text-white">Top Referrers</h3>
-                    <p className="text-[10px] text-ink-dim font-bold uppercase tracking-wider">Neural champion boards</p>
+                    <p className="text-[10px] text-ink-dim font-bold uppercase tracking-wider">Top members</p>
                   </div>
                 </div>
 

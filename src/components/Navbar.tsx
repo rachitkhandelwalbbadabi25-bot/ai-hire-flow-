@@ -98,7 +98,7 @@ export default function Navbar({ user }: NavbarProps) {
                     AI HireFlow
                   </span>
                   <span className="text-[9px] font-bold text-accent uppercase tracking-wider mt-0.5 font-mono">
-                    Career Cockpit
+                    Career Hub
                   </span>
                 </div>
               </Link>

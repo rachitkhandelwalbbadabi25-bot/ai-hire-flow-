@@ -417,7 +417,7 @@ export default function ResumeAnalyzer() {
                     onClick={() => navigator.clipboard.writeText(coverLetter)}
                     className="flex items-center gap-2 text-[10px] font-bold text-ink-dim hover:text-ink transition-colors uppercase tracking-widest"
                   >
-                    <Copy className="w-3 h-3" /> Copy Manifest
+                    <Copy className="w-3 h-3" /> Copy Cover Letter
                   </button>
                 </div>
                 <div className="bg-background p-8 rounded-2xl border border-border text-ink-dim text-sm leading-relaxed font-sans whitespace-pre-wrap h-[450px] overflow-y-auto no-scrollbar">

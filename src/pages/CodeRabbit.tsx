@@ -56,17 +56,17 @@ export default function CodeRabbit() {
     setResult(null);
     setLogs([]);
     
-    addLog("Initializing Neural Scan...");
-    addLog("Checking Logic Chains...");
+    addLog("Initializing Code Audit...");
+    addLog("Checking logic chains...");
     
     try {
       if (!process.env.GEMINI_API_KEY) {
-        throw new Error("Neural Authorization Key missing. Please check your system settings.");
+        throw new Error("Authorization Key missing. Please check your system settings.");
       }
 
       await deductCredit('portfolioReview');
       await new Promise(r => setTimeout(r, 800));
-      addLog("Analyzing Syntax Tree...");
+      addLog("Analyzing syntax tree...");
       
       const response = await auditCode(code, { 
         platform: 'React',
@@ -74,12 +74,12 @@ export default function CodeRabbit() {
         user: user.email 
       });
       
-      addLog("Isolating Logic Fracture...");
-      addLog("Repair Sequence Generated.");
+      addLog("Identifying issue...");
+      addLog("Fix recommendations generated.");
       setResult(response);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "The Neural Sinkhole swallowed the signal. System re-initialization required.");
+      setError(err.message || "Network connection error. Please try again.");
     } finally {
       setIsAuditing(false);
     }
@@ -102,14 +102,14 @@ export default function CodeRabbit() {
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] font-black text-accent uppercase tracking-[0.4em]">Sub-System // Alpha</span>
-                <span className="text-xs font-mono text-zinc-500">Log: Neural Auditor v2.4.0</span>
+                <span className="text-xs font-mono text-zinc-500">Log: Code Auditor v2.4.0</span>
               </div>
             </div>
             <h1 className="text-6xl md:text-8xl font-black tracking-tighter uppercase mb-6 leading-[0.85]">
               Code <br /> Rabbit
             </h1>
             <p className="text-zinc-400 font-medium text-lg leading-relaxed max-w-xl">
-              The high-stakes logical auditor. Designed to dissect, repair, and harden the neural fabric of your professional codebase.
+              Automated code reviewer designed to analyze, debug, and optimize your application codebase.
             </p>
           </div>
 
@@ -145,7 +145,7 @@ export default function CodeRabbit() {
                <textarea
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="Paste code or error telemetry..."
+                placeholder="Paste code snippet or error stack trace..."
                 className="w-full h-[450px] bg-black border border-zinc-900 rounded-2xl p-8 text-sm font-mono text-accent leading-relaxed focus:outline-none focus:border-accent/40 transition-all custom-scrollbar resize-none"
                />
 
@@ -161,7 +161,7 @@ export default function CodeRabbit() {
                    </>
                  ) : (
                    <>
-                    Initiate Neural Audit <Zap className="w-4 h-4" />
+                    Initiate Code Audit <Zap className="w-4 h-4" />
                    </>
                  )}
                </button>
@@ -171,7 +171,7 @@ export default function CodeRabbit() {
             <div className="bg-[#0d0d0d] rounded-2xl border border-zinc-800/50 p-6 font-mono">
                <div className="flex items-center gap-2 mb-4 border-b border-zinc-900 pb-3">
                   <div className="w-2 h-2 rounded-full bg-zinc-800" />
-                  <span className="text-[9px] font-bold text-zinc-600 uppercase">Audit Telemetry</span>
+                  <span className="text-[9px] font-bold text-zinc-600 uppercase">Audit Logs</span>
                </div>
                <div className="space-y-2">
                  {logs.length > 0 ? logs.map((log, i) => (
@@ -185,7 +185,7 @@ export default function CodeRabbit() {
                      {log}
                    </motion.div>
                  )) : (
-                   <div className="text-[10px] text-zinc-800 italic">No signal detected in the neural stream.</div>
+                   <div className="text-[10px] text-zinc-800 italic">No output detected in the stream.</div>
                  )}
                </div>
             </div>
@@ -208,9 +208,9 @@ export default function CodeRabbit() {
                          </div>
                       </div>
                    </div>
-                   <h4 className="text-sm font-black text-zinc-500 uppercase tracking-widest mb-4">Signal Awaited</h4>
+                   <h4 className="text-sm font-black text-zinc-500 uppercase tracking-widest mb-4">Awaiting Code</h4>
                    <p className="text-xs text-zinc-600 max-w-xs leading-relaxed uppercase font-bold tracking-tighter">
-                     Neural auditor is on standby. Feed the system a logical anomaly to re-calibrate.
+                     Code auditor is on standby. Input your code snippet to begin analysis.
                    </p>
                 </motion.div>
               ) : isAuditing ? (
@@ -230,8 +230,8 @@ export default function CodeRabbit() {
                          <Cpu className="w-10 h-10 text-accent animate-pulse" />
                       </div>
                    </div>
-                   <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Refactoring Neural Matrix</h3>
-                   <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Scanning Logic Chains...</p>
+                   <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Analyzing Code Architecture</h3>
+                   <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Scanning logic chains...</p>
                 </motion.div>
               ) : (
                 <motion.div
@@ -246,16 +246,16 @@ export default function CodeRabbit() {
                        <div className="bg-success/20 p-2 rounded-lg">
                           <CheckCircle2 className="w-5 h-5 text-success" />
                        </div>
-                       <span className="text-[10px] font-black text-success uppercase tracking-[0.3em]">Isolation Successful</span>
+                       <span className="text-[10px] font-black text-success uppercase tracking-[0.3em]">Analysis Complete</span>
                     </div>
 
                     <div className="space-y-8">
                        <div>
-                          <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Logical Fracture Isolated</label>
+                          <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Root Cause</label>
                           <p className="text-sm text-zinc-300 leading-relaxed font-medium capitalize-first">{result?.rootCause}</p>
                        </div>
                        <div>
-                          <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Neural Guidance</label>
+                          <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-3 block">AI Guidance</label>
                           <p className="text-xs text-zinc-500 italic leading-relaxed">"{result?.explanation}"</p>
                        </div>
                     </div>
@@ -266,7 +266,7 @@ export default function CodeRabbit() {
                      <div className="bg-[#1a1a1a] px-8 py-4 border-b border-zinc-800 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                            <ShieldCheck className="w-4 h-4 text-accent" />
-                           <span className="text-[9px] font-black text-white uppercase tracking-widest">Refactored DNA</span>
+                           <span className="text-[9px] font-black text-white uppercase tracking-widest">Refactored Code</span>
                         </div>
                         <button 
                           onClick={() => {

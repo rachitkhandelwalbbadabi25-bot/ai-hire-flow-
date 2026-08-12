@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -10,65 +10,63 @@
   --color-surface-light: var(--surface-light);
   --color-ink: var(--ink);
   --color-ink-dim: var(--ink-dim);
-  --color-accent: #4F46E5;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
+  --color-accent: #00FF41;
+  --color-success: #00FF41;
+  --color-warning: #EAB308;
   --color-border: var(--border);
-  
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --shadow-glass-light: 0 4px 16px 0 rgba(31, 38, 135, 0.07);
 }
 
 :root {
-  --background: #090a0f;
-  --surface: #141622;
-  --surface-light: #1f2335;
-  --ink: #f8fafc;
-  --ink-dim: #94a3b8;
-  --border: rgba(255, 255, 255, 0.08);
+  --background: #050505;
+  --surface: #121212;
+  --surface-light: #1A1A1A;
+  --ink: #FFFFFF;
+  --ink-dim: #A3A3A3;
+  --border: #171717;
+  --accent-rgb: 0, 255, 65;
 }
 
 .light {
-  --background: #f1f5f9;
-  --surface: #ffffff;
-  --surface-light: #e2e8f0;
-  --ink: #0f172a;
-  --ink-dim: #64748b;
-  --border: rgba(15, 23, 42, 0.08);
+  --background: #050505;
+  --surface: #121212;
+  --surface-light: #1A1A1A;
+  --ink: #FFFFFF;
+  --ink-dim: #A3A3A3;
+  --border: #171717;
 }
 
 @layer base {
   body {
-    @apply font-sans antialiased text-ink min-h-screen;
-    background: 
-      radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.08) 0%, transparent 45%),
-      radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 45%),
-      radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.03) 0%, transparent 60%),
-      var(--background);
+    @apply font-sans antialiased text-ink bg-background min-h-screen;
+    background-color: var(--background);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-mono);
   }
 }
 
 @layer components {
   .glass {
-    @apply bg-surface/60 backdrop-blur-xl border border-border shadow-glass transition-all;
+    @apply bg-surface border border-border transition-all;
   }
 
   .glass-card {
-    @apply bg-surface/60 backdrop-blur-xl border border-border shadow-glass transition-all rounded-[2rem] overflow-hidden;
+    @apply bg-surface border border-border transition-all rounded-xl overflow-hidden;
   }
   
   .glass-panel {
-    @apply bg-surface/60 backdrop-blur-xl border border-border shadow-glass transition-all border-white/5 rounded-[2.5rem] p-8 lg:p-10;
+    @apply bg-surface border border-border transition-all rounded-2xl p-8 lg:p-10;
   }
   
   .status-pill {
-    @apply px-3 py-1 rounded-full text-[11px] font-semibold;
+    @apply px-3 py-1 rounded-full text-[11px] font-semibold font-mono;
   }
   
-  .status-applied { @apply bg-accent/15 text-accent; }
-  .status-interview { @apply bg-warning/15 text-warning; }
-  .status-offer { @apply bg-success/15 text-success; }
-  .status-rejected { @apply bg-rose-500/15 text-rose-400; }
+  .status-applied { @apply bg-accent/10 text-accent border border-accent/20; }
+  .status-interview { @apply bg-warning/10 text-warning border border-warning/20; }
+  .status-offer { @apply bg-accent/10 text-accent border border-accent/20; }
+  .status-rejected { @apply bg-rose-500/10 text-rose-400 border border-rose-500/20; }
 }
 
 @keyframes loading {
@@ -76,7 +74,4 @@
   100% { transform: translateX(250%); }
 }
 
-:root {
-  --accent-rgb: 99, 102, 241;
-}
 

@@ -77,8 +77,8 @@ export default function Landing() {
               },
               {
                 icon: Zap,
-                title: "Neural Job Finder",
-                desc: "Deploy AI discovery bots to scan indices and extract live career listings optimized for you."
+                title: "Job Finder",
+                desc: "Deploy smart search tools to scan listings and extract career opportunities optimized for you."
               },
               {
                 icon: Sparkles,
@@ -87,8 +87,8 @@ export default function Landing() {
               },
               {
                 icon: Map,
-                title: "Neural Roadmap",
-                desc: "Automatically map career gap trajectories to targeted Coursera, Udemy, and system-vetted courses."
+                title: "Career Roadmap",
+                desc: "Automatically map skill gaps to targeted Coursera, Udemy, and industry-recommended courses."
               },
               {
                 icon: Briefcase,

@@ -105,8 +105,8 @@ export default function UpgradeModal() {
             {/* Header */}
             <div className="p-8 border-b border-border flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">Expand Your Intelligence</h2>
-                <p className="text-ink-dim text-sm mt-1 uppercase tracking-widest font-bold">Select a neural uplink tier</p>
+                <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">Upgrade Your Plan</h2>
+                <p className="text-ink-dim text-sm mt-1 uppercase tracking-widest font-bold">Select a membership tier</p>
               </div>
               <button 
                 onClick={closeUpgradeModal}

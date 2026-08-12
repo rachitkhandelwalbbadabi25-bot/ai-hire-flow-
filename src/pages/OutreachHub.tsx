@@ -254,7 +254,7 @@ export default function OutreachHub() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
       <div className="mb-12">
         <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">
-          Neural Outreach Hub
+          Outreach Hub
         </h1>
         <p className="text-ink-dim font-medium text-sm">
           Draft professional cold Gmail pitches and coordinate warm corporate
@@ -365,7 +365,7 @@ export default function OutreachHub() {
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-ink uppercase tracking-tight flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-accent animate-pulse" />
-                  Neural Gmail Composer
+                  Email Composer
                 </h3>
                 <p className="text-[10px] font-bold text-accent uppercase tracking-widest mt-1">
                   Generating customized referral email for{" "}
@@ -495,7 +495,7 @@ export default function OutreachHub() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-ink uppercase tracking-tight">
-                  Gmail Neural Gateway
+                  Gmail Integration
                 </h2>
                 <p className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">
                   Connect Pipeline to Personal Mail
@@ -610,7 +610,7 @@ export default function OutreachHub() {
             <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
               <span className="text-[9px] font-bold text-white/70 uppercase font-mono">
-                Neural Composer Ready
+                Email Assistant Ready
               </span>
             </div>
           </div>

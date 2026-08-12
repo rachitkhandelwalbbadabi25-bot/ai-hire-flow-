@@ -737,7 +737,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       origin: { y: 0.5 }
     });
 
-    triggerNotification('Purchase Successful!', `Loaded +${creditsAmount} Credits to your Neural Wallet. Ready for action!`, 'referral', creditsAmount);
+    triggerNotification('Purchase Successful!', `Loaded +${creditsAmount} Credits to your Wallet.`, 'referral', creditsAmount);
   };
 
   const applyPromoCode = (code: string) => {

@@ -255,7 +255,7 @@ export default function CampusPlacement() {
                 >
                   <Loader2 className="w-10 h-10 text-accent animate-spin" />
                   <div>
-                    <h4 className="text-sm font-bold uppercase tracking-widest text-ink mb-1 animate-pulse">Running Neural Search & Strategy Compilation...</h4>
+                    <h4 className="text-sm font-bold uppercase tracking-widest text-ink mb-1 animate-pulse">Analyzing Role Requirements & Strategy...</h4>
                     <p className="text-xs text-ink-dim max-w-sm">Generating custom round breakdowns, targeted questions, and passing tactics for {searchQuery}.</p>
                   </div>
                 </motion.div>
@@ -418,7 +418,7 @@ export default function CampusPlacement() {
                 {loadingDrill ? (
                   <div className="py-12 flex flex-col items-center justify-center gap-3">
                     <Loader2 className="w-8 h-8 text-accent animate-spin" />
-                    <span className="text-[10px] font-bold text-ink-dim uppercase tracking-widest animate-pulse">Running Neural Question Synthesis...</span>
+                    <span className="text-[10px] font-bold text-ink-dim uppercase tracking-widest animate-pulse">Generating Interview Questions...</span>
                   </div>
                 ) : drillComplete ? (
                   /* Score and completion view */

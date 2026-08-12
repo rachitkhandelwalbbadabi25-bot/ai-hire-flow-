@@ -677,9 +677,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Suggested next operations Grid */}
+      {/* Suggested next actions Grid */}
       <div className="mb-12">
-        <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] mb-6 px-2">Next Operations Command Grid</h3>
+        <h3 className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em] mb-6 px-2">Recommended Next Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link to="/finder" className="glass-card p-6 border border-border hover:border-accent/40 hover:-translate-y-1 transition-all group shadow-sm">
              <div className="flex items-center gap-4">
@@ -687,8 +687,8 @@ export default function Dashboard() {
                    <Search className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                   <h4 className="font-bold text-ink text-sm">Market surveillance</h4>
-                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Initialize job discovery scan</p>
+                   <h4 className="font-bold text-ink text-sm">Job Finder</h4>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Search target roles</p>
                 </div>
              </div>
           </Link>
@@ -698,8 +698,8 @@ export default function Dashboard() {
                    <TrendingUp className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                   <h4 className="font-bold text-ink text-sm">Simulation drill</h4>
-                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Calibrate readiness levels</p>
+                   <h4 className="font-bold text-ink text-sm">Interview Practice</h4>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Practice mock questions</p>
                 </div>
              </div>
           </Link>
@@ -710,7 +710,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                    <h4 className="font-bold text-ink text-sm">Learning Roadmap</h4>
-                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Close alignment gaps</p>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Bridge skill gaps</p>
                 </div>
              </div>
           </Link>
@@ -720,8 +720,8 @@ export default function Dashboard() {
                    <FileEdit className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                   <h4 className="font-bold text-ink text-sm">Neural Editor</h4>
-                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Refactor professional DNA</p>
+                   <h4 className="font-bold text-ink text-sm">Resume Editor</h4>
+                   <p className="text-[10px] text-ink-dim uppercase tracking-tighter">Refine experience & summary</p>
                 </div>
              </div>
           </Link>

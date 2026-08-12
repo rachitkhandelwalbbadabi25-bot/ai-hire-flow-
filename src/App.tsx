@@ -47,7 +47,7 @@ function AppRoutes() {
             <div className="h-[2px] w-12 bg-accent/40 rounded-full overflow-hidden">
                <div className="h-full bg-accent animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '40%' }}></div>
             </div>
-            <p className="text-[#404040] font-mono text-[8px] uppercase tracking-widest mt-2">Initializing Neural Interface</p>
+            <p className="text-[#404040] font-mono text-[8px] uppercase tracking-widest mt-2">Loading Career Platform</p>
           </div>
         </div>
       </div>

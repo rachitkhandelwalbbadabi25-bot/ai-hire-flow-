@@ -1,0 +1,107 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "name": "Premium Enterprise Design System",
+  "description": "High-contrast monochrome with Matrix Green accent (Bloomberg Terminal x Linear.app aesthetic)",
+  "color": {
+    "background": {
+      "primary": {
+        "value": "#050505",
+        "type": "color",
+        "description": "Primary near-black background"
+      },
+      "surface": {
+        "value": "#121212",
+        "type": "color",
+        "description": "Card and container surface background"
+      },
+      "surface-light": {
+        "value": "#1A1A1A",
+        "type": "color",
+        "description": "Hover and elevated surface state background"
+      }
+    },
+    "border": {
+      "subtle": {
+        "value": "#171717",
+        "type": "color",
+        "description": "Subtle low-contrast border"
+      },
+      "emphasis": {
+        "value": "#262626",
+        "type": "color",
+        "description": "Focus or active container border"
+      }
+    },
+    "text": {
+      "primary": {
+        "value": "#FFFFFF",
+        "type": "color",
+        "description": "High-contrast primary typography"
+      },
+      "secondary": {
+        "value": "#A3A3A3",
+        "type": "color",
+        "description": "Subtle secondary body text and metadata"
+      },
+      "disabled": {
+        "value": "#525252",
+        "type": "color",
+        "description": "Muted and disabled text state"
+      }
+    },
+    "accent": {
+      "matrix-green": {
+        "value": "#00FF41",
+        "type": "color",
+        "description": "Matrix Green - used sparingly for CTAs, active status, and primary progress indicators"
+      },
+      "matrix-green-subtle": {
+        "value": "rgba(0, 255, 65, 0.10)",
+        "type": "color",
+        "description": "Subtle accent tint for badge backgrounds and active state indicators"
+      }
+    },
+    "status": {
+      "success": {
+        "value": "#00FF41",
+        "type": "color"
+      },
+      "warning": {
+        "value": "#EAB308",
+        "type": "color"
+      },
+      "error": {
+        "value": "#F43F5E",
+        "type": "color"
+      }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "heading": {
+        "value": "JetBrains Mono, Geist Mono, monospace",
+        "type": "fontFamily"
+      },
+      "body": {
+        "value": "Inter, ui-sans-serif, system-ui, sans-serif",
+        "type": "fontFamily"
+      }
+    },
+    "fontSize": {
+      "xs": { "value": "12px" },
+      "sm": { "value": "14px" },
+      "base": { "value": "16px" },
+      "lg": { "value": "18px" },
+      "xl": { "value": "20px" },
+      "2xl": { "value": "24px" },
+      "3xl": { "value": "30px" },
+      "4xl": { "value": "36px" }
+    }
+  },
+  "radii": {
+    "sm": { "value": "4px" },
+    "md": { "value": "8px" },
+    "lg": { "value": "12px" },
+    "xl": { "value": "16px" }
+  }
+}

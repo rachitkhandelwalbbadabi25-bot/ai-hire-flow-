@@ -16,6 +16,7 @@ import {
   Mic
 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
+import AILoadingStepper from '../components/AILoadingStepper';
 import { auditCode } from '../lib/gemini';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
@@ -220,20 +221,13 @@ export default function CodeRabbit() {
                   key="loading"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="bg-[#111] border border-zinc-800 rounded-[2rem] h-full min-h-[600px] p-12 flex flex-col items-center justify-center text-center"
+                  className="bg-[#111] border border-zinc-800 rounded-[2rem] h-full min-h-[500px] p-6 sm:p-8 flex items-center justify-center"
                 >
-                   <div className="w-32 h-32 relative mb-8">
-                      <motion.div 
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                        className="absolute inset-0 border-t-2 border-accent rounded-full"
-                      />
-                      <div className="absolute inset-4 border border-zinc-800 rounded-full flex items-center justify-center">
-                         <Cpu className="w-10 h-10 text-accent animate-pulse" />
-                      </div>
-                   </div>
-                   <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Analyzing Code Architecture</h3>
-                   <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Scanning logic chains...</p>
+                  <AILoadingStepper 
+                    presetKey="code_audit" 
+                    title="AST Static Analysis & Vulnerability Engine" 
+                    className="w-full max-w-xl"
+                  />
                 </motion.div>
               ) : (
                 <motion.div

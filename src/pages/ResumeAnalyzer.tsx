@@ -28,6 +28,7 @@ import {
   Edit3
 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
+import AILoadingStepper from '../components/AILoadingStepper';
 import { cn } from '../lib/utils';
 
 interface ResumeAnalyzerProps {
@@ -279,23 +280,22 @@ export default function ResumeAnalyzer() {
           </div>
 
           <div className="md:col-span-2">
-            <button
-              onClick={handleStartAnalysis}
-              disabled={isAnalyzing}
-              className="w-full bg-accent text-white p-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xl shadow-accent/20 overflow-hidden relative cursor-pointer"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                  <span className="animate-pulse">Analyzing Resume...</span>
-                </>
-              ) : (
-                <>
-                  <BrainCircuit className="w-6 h-6" />
-                  Analyze Resume
-                </>
-              )}
-            </button>
+            {isAnalyzing ? (
+              <AILoadingStepper 
+                presetKey="resume_audit" 
+                title="ATS Structural & Keyword Audit Pipeline" 
+                className="mt-2"
+              />
+            ) : (
+              <button
+                onClick={handleStartAnalysis}
+                disabled={isAnalyzing}
+                className="w-full bg-accent text-white p-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xl shadow-accent/20 overflow-hidden relative cursor-pointer"
+              >
+                <BrainCircuit className="w-6 h-6" />
+                Analyze Resume
+              </button>
+            )}
           </div>
         </motion.div>
       ) : (

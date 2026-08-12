@@ -18,6 +18,7 @@ import {
 import { generateLearningPath } from '../lib/gemini';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import AILoadingStepper from '../components/AILoadingStepper';
 
 interface Resource {
   name: string;
@@ -231,13 +232,10 @@ export default function LearningPath() {
                 }}
               />
             ) : loading ? (
-              <div className="space-y-6">
-                <p className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2 mb-4">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Curating personalized learning modules...
-                </p>
-                <SkeletonLoader type="card" lines={5} />
-                <SkeletonLoader type="card" lines={4} />
-              </div>
+              <AILoadingStepper 
+                presetKey="learning_roadmap" 
+                title="Curriculum Dependency & Skill Graph Engine" 
+              />
             ) : (
               <motion.div 
                 key="roadmap"

@@ -13,6 +13,7 @@ import {
   generateStartupChallenge, 
   evaluateStartupSolution 
 } from '../lib/gemini';
+import AILoadingStepper from '../components/AILoadingStepper';
 
 export default function CampusPlacement() {
   const { t } = useLanguage();
@@ -247,18 +248,12 @@ export default function CampusPlacement() {
             {/* SEARCH RESULTS INTERACTIVE PANEL */}
             <AnimatePresence mode="wait">
               {searching && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="p-12 border border-border bg-background/50 rounded-3xl flex flex-col items-center justify-center gap-4 text-center"
-                >
-                  <Loader2 className="w-10 h-10 text-accent animate-spin" />
-                  <div>
-                    <h4 className="text-sm font-bold uppercase tracking-widest text-ink mb-1 animate-pulse">Analyzing Role Requirements & Strategy...</h4>
-                    <p className="text-xs text-ink-dim max-w-sm">Generating custom round breakdowns, targeted questions, and passing tactics for {searchQuery}.</p>
-                  </div>
-                </motion.div>
+                <div className="py-6 max-w-2xl mx-auto">
+                  <AILoadingStepper 
+                    presetKey="company_prep" 
+                    title={`Enterprise Hiring Tactics: ${searchQuery || 'Target Company'}`} 
+                  />
+                </div>
               )}
 
               {companyPrep && !searching && (

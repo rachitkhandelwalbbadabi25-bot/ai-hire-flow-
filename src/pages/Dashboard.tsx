@@ -37,6 +37,7 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { askAICoach } from '../lib/gemini';
+import AILoadingStepper from '../components/AILoadingStepper';
 
 interface RecommendedJob {
   id: string;
@@ -886,17 +887,9 @@ export default function Dashboard() {
 
             <AnimatePresence mode="wait">
               {isCoachLoading && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="p-5 bg-background rounded-xl border border-border"
-                >
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                    <span className="text-xs font-bold text-accent uppercase tracking-wider font-mono">Synthesizing Advisor Knowledge...</span>
-                  </div>
-                </motion.div>
+                <div className="mt-4">
+                  <AILoadingStepper presetKey="career_coach" title="Executive Strategy & Negotiation Engine" />
+                </div>
               )}
 
               {coachAnswer && (

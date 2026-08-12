@@ -1,0 +1,46 @@
+{
+  "resume_audit": [
+    { "step": 1, "duration": 2500, "description": "Parsing 48 structural resume nodes and extracting candidate telemetry..." },
+    { "step": 2, "duration": 3000, "description": "Vectorizing 120+ technical skill markers against Fortune 500 ATS job taxonomies..." },
+    { "step": 3, "duration": 2500, "description": "Calculating 4-category weighted score matrix and identifying keyword variance..." },
+    { "step": 4, "duration": 2000, "description": "Synthesizing executive recruiter audit feedback memo and metric-driven rewrites..." }
+  ],
+  "job_finder": [
+    { "step": 1, "duration": 2200, "description": "Querying 1,850+ live tech listings across target location constraints..." },
+    { "step": 2, "duration": 3000, "description": "Filtering listings against candidate profile vector and core technical stack..." },
+    { "step": 3, "duration": 2500, "description": "Computing fit percentage scores and role tier classification (Safe / Stretch)..." },
+    { "step": 4, "duration": 2000, "description": "Structuring top opportunity cards with AI compatibility assessments..." }
+  ],
+  "learning_roadmap": [
+    { "step": 1, "duration": 2500, "description": "Auditing skill gap taxonomy between master resume profile and target role..." },
+    { "step": 2, "duration": 3200, "description": "Mapping 14 prerequisite technical competencies and milestone dependency graphs..." },
+    { "step": 3, "duration": 2500, "description": "Compiling curated engineering documentation, video labs, and practical projects..." },
+    { "step": 4, "duration": 2000, "description": "Finalizing 30-day structured execution timeline with gamified XP rewards..." }
+  ],
+  "code_audit": [
+    { "step": 1, "duration": 2000, "description": "Building Abstract Syntax Tree (AST) representation from submitted source code..." },
+    { "step": 2, "duration": 3200, "description": "Running 850+ static analysis rules for OWASP vulnerabilities and edge-case leaks..." },
+    { "step": 3, "duration": 2500, "description": "Generating optimized refactored code blocks with runtime time-complexity benchmarks..." },
+    { "step": 4, "duration": 2000, "description": "Assembling architectural hardening guidelines and code quality review..." }
+  ],
+  "outreach_pitch": [
+    { "step": 1, "duration": 2200, "description": "Indexing recipient contact background and company engineering profile..." },
+    { "step": 2, "duration": 3000, "description": "Correlating candidate's top 3 achievement metrics with target team stack..." },
+    { "step": 3, "duration": 2500, "description": "Generating personalized high-converting cold email draft with tailored CTA..." }
+  ],
+  "interview_evaluation": [
+    { "step": 1, "duration": 2500, "description": "Transcribing answer audio stream and analyzing technical vocabulary coverage..." },
+    { "step": 2, "duration": 3200, "description": "Evaluating STAR framework structure, quantitative impact, and clarity..." },
+    { "step": 3, "duration": 2500, "description": "Computing Readiness Index score and generating senior engineer feedback..." }
+  ],
+  "career_coach": [
+    { "step": 1, "duration": 2000, "description": "Retrieving candidate master resume metrics, active pipeline, and interview index..." },
+    { "step": 2, "duration": 2800, "description": "Formulating strategic response based on senior tech leadership negotiation models..." },
+    { "step": 3, "duration": 2200, "description": "Structuring actionable advice with exact in-app execution steps..." }
+  ],
+  "company_prep": [
+    { "step": 1, "duration": 2200, "description": "Fetching interview process data for target enterprise hiring rounds..." },
+    { "step": 2, "duration": 3000, "description": "Extracting historical coding questions and behavioral assessment criteria..." },
+    { "step": 3, "duration": 2500, "description": "Structuring candidate preparation strategy with round-by-round tactics..." }
+  ]
+}

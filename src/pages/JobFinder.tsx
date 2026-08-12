@@ -11,6 +11,7 @@ import { usePlan } from '../context/PlanContext';
 import { formatCreditAvailability } from '../utils/formatters';
 import { Send } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
+import AILoadingStepper from '../components/AILoadingStepper';
 import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 
@@ -255,15 +256,8 @@ export default function JobFinder() {
           </div>
         )}
         {loading ? (
-          <div className="space-y-4">
-            <p className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2">
-              <LoaderCircle className="w-4 h-4 animate-spin" /> Searching job index...
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <SkeletonLoader type="card" lines={4} />
-              <SkeletonLoader type="card" lines={4} />
-              <SkeletonLoader type="card" lines={4} />
-            </div>
+          <div className="max-w-2xl mx-auto my-6">
+            <AILoadingStepper presetKey="job_finder" title="Live Job Index & Compatibility Engine" />
           </div>
         ) : error ? (
           <div className="py-16 text-center bg-surface border border-border rounded-3xl p-8 max-w-lg mx-auto">

@@ -12,8 +12,10 @@ import {
   Zap,
   ArrowRight,
   ShieldCheck,
-  Cpu
+  Cpu,
+  Mic
 } from 'lucide-react';
+import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import { auditCode } from '../lib/gemini';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
@@ -297,6 +299,21 @@ export default function CodeRabbit() {
                         ))}
                      </div>
                   </div>
+
+                  <NextStepBridgeCard
+                    title="Code Audit & Hardening Complete"
+                    contextData={`Generated refactored solution with ${result?.bestPractices?.length || 0} architectural hardening guidelines.`}
+                    primaryStep={{
+                      label: "Simulate Technical Interview",
+                      icon: Mic,
+                      to: "/campus"
+                    }}
+                    secondaryStep={{
+                      label: "Discover Matched Roles",
+                      icon: Search,
+                      to: "/finder"
+                    }}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>

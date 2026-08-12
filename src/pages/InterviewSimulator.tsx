@@ -12,8 +12,11 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  RotateCcw
+  RotateCcw,
+  GraduationCap,
+  Briefcase
 } from 'lucide-react';
+import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import { generateInterviewQuestions, evaluateInterviewAnswer } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { db } from '../lib/firebase';
@@ -439,6 +442,21 @@ export default function InterviewSimulator() {
                 );
               })}
             </div>
+
+            <NextStepBridgeCard
+              title="Interview Drill Completed"
+              contextData={`Mock interview simulation finalized with an overall score of ${calculateTotalScore()}% across ${questions.length} evaluated questions.`}
+              primaryStep={{
+                label: "Close Skill Gaps in Roadmap",
+                icon: GraduationCap,
+                to: "/learning"
+              }}
+              secondaryStep={{
+                label: "View Application Tracker",
+                icon: Briefcase,
+                to: "/jobs"
+              }}
+            />
 
             <div className="flex justify-center">
                <button 

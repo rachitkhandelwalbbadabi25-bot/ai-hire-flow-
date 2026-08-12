@@ -20,6 +20,8 @@ import {
   Target,
   Sparkles
 } from 'lucide-react';
+import { Search, Edit3 } from 'lucide-react';
+import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import { cn } from '../lib/utils';
 
 interface ResumeAnalyzerProps {
@@ -427,7 +429,22 @@ export default function ResumeAnalyzer() {
             )}
           </div>
 
-          <div className="flex justify-center pt-8">
+          <NextStepBridgeCard
+            title="Resume Evaluation Complete"
+            contextData={`ATS Compatibility Score: ${analysis.matchScore}%. ${analysis.missingKeywords?.length > 0 ? `Identified ${analysis.missingKeywords.length} missing skill keywords (${analysis.missingKeywords.slice(0, 3).join(', ')}).` : 'High alignment with target specifications.'}`}
+            primaryStep={{
+              label: "Search Matched Jobs",
+              icon: Search,
+              to: "/finder"
+            }}
+            secondaryStep={{
+              label: "Refine Resume in Editor",
+              icon: Edit3,
+              to: "/editor"
+            }}
+          />
+
+          <div className="flex justify-center pt-4">
             <button 
               onClick={() => { setAnalysis(null); setCoverLetter(null); setFile(null); setJobDesc(''); }}
               className="text-ink-dim hover:text-accent font-bold transition-all flex items-center gap-2 uppercase text-[10px] tracking-widest"

@@ -17,7 +17,10 @@ import {
   Sparkles,
   FileText,
   RefreshCw,
+  Mic,
+  Briefcase,
 } from "lucide-react";
+import NextStepBridgeCard from "../components/NextStepBridgeCard";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/firebase";
 import {
@@ -477,6 +480,21 @@ export default function OutreachHub() {
                       Send in Gmail
                     </a>
                   </div>
+
+                  <NextStepBridgeCard
+                    title="Outreach Pitch Generated"
+                    contextData={`Tailored referral pitch synthesized for ${selectedContact?.name || 'Recruiter'} at ${selectedContact?.company || 'Target Company'}.`}
+                    primaryStep={{
+                      label: "Simulate Technical Interview",
+                      icon: Mic,
+                      to: "/campus"
+                    }}
+                    secondaryStep={{
+                      label: "Track Pipeline Status",
+                      icon: Briefcase,
+                      to: "/jobs"
+                    }}
+                  />
                 </div>
               )}
             </motion.div>

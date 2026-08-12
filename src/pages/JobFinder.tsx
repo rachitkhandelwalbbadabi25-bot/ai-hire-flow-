@@ -9,6 +9,8 @@ import { collection, addDoc, getDocs, query as fsQuery, orderBy, limit as fsLimi
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { formatCreditAvailability } from '../utils/formatters';
+import { Send } from 'lucide-react';
+import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 
@@ -298,100 +300,117 @@ export default function JobFinder() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence>
-              {(jobs || []).map((job, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="glass-card p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="bg-background/80 p-3 rounded-2xl border border-border">
-                      <Building2 className="w-6 h-6 text-accent" />
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <AnimatePresence>
+                {(jobs || []).map((job, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="glass-card p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="bg-background/80 p-3 rounded-2xl border border-border">
+                        <Building2 className="w-6 h-6 text-accent" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {job.matchScore !== undefined && (
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                            job.matchScore >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            job.matchScore >= 60 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                            'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          }`}>
+                            {job.matchScore}% FIT
+                          </span>
+                        )}
+                        {job.roleTier && (
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                            job.roleTier.toLowerCase() === 'safe' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            job.roleTier.toLowerCase() === 'stretch' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                            'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                          }`}>
+                            {job.roleTier} ROLE
+                          </span>
+                        )}
+                        <a 
+                          href={job.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-ink-dim hover:text-accent transition-colors p-1"
+                        >
+                          <ExternalLink className="w-5 h-5" />
+                        </a>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {job.matchScore !== undefined && (
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
-                          job.matchScore >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                          job.matchScore >= 60 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                          'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                        }`}>
-                          {job.matchScore}% FIT
-                        </span>
-                      )}
-                      {job.roleTier && (
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                          job.roleTier.toLowerCase() === 'safe' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                          job.roleTier.toLowerCase() === 'stretch' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                          'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                        }`}>
-                          {job.roleTier} ROLE
-                        </span>
-                      )}
-                      <a 
-                        href={job.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-ink-dim hover:text-accent transition-colors p-1"
-                      >
-                        <ExternalLink className="w-5 h-5" />
-                      </a>
-                    </div>
-                  </div>
 
-                  <h3 className="text-lg font-bold text-ink group-hover:text-accent transition-colors mb-1 leading-tight">{job.title}</h3>
-                  <p className="text-sm font-bold text-ink-dim mb-4">{job.company}</p>
+                    <h3 className="text-lg font-bold text-ink group-hover:text-accent transition-colors mb-1 leading-tight">{job.title}</h3>
+                    <p className="text-sm font-bold text-ink-dim mb-4">{job.company}</p>
 
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <div className="px-3 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3 text-ink-dim" />
-                      <span className="text-[10px] font-bold text-ink-dim uppercase">{job.location}</span>
-                    </div>
-                    {job.datePosted && (
+                    <div className="flex flex-wrap gap-2 mb-4">
                       <div className="px-3 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
-                        <Calendar className="w-3 h-3 text-ink-dim" />
-                        <span className="text-[10px] font-bold text-ink-dim uppercase">{job.datePosted}</span>
+                        <MapPin className="w-3 h-3 text-ink-dim" />
+                        <span className="text-[10px] font-bold text-ink-dim uppercase">{job.location}</span>
+                      </div>
+                      {job.datePosted && (
+                        <div className="px-3 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
+                          <Calendar className="w-3 h-3 text-ink-dim" />
+                          <span className="text-[10px] font-bold text-ink-dim uppercase">{job.datePosted}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {job.matchExplanation && (
+                      <div className="mb-4 p-3 rounded-2xl bg-accent/5 border border-accent/15 text-xs text-ink-dim font-medium">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
+                          <Sparkles className="w-3 h-3" /> Fit Assessment
+                        </div>
+                        <p className="italic text-ink leading-relaxed">
+                          "{job.matchExplanation}"
+                        </p>
                       </div>
                     )}
-                  </div>
 
-                  {job.matchExplanation && (
-                    <div className="mb-4 p-3 rounded-2xl bg-accent/5 border border-accent/15 text-xs text-ink-dim font-medium">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
-                        <Sparkles className="w-3 h-3" /> Fit Assessment
-                      </div>
-                      <p className="italic text-ink leading-relaxed">
-                        "{job.matchExplanation}"
-                      </p>
+                    <p className="text-sm text-ink-dim line-clamp-3 mb-6 flex-1 leading-relaxed">
+                      "{job.description}"
+                    </p>
+
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => alignResume(job)}
+                        className="flex-1 bg-accent/10 border border-accent/20 text-accent font-bold text-[10px] uppercase tracking-widest py-3 rounded-xl hover:bg-accent/20 transition-all flex items-center justify-center gap-2"
+                      >
+                        Analyze Compatibility <ChevronRight className="w-3 h-3" />
+                      </button>
+                      <button 
+                        onClick={() => trackJob(job)}
+                        className="px-4 bg-surface border border-border text-ink-dim hover:border-ink hover:text-ink py-3 rounded-xl transition-all"
+                        title="Add to Pipeline"
+                      >
+                        <Briefcase className="w-4 h-4" />
+                      </button>
                     </div>
-                  )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
 
-                  <p className="text-sm text-ink-dim line-clamp-3 mb-6 flex-1 leading-relaxed">
-                    "{job.description}"
-                  </p>
-
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => alignResume(job)}
-                      className="flex-1 bg-accent/10 border border-accent/20 text-accent font-bold text-[10px] uppercase tracking-widest py-3 rounded-xl hover:bg-accent/20 transition-all flex items-center justify-center gap-2"
-                    >
-                      Analyze Compatibility <ChevronRight className="w-3 h-3" />
-                    </button>
-                    <button 
-                      onClick={() => trackJob(job)}
-                      className="px-4 bg-surface border border-border text-ink-dim hover:border-ink hover:text-ink py-3 rounded-xl transition-all"
-                      title="Add to Pipeline"
-                    >
-                      <Briefcase className="w-4 h-4" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+            <NextStepBridgeCard
+              title="Opportunity Search Complete"
+              contextData={`Extracted ${jobs.length} active target positions for "${query || 'Tech Roles'}". Add opportunities to your pipeline to draft referral pitches or simulate technical interviews.`}
+              primaryStep={{
+                label: "Draft Outreach Pitches",
+                icon: Send,
+                to: "/outreach"
+              }}
+              secondaryStep={{
+                label: "Manage Application Pipeline",
+                icon: Briefcase,
+                to: "/jobs"
+              }}
+            />
+          </>
         )}
       </div>
       

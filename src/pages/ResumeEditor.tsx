@@ -20,6 +20,8 @@ import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { refactorResumeText } from '../lib/gemini';
 import { cn } from '../lib/utils';
+import { Search, FileText } from 'lucide-react';
+import NextStepBridgeCard from '../components/NextStepBridgeCard';
 
 interface ResumeData {
   summary: string;
@@ -398,6 +400,21 @@ export default function ResumeEditor() {
             </div>
           </div>
         </section>
+
+        <NextStepBridgeCard
+          title="Resume Calibration Completed"
+          contextData={`Master resume updated with ${data?.skills?.length || 0} core skills and ${(data?.experience || []).length} professional work experience entries.`}
+          primaryStep={{
+            label: "Audit in Resume Analyzer",
+            icon: FileText,
+            to: "/analyzer"
+          }}
+          secondaryStep={{
+            label: "Discover Matched Jobs",
+            icon: Search,
+            to: "/finder"
+          }}
+        />
       </div>
 
       <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-40 bg-surface border border-border p-4 rounded-3xl shadow-2xl flex items-center gap-6">

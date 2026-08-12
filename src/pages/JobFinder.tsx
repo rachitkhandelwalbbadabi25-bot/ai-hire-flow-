@@ -12,6 +12,8 @@ import { formatCreditAvailability } from '../utils/formatters';
 import { Send } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import AILoadingStepper from '../components/AILoadingStepper';
+import SmartContextChips from '../components/SmartContextChips';
+import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 
@@ -31,6 +33,7 @@ interface Job {
 export default function JobFinder() {
   const { user } = useAuth();
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
+  const { hasAccess } = checkAccess('jobSearches');
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -41,7 +44,24 @@ export default function JobFinder() {
   const [candidateProfile, setCandidateProfile] = useState('');
   const navigate = useNavigate();
 
-  const { hasAccess } = checkAccess('jobSearches');
+  const { activeTargetRole } = useSystemOS();
+
+  useEffect(() => {
+    if (!query && activeTargetRole) {
+      setQuery(activeTargetRole);
+    }
+  }, [activeTargetRole]);
+
+  const handleSelectRoleFromChip = (selectedRole: string) => {
+    setQuery(selectedRole);
+    handleSearchWithQuery(selectedRole, location);
+  };
+
+  const handleSelectSkillFromChip = (selectedSkill: string) => {
+    const newQuery = `${query || activeTargetRole || 'Software Engineer'} ${selectedSkill}`;
+    setQuery(newQuery);
+    handleSearchWithQuery(newQuery, location);
+  };
 
   useEffect(() => {
     async function fetchCandidateProfile() {
@@ -87,8 +107,8 @@ export default function JobFinder() {
     }, 0);
   };
 
-  const handleSearchWithQuery = async (searchQuery: string, searchLoc: string, e: FormEvent) => {
-    e.preventDefault();
+  const handleSearchWithQuery = async (searchQuery: string, searchLoc: string, e?: FormEvent) => {
+    if (e) e.preventDefault();
     if (!searchQuery) return;
 
     setLoading(true);
@@ -177,6 +197,17 @@ export default function JobFinder() {
           Search and match top job opportunities tailored for your engineering profile.
         </p>
       </div>
+
+      {/* Smart System Context Chips */}
+      <SmartContextChips 
+        className="mb-6" 
+        onSelectRole={handleSelectRoleFromChip}
+        onSelectSkill={handleSelectSkillFromChip}
+        onSelectJob={(jobTitle) => {
+          setQuery(jobTitle);
+          handleSearchWithQuery(jobTitle, location);
+        }}
+      />
 
       {/* Search Bar */}
       <div className="glass-panel mb-12 p-8 rounded-3xl border border-border bg-surface">

@@ -36,6 +36,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
+import SmartContextChips from '../components/SmartContextChips';
 import { askAICoach } from '../lib/gemini';
 import AILoadingStepper from '../components/AILoadingStepper';
 
@@ -391,6 +392,13 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      <SmartContextChips 
+        className="mb-8"
+        onSelectRole={(role) => navigate(`/finder`)}
+        onSelectJob={(jobTitle) => navigate(`/jobs`)}
+        onSelectSkill={(skill) => navigate(`/learning`)}
+      />
 
       {/* ========================================================================= */}
       {/* STATE-BASED PRIMARY HERO BANNER (#1 PRIORITY)                             */}

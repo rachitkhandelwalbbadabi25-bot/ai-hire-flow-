@@ -44,15 +44,28 @@ import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { Link } from 'react-router-dom';
 import { formatCreditAvailability } from '../utils/formatters';
+import SmartContextChips from '../components/SmartContextChips';
+import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function InterviewSimulator() {
   const { user } = useAuth();
   if (!user) return null;
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
+  const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
   const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
   
-  const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
+  const { activeTargetRole, trackedJobs } = useSystemOS();
+
+  useEffect(() => {
+    if (!jobDescription) {
+      if (trackedJobs.length > 0) {
+        setJobDescription(`Position: ${trackedJobs[0].role}\nCompany: ${trackedJobs[0].company}\nNotes: ${trackedJobs[0].notes || 'Engineering interview preparation'}`);
+      } else if (activeTargetRole) {
+        setJobDescription(`Target Position: ${activeTargetRole}\nCompany: Top Enterprise Tech Company\nFocus: Technical round, system architecture, and behavioral leadership.`);
+      }
+    }
+  }, [activeTargetRole, trackedJobs]);
   const [jobDescription, setJobDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -232,6 +245,12 @@ export default function InterviewSimulator() {
             exit={{ opacity: 0, y: -20 }}
             className="bg-surface p-8 rounded-[2rem] border border-border shadow-2xl"
           >
+            <SmartContextChips 
+              className="mb-6"
+              onSelectRole={(role) => setJobDescription(`Target Role: ${role}\nCompany: Enterprise Tech Company\nResponsibilities: Full software lifecycle, scalable system architecture.`)}
+              onSelectJob={(jobTitle) => setJobDescription(`Interview Prep for: ${jobTitle}\nFocusing on core engineering requirements and behavioral leadership.`)}
+            />
+
             <div className="mb-8">
               <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-4 block px-1">Job Description</label>
               <textarea

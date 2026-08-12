@@ -39,6 +39,8 @@ import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { Link } from 'react-router-dom';
 import { formatCreditAvailability } from '../utils/formatters';
+import SmartContextChips from '../components/SmartContextChips';
+import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function ResumeAnalyzer() {
@@ -218,8 +220,14 @@ export default function ResumeAnalyzer() {
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-8"
+          className="space-y-8"
         >
+          <SmartContextChips 
+            onSelectRole={(role) => setJobDesc(`Target Role: ${role}\nResponsibilities: Software development, technical design, clean architecture.`)}
+            onSelectJob={(jobTitle) => setJobDesc(`Position: ${jobTitle}\nKey Requirements: Technical leadership, system design, and software development.`)}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Upload Card */}
           <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm">
             <h3 className="font-bold text-ink mb-6 flex items-center gap-2 uppercase text-xs tracking-widest">
@@ -296,6 +304,7 @@ export default function ResumeAnalyzer() {
                 Analyze Resume
               </button>
             )}
+          </div>
           </div>
         </motion.div>
       ) : (

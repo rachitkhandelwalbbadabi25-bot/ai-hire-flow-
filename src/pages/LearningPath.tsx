@@ -46,6 +46,8 @@ interface LearningPathProps {
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { Link, useLocation } from 'react-router-dom';
+import SmartContextChips from '../components/SmartContextChips';
+import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 
@@ -55,15 +57,25 @@ export default function LearningPath() {
   const { plan, checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const location = useLocation();
   
-  const { remaining: roadmapType } = checkAccess('learningPath'); // Basic, Full, Personalized
-  const isFree = plan === 'free';
-  const isPersonalized = roadmapType === 'personalized';
+  const { activeTargetRole, allMissingSkills } = useSystemOS();
 
+  useEffect(() => {
+    if (!targetRole && activeTargetRole) {
+      setTargetRole(activeTargetRole);
+    }
+    if (!skillsStr && allMissingSkills.length > 0) {
+      setSkillsStr(allMissingSkills.join(', '));
+    }
+  }, [activeTargetRole, allMissingSkills]);
   const [targetRole, setTargetRole] = useState('');
   const [skillsStr, setSkillsStr] = useState('');
+  const [roadmapType, setRoadmapType] = useState<'personalized' | 'general'>('personalized');
   const [loading, setLoading] = useState(false);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [recentAnalysis, setRecentAnalysis] = useState<any>(null);
+
+  const isFree = plan === 'free';
+  const isPersonalized = roadmapType === 'personalized';
 
   const getJobTitle = (fullDesc: string) => {
     if (!fullDesc) return '';
@@ -154,6 +166,16 @@ export default function LearningPath() {
           Convert alignment gaps into strategic growth trajectories using validated career requirements.
         </p>
       </div>
+
+      <SmartContextChips 
+        className="mb-8"
+        onSelectRole={(role) => setTargetRole(role)}
+        onSelectSkill={(skill) => {
+          if (!skillsStr.includes(skill)) {
+            setSkillsStr(skillsStr ? `${skillsStr}, ${skill}` : skill);
+          }
+        }}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Sidebar Config */}

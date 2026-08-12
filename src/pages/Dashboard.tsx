@@ -1,4 +1,4 @@
-import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -110,6 +110,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [addingJobId, setAddingJobId] = useState<string | null>(null);
   const [trackedJobsMap, setTrackedJobsMap] = useState<Record<string, boolean>>({});
+  const [masterResumeData, setMasterResumeData] = useState<any>(null);
+  const [rawJobsList, setRawJobsList] = useState<any[]>([]);
 
   // AI Coach state
   const [coachQuestion, setCoachQuestion] = useState("");
@@ -142,6 +144,17 @@ export default function Dashboard() {
         const jobs = (jobsSnap.docs || []).map(doc => doc.data() as any);
         const resumes = (resumesSnap.docs || []).map(doc => doc.data() as any);
         const simulations = (simulationsSnap.docs || []).map(doc => doc.data() as any);
+        setRawJobsList(jobs);
+
+        try {
+          const masterDocRef = doc(db, 'users', user.uid, 'config', 'masterResume');
+          const masterSnap = await getDoc(masterDocRef);
+          if (masterSnap.exists()) {
+            setMasterResumeData(masterSnap.data());
+          }
+        } catch (e) {
+          console.warn("Master resume not loaded:", e);
+        }
         
         const statusCounts = jobs.reduce((acc: any, job: any) => {
           if (job && job.status) {
@@ -273,13 +286,23 @@ export default function Dashboard() {
     setCoachAnswer(null);
 
     try {
+      const trackedCompanies = rawJobsList.map(j => j.company || j.role).filter(Boolean).slice(0, 8).join(', ');
+      const currentRole = masterResumeData?.experience?.[0]?.role 
+        ? `${masterResumeData.experience[0].role} at ${masterResumeData.experience[0].company || 'Current Company'}`
+        : 'Software Engineer';
+      const targetRole = masterResumeData?.targetRole || (stats.missingKeywords?.length ? 'Roles requiring ' + stats.missingKeywords.slice(0, 3).join(', ') : 'Software Engineering & Tech Roles');
+      const userSkills = masterResumeData?.skills?.join(', ') || 'React, TypeScript, Node.js, Python, System Design';
+
       const context = `
-- User Name: ${user?.displayName || 'Candidate'}
-- Target Role: ${stats.missingKeywords?.length ? 'Roles requiring ' + stats.missingKeywords.slice(0, 3).join(', ') : 'Software Engineering & Tech Roles'}
-- Resume Summary: ATS Audit Score: ${stats.latestResumeScore || 0}/100. Resumes Audited: ${stats.resumesAnalyzed}. Missing Keywords: ${stats.missingKeywords?.length ? stats.missingKeywords.join(', ') : 'None identified'}.
-- Current Job Pipeline Status: Total Applied/Tracked: ${stats.totalJobs}, Interviews Lined Up: ${stats.interviews}, Offers Received: ${stats.offers}.
-- Recent Interview Scores: Interview Readiness Index: ${stats.interviewReadiness}%, Total Simulations Completed: ${stats.simulationsRun}.
-- Credit Balance & Tier: Balance: ${creditWallet?.balance ?? 0} CR, Membership Tier: ${planBadgeLabel}.
+- Candidate Name: ${user?.displayName || 'Candidate'}
+- Current Role: ${currentRole}
+- Target Role: ${targetRole}
+- Resume Skills & Data: ${userSkills}
+- Master Resume Summary: "${masterResumeData?.summary || 'Experienced software developer'}"
+- ATS Audit Status: Score ${stats.latestResumeScore || 0}/100. Resumes Audited: ${stats.resumesAnalyzed}. Missing Keywords: ${stats.missingKeywords?.length ? stats.missingKeywords.join(', ') : 'None identified'}.
+- Job Pipeline Status: Total Tracked Jobs: ${stats.totalJobs}. Tracked Companies: ${trackedCompanies || 'None (0 jobs tracked)'}. Active Interviews: ${stats.interviews}. Offers Received: ${stats.offers}.
+- Recent Interview Scores: Interview Readiness Index: ${stats.interviewReadiness}%. Total Simulations Completed: ${stats.simulationsRun}.
+- Credit Balance & Membership Tier: Balance: ${creditWallet?.balance ?? 0} CR, Membership Tier: ${planBadgeLabel}.
       `.trim();
       const res = await askAICoach(coachQuestion, context);
       setCoachAnswer(res);

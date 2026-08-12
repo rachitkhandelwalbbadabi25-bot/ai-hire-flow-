@@ -18,9 +18,15 @@ import {
   Terminal,
   BrainCircuit,
   Target,
-  Sparkles
+  Sparkles,
+  Calculator,
+  Mail,
+  UserCheck,
+  Zap,
+  ArrowRight,
+  Search, 
+  Edit3
 } from 'lucide-react';
-import { Search, Edit3 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import { cn } from '../lib/utils';
 
@@ -313,98 +319,225 @@ export default function ResumeAnalyzer() {
               </div>
             </div>
           )}
-          {/* Analysis View */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-surface-light p-10 rounded-3xl border border-border flex flex-col items-center justify-center text-center">
-              <p className="text-ink-dim text-[10px] font-bold uppercase tracking-widest mb-6">Compatibility Score</p>
-              <div className="relative w-32 h-32 rounded-full border-8 border-background flex flex-col items-center justify-center mb-4">
-                <span className="text-4xl font-black text-success leading-none">{analysis.score}</span>
-                <span className="text-[8px] text-ink-dim font-bold mt-1">PERCENT</span>
+          {/* Explainable AI Engine - Analysis View */}
+          <div className="space-y-8">
+            {/* Header Explainable Banner */}
+            <div className="bg-gradient-to-r from-accent/15 via-surface to-accent/5 p-6 rounded-3xl border border-accent/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 bg-accent text-white text-[9px] font-extrabold uppercase tracking-widest rounded-full">
+                    Explainable AI Engine
+                  </span>
+                  <span className="text-[10px] font-bold text-accent uppercase tracking-wider">
+                    100% Transparent ATS Audit
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-ink tracking-tight">Full Math Breakdown & Recruiter Rationale</h2>
               </div>
-              <span className="status-pill status-applied">{analysis.atsCompatibility}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl font-black text-accent">{analysis.score}%</span>
+                <span className="status-pill status-applied text-xs">{analysis.atsCompatibility}</span>
+              </div>
             </div>
 
-            <div className="md:col-span-2 space-y-8">
-               <div className="bg-surface p-8 rounded-3xl border border-border">
-                  <h3 className="font-bold text-ink mb-6 flex items-center gap-2 text-xs uppercase tracking-widest">
-                    <CheckCircle2 className="w-4 h-4 text-success" /> Identified Keywords
+            {/* Recruiter Email Memo Card (human_explanation) */}
+            {analysis.human_explanation && (
+              <div className="bg-surface p-8 rounded-3xl border border-border shadow-md">
+                <div className="flex justify-between items-center mb-6 border-b border-border/60 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-2xl text-accent">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-ink text-sm uppercase tracking-wider flex items-center gap-2">
+                        Recruiter Audit Feedback <span className="text-[10px] lowercase text-ink-dim font-mono">(human_explanation)</span>
+                      </h3>
+                      <p className="text-xs text-ink-dim">Direct feedback written in plain English by Lead Technical Recruiter</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(analysis.human_explanation)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-light border border-border rounded-xl text-[10px] font-bold text-ink-dim hover:text-accent hover:border-accent/30 transition-all uppercase tracking-widest"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> Copy Email
+                  </button>
+                </div>
+
+                <div className="bg-background/80 p-6 rounded-2xl border border-border text-ink leading-relaxed font-sans text-sm whitespace-pre-wrap">
+                  {analysis.human_explanation}
+                </div>
+              </div>
+            )}
+
+            {/* 4 Weighted Categories & Scoring Math */}
+            <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="font-bold text-ink uppercase text-xs tracking-widest flex items-center gap-2">
+                    <Calculator className="w-4 h-4 text-accent" /> 4-Category Weighted Math Breakdown
                   </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {(analysis.keywordsFound || []).map((k: string, i: number) => (
-                      <span key={i} className="bg-background text-ink px-3 py-1.5 rounded-lg text-xs font-semibold border border-border">
-                        {k}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-xs text-ink-dim mt-1">
+                    Mathematical proof showing exact weight formulas contributing to your final ATS score of {analysis.score}%.
+                  </p>
                 </div>
+                <div className="px-3 py-1 bg-accent/10 border border-accent/20 rounded-xl text-accent text-xs font-mono font-bold">
+                  Weight Total: 100%
+                </div>
+              </div>
 
-                <div className="bg-surface p-8 rounded-3xl border border-border">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-bold text-ink flex items-center gap-2 text-xs uppercase tracking-widest">
-                      <AlertCircle className="w-4 h-4 text-rose-500" /> Missing Keywords
-                    </h3>
-                    {(analysis.missingKeywords || []).length > 0 && (
-                      <button 
-                        onClick={() => {
-                          const getJobTitle = (desc: string) => {
-                            if (!desc) return '';
-                            const firstLine = desc.split('\n')[0].trim();
-                            if (firstLine.length > 50) {
-                              return firstLine.substring(0, 50) + '...';
-                            }
-                            return firstLine;
-                          };
-                          navigate('/learning', {
-                            state: {
-                              missingSkills: analysis.missingKeywords,
-                              targetRole: getJobTitle(jobDesc)
-                            }
-                          });
-                        }}
-                        className="text-[9px] font-bold text-accent px-3 py-1 bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-all uppercase tracking-widest"
-                      >
-                        Generate roadmap
-                      </button>
-                    )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {(analysis.scoreBreakdown || []).map((cat: any, idx: number) => (
+                  <div key={idx} className="bg-background p-6 rounded-2xl border border-border flex flex-col justify-between space-y-4">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-bold text-ink uppercase tracking-wider">{cat.category}</span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-surface border border-border rounded-lg text-accent">
+                          Weight: {cat.weight}%
+                        </span>
+                      </div>
+                      <p className="text-xs text-ink-dim leading-relaxed mb-4">{cat.explanation}</p>
+                    </div>
+
+                    <div>
+                      {/* Progress Bar */}
+                      <div className="w-full bg-surface-light h-2 rounded-full overflow-hidden mb-3 border border-border">
+                        <div 
+                          className="bg-accent h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${cat.score}%` }}
+                        />
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs font-mono">
+                        <span className="text-ink-dim">Category Score: <strong className="text-ink">{cat.score}/100</strong></span>
+                        <span className="text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-md border border-accent/20">
+                          {cat.mathExplanation || `(${cat.score}/100) × ${cat.weight}% = ${cat.earnedPoints} pts`}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(analysis.missingKeywords || []).length > 0 ? (analysis.missingKeywords || []).map((k: string, i: number) => (
-                      <span key={i} className="bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/20">
-                        {k}
-                      </span>
-                    )) : (
-                      <p className="text-ink-dim text-xs italic">Optimal alignment achieved.</p>
-                    )}
-                  </div>
+                ))}
+              </div>
+
+              {/* Math Equation Formula Bar */}
+              <div className="bg-surface-light p-4 rounded-2xl border border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
+                <span className="text-ink-dim font-bold uppercase tracking-wider">Total Mathematical Calculation:</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(analysis.scoreBreakdown || []).map((cat: any, i: number) => (
+                    <span key={i} className="text-ink font-bold">
+                      {cat.earnedPoints ?? Math.round(((cat.score || 0) * (cat.weight || 0)) / 100)}{i < (analysis.scoreBreakdown || []).length - 1 ? " + " : ""}
+                    </span>
+                  ))}
+                  <span className="text-accent font-black text-sm">= {analysis.score} / 100</span>
                 </div>
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-8">
-            {/* Suggestions */}
+            {/* Keyword Analysis & Specific Rewrites per Gap */}
             <div className="bg-surface p-8 rounded-3xl border border-border">
-              <h3 className="font-bold text-ink mb-8 uppercase text-xs tracking-widest">Optimization Strategy</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-border pb-4">
                 <div>
-                  <p className="text-ink-dim text-[10px] font-bold uppercase tracking-widest mb-6 border-b border-border pb-2 inline-block">Structure & Formatting</p>
-                  <ul className="space-y-4">
-                    {(analysis.formattingSuggestions || []).map((s: string, i: number) => (
-                      <li key={i} className="text-sm text-ink-dim flex gap-4 leading-relaxed">
-                        <span className="text-accent font-mono text-[10px] bg-accent/10 px-1.5 rounded">0{i+1}</span> {s}
-                      </li>
-                    ))}
-                  </ul>
+                  <h3 className="font-bold text-ink uppercase text-xs tracking-widest flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-accent" /> Missing Keyword Rationale & Bullet Rewrites
+                  </h3>
+                  <p className="text-xs text-ink-dim mt-1">
+                    Recruiter explanation of WHY each missing keyword matters for this specific role + 1 high-impact rewrite per gap.
+                  </p>
                 </div>
-                <div>
-                  <p className="text-ink-dim text-[10px] font-bold uppercase tracking-widest mb-6 border-b border-border pb-2 inline-block">Impact & Depth</p>
-                  <ul className="space-y-4">
-                    {(analysis.impactSuggestions || []).map((s: string, i: number) => (
-                      <li key={i} className="text-sm text-ink-dim flex gap-4 leading-relaxed">
-                        <span className="text-success font-mono text-[10px] bg-success/10 px-1.5 rounded">0{i+1}</span> {s}
-                      </li>
-                    ))}
-                  </ul>
+
+                {(analysis.missingKeywords || []).length > 0 && (
+                  <button 
+                    onClick={() => {
+                      const getJobTitle = (desc: string) => {
+                        if (!desc) return '';
+                        const firstLine = desc.split('\n')[0].trim();
+                        return firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+                      };
+                      navigate('/learning', {
+                        state: {
+                          missingSkills: analysis.missingKeywords,
+                          targetRole: getJobTitle(jobDesc)
+                        }
+                      });
+                    }}
+                    className="text-[9px] font-bold text-accent px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-xl hover:bg-accent/20 transition-all uppercase tracking-widest shrink-0"
+                  >
+                    Generate Skill Roadmap
+                  </button>
+                )}
+              </div>
+
+              {(analysis.missingKeywordAnalysis || []).length > 0 ? (
+                <div className="space-y-6">
+                  {analysis.missingKeywordAnalysis.map((item: any, idx: number) => (
+                    <div key={idx} className="bg-background p-6 rounded-2xl border border-border space-y-4">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="px-3 py-1 bg-rose-500/10 text-rose-400 font-bold text-xs rounded-xl border border-rose-500/20 flex items-center gap-2">
+                          <AlertCircle className="w-3.5 h-3.5" /> Missing Skill: {item.keyword}
+                        </span>
+                        <span className="text-[10px] font-bold text-ink-dim uppercase tracking-wider">Gap #{idx + 1}</span>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-bold text-accent uppercase tracking-wider mb-1">Why It Matters For This Specific Job Title & Company:</p>
+                        <p className="text-xs text-ink leading-relaxed font-sans">{item.whyItMatters}</p>
+                      </div>
+
+                      <div className="bg-surface p-4 rounded-xl border border-border/80">
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="text-[10px] font-bold text-success uppercase tracking-widest flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Suggested Metric Bullet Rewrite:
+                          </p>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(item.suggestedRewrite)}
+                            className="text-[9px] font-bold text-ink-dim hover:text-ink flex items-center gap-1 uppercase tracking-wider"
+                          >
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                        </div>
+                        <p className="text-xs font-mono text-ink leading-relaxed">"{item.suggestedRewrite}"</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(analysis.missingKeywords || []).map((k: string, i: number) => (
+                    <span key={i} className="bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/20">
+                      {k}
+                    </span>
+                  ))}
+                  {(analysis.missingKeywords || []).length === 0 && (
+                    <p className="text-ink-dim text-xs italic">Optimal keyword alignment achieved! No missing critical terms found.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Found Keywords & Optimization Strategy */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="bg-surface p-8 rounded-3xl border border-border">
+                <h3 className="font-bold text-ink mb-6 flex items-center gap-2 text-xs uppercase tracking-widest">
+                  <CheckCircle2 className="w-4 h-4 text-success" /> Identified Target Keywords
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {(analysis.keywordsFound || []).map((k: string, i: number) => (
+                    <span key={i} className="bg-background text-ink px-3 py-1.5 rounded-lg text-xs font-semibold border border-border">
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-surface p-8 rounded-3xl border border-border">
+                <h3 className="font-bold text-ink mb-6 uppercase text-xs tracking-widest">Formatting & Structural Strategy</h3>
+                <ul className="space-y-3">
+                  {(analysis.formattingSuggestions || []).map((s: string, i: number) => (
+                    <li key={i} className="text-xs text-ink-dim flex gap-3 leading-relaxed">
+                      <span className="text-accent font-mono text-[10px] bg-accent/10 px-1.5 py-0.5 rounded shrink-0">0{i+1}</span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
@@ -422,7 +555,7 @@ export default function ResumeAnalyzer() {
                     <Copy className="w-3 h-3" /> Copy Cover Letter
                   </button>
                 </div>
-                <div className="bg-background p-8 rounded-2xl border border-border text-ink-dim text-sm leading-relaxed font-sans whitespace-pre-wrap h-[450px] overflow-y-auto no-scrollbar">
+                <div className="bg-background p-8 rounded-2xl border border-border text-ink-dim text-sm leading-relaxed font-sans whitespace-pre-wrap h-[350px] overflow-y-auto no-scrollbar">
                   {coverLetter}
                 </div>
               </div>
@@ -431,7 +564,7 @@ export default function ResumeAnalyzer() {
 
           <NextStepBridgeCard
             title="Resume Evaluation Complete"
-            contextData={`ATS Compatibility Score: ${analysis.matchScore}%. ${analysis.missingKeywords?.length > 0 ? `Identified ${analysis.missingKeywords.length} missing skill keywords (${analysis.missingKeywords.slice(0, 3).join(', ')}).` : 'High alignment with target specifications.'}`}
+            contextData={`ATS Compatibility Score: ${analysis.score}%. ${analysis.missingKeywords?.length > 0 ? `Identified ${analysis.missingKeywords.length} missing skill keywords (${analysis.missingKeywords.slice(0, 3).join(', ')}).` : 'High alignment with target specifications.'}`}
             primaryStep={{
               label: "Search Matched Jobs",
               icon: Search,

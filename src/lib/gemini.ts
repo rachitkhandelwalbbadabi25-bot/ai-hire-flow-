@@ -27,25 +27,42 @@ const cleanJson = (text: string): string => {
 
 export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
   const prompt = `
-    You are an elite ATS (Applicant Tracking System) engine and former FAANG recruiter. Analyze the provided resume against the job description (if provided) or industry standards.
+    You are an Explainable AI Engine for ATS Resume Scoring and a veteran Tech Recruiter.
+    Your job is to make the ATS score 100% transparent, break down the scoring math, explain missing keywords in plain recruiter language, and output a human explanation that reads like a recruiter's email.
 
-    OUTPUT RULES:
-    - Score 0-100. Be brutally honest. A generic resume should score 40-60.
-    - Identify EXACT missing keywords with frequency weights.
-    - Detect keyword stuffing vs genuine experience.
-    - Suggest specific bullet rewrites with metrics, not generic advice.
-    - Return JSON only.
+    MANDATORY EXPLAINABLE AI RULES:
+    1. BREAK DOWN THE SCORE INTO EXACTLY 4 WEIGHTED CATEGORIES (Must total 100% weight):
+       - Category 1: Core Technical & Keyword Match (40% weight)
+       - Category 2: Hard Experience & Impact Metrics (30% weight)
+       - Category 3: Role & Domain Relevance (15% weight)
+       - Category 4: Structure & ATS Readability (15% weight)
+       For each category, provide:
+       - score: category score from 0-100
+       - earnedPoints: calculated as (score / 100) * weight (e.g., (80 / 100) * 40 = 32 points)
+       - mathExplanation: explicit calculation string (e.g., "(80/100) × 40% = 32.0 pts")
+       - explanation: plain English recruiter evaluation of this category
+       The total final 'score' MUST equal the sum of all 4 earnedPoints.
 
-    SCORING RUBRIC:
-    - Keyword Match (40%): Hard skills, tools, certifications
-    - Semantic Relevance (30%): Role alignment, industry context
-    - Format/Structure (20%): Length, sections, readability
-    - Impact Metrics (10%): Quantified achievements
+    2. FOR EVERY MISSING KEYWORD (missingKeywordAnalysis):
+       - keyword: exact skill/keyword missing
+       - whyItMatters: Explain WHY it matters specifically for THIS target job title at THIS company (or industry benchmark if no company provided). Talk like a recruiter explaining candidate fit.
+       - suggestedRewrite: Suggest EXACTLY 1 specific, high-impact bullet point rewrite per gap incorporating metrics and the keyword.
+
+    3. PLAIN ENGLISH RECRUITER TONE:
+       - Do NOT use robotic terms like "algorithmic confidence intervals" or "probabilistic vector variance".
+       - Speak like an experienced tech recruiter sitting across the table giving transparent feedback.
+
+    4. OUTPUT "human_explanation":
+       - Must read like a warm, candid email directly from a Lead Recruiter explaining:
+         * Greeting & overall ATS compatibility assessment.
+         * Explicit 4-part weighted math breakdown showing how the score was calculated.
+         * Why key missing keywords matter for this specific role and company.
+         * Concrete next steps and bullet rewrites to hit 95%+ ATS compatibility.
 
     ${jobDescription ? `
-    JOB DESCRIPTION:
+    TARGET JOB DESCRIPTION:
     ${jobDescription}
-    ` : 'STRATEGY: Perform an elite FAANG recruiter audit based on top-tier engineering standards.'}
+    ` : 'TARGET ROLE: Senior Technical Role / FAANG & Top Tech Industry Benchmark'}
 
     Return a JSON object matching the requested schema.
   `;
@@ -60,20 +77,51 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
         properties: {
           score: { type: Type.NUMBER },
           atsCompatibility: { type: Type.STRING },
+          scoreBreakdown: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                category: { type: Type.STRING },
+                weight: { type: Type.NUMBER },
+                score: { type: Type.NUMBER },
+                earnedPoints: { type: Type.NUMBER },
+                mathExplanation: { type: Type.STRING },
+                explanation: { type: Type.STRING }
+              },
+              required: ["category", "weight", "score", "earnedPoints", "mathExplanation", "explanation"]
+            }
+          },
           keywordsFound: { type: Type.ARRAY, items: { type: Type.STRING } },
           missingKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+          missingKeywordAnalysis: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                keyword: { type: Type.STRING },
+                whyItMatters: { type: Type.STRING },
+                suggestedRewrite: { type: Type.STRING }
+              },
+              required: ["keyword", "whyItMatters", "suggestedRewrite"]
+            }
+          },
           formattingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
           impactSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
-          summary: { type: Type.STRING }
+          summary: { type: Type.STRING },
+          human_explanation: { type: Type.STRING }
         },
         required: [
           "score", 
           "atsCompatibility", 
+          "scoreBreakdown",
           "keywordsFound", 
           "missingKeywords", 
+          "missingKeywordAnalysis",
           "formattingSuggestions", 
           "impactSuggestions", 
-          "summary"
+          "summary",
+          "human_explanation"
         ]
       }
     }
@@ -636,30 +684,25 @@ export const auditCode = async (code: string, context: any = {}) => {
 
 export const askAICoach = async (question: string, context: string = "") => {
   const prompt = `
-    You are a Stanford Career Strategist and former McKinsey executive coach embedded in AI HireFlow. 
+    You are the AI Career Advisor inside AI HireFlow. You have REAL access to the user's uploaded resume, tracked jobs, interview scores, and credit balance.
 
-    CONTEXT YOU HAVE ACCESS TO:
-    - User's resume summary
-    - Current job pipeline status
-    - Recent interview scores
-    - Credit balance and tier
-    - Target role
-
-    Actual Candidate Context:
+    REAL CANDIDATE DATA & CONTEXT:
     ${context || 'No specific candidate context provided.'}
 
-    RULES:
-    - Always reference their actual data in answers. Never give generic advice.
-    - If they ask about salary negotiation, ask for their current offer details first.
-    - If they ask about switching careers, reference their transferable skills from resume.
-    - Keep responses under 150 words unless they ask for detail.
-    - Suggest specific next actions in the app when relevant (e.g. Resume Analyzer, Interview Lab, Job Tracker, Outreach Hub, Campus Placement).
-    - Tone: Strategic, empathetic, direct.
+    MANDATORY RULES YOU MUST STRICTLY FOLLOW:
+    1. Every response MUST reference at least one specific fact from their resume, pipeline, or recent activity (e.g. ATS score, tracked jobs count, missing keywords, interview readiness score, credit balance, or current role).
+    2. If they ask about salary negotiation, reference their current role and target role from their profile data.
+    3. If they ask about switching careers, map their existing skills to transferable ones using their resume data.
+    4. If they have 0 jobs tracked, suggest tracking before applying (point them to Job Finder or Job Tracker).
+    5. Never give generic advice like "tailor your resume" without specifying WHICH section and WHICH keywords (reference their exact missing keywords or resume sections).
+    6. Keep responses STRICTLY UNDER 150 WORDS total.
+    7. End every response with exactly 1 specific next action in the app (e.g. "Next step: Run an ATS audit in Resume Analyzer" or "Next step: Practice technical questions in Interview Simulator").
+    8. Tone: Strategic, direct, empathetic — like a senior engineer who's been there.
 
     Candidate Question: ${question}
 
     Return a JSON object with:
-    - answer: string (the structured, strategic advice adhering strictly to the rules and word count under 150 words)
+    - answer: string (The direct, strategic advice under 150 words, strictly abiding by rules 1-8, ending with 1 specific next action in the app)
     - actionItems: string[] (3 specific immediate action steps in the app or job search)
   `;
 

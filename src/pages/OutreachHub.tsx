@@ -52,7 +52,7 @@ export default function OutreachHub() {
   );
   const [loadingContext, setLoadingContext] = useState(false);
 
-  // Contacts / Referral Matrix
+  // Contacts & Referrals
   const [contacts, setContacts] = useState<any[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
 
@@ -243,7 +243,7 @@ export default function OutreachHub() {
           `Hi ${contact.name},\n\nLoved ${contact.company}'s recent technical scaling engineering milestones.\n\nWould love to learn about your team's workflow and share a quick bit about my background in full-stack architecture.\n\nDo you have 15 minutes for a quick virtual coffee next week?\n\nBest,\n[Your Name]`,
       );
     } catch (error) {
-      console.error("Failed generating neural pitch:", error);
+      console.error("Failed generating pitch draft:", error);
       setGeneratedSubject(
         `Quick question on ${contact.company}'s engineering focus`,
       );
@@ -559,7 +559,7 @@ export default function OutreachHub() {
                 <div className="flex items-center gap-2.5">
                   <Zap className="w-4 h-4 text-warning" />
                   <span className="text-[11px] font-bold text-ink uppercase tracking-tight">
-                    Pitch Draft Auto-Synthesis
+                    Automatic Pitch Draft Generation
                   </span>
                 </div>
                 <div className="w-9 h-5 bg-accent/20 rounded-full flex items-center px-0.5 border border-accent/30 cursor-pointer">
@@ -635,10 +635,7 @@ export default function OutreachHub() {
               </h3>
             </div>
             <p className="text-xs text-white/50 leading-relaxed font-sans mb-4 italic">
-              "We leverage structural narrative synthesis. By comparing your
-              precise elevator pitch against the target contact's corporate
-              profile, we generate highly strategic referrals that bypass
-              initial filter barriers."
+              "We analyze your background and company target details to generate professional, personalized outreach emails."
             </p>
             <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
@@ -659,7 +656,7 @@ export default function OutreachHub() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-ink uppercase tracking-tight">
-                    Referral Matrix
+                    Referral Contacts
                   </h2>
                   <p className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.2em] mt-0.5">
                     Target Contact Hub
@@ -681,7 +678,7 @@ export default function OutreachHub() {
               <div className="flex flex-col items-center justify-center p-20 gap-3">
                 <Loader2 className="w-8 h-8 text-accent animate-spin" />
                 <span className="text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                  Loading Referral Matrix...
+                  Loading Referral Contacts...
                 </span>
               </div>
             ) : contacts.length === 0 ? (

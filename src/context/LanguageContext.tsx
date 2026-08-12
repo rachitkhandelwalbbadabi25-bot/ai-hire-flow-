@@ -23,7 +23,7 @@ const translations: Record<Language, Record<string, string>> = {
     outreach: 'Outreach & Alerts',
     languageName: 'English',
     welcomeBack: 'Welcome Back',
-    neuralStatus: 'System Connected',
+    systemStatus: 'System Connected',
     systemVerified: 'System Verified'
   },
   hi: {
@@ -40,7 +40,7 @@ const translations: Record<Language, Record<string, string>> = {
     outreach: 'आउटरीच और अलर्ट',
     languageName: 'हिंदी',
     welcomeBack: 'स्वागत है',
-    neuralStatus: 'सिस्टम ऑनलाइन',
+    systemStatus: 'सिस्टम ऑनलाइन',
     systemVerified: 'सिस्टम सत्यापित'
   }
 };

@@ -160,9 +160,9 @@ export default function AILoadingStepper({
 
       <div className="flex items-center justify-between text-[10px] text-ink-dim font-mono border-t border-border/60 pt-3 relative z-10">
         <span className="flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-accent" /> Verified Telemetry Standard
+          <ShieldCheck className="w-3.5 h-3.5 text-accent" /> Verified Analysis Standard
         </span>
-        <span>Deterministic Multi-Node Analysis</span>
+        <span>Comprehensive Resume Audit</span>
       </div>
     </motion.div>
   );

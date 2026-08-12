@@ -1,27 +1,27 @@
 {
   "resume_audit": [
-    { "step": 1, "duration": 2500, "description": "Parsing 48 structural resume nodes and extracting candidate telemetry..." },
-    { "step": 2, "duration": 3000, "description": "Vectorizing 120+ technical skill markers against Fortune 500 ATS job taxonomies..." },
-    { "step": 3, "duration": 2500, "description": "Calculating 4-category weighted score matrix and identifying keyword variance..." },
-    { "step": 4, "duration": 2000, "description": "Synthesizing executive recruiter audit feedback memo and metric-driven rewrites..." }
+    { "step": 1, "duration": 2500, "description": "Parsing resume details and extracting professional candidate background..." },
+    { "step": 2, "duration": 3000, "description": "Comparing key technical skills against target industry role requirements..." },
+    { "step": 3, "duration": 2500, "description": "Calculating detailed ATS match scores and identifying keyword gaps..." },
+    { "step": 4, "duration": 2000, "description": "Generating actionable recruiter feedback and metric-driven bullet points..." }
   ],
   "job_finder": [
-    { "step": 1, "duration": 2200, "description": "Querying 1,850+ live tech listings across target location constraints..." },
-    { "step": 2, "duration": 3000, "description": "Filtering listings against candidate profile vector and core technical stack..." },
-    { "step": 3, "duration": 2500, "description": "Computing fit percentage scores and role tier classification (Safe / Stretch)..." },
-    { "step": 4, "duration": 2000, "description": "Structuring top opportunity cards with AI compatibility assessments..." }
+    { "step": 1, "duration": 2200, "description": "Searching live listings across your selected location constraints..." },
+    { "step": 2, "duration": 3000, "description": "Matching job requirements against your core skills and experience..." },
+    { "step": 3, "duration": 2500, "description": "Calculating role compatibility scores and experience recommendations..." },
+    { "step": 4, "duration": 2000, "description": "Organizing top job matches with key compatibility insights..." }
   ],
   "learning_roadmap": [
-    { "step": 1, "duration": 2500, "description": "Auditing skill gap taxonomy between master resume profile and target role..." },
-    { "step": 2, "duration": 3200, "description": "Mapping 14 prerequisite technical competencies and milestone dependency graphs..." },
-    { "step": 3, "duration": 2500, "description": "Compiling curated engineering documentation, video labs, and practical projects..." },
-    { "step": 4, "duration": 2000, "description": "Finalizing 30-day structured execution timeline with gamified XP rewards..." }
+    { "step": 1, "duration": 2500, "description": "Analyzing skill gaps between your current profile and target role..." },
+    { "step": 2, "duration": 3200, "description": "Mapping key technical topics and learning milestones..." },
+    { "step": 3, "duration": 2500, "description": "Curating technical documentation, courses, and practical projects..." },
+    { "step": 4, "duration": 2000, "description": "Finalizing a structured 30-day learning plan..." }
   ],
   "code_audit": [
-    { "step": 1, "duration": 2000, "description": "Building Abstract Syntax Tree (AST) representation from submitted source code..." },
-    { "step": 2, "duration": 3200, "description": "Running 850+ static analysis rules for OWASP vulnerabilities and edge-case leaks..." },
-    { "step": 3, "duration": 2500, "description": "Generating optimized refactored code blocks with runtime time-complexity benchmarks..." },
-    { "step": 4, "duration": 2000, "description": "Assembling architectural hardening guidelines and code quality review..." }
+    { "step": 1, "duration": 2000, "description": "Analyzing source code structure and syntax..." },
+    { "step": 2, "duration": 3200, "description": "Checking security guidelines, performance patterns, and edge cases..." },
+    { "step": 3, "duration": 2500, "description": "Generating optimized refactored code with complexity estimates..." },
+    { "step": 4, "duration": 2000, "description": "Assembling code quality review and recommended improvements..." }
   ],
   "outreach_pitch": [
     { "step": 1, "duration": 2200, "description": "Indexing recipient contact background and company engineering profile..." },

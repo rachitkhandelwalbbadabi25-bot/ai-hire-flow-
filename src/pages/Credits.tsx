@@ -475,7 +475,7 @@ export default function CreditsPage() {
             { id: 'missions', label: 'Missions & Rank', icon: Award },
             { id: 'referrals', label: 'Referral Engine', icon: UserPlus },
             { id: 'pricing', label: 'Plans & Pricing', icon: Zap },
-            ...(plan === 'admin' ? [{ id: 'admin', label: 'Admin Matrix', icon: Crown }] : [])
+            ...(plan === 'admin' ? [{ id: 'admin', label: 'Admin Panel', icon: Crown }] : [])
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1391,7 +1391,7 @@ export default function CreditsPage() {
                 <div className="flex flex-col items-center py-6">
                   <RefreshCw className="w-12 h-12 text-accent animate-spin mb-4" />
                   <h3 className="text-lg font-black uppercase tracking-tight text-white">Connecting Razorpay...</h3>
-                  <p className="text-xs text-ink-dim mt-2 uppercase tracking-widest font-bold">Initializing Secure Checkout Matrix</p>
+                  <p className="text-xs text-ink-dim mt-2 tracking-wide font-medium">Initializing secure checkout</p>
                 </div>
               )}
 

@@ -137,7 +137,7 @@ export default function InterviewSimulator() {
       setCurrentIdx(0);
     } catch (error: any) {
       console.error('Failed to generate questions:', error);
-      setError(error.message || "Question Synthesis Failure.");
+      setError(error.message || "Failed to generate interview questions.");
     } finally {
       setIsGenerating(false);
     }

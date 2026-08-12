@@ -37,6 +37,8 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import SmartContextChips from '../components/SmartContextChips';
+import QuickStartChecklist from '../components/QuickStartChecklist';
+import { useSystemOS } from '../context/SystemOSContext';
 import { askAICoach } from '../lib/gemini';
 import AILoadingStepper from '../components/AILoadingStepper';
 
@@ -315,8 +317,12 @@ export default function Dashboard() {
     }
   };
 
-  const hasResume = stats.resumesAnalyzed > 0;
+  const { activeTargetRole, latestResume } = useSystemOS();
+
+  const hasResume = stats.resumesAnalyzed > 0 || !!masterResumeData;
   const hasJobs = stats.totalJobs > 0;
+  const hasTargetRole = Boolean(masterResumeData?.targetRole || latestResume?.targetRole || (activeTargetRole && activeTargetRole !== 'Software Engineer' && activeTargetRole !== 'Full Stack Engineer'));
+  const hasScanDone = stats.resumesAnalyzed > 0;
 
   if (!user) return null;
 
@@ -392,6 +398,13 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      <QuickStartChecklist 
+        hasResume={hasResume}
+        hasTargetRole={hasTargetRole}
+        hasScanDone={hasScanDone}
+        className="mb-8"
+      />
 
       <SmartContextChips 
         className="mb-8"

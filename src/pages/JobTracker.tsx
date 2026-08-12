@@ -100,7 +100,7 @@ export default function JobTracker() {
         <div className="flex flex-col md:flex-row md:items-end gap-6 mb-12">
           <div>
             <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase font-sans leading-none">Job Pipeline</h1>
-            <p className="text-ink-dim font-medium text-sm">Real-time surveillance of your current professional acquisitions.</p>
+            <p className="text-ink-dim font-medium text-sm">Real-time tracking of your current job applications.</p>
           </div>
           <div className="flex items-center gap-4 bg-surface border border-border px-4 py-2 rounded-xl shadow-sm">
              <div className="flex flex-col">
@@ -128,7 +128,7 @@ export default function JobTracker() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" />
             <input 
               type="text" 
-              placeholder="Filter acquisitions..." 
+              placeholder="Filter applications..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all text-ink"

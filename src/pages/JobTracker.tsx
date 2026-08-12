@@ -26,6 +26,7 @@ export default function JobTracker() {
   const { user } = useAuth();
   if (!user) return null;
   const { checkAccess, openUpgradeModal } = usePlan();
+  const { activeTargetRole } = useSystemOS();
   const [jobs, setJobs] = useState<any[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -280,17 +281,17 @@ export default function JobTracker() {
           ) : (
             <EmptyState
               icon={Briefcase}
-              title="Launch Your Engineering Application Pipeline"
-              targetRole="Software & Tech Positions"
-              description="Construct a high-volume application tracking system to monitor recruiter responses, pipeline bottlenecks, and interview conversion rates."
-              benefitMetric="Tracking 5+ target positions increases interview callback rates by 3.2x"
+              title="Launch your application pipeline"
+              targetRole={activeTargetRole || "Software Engineer"}
+              description="Track your active job applications in one place to stay organized across interview stages, recruiter follow-ups, and offer negotiations."
+              benefitMetric="Candidates tracking 5+ applications get 3.2x more interview callbacks"
               primaryAction={{
-                label: "Add Target Job Position",
+                label: "Add job application",
                 onClick: () => setIsAdding(true),
                 icon: Plus
               }}
               secondaryAction={{
-                label: "Discover Matched Postings",
+                label: "Browse matched job listings",
                 onClick: () => navigate('/jobs'),
                 icon: Search
               }}

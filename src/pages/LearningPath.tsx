@@ -243,12 +243,12 @@ export default function LearningPath() {
             {!roadmap && !loading ? (
               <EmptyState
                 icon={GraduationCap}
-                title="Build Your Technical Curriculum & Mastery Blueprint"
+                title="Create your personalized learning path"
                 targetRole={targetRole || "Full Stack Engineer"}
-                description="Generate a customized 30-day engineering learning path with milestone projects, prerequisite skill graphs, and curated enterprise documentation."
-                benefitMetric="Structured skill roadmaps reduce technical interview prep time by 4.2 weeks"
+                description="Generate a customized 30-day skill roadmap with key topics, project ideas, and documentation to prepare for your target role."
+                benefitMetric="Following a structured learning plan reduces interview prep time by 4 weeks"
                 primaryAction={{
-                  label: "Generate Full Stack Roadmap",
+                  label: "Generate full stack roadmap",
                   onClick: () => {
                     setTargetRole('Full Stack Engineer');
                     setSkillsStr('React, Node.js, TypeScript, PostgreSQL');
@@ -256,7 +256,7 @@ export default function LearningPath() {
                   icon: Sparkles
                 }}
                 secondaryAction={{
-                  label: "Generate AI/ML Engineer Path",
+                  label: "Generate AI engineer path",
                   onClick: () => {
                     setTargetRole('AI Platform Engineer');
                     setSkillsStr('Python, PyTorch, LangChain, Vector DBs');

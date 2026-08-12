@@ -707,9 +707,12 @@ export default function CreditsPage() {
 
                   <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                     {transactions.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center text-ink-dim border border-dashed border-border/30 rounded-2xl">
-                        <History className="w-8 h-8 opacity-25 mb-2" />
-                        <p className="text-xs font-bold uppercase tracking-wider">No Transactions</p>
+                      <div className="flex flex-col items-center justify-center py-10 text-center text-ink-dim border border-dashed border-border rounded-lg bg-surface p-6">
+                        <History className="w-8 h-8 text-accent opacity-60 mb-2" />
+                        <p className="text-xs font-mono font-bold text-ink">Transaction history starts here</p>
+                        <p className="text-[11px] text-ink-dim mt-1 max-w-xs leading-relaxed">
+                          Credits used for resume scans, mock interviews, and job searches will appear in this ledger.
+                        </p>
                       </div>
                     ) : (
                       transactions.map((t) => (

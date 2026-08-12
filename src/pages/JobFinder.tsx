@@ -309,17 +309,17 @@ export default function JobFinder() {
         ) : hasSearched && jobs.length === 0 ? (
           <EmptyState
             icon={Search}
-            title="Expand Search Criteria for Target Engineering Roles"
-            targetRole={query || "Software Engineering Roles"}
-            description="Widen location boundaries or try alternative technical role titles to unlock active verified job listings."
-            benefitMetric="Broadening search keywords yields 4.5x more high-match engineering openings"
+            title="Expand your job search criteria"
+            targetRole={query || activeTargetRole || "Software Engineer"}
+            description="Try searching with broader location filters or related job titles to discover active, verified job openings."
+            benefitMetric="Searching with related role titles yields 4.5x more relevant job matches"
             primaryAction={{
               label: "Search 'Full Stack Developer'",
               onClick: () => handlePopularSearch("Full Stack Developer"),
               icon: Search
             }}
             secondaryAction={{
-              label: "Audit ATS Resume First",
+              label: "Analyze your resume first",
               onClick: () => navigate('/analyzer'),
               icon: Target
             }}
@@ -327,10 +327,10 @@ export default function JobFinder() {
         ) : !hasSearched ? (
           <EmptyState
             icon={Building2}
-            title="Explore Live High-Match Engineering Opportunities"
-            targetRole="Software & Tech Positions"
-            description="Query thousands of verified listings cross-referenced against your master resume vector for real-time ATS fit scoring."
-            benefitMetric="Candidates applying to high-match (>80%) jobs receive interviews 2.8x faster"
+            title="Find matched job openings"
+            targetRole={activeTargetRole || "Software Engineer"}
+            description="Search verified listings and compare them directly against your target role profile to see match scores."
+            benefitMetric="Candidates applying to high-match roles receive interviews 2.8x faster"
             primaryAction={{
               label: "Search 'Software Engineer'",
               onClick: () => handlePopularSearch("Software Engineer"),

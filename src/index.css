@@ -1,77 +1,94 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 @import "tailwindcss";
 
+/**
+ * Premium Enterprise Design Tokens
+ * NO glassmorphism, NO neon glows, NO gradient backgrounds
+ */
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Geist Mono", monospace;
 
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-light: var(--surface-light);
   --color-ink: var(--ink);
   --color-ink-dim: var(--ink-dim);
+  --color-ink-muted: var(--ink-muted);
   --color-accent: #00FF41;
   --color-success: #00FF41;
   --color-warning: #EAB308;
+  --color-error: #EF4444;
   --color-border: var(--border);
+
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.5rem; /* Cap at 0.5rem max */
+  --radius-2xl: 0.5rem; /* Cap at 0.5rem max */
 }
 
 :root {
-  --background: #050505;
+  --background: #000000;
   --surface: #121212;
   --surface-light: #1A1A1A;
   --ink: #FFFFFF;
   --ink-dim: #A3A3A3;
+  --ink-muted: #525252;
   --border: #171717;
   --accent-rgb: 0, 255, 65;
 }
 
 .light {
-  --background: #050505;
-  --surface: #121212;
-  --surface-light: #1A1A1A;
-  --ink: #FFFFFF;
-  --ink-dim: #A3A3A3;
-  --border: #171717;
+  --background: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-light: #F1F5F9;
+  --ink: #0F172A;
+  --ink-dim: #475569;
+  --ink-muted: #94A3B8;
+  --border: #E2E8F0;
 }
 
 @layer base {
   body {
     @apply font-sans antialiased text-ink bg-background min-h-screen;
     background-color: var(--background);
+    color: var(--ink);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1, h2, h3 {
     font-family: var(--font-mono);
+  }
+
+  /* Enterprise focus states */
+  *:focus-visible {
+    outline: 2px solid #00FF41 !important;
+    outline-offset: 2px !important;
   }
 }
 
 @layer components {
-  .glass {
-    @apply bg-surface border border-border transition-all;
-  }
-
-  .glass-card {
-    @apply bg-surface border border-border transition-all rounded-xl overflow-hidden;
-  }
-  
+  /* Solid Enterprise Cards - No Glassmorphism */
+  .glass,
+  .glass-card,
   .glass-panel {
-    @apply bg-surface border border-border transition-all rounded-2xl p-8 lg:p-10;
+    @apply bg-surface border border-border rounded-lg transition-colors;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   
   .status-pill {
-    @apply px-3 py-1 rounded-full text-[11px] font-semibold font-mono;
+    @apply px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border;
   }
   
-  .status-applied { @apply bg-accent/10 text-accent border border-accent/20; }
-  .status-interview { @apply bg-warning/10 text-warning border border-warning/20; }
-  .status-offer { @apply bg-accent/10 text-accent border border-accent/20; }
-  .status-rejected { @apply bg-rose-500/10 text-rose-400 border border-rose-500/20; }
+  .status-applied { @apply bg-accent/10 text-accent border-accent/30; }
+  .status-interview { @apply bg-warning/10 text-warning border-warning/30; }
+  .status-offer { @apply bg-accent/10 text-accent border-accent/30; }
+  .status-rejected { @apply bg-rose-500/10 text-rose-400 border-rose-500/30; }
 }
 
 @keyframes loading {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(250%); }
 }
-
-

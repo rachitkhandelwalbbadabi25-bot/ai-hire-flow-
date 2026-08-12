@@ -684,17 +684,17 @@ export default function OutreachHub() {
             ) : contacts.length === 0 ? (
               <EmptyState
                 icon={Users}
-                title="Initiate Direct Recruiter & Hiring Leader Outreach"
-                targetRole="Engineering & Tech Hiring Managers"
-                description="Add key hiring managers, tech leads, and internal recruiters at target enterprise companies to craft high-converting, metric-backed cold pitches."
-                benefitMetric="Direct recruiter emails yield 4.8x higher interview response rates than portal applications"
+                title="Start your recruiter outreach"
+                targetRole="Tech Recruiters & Engineering Managers"
+                description="Add hiring managers and recruiters at your target companies to generate personalized email pitches and follow-up templates."
+                benefitMetric="Direct recruiter emails yield 4.8x higher response rates than standard portal applications"
                 primaryAction={{
-                  label: "Add Target Recruiter Contact",
+                  label: "Add recruiter contact",
                   onClick: () => setShowAddModal(true),
                   icon: Plus
                 }}
                 secondaryAction={{
-                  label: "Preload Tech Lead Profile",
+                  label: "Add sample Stripe recruiter",
                   onClick: () => {
                     setNewName("Sarah Lin");
                     setNewCompany("Stripe");

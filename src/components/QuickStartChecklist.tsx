@@ -83,14 +83,14 @@ export default function QuickStartChecklist({
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-surface border border-emerald-500/30 rounded-2xl p-6 shadow-md ${className}`}
+        className={`bg-surface border border-accent/30 rounded-lg p-6 ${className}`}
       >
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl">
+          <div className="p-2.5 bg-accent/10 text-accent rounded-md">
             <PartyPopper className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-ink">You're all set!</h3>
+            <h3 className="text-base font-bold text-ink font-mono">You're all set!</h3>
             <p className="text-xs text-ink-dim">
               Your onboarding is complete. Explore job openings, generate cover letters, or practice mock interviews.
             </p>
@@ -105,18 +105,18 @@ export default function QuickStartChecklist({
 
   return (
     <section
-      className={`bg-surface border border-accent/30 rounded-2xl p-6 shadow-xl relative overflow-hidden ${className}`}
+      className={`bg-surface border border-accent/30 rounded-lg p-6 relative overflow-hidden ${className}`}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-border/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-border">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="p-1 bg-accent/10 text-accent rounded-lg">
+            <span className="p-1 bg-accent/10 text-accent rounded-md">
               <Sparkles className="w-4 h-4" />
             </span>
-            <h2 className="text-lg font-bold text-ink">Quick Start Checklist</h2>
+            <h2 className="text-lg font-bold text-ink font-mono">Quick Start Checklist</h2>
           </div>
           <p className="text-xs text-ink-dim">
-            Complete these 3 simple steps to unlock tailored AI job matching and personalized interview coaching.
+            Complete these 3 simple steps to unlock tailored job matching and interview coaching.
           </p>
         </div>
 
@@ -124,7 +124,7 @@ export default function QuickStartChecklist({
           <div className="text-right">
             <span className="text-xs font-mono font-bold text-accent">{completedCount}/3 Completed</span>
           </div>
-          <div className="w-24 bg-border/60 rounded-full h-2 overflow-hidden">
+          <div className="w-24 bg-border rounded-full h-2 overflow-hidden">
             <div
               className="bg-accent h-full transition-all duration-500"
               style={{ width: `${progressPercent}%` }}
@@ -138,12 +138,12 @@ export default function QuickStartChecklist({
           return (
             <div
               key={step.id}
-              className={`p-5 rounded-xl border transition-all flex flex-col justify-between ${
+              className={`p-5 rounded-lg border transition-all flex flex-col justify-between ${
                 step.is_complete
-                  ? 'bg-emerald-500/5 border-emerald-500/30'
+                  ? 'bg-accent/5 border-accent/30'
                   : step.is_locked
                   ? 'bg-background/40 border-border/40 opacity-70'
-                  : 'bg-background border-accent/40 shadow-sm hover:border-accent'
+                  : 'bg-background border-accent/40 hover:border-accent'
               }`}
             >
               <div>

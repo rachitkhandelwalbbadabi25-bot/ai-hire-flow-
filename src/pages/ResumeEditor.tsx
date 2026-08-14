@@ -9,19 +9,25 @@ import {
   Plus, 
   Trash2, 
   Wand2, 
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  BrainCircuit,
-  AlertCircle,
-  Briefcase
+  CheckCircle2, 
+  ChevronDown, 
+  ChevronUp, 
+  BrainCircuit, 
+  AlertCircle, 
+  Briefcase,
+  Search, 
+  FileText
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { refactorResumeText } from '../lib/gemini';
+import { refactorResumeText, improveBulletPointWithAI } from '../lib/gemini';
 import { cn } from '../lib/utils';
-import { Search, FileText } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
+import AIWritingAssistantModal from '../components/AIWritingAssistantModal';
+import { BulletImprovementResult } from '../types/aiWritingAssistant';
+import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../context/PlanContext';
+import { Link } from 'react-router-dom';
 
 interface ResumeData {
   summary: string;
@@ -36,13 +42,14 @@ interface ResumeData {
   skills: string[];
 }
 
-interface ResumeEditorProps {
-  user: User;
+interface ActiveAssistantTarget {
+  expId?: string;
+  bulletIdx?: number;
+  type: 'bullet' | 'summary';
+  originalText: string;
+  roleContext?: string;
+  companyContext?: string;
 }
-
-import { useAuth } from '../context/AuthContext';
-import { usePlan } from '../context/PlanContext';
-import { Link } from 'react-router-dom';
 
 export default function ResumeEditor() {
   const { user, plan } = useAuth();
@@ -59,7 +66,11 @@ export default function ResumeEditor() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [refactoringId, setRefactoringId] = useState<string | null>(null);
-  const [refactoringField, setRefactoringField] = useState<string | null>(null);
+
+  // AI Writing Assistant Modal State
+  const [activeAssistantTarget, setActiveAssistantTarget] = useState<ActiveAssistantTarget | null>(null);
+  const [assistantResult, setAssistantResult] = useState<BulletImprovementResult | null>(null);
+  const [isAssistantLoading, setIsAssistantLoading] = useState(false);
 
   useEffect(() => {
     const fetchMasterResume = async () => {
@@ -112,32 +123,80 @@ export default function ResumeEditor() {
     setData(prev => ({ ...prev, experience: prev.experience.filter(exp => exp.id !== id) }));
   };
 
-  const handleRefactor = async (text: string, type: 'summary' | 'bullet', id?: string, bulletIdx?: number) => {
-    if (!text.trim()) return;
-    const refactorKey = id ? `${id}-${bulletIdx}` : 'summary';
-    setRefactoringId(refactorKey);
-    
+  const handleOpenWritingAssistant = async (
+    text: string, 
+    type: 'bullet' | 'summary', 
+    expId?: string, 
+    bulletIdx?: number, 
+    roleContext?: string, 
+    companyContext?: string
+  ) => {
+    if (!text.trim()) {
+      text = type === 'summary' ? 'Experienced software engineer delivering scalable applications.' : 'Engineered microservices and user interfaces.';
+    }
+
+    const target: ActiveAssistantTarget = {
+      expId,
+      bulletIdx,
+      type,
+      originalText: text,
+      roleContext,
+      companyContext
+    };
+
+    setActiveAssistantTarget(target);
+    setIsAssistantLoading(true);
+    setAssistantResult(null);
+
     try {
-      const result = await refactorResumeText(text);
-      if (type === 'summary') {
-        setData(prev => ({ ...prev, summary: result.refactoredText }));
-      } else if (id !== undefined && bulletIdx !== undefined) {
-        setData(prev => ({
-          ...prev,
-          experience: prev.experience.map(exp => {
-            if (exp.id === id) {
-              const newBullets = [...exp.bullets];
-              newBullets[bulletIdx] = result.refactoredText;
-              return { ...exp, bullets: newBullets };
-            }
-            return exp;
-          })
-        }));
-      }
+      const result = await improveBulletPointWithAI(text, roleContext, companyContext);
+      setAssistantResult(result);
     } catch (error) {
-      console.error("Refactoring failed:", error);
+      console.error("Failed to generate AI writing suggestions:", error);
     } finally {
-      setRefactoringId(null);
+      setIsAssistantLoading(false);
+    }
+  };
+
+  const handleApplyAssistantRewrite = (appliedText: string) => {
+    if (!activeAssistantTarget) return;
+
+    const { type, expId, bulletIdx } = activeAssistantTarget;
+
+    if (type === 'summary') {
+      setData(prev => ({ ...prev, summary: appliedText }));
+    } else if (expId !== undefined && bulletIdx !== undefined) {
+      setData(prev => ({
+        ...prev,
+        experience: prev.experience.map(exp => {
+          if (exp.id === expId) {
+            const newBullets = [...exp.bullets];
+            newBullets[bulletIdx] = appliedText;
+            return { ...exp, bullets: newBullets };
+          }
+          return exp;
+        })
+      }));
+    }
+
+    setActiveAssistantTarget(null);
+    setAssistantResult(null);
+  };
+
+  const handleRegenerateAssistant = async () => {
+    if (!activeAssistantTarget) return;
+    setIsAssistantLoading(true);
+    try {
+      const result = await improveBulletPointWithAI(
+        activeAssistantTarget.originalText,
+        activeAssistantTarget.roleContext,
+        activeAssistantTarget.companyContext
+      );
+      setAssistantResult(result);
+    } catch (error) {
+      console.error("Failed to regenerate AI suggestions:", error);
+    } finally {
+      setIsAssistantLoading(false);
     }
   };
 
@@ -180,13 +239,13 @@ export default function ResumeEditor() {
           </div>
           <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-2">Resume Editor</h1>
           <p className="text-ink-dim font-medium text-lg">
-            Refine your experience with real-time AI assistance.
+            Refine your experience with real-time AI assistance & XYZ impact formula.
           </p>
         </div>
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="bg-accent text-white px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl shadow-accent/40 hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50"
+          className="bg-accent text-white px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl shadow-accent/40 hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
         >
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {isSaving ? 'Syncing...' : 'Save Resume'}
@@ -201,40 +260,37 @@ export default function ResumeEditor() {
               <BrainCircuit className="w-4 h-4 text-accent" /> Professional Summary
             </h3>
             <button
-              onClick={() => handleRefactor(data.summary, 'summary')}
-              disabled={refactoringId === 'summary' || !canRefactor}
-              className="group flex items-center gap-2 text-[10px] font-bold text-accent uppercase tracking-widest hover:underline disabled:opacity-50 disabled:grayscale"
+              onClick={() => handleOpenWritingAssistant(data.summary, 'summary', undefined, undefined, data.experience[0]?.role, data.experience[0]?.company)}
+              className="group flex items-center gap-2 text-xs font-mono font-bold text-accent uppercase tracking-wider bg-accent/10 hover:bg-accent/20 px-3.5 py-1.5 rounded-xl border border-accent/20 transition-all cursor-pointer"
             >
-              <Wand2 className={cn("w-3.5 h-3.5", refactoringId === 'summary' && "animate-pulse")} />
-              {canRefactor ? 'Refactor Summary' : 'Refactor (Premium)'}
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Improve with AI</span>
             </button>
           </div>
           <div className="relative group/summary-box">
             <textarea
               value={data.summary}
               onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
-              placeholder="Introduce your background..."
+              placeholder="Introduce your background and high-impact competencies..."
               className="w-full h-40 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
             />
-            {!canRefactor && (
-               <div className="absolute top-4 right-4 group-hover/summary-box:opacity-100 transition-opacity">
-                  <span className="flex items-center gap-1.5 px-2 py-1 bg-accent/10 border border-accent/20 rounded-lg text-accent text-[8px] font-bold uppercase tracking-wider">
-                     <Sparkles className="w-3 h-3" /> Premium Feature
-                  </span>
-               </div>
-            )}
           </div>
         </section>
 
         {/* Experience Section */}
         <section className="space-y-6">
           <div className="flex justify-between items-center px-4">
-            <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-[0.2em]">
-              <Briefcase className="w-4 h-4 text-accent" /> Work Experience
-            </h3>
+            <div>
+              <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-[0.2em]">
+                <Briefcase className="w-4 h-4 text-accent" /> Work Experience
+              </h3>
+              <p className="text-[11px] text-ink-dim font-mono mt-0.5">
+                Bullet points use Google's XYZ formula: Accomplished [X] as measured by [Y] by doing [Z].
+              </p>
+            </div>
             <button
               onClick={addExperience}
-              className="flex items-center gap-2 text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-4 py-2 rounded-xl hover:bg-accent/20 transition-all"
+              className="flex items-center gap-2 text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-4 py-2 rounded-xl hover:bg-accent/20 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Add Experience
             </button>
@@ -267,7 +323,8 @@ export default function ResumeEditor() {
                     <div className="flex items-center gap-2">
                        <button 
                         onClick={(e) => { e.stopPropagation(); removeExperience(exp.id); }}
-                        className="p-2 text-ink-dim hover:text-rose-500 transition-colors mr-2"
+                        className="p-2 text-ink-dim hover:text-rose-500 transition-colors mr-2 cursor-pointer"
+                        title="Delete Experience"
                        >
                          <Trash2 className="w-4 h-4" />
                        </button>
@@ -283,18 +340,20 @@ export default function ResumeEditor() {
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
                          <div>
-                            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2 block px-1">ENTITY</label>
+                            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2 block px-1">ENTITY / COMPANY</label>
                             <input 
                               value={exp.company}
                               onChange={(e) => updateExperience(exp.id, 'company', e.target.value)}
+                              placeholder="e.g. Acme Corp"
                               className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
                             />
                          </div>
                          <div>
-                            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2 block px-1">ROLE</label>
+                            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2 block px-1">ROLE / TITLE</label>
                             <input 
                               value={exp.role}
                               onChange={(e) => updateExperience(exp.id, 'role', e.target.value)}
+                              placeholder="e.g. Senior Frontend Engineer"
                               className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
                             />
                          </div>
@@ -311,17 +370,19 @@ export default function ResumeEditor() {
 
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1">Impact Tokens (Bullet Points)</label>
+                          <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1">
+                            Impact Bullet Points (XYZ Formula)
+                          </label>
                           <button 
                             onClick={() => updateExperience(exp.id, 'bullets', [...exp.bullets, ''])}
-                            className="text-[9px] font-bold text-accent uppercase tracking-widest hover:underline"
+                            className="text-[9px] font-bold text-accent uppercase tracking-widest hover:underline cursor-pointer"
                           >
                             + Add Bullet
                           </button>
                         </div>
                         <div className="space-y-3">
                           {(exp?.bullets || []).map((bullet, bIdx) => (
-                            <div key={bIdx} className="relative group/bullet">
+                            <div key={bIdx} className="bg-background/50 border border-border/80 rounded-2xl p-3.5 space-y-2.5 transition-all hover:border-accent/30">
                               <textarea
                                 value={bullet}
                                 onChange={(e) => {
@@ -329,25 +390,29 @@ export default function ResumeEditor() {
                                   newBullets[bIdx] = e.target.value;
                                   updateExperience(exp.id, 'bullets', newBullets);
                                 }}
-                                className="w-full p-4 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none font-sans leading-relaxed pr-24"
+                                className="w-full p-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none font-sans leading-relaxed"
                                 rows={2}
-                                placeholder="Describe a high-impact achievement..."
+                                placeholder="Accomplished [X] as measured by [Y] by doing [Z]..."
                               />
-                              <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/bullet:opacity-100 transition-opacity">
+
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                                 <button
-                                  onClick={() => handleRefactor(bullet, 'bullet', exp.id, bIdx)}
-                                  disabled={refactoringId === `${exp.id}-${bIdx}` || !canRefactor}
-                                  className="p-1.5 bg-accent/10 border border-accent/20 rounded-lg text-accent hover:bg-accent/20 transition-all disabled:opacity-50 disabled:grayscale"
-                                  title={canRefactor ? "AI Refactor" : "Premium Feature Locked"}
+                                  type="button"
+                                  onClick={() => handleOpenWritingAssistant(bullet, 'bullet', exp.id, bIdx, exp.role, exp.company)}
+                                  className="px-3 py-1.5 bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded-xl text-accent text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                                 >
-                                  <Wand2 className={cn("w-3.5 h-3.5", refactoringId === `${exp.id}-${bIdx}` && "animate-pulse")} />
+                                  <Wand2 className="w-3.5 h-3.5" />
+                                  <span>Improve with AI</span>
                                 </button>
+
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     const newBullets = exp.bullets.filter((_, i) => i !== bIdx);
                                     updateExperience(exp.id, 'bullets', newBullets);
                                   }}
-                                  className="p-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-500 hover:bg-rose-500/20 transition-all"
+                                  className="p-1.5 text-ink-dim hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                  title="Delete Bullet"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -391,7 +456,7 @@ export default function ResumeEditor() {
                   {skill}
                   <button 
                     onClick={() => setData(prev => ({ ...prev, skills: prev.skills.filter((_, idx) => idx !== i) }))}
-                    className="p-1 hover:text-rose-500 transition-colors"
+                    className="p-1 hover:text-rose-500 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -425,6 +490,7 @@ export default function ResumeEditor() {
         />
       </div>
 
+      {/* Floating Status Bar */}
       <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-40 bg-surface border border-border p-4 rounded-3xl shadow-2xl flex items-center gap-6">
          <div className="flex items-center gap-3 px-4 border-r border-border">
             <div className="w-4 h-4 bg-success rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
@@ -441,6 +507,23 @@ export default function ResumeEditor() {
             </div>
          </div>
       </div>
+
+      {/* AI WRITING ASSISTANT MODAL (XYZ Formula Engine) */}
+      <AIWritingAssistantModal
+        isOpen={!!activeAssistantTarget}
+        onClose={() => {
+          setActiveAssistantTarget(null);
+          setAssistantResult(null);
+        }}
+        originalText={activeAssistantTarget?.originalText || ''}
+        roleContext={activeAssistantTarget?.roleContext}
+        companyContext={activeAssistantTarget?.companyContext}
+        result={assistantResult}
+        isLoading={isAssistantLoading}
+        onRegenerate={handleRegenerateAssistant}
+        onApply={handleApplyAssistantRewrite}
+      />
     </div>
   );
 }
+

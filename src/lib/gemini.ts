@@ -486,6 +486,149 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
   }
 };
 
+export const improveBulletPointWithAI = async (
+  bullet: string,
+  roleContext: string = "",
+  companyContext: string = ""
+) => {
+  const prompt = `
+    You are an expert AI Writing Assistant and elite Technical Resume Coach embedded in a modern Resume Editor.
+    Your mission: Transform candidate bullet points into high-impact, ATS-optimized, recruiter-grade statements.
+
+    MANDATORY RULES:
+    1. XYZ FORMULA MANDATE:
+       Every rewritten bullet MUST strictly follow the XYZ formula:
+       "Accomplished [X] as measured by [Y] by doing [Z]"
+       Make sure:
+       - [X] represents the clear accomplishment/outcome.
+       - [Y] represents the quantitative measurement, metric, or realistic metric proxy.
+       - [Z] represents the specific action, technical method, or architectural approach.
+
+    2. METRIC TRUTHFULNESS & PROXY RULES:
+       - NEVER fabricate fictional numbers or pretend to know private telemetry.
+       - If the original bullet already contains real numbers/metrics, preserve and amplify them.
+       - If NO metric exists in the original bullet, YOU MUST:
+         * Set hasMetricProxy: true
+         * Suggest a reasonable proxy bracketed indicator (e.g. "[reducing latency by 35%]", "[scaling to 20k+ concurrent users]", "[accelerating cycle time by 2.5x]") or prompt the user for their exact measurement.
+         * Provide metricGuidance explaining what metric to look up in their engineering dashboards.
+
+    3. CONFIDENCE LEVEL:
+       Provide confidence_level ("high" | "medium" | "low"):
+       - "high": Clear technical context with verifiable outcomes or tools.
+       - "medium": Inferred technical impact with suggested metric proxies.
+       - "low": Vague initial bullet requiring user clarification for scope.
+
+    4. IMPACT ESTIMATE & REASONING:
+       - For each suggestion, provide a concise impact_estimate (e.g. "+35% Recruiter Signal", "High ATS Keyword Alignment", "+40% Staff Engineer Impact").
+       - Provide actionable reasoning explaining why this rewrite elevates candidate positioning.
+
+    5. MULTIPLE DISTINCT FOCUS VARIATIONS:
+       Generate 2 to 3 distinct high-caliber suggestions with different strategic angles (e.g., "Scale & Performance", "Business ROI & Velocity", "Technical Architecture").
+
+    ORIGINAL BULLET POINT:
+    "${bullet}"
+
+    ${roleContext ? `TARGET ROLE: ${roleContext}` : ''}
+    ${companyContext ? `COMPANY: ${companyContext}` : ''}
+
+    Return a valid JSON object matching the schema.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.7-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            original: { type: Type.STRING },
+            recruiterNote: { type: Type.STRING },
+            suggestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  original: { type: Type.STRING },
+                  rewritten: { type: Type.STRING },
+                  reasoning: { type: Type.STRING },
+                  impact_estimate: { type: Type.STRING },
+                  confidence_level: { type: Type.STRING, enum: ["high", "medium", "low"] },
+                  focusType: { type: Type.STRING },
+                  hasMetricProxy: { type: Type.BOOLEAN },
+                  metricGuidance: { type: Type.STRING },
+                  xyzBreakdown: {
+                    type: Type.OBJECT,
+                    properties: {
+                      accomplishedX: { type: Type.STRING },
+                      measuredByY: { type: Type.STRING },
+                      doingZ: { type: Type.STRING }
+                    },
+                    required: ["accomplishedX", "measuredByY", "doingZ"]
+                  }
+                },
+                required: ["original", "rewritten", "reasoning", "impact_estimate", "confidence_level", "hasMetricProxy", "xyzBreakdown"]
+              }
+            }
+          },
+          required: ["original", "suggestions", "recruiterNote"]
+        }
+      }
+    });
+
+    const parsed = JSON.parse(cleanJson(response.text || '{}'));
+    if (parsed.suggestions && parsed.suggestions.length > 0) {
+      return parsed;
+    }
+  } catch (error) {
+    console.warn("AI Writing Assistant generation fallback triggered:", error);
+  }
+
+  // Graceful deterministic fallback adhering strictly to XYZ formula rules
+  const cleanOriginal = bullet.trim() || "Engineered software modules";
+  const hasNumbers = /\d+%|\d+x|\$\d+|\d+\s*(users|ms|seconds|minutes|hours|days|teams|microservices|req\/s)/i.test(cleanOriginal);
+
+  return {
+    original: cleanOriginal,
+    recruiterNote: "Structured bullet points using Google's XYZ formula dramatically increase recruiter engagement and pass automated ATS filters.",
+    suggestions: [
+      {
+        original: cleanOriginal,
+        rewritten: hasNumbers
+          ? `Engineered high-throughput architecture, achieving verifiable production gains by designing modular services and automated pipelines.`
+          : `Accelerated system throughput as measured by [reducing latency by 35% / scaling to 15k+ daily users] by refactoring core service endpoints and optimizing query execution paths.`,
+        reasoning: "Translates passive task description into active leadership with explicit XYZ causality and architectural ownership.",
+        impact_estimate: "+40% Recruiter Signal & ATS Keyword Match",
+        confidence_level: hasNumbers ? "high" : "medium",
+        focusType: "Scale & Performance",
+        hasMetricProxy: !hasNumbers,
+        metricGuidance: !hasNumbers ? "No hard metric detected. Replace bracketed latency/user figures with your service's Datadog, CloudWatch, or Grafana metrics." : undefined,
+        xyzBreakdown: {
+          accomplishedX: "Accelerated system throughput and reliability",
+          measuredByY: hasNumbers ? "verified production benchmarks" : "[reducing latency by 35% / supporting 15k+ users]",
+          doingZ: "refactoring core service endpoints and optimizing query execution paths"
+        }
+      },
+      {
+        original: cleanOriginal,
+        rewritten: `Delivered production features as measured by [shortening release turnaround by 30%] by implementing clean API contracts, automated unit testing, and continuous integration workflows.`,
+        reasoning: "Emphasizes velocity, developer efficiency, and engineering best practices favored by hiring managers.",
+        impact_estimate: "+30% Engineering Management Appeal",
+        confidence_level: "medium",
+        focusType: "Business Velocity & Quality",
+        hasMetricProxy: true,
+        metricGuidance: "Suggested deployment turnaround metric proxy. Verify sprint velocity or deployment frequency improvements with your engineering team.",
+        xyzBreakdown: {
+          accomplishedX: "Delivered production features with higher deployment frequency",
+          measuredByY: "[shortening release turnaround by 30%]",
+          doingZ: "implementing clean API contracts, automated unit testing, and continuous integration workflows"
+        }
+      }
+    ]
+  };
+};
+
 export const refactorResumeText = async (text: string, context: string = "") => {
   const prompt = `
     You are a resume copyeditor who specializes in quantified impact. 
@@ -504,7 +647,7 @@ export const refactorResumeText = async (text: string, context: string = "") => 
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-3.7-flash",
     contents: prompt,
     config: {
       responseMimeType: "application/json",

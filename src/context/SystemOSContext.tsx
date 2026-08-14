@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { CareerHealthScoreData } from '../types/careerHealthScore';
+import { calculateCareerHealthScore } from '../utils/careerHealthCalculator';
 
 export interface ResumeContext {
   id?: string;
@@ -37,6 +39,13 @@ export interface RoadmapContext {
   createdAt?: any;
 }
 
+export interface SimulationContext {
+  id: string;
+  score?: number;
+  role?: string;
+  createdAt?: any;
+}
+
 export interface SmartSuggestionChip {
   id: string;
   sourceModule: string;
@@ -51,23 +60,29 @@ interface SystemOSContextType {
   trackedJobs: TrackedJobContext[];
   outreachContacts: ContactContext[];
   latestRoadmap: RoadmapContext | null;
+  simulations: SimulationContext[];
   activeTargetRole: string;
   allMissingSkills: string[];
   interviewingCompanies: string[];
   smartSuggestions: SmartSuggestionChip[];
+  careerHealthScore: CareerHealthScoreData;
   loadingSystemContext: boolean;
   refreshSystemContext: () => Promise<void>;
 }
+
+const defaultHealthScore = calculateCareerHealthScore({});
 
 const SystemOSContext = createContext<SystemOSContextType>({
   latestResume: null,
   trackedJobs: [],
   outreachContacts: [],
   latestRoadmap: null,
+  simulations: [],
   activeTargetRole: 'Software Engineer',
   allMissingSkills: [],
   interviewingCompanies: [],
   smartSuggestions: [],
+  careerHealthScore: defaultHealthScore,
   loadingSystemContext: true,
   refreshSystemContext: async () => {},
 });
@@ -78,6 +93,7 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [trackedJobs, setTrackedJobs] = useState<TrackedJobContext[]>([]);
   const [outreachContacts, setOutreachContacts] = useState<ContactContext[]>([]);
   const [latestRoadmap, setLatestRoadmap] = useState<RoadmapContext | null>(null);
+  const [simulations, setSimulations] = useState<SimulationContext[]>([]);
   const [loadingSystemContext, setLoadingSystemContext] = useState<boolean>(true);
 
   const fetchSystemContext = async () => {
@@ -86,6 +102,7 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setTrackedJobs([]);
       setOutreachContacts([]);
       setLatestRoadmap(null);
+      setSimulations([]);
       setLoadingSystemContext(false);
       return;
     }
@@ -102,20 +119,22 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const d = resumeSnap.docs[0].data();
         setLatestResume({
           id: resumeSnap.docs[0].id,
-          targetRole: d.targetRole || d.title || 'Software Engineer',
-          score: d.score || d.atsScore || 78,
-          missingKeywords: d.missingKeywords || d.missingSkills || [],
-          keywordsFound: d.keywordsFound || [],
+          targetRole: d.targetRole || d.title || (d.analysis?.targetRole) || 'Software Engineer',
+          score: d.score || d.atsScore || d.analysis?.score || 78,
+          missingKeywords: d.missingKeywords || d.missingSkills || d.analysis?.missingKeywords || [],
+          keywordsFound: d.keywordsFound || d.analysis?.keywordsFound || [],
           content: d.content || d.resumeText || '',
           createdAt: d.createdAt
         });
+      } else {
+        setLatestResume(null);
       }
 
       // 2. Fetch Tracked Job Applications
       const jobsQ = query(
         collection(db, 'users', user.uid, 'jobs'),
         orderBy('createdAt', 'desc'),
-        limit(10)
+        limit(20)
       );
       const jobsSnap = await getDocs(jobsQ);
       const fetchedJobs: TrackedJobContext[] = jobsSnap.docs.map(doc => ({
@@ -156,10 +175,27 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLatestRoadmap({
           id: roadmapSnap.docs[0].id,
           targetRole: rd.targetRole,
-          missingSkills: rd.skillsStr ? rd.skillsStr.split(',').map((s: string) => s.trim()) : [],
+          missingSkills: rd.skillsStr ? rd.skillsStr.split(',').map((s: string) => s.trim()) : (rd.missingSkills || []),
           createdAt: rd.createdAt
         });
+      } else {
+        setLatestRoadmap(null);
       }
+
+      // 5. Fetch Simulations
+      const simQ = query(
+        collection(db, 'users', user.uid, 'simulations'),
+        orderBy('createdAt', 'desc'),
+        limit(10)
+      );
+      const simSnap = await getDocs(simQ);
+      const fetchedSims: SimulationContext[] = simSnap.docs.map(doc => ({
+        id: doc.id,
+        score: doc.data().score || doc.data().overallScore,
+        role: doc.data().role || doc.data().targetRole,
+        createdAt: doc.data().createdAt
+      }));
+      setSimulations(fetchedSims);
     } catch (err) {
       console.warn("SystemOSContext fetch error:", err);
     } finally {
@@ -185,9 +221,35 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const interviewingCompanies = Array.from(new Set(
     trackedJobs
-      .filter(j => j.status === 'Interviewing' || j.status === 'Applied')
+      .filter(j => j.status === 'Interviewing' || j.status === 'Interview' || j.status === 'Applied')
       .map(j => j.company)
   )).filter(Boolean);
+
+  // Compute live Career Health Score
+  const interviewScores = simulations.map(s => s.score).filter((s): s is number => typeof s === 'number');
+  const avgSimulationScore = interviewScores.length > 0
+    ? Math.round(interviewScores.reduce((a, b) => a + b, 0) / interviewScores.length)
+    : 0;
+
+  const interviewJobsCount = trackedJobs.filter(j => j.status === 'Interview' || j.status === 'Interviewing').length;
+  const offerJobsCount = trackedJobs.filter(j => j.status === 'Offer').length;
+
+  const careerHealthScore = calculateCareerHealthScore({
+    latestResumeScore: latestResume?.score,
+    missingKeywords: latestResume?.missingKeywords,
+    hasResumeData: !!latestResume && typeof latestResume.score === 'number' && latestResume.score > 0,
+
+    simulationsCount: simulations.length,
+    averageSimulationScore: avgSimulationScore,
+
+    trackedJobsCount: trackedJobs.length,
+    interviewJobsCount,
+    offerJobsCount,
+
+    hasRoadmapData: !!latestRoadmap,
+    missingSkills: allMissingSkills,
+    weeklyMilestonesCount: trackedJobs.length + simulations.length + (latestResume ? 1 : 0),
+  });
 
   // Generate dynamic Cross-Module Smart Suggestion Chips
   const smartSuggestions: SmartSuggestionChip[] = [];
@@ -230,10 +292,12 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         trackedJobs,
         outreachContacts,
         latestRoadmap,
+        simulations,
         activeTargetRole,
         allMissingSkills,
         interviewingCompanies,
         smartSuggestions,
+        careerHealthScore,
         loadingSystemContext,
         refreshSystemContext: fetchSystemContext
       }}
@@ -244,3 +308,4 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 };
 
 export const useSystemOS = () => useContext(SystemOSContext);
+

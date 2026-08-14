@@ -38,7 +38,6 @@ import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import SmartContextChips from '../components/SmartContextChips';
 import QuickStartChecklist from '../components/QuickStartChecklist';
-import CareerHealthScore from '../components/CareerHealthScore';
 import { useSystemOS } from '../context/SystemOSContext';
 import { askAICoach } from '../lib/gemini';
 import AILoadingStepper from '../components/AILoadingStepper';
@@ -320,10 +319,7 @@ export default function Dashboard() {
 
   const { 
     activeTargetRole, 
-    latestResume, 
-    careerHealthScore, 
-    refreshSystemContext, 
-    loadingSystemContext 
+    latestResume
   } = useSystemOS();
 
   const hasResume = stats.resumesAnalyzed > 0 || !!masterResumeData;
@@ -405,14 +401,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-
-      {/* UNIFIED CAREER HEALTH SCORE (0-100 METRIC) */}
-      <CareerHealthScore 
-        scoreData={careerHealthScore}
-        onRefresh={refreshSystemContext}
-        isRefreshing={loadingSystemContext}
-        className="mb-8"
-      />
 
       <QuickStartChecklist 
         hasResume={hasResume}

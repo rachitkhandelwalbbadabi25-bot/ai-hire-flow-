@@ -2,8 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
-import { CareerHealthScoreData } from '../types/careerHealthScore';
-import { calculateCareerHealthScore } from '../utils/careerHealthCalculator';
 
 export interface ResumeContext {
   id?: string;
@@ -65,12 +63,9 @@ interface SystemOSContextType {
   allMissingSkills: string[];
   interviewingCompanies: string[];
   smartSuggestions: SmartSuggestionChip[];
-  careerHealthScore: CareerHealthScoreData;
   loadingSystemContext: boolean;
   refreshSystemContext: () => Promise<void>;
 }
-
-const defaultHealthScore = calculateCareerHealthScore({});
 
 const SystemOSContext = createContext<SystemOSContextType>({
   latestResume: null,
@@ -82,7 +77,6 @@ const SystemOSContext = createContext<SystemOSContextType>({
   allMissingSkills: [],
   interviewingCompanies: [],
   smartSuggestions: [],
-  careerHealthScore: defaultHealthScore,
   loadingSystemContext: true,
   refreshSystemContext: async () => {},
 });
@@ -225,32 +219,6 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .map(j => j.company)
   )).filter(Boolean);
 
-  // Compute live Career Health Score
-  const interviewScores = simulations.map(s => s.score).filter((s): s is number => typeof s === 'number');
-  const avgSimulationScore = interviewScores.length > 0
-    ? Math.round(interviewScores.reduce((a, b) => a + b, 0) / interviewScores.length)
-    : 0;
-
-  const interviewJobsCount = trackedJobs.filter(j => j.status === 'Interview' || j.status === 'Interviewing').length;
-  const offerJobsCount = trackedJobs.filter(j => j.status === 'Offer').length;
-
-  const careerHealthScore = calculateCareerHealthScore({
-    latestResumeScore: latestResume?.score,
-    missingKeywords: latestResume?.missingKeywords,
-    hasResumeData: !!latestResume && typeof latestResume.score === 'number' && latestResume.score > 0,
-
-    simulationsCount: simulations.length,
-    averageSimulationScore: avgSimulationScore,
-
-    trackedJobsCount: trackedJobs.length,
-    interviewJobsCount,
-    offerJobsCount,
-
-    hasRoadmapData: !!latestRoadmap,
-    missingSkills: allMissingSkills,
-    weeklyMilestonesCount: trackedJobs.length + simulations.length + (latestResume ? 1 : 0),
-  });
-
   // Generate dynamic Cross-Module Smart Suggestion Chips
   const smartSuggestions: SmartSuggestionChip[] = [];
 
@@ -297,7 +265,6 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         allMissingSkills,
         interviewingCompanies,
         smartSuggestions,
-        careerHealthScore,
         loadingSystemContext,
         refreshSystemContext: fetchSystemContext
       }}

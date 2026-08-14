@@ -38,6 +38,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import SmartContextChips from '../components/SmartContextChips';
 import QuickStartChecklist from '../components/QuickStartChecklist';
+import RecommendedNextSteps from '../components/RecommendedNextSteps';
 import { useSystemOS } from '../context/SystemOSContext';
 import { askAICoach } from '../lib/gemini';
 import AILoadingStepper from '../components/AILoadingStepper';
@@ -408,6 +409,8 @@ export default function Dashboard() {
         hasScanDone={hasScanDone}
         className="mb-8"
       />
+
+      <RecommendedNextSteps className="mb-8" />
 
       <SmartContextChips 
         className="mb-8"

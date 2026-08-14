@@ -13,12 +13,14 @@ import {
   Globe,
   FileText,
   Map,
-  Zap
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import { generateLearningPath } from '../lib/gemini';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import AILoadingStepper from '../components/AILoadingStepper';
+import NextStepBridgeCard from '../components/NextStepBridgeCard';
 
 interface Resource {
   name: string;
@@ -335,7 +337,32 @@ export default function LearningPath() {
                   </div>
                 ))}
 
-                <div className="text-center py-12">
+                {roadmap && (
+                  <NextStepBridgeCard
+                    title="Learning roadmap generated"
+                    contextData={`30-day curriculum tailored for "${targetRole || 'Full Stack Engineer'}". Mapped ${roadmap.sections.length} core milestone modules covering ${roadmap.sections.flatMap(s => s.skillsCovered).slice(0, 4).join(', ')}.`}
+                    primaryStep={{
+                      label: "Practice in interview simulator",
+                      icon: MessageSquare,
+                      to: "/interview",
+                      state: {
+                        role: targetRole || "Software Engineer",
+                        jobDescription: `Target Position: ${targetRole || 'Software Engineer'}\nSkills & Core Focus: ${skillsStr || 'Technical systems, architecture, and problem solving'}`
+                      }
+                    }}
+                    secondaryStep={{
+                      label: "Search matched job openings",
+                      icon: Search,
+                      to: "/jobs",
+                      state: {
+                        role: targetRole || "Software Engineer",
+                        autoSearch: true
+                      }
+                    }}
+                  />
+                )}
+
+                <div className="text-center py-6">
                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-surface border border-border rounded-full text-[10px] font-bold text-ink-dim uppercase tracking-widest">
                       <ShieldCheckIcon className="w-4 h-4 text-success" /> Skill Path Verified & Calibrated
                    </div>

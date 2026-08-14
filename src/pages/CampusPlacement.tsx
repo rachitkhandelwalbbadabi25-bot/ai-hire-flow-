@@ -4,7 +4,7 @@ import {
   Trophy, BookOpen, Search, Sparkles, Building2, ChevronRight, Zap, 
   Code, Play, AlertCircle, ArrowLeft, CheckCircle2, XCircle, Loader2, 
   Lightbulb, HelpCircle, ArrowRight, Star, GraduationCap, 
-  Check, RefreshCw, Send, Terminal, Award, BookCheck
+  Check, RefreshCw, Send, Terminal, Award, BookCheck, MessageSquare
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { 
@@ -14,6 +14,7 @@ import {
   evaluateStartupSolution 
 } from '../lib/gemini';
 import AILoadingStepper from '../components/AILoadingStepper';
+import NextStepBridgeCard from '../components/NextStepBridgeCard';
 
 export default function CampusPlacement() {
   const { t } = useLanguage();
@@ -347,6 +348,30 @@ export default function CampusPlacement() {
                       "{companyPrep.prepStrategy}"
                     </p>
                   </div>
+
+                  <NextStepBridgeCard
+                    title="Placement blueprint synthesized"
+                    contextData={`Generated interview blueprint for ${searchQuery || 'Target Enterprise'} with ${companyPrep.rounds?.length || 0} evaluation stages and ${companyPrep.topQuestions?.length || 0} core technical drill questions.`}
+                    primaryStep={{
+                      label: `Simulate ${searchQuery || 'Company'} interview`,
+                      icon: MessageSquare,
+                      to: "/interview",
+                      state: {
+                        company: searchQuery || "Campus Recruiter",
+                        role: "Software Development Engineer",
+                        jobDescription: `Company: ${searchQuery || 'Enterprise'}\nBlueprint Strategy: ${companyPrep.prepStrategy || ''}`
+                      }
+                    }}
+                    secondaryStep={{
+                      label: "Find open roles",
+                      icon: Search,
+                      to: "/jobs",
+                      state: {
+                        query: `${searchQuery || 'Tech'} Software Engineer`,
+                        autoSearch: true
+                      }
+                    }}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>

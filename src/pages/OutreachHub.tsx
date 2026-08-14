@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Mail,
@@ -39,6 +40,7 @@ import EmptyState from "../components/EmptyState";
 
 export default function OutreachHub() {
   const { user } = useAuth();
+  const location = useLocation();
 
   // Gmail sync and persistence
   const [gmailAddress, setGmailAddress] = useState(() => {
@@ -62,6 +64,19 @@ export default function OutreachHub() {
   const [newCompany, setNewCompany] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [addingContact, setAddingContact] = useState(false);
+
+  // Handle incoming routing state (e.g. from JobFinder or Dashboard)
+  useEffect(() => {
+    if (location.state?.company) {
+      setNewCompany(location.state.company);
+      if (location.state?.name) {
+        setNewName(location.state.name);
+      }
+      if (location.state?.openModal) {
+        setShowAddModal(true);
+      }
+    }
+  }, [location.state]);
 
   // Pitch generation modal
   const [showGenModal, setShowGenModal] = useState(false);
@@ -497,17 +512,26 @@ export default function OutreachHub() {
                   </div>
 
                   <NextStepBridgeCard
-                    title="Outreach Pitch Generated"
-                    contextData={`Tailored referral pitch synthesized for ${selectedContact?.name || 'Recruiter'} at ${selectedContact?.company || 'Target Company'}.`}
+                    title="Outreach pitch generated"
+                    contextData={`Tailored referral pitch synthesized for ${selectedContact?.name || 'Recruiter'} at ${selectedContact?.company || 'Target Company'} (${outreachTone.toLowerCase()} tone).`}
                     primaryStep={{
-                      label: "Simulate Technical Interview",
+                      label: "Simulate company interview",
                       icon: Mic,
-                      to: "/campus"
+                      to: "/interview",
+                      state: {
+                        company: selectedContact?.company || "Target Company",
+                        role: selectedContact?.role || "Software Engineer",
+                        jobDescription: `Position: ${selectedContact?.role || 'Software Engineer'}\nCompany: ${selectedContact?.company || 'Target Company'}\nFocus: Technical round, hiring manager pitch, and company-specific values.`
+                      }
                     }}
                     secondaryStep={{
-                      label: "Track Pipeline Status",
+                      label: "Track in application pipeline",
                       icon: Briefcase,
-                      to: "/jobs"
+                      to: "/jobs",
+                      state: {
+                        company: selectedContact?.company,
+                        role: selectedContact?.role || "Software Engineer"
+                      }
                     }}
                   />
                 </div>

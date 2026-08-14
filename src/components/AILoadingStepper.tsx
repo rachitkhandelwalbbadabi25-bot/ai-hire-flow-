@@ -52,6 +52,9 @@ export default function AILoadingStepper({
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       className={`bg-surface border border-accent/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden ${className}`}
     >
       {/* Background Subtle Accent Glow */}
@@ -60,13 +63,13 @@ export default function AILoadingStepper({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-2xl text-accent animate-pulse">
+          <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-2xl text-accent animate-pulse" aria-hidden="true">
             <Cpu className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 bg-accent/10 text-accent border border-accent/20 rounded-full flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Autonomous Engine
+                <Sparkles className="w-3 h-3" aria-hidden="true" /> Autonomous Engine
               </span>
               <span className="text-[10px] text-ink-dim font-mono uppercase tracking-wider">
                 Step {activeIndex + 1} of {steps.length}
@@ -85,8 +88,15 @@ export default function AILoadingStepper({
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="w-full bg-background border border-border/80 h-2.5 rounded-full overflow-hidden p-0.5 relative z-10">
+      {/* Progress Bar with ARIA */}
+      <div 
+        role="progressbar"
+        aria-valuenow={progressPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${title} progress`}
+        className="w-full bg-background border border-border/80 h-2.5 rounded-full overflow-hidden p-0.5 relative z-10"
+      >
         <motion.div
           className="bg-accent h-full rounded-full transition-all duration-300"
           style={{ width: `${progressPercent}%` }}
@@ -96,7 +106,7 @@ export default function AILoadingStepper({
       {/* Active Step Description banner */}
       <div className="bg-background/90 border border-accent/20 p-4 sm:p-5 rounded-2xl relative z-10">
         <div className="flex items-start gap-3">
-          <div className="w-2 h-2 rounded-full bg-accent animate-ping mt-1.5 shrink-0" />
+          <div className="w-2 h-2 rounded-full bg-accent animate-ping mt-1.5 shrink-0" aria-hidden="true" />
           <div className="space-y-1">
             <p className="text-[10px] font-mono font-bold text-accent uppercase tracking-widest">
               Active Operation

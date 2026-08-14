@@ -61,7 +61,7 @@ export default function EmptyState({
       )}
 
       {/* Icon Badge */}
-      <div className="p-3.5 rounded-md border border-accent/20 bg-accent/10 text-accent mb-4 flex items-center justify-center">
+      <div className="p-3.5 rounded-md border border-accent/20 bg-accent/10 text-accent mb-4 flex items-center justify-center" aria-hidden="true">
         <Icon className="w-7 h-7" />
       </div>
 
@@ -72,7 +72,7 @@ export default function EmptyState({
       {/* Conversion Benefit Metric Box */}
       {benefitMetric && (
         <div className="mb-6 px-4 py-2.5 bg-accent/10 border border-accent/20 rounded-md font-mono text-xs font-bold text-accent flex items-center gap-2 max-w-md">
-          <TrendingUp className="w-4 h-4 shrink-0" />
+          <TrendingUp className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span>{benefitMetric}</span>
         </div>
       )}
@@ -83,10 +83,11 @@ export default function EmptyState({
           <button
             type="button"
             onClick={effectivePrimary.onClick}
+            aria-label={effectivePrimary.label}
             className="w-full sm:w-auto px-5 py-2.5 rounded-md font-mono font-bold text-xs text-black bg-accent hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <span>{effectivePrimary.label}</span>
-            <PrimaryIcon className="w-4 h-4" />
+            <PrimaryIcon className="w-4 h-4" aria-hidden="true" />
           </button>
         )}
 
@@ -94,9 +95,10 @@ export default function EmptyState({
           <button
             type="button"
             onClick={effectiveSecondary.onClick}
+            aria-label={effectiveSecondary.label}
             className="w-full sm:w-auto px-5 py-2.5 rounded-md font-mono font-bold text-xs text-ink bg-surface-light hover:bg-surface border border-border hover:border-accent/40 transition-all cursor-pointer flex items-center justify-center gap-2"
           >
-            <SecondaryIcon className="w-4 h-4 text-accent" />
+            <SecondaryIcon className="w-4 h-4 text-accent" aria-hidden="true" />
             <span>{effectiveSecondary.label}</span>
           </button>
         )}

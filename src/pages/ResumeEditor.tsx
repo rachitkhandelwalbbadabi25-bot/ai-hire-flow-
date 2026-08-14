@@ -402,17 +402,25 @@ export default function ResumeEditor() {
         </section>
 
         <NextStepBridgeCard
-          title="Resume Calibration Completed"
-          contextData={`Master resume updated with ${data?.skills?.length || 0} core skills and ${(data?.experience || []).length} professional work experience entries.`}
+          title="Master resume calibrated"
+          contextData={`Updated profile for ${data?.experience?.[0]?.role || 'Software Engineer'} with ${data?.skills?.length || 0} core competencies and ${(data?.experience || []).length} professional experience entries.`}
           primaryStep={{
-            label: "Audit in Resume Analyzer",
+            label: "Audit ATS score in analyzer",
             icon: FileText,
-            to: "/analyzer"
+            to: "/analyzer",
+            state: {
+              targetRole: data?.experience?.[0]?.role || "Software Engineer",
+              jobDescription: `Target Position: ${data?.experience?.[0]?.role || 'Software Engineer'}\nSkills: ${(data?.skills || []).join(', ')}`
+            }
           }}
           secondaryStep={{
-            label: "Discover Matched Jobs",
+            label: "Search matched jobs",
             icon: Search,
-            to: "/finder"
+            to: "/jobs",
+            state: {
+              role: data?.experience?.[0]?.role || "Software Engineer",
+              autoSearch: true
+            }
           }}
         />
       </div>

@@ -302,17 +302,25 @@ export default function CodeRabbit() {
                   </div>
 
                   <NextStepBridgeCard
-                    title="Code Audit & Hardening Complete"
-                    contextData={`Generated refactored solution with ${result?.bestPractices?.length || 0} architectural hardening guidelines.`}
+                    title="Code audit complete"
+                    contextData={`Synthesized refactored implementation with ${result?.bestPractices?.length || 0} architectural hardening guidelines. Root cause resolved: ${result?.rootCause ? (result.rootCause.length > 80 ? result.rootCause.slice(0, 80) + '...' : result.rootCause) : 'Code structure optimization.'}`}
                     primaryStep={{
-                      label: "Simulate Technical Interview",
+                      label: "Simulate technical interview",
                       icon: Mic,
-                      to: "/campus"
+                      to: "/interview",
+                      state: {
+                        role: "Software Engineer",
+                        jobDescription: "Technical code interview focusing on clean architecture, bug prevention, and performance optimization."
+                      }
                     }}
                     secondaryStep={{
-                      label: "Discover Matched Roles",
+                      label: "Search software engineering roles",
                       icon: Search,
-                      to: "/finder"
+                      to: "/jobs",
+                      state: {
+                        role: "Software Engineer",
+                        autoSearch: true
+                      }
                     }}
                   />
                 </motion.div>

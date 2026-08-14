@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target } from 'lucide-react';
 import { findJobs } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, addDoc, getDocs, query as fsQuery, orderBy, limit as fsLimit } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { formatCreditAvailability } from '../utils/formatters';
-import { Send } from 'lucide-react';
+import { Send, MessageSquare } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import AILoadingStepper from '../components/AILoadingStepper';
 import SmartContextChips from '../components/SmartContextChips';
@@ -43,14 +43,21 @@ export default function JobFinder() {
   const [isFromCache, setIsFromCache] = useState(false);
   const [candidateProfile, setCandidateProfile] = useState('');
   const navigate = useNavigate();
+  const locationState = useLocation();
 
   const { activeTargetRole } = useSystemOS();
 
   useEffect(() => {
-    if (!query && activeTargetRole) {
+    if (locationState.state?.role || locationState.state?.query) {
+      const targetQuery = locationState.state.role || locationState.state.query;
+      setQuery(targetQuery);
+      if (locationState.state?.autoSearch) {
+        handleSearchWithQuery(targetQuery, location);
+      }
+    } else if (!query && activeTargetRole) {
       setQuery(activeTargetRole);
     }
-  }, [activeTargetRole]);
+  }, [locationState.state, activeTargetRole]);
 
   const handleSelectRoleFromChip = (selectedRole: string) => {
     setQuery(selectedRole);
@@ -213,29 +220,33 @@ export default function JobFinder() {
       <div className="glass-panel mb-12 p-8 rounded-3xl border border-border bg-surface">
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
           <div className="md:col-span-5">
-            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Job Role / Title</label>
+            <label htmlFor="job-role-input" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Job Role / Title</label>
             <div className="relative group">
               <input 
+                id="job-role-input"
                 required
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
                 placeholder="e.g. Senior Frontend Engineer"
+                aria-label="Job Role or Title"
               />
-              <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" />
+              <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" aria-hidden="true" />
             </div>
           </div>
           
           <div className="md:col-span-4">
-            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Location / Remote</label>
+            <label htmlFor="job-location-input" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Location / Remote</label>
             <div className="relative group">
               <input 
+                id="job-location-input"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 className="w-full pl-12 pr-4 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
                 placeholder="e.g. San Francisco or Remote"
+                aria-label="Job Location or Remote"
               />
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" />
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" aria-hidden="true" />
             </div>
           </div>
 
@@ -440,17 +451,26 @@ export default function JobFinder() {
             </div>
 
             <NextStepBridgeCard
-              title="Opportunity Search Complete"
-              contextData={`Extracted ${jobs.length} active target positions for "${query || 'Tech Roles'}". Add opportunities to your pipeline to draft referral pitches or simulate technical interviews.`}
+              title="Job search complete"
+              contextData={`Extracted ${jobs.length} verified listings for "${query || activeTargetRole || 'Software Engineering'}". Top match: ${jobs[0]?.title || 'Engineer'} at ${jobs[0]?.company || 'Enterprise Company'} (${jobs[0]?.matchScore || 85}% match).`}
               primaryStep={{
-                label: "Draft Outreach Pitches",
+                label: "Draft recruiter pitch",
                 icon: Send,
-                to: "/outreach"
+                to: "/outreach",
+                state: {
+                  company: jobs[0]?.company || "Target Company",
+                  role: jobs[0]?.title || query || "Software Engineer"
+                }
               }}
               secondaryStep={{
-                label: "Manage Application Pipeline",
-                icon: Briefcase,
-                to: "/jobs"
+                label: "Simulate role interview",
+                icon: MessageSquare,
+                to: "/interview",
+                state: {
+                  company: jobs[0]?.company || "Target Company",
+                  role: jobs[0]?.title || query || "Software Engineer",
+                  jobDescription: jobs[0]?.description || `Position: ${jobs[0]?.title} at ${jobs[0]?.company}`
+                }
               }}
             />
           </>

@@ -12,7 +12,9 @@ import {
   X,
   Briefcase,
   Sparkles,
-  LoaderCircle as Spinner
+  LoaderCircle as Spinner,
+  Send,
+  MessageSquare
 } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +22,7 @@ import { usePlan } from '../context/PlanContext';
 import SmartContextChips from '../components/SmartContextChips';
 import { useSystemOS } from '../context/SystemOSContext';
 import EmptyState from '../components/EmptyState';
+import NextStepBridgeCard from '../components/NextStepBridgeCard';
 
 export default function JobTracker() {
   const navigate = useNavigate();
@@ -126,12 +129,13 @@ export default function JobTracker() {
         </div>
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" aria-hidden="true" />
             <input 
               type="text" 
               placeholder="Filter applications..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label="Filter applications by company or role"
               className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all text-ink"
             />
           </div>
@@ -214,69 +218,98 @@ export default function JobTracker() {
           </AnimatePresence>
 
           {filteredJobs.length > 0 ? (
-            <div className="bg-surface rounded-3xl border border-border overflow-hidden shadow-sm">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-surface-light/30">
-                    <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest">Company</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest hidden md:table-cell">Role</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest hidden md:table-cell">Applied Date</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest">Status</th>
-                    <th className="px-6 py-4"></th>
-                  </tr>
-                </thead>
-                <tbody className="font-sans">
-                  {filteredJobs.map((job) => (
-                    <tr key={job.id} className="border-b border-border hover:bg-surface-light/20 transition-colors group">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-background p-2 rounded-xl border border-border">
-                            <Building2 className="w-4 h-4 text-accent" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-ink text-sm">{job.company}</p>
-                            <p className="text-ink-dim text-[10px] md:hidden font-medium">{job.role}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 hidden md:table-cell">
-                        <p className="text-ink text-sm font-medium">{job.role}</p>
-                      </td>
-                      <td className="px-6 py-5 hidden md:table-cell">
-                        <div className="flex items-center gap-2 text-ink-dim">
-                          <span className="text-xs font-mono">{formatDate(job.appliedDate)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <select 
-                          value={job.status}
-                          onChange={(e) => updateStatus(job.id, e.target.value)}
-                          className={cn(
-                            "status-pill appearance-none cursor-pointer border-none focus:ring-0",
-                            job.status === 'Applied' && "status-applied",
-                            job.status === 'Interview' && "status-interview",
-                            job.status === 'Offer' && "status-offer",
-                            job.status === 'Rejected' && "status-rejected"
-                          )}
-                        >
-                          <option>Applied</option>
-                          <option>Interview</option>
-                          <option>Offer</option>
-                          <option>Rejected</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <button 
-                          onClick={() => handleDeleteJob(job.id)}
-                          className="p-2 text-ink-dim hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+            <div className="space-y-6">
+              <div className="bg-surface rounded-3xl border border-border overflow-hidden shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-surface-light/30">
+                      <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest">Company</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest hidden md:table-cell">Role</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest hidden md:table-cell">Applied Date</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest">Status</th>
+                      <th className="px-6 py-4"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="font-sans">
+                    {filteredJobs.map((job) => (
+                      <tr key={job.id} className="border-b border-border hover:bg-surface-light/20 transition-colors group">
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-background p-2 rounded-xl border border-border">
+                              <Building2 className="w-4 h-4 text-accent" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-ink text-sm">{job.company}</p>
+                              <p className="text-ink-dim text-[10px] md:hidden font-medium">{job.role}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 hidden md:table-cell">
+                          <p className="text-ink text-sm font-medium">{job.role}</p>
+                        </td>
+                        <td className="px-6 py-5 hidden md:table-cell">
+                          <div className="flex items-center gap-2 text-ink-dim">
+                            <span className="text-xs font-mono">{formatDate(job.appliedDate)}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <select 
+                            value={job.status}
+                            onChange={(e) => updateStatus(job.id, e.target.value)}
+                            className={cn(
+                              "status-pill appearance-none cursor-pointer border-none focus:ring-0",
+                              job.status === 'Applied' && "status-applied",
+                              job.status === 'Interview' && "status-interview",
+                              job.status === 'Offer' && "status-offer",
+                              job.status === 'Rejected' && "status-rejected"
+                            )}
+                          >
+                            <option>Applied</option>
+                            <option>Interview</option>
+                            <option>Offer</option>
+                            <option>Rejected</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-5 text-right">
+                          <button 
+                            onClick={() => handleDeleteJob(job.id)}
+                            className="p-2 text-ink-dim hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {jobs.length > 0 && (
+                <NextStepBridgeCard
+                  title="Application pipeline active"
+                  contextData={`Tracking ${jobs.length} applications across companies (${Array.from(new Set(jobs.map(j => j.company))).slice(0, 3).join(', ')}). Latest target: ${jobs[0]?.role} at ${jobs[0]?.company}.`}
+                  primaryStep={{
+                    label: `Draft pitch for ${jobs[0]?.company || 'recruiter'}`,
+                    icon: Send,
+                    to: "/outreach",
+                    state: {
+                      company: jobs[0]?.company,
+                      role: jobs[0]?.role,
+                      openModal: true
+                    }
+                  }}
+                  secondaryStep={{
+                    label: "Practice mock interview",
+                    icon: MessageSquare,
+                    to: "/interview",
+                    state: {
+                      company: jobs[0]?.company,
+                      role: jobs[0]?.role,
+                      jobDescription: `Position: ${jobs[0]?.role} at ${jobs[0]?.company}\nNotes: ${jobs[0]?.notes || 'Technical interview and system architecture.'}`
+                    }
+                  }}
+                />
+              )}
             </div>
           ) : (
             <EmptyState

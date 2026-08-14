@@ -27,48 +27,63 @@ const cleanJson = (text: string): string => {
 
 export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
   const prompt = `
-    You are an Explainable AI Engine for ATS Resume Scoring and a veteran Tech Recruiter.
-    Your job is to make the ATS score 100% transparent, break down the scoring math, explain missing keywords in plain recruiter language, and output a human explanation that reads like a recruiter's email.
+    You are an Explainable AI Resume Auditor and Veteran Technical Talent Leader.
+    Your mission: Analyze the candidate's resume against the target job description and produce a completely transparent, honest, and actionable ATS audit report.
 
-    MANDATORY EXPLAINABLE AI RULES:
-    1. BREAK DOWN THE SCORE INTO EXACTLY 4 WEIGHTED CATEGORIES (Must total 100% weight):
-       - Category 1: Core Technical & Keyword Match (40% weight)
-       - Category 2: Hard Experience & Impact Metrics (30% weight)
-       - Category 3: Role & Domain Relevance (15% weight)
-       - Category 4: Structure & ATS Readability (15% weight)
-       For each category, provide:
+    MANDATORY AUDIT RULES:
+    1. HONEST & CALIBRATED SCORING (0-100 scale):
+       - Be strictly honest and objective. Do NOT artificially inflate scores.
+       - Generic or uncalibrated resumes lacking hard quantitative metrics or direct role alignment must score between 40-65.
+       - A score above 80 is strictly reserved for resumes demonstrating exact keyword alignment, quantified business impact, and direct domain relevance.
+
+    2. BREAK DOWN INTO EXACTLY 4 WEIGHTED CATEGORIES WITH VISIBLE MATH (Weights must sum to 100%):
+       - Category 1: "Core Technical & Skill Match" (Weight: 40%)
+       - Category 2: "Measurable Impact & Hard Metrics" (Weight: 30%)
+       - Category 3: "Role & Domain Relevance" (Weight: 15%)
+       - Category 4: "Structure & ATS Parsability" (Weight: 15%)
+       For each category, compute:
+       - category: exact category name
+       - weight: number (40, 30, 15, 15)
        - score: category score from 0-100
-       - earnedPoints: calculated as (score / 100) * weight (e.g., (80 / 100) * 40 = 32 points)
-       - mathExplanation: explicit calculation string (e.g., "(80/100) × 40% = 32.0 pts")
-       - explanation: plain English recruiter evaluation of this category
-       The total final 'score' MUST equal the sum of all 4 earnedPoints.
+       - earnedPoints: calculated as (score / 100) * weight (rounded to 1 decimal place)
+       - mathExplanation: explicit calculation formula string (e.g., "(55/100) × 40% = 22.0 pts")
+       - explanation: clear, candid recruiter evaluation explaining what was found and what was missing.
+       * The overall final score MUST strictly equal the sum of all 4 earnedPoints.
 
-    2. FOR EVERY MISSING KEYWORD (missingKeywordAnalysis):
-       - keyword: exact skill/keyword missing
-       - whyItMatters: Explain WHY it matters specifically for THIS target job title at THIS company (or industry benchmark if no company provided). Talk like a recruiter explaining candidate fit.
-       - suggestedRewrite: Suggest EXACTLY 1 specific, high-impact bullet point rewrite per gap incorporating metrics and the keyword.
+    3. SKILL AUDIT & INFERENCE FLAGGING (skillsAnalysis):
+       - Audit both explicit and inferred skills from the resume.
+       - If a skill is explicitly written in the resume (e.g. "React", "Python"), set type="explicit", confidence_level="high", and provide textual evidence.
+       - If you infer a skill that IS NOT explicitly stated but implied from context/tooling (e.g. inferring "REST APIs" or "JavaScript" because candidate built React apps), you MUST:
+         * set type="inferred"
+         * LOWER the confidence_level to "medium" or "low"
+         * clearly explain the inference reasoning in evidence.
 
-    3. PLAIN ENGLISH RECRUITER TONE:
-       - Do NOT use robotic terms like "algorithmic confidence intervals" or "probabilistic vector variance".
-       - Speak like an experienced tech recruiter sitting across the table giving transparent feedback.
+    4. GAP ANALYSIS WITH ROLE & COMPANY RATIONALE (missingKeywordAnalysis):
+       For EVERY identified gap / missing keyword or qualification:
+       - keyword: The specific skill, tool, or qualification that is missing or under-represented.
+       - whyItMatters: Explain specifically WHY it matters for THIS target role at THIS company (or target industry standard if company name is not specified).
+       - suggestedRewrite: Suggest EXACTLY 1 specific, high-impact bullet rewrite incorporating action verbs, metrics (numbers, %, scale), and the target skill.
+       - confidence_level: "high" | "medium" | "low" based on how directly the job description requires this skill.
+       - isInferred: boolean. True if the gap is inferred from unstated expectations/seniority rather than an explicit job requirement; false if explicitly required.
+       - inferredNote: Explanation if inferred, or empty string.
 
-    4. OUTPUT "human_explanation":
-       - Must read like a warm, candid email directly from a Lead Recruiter explaining:
-         * Greeting & overall ATS compatibility assessment.
-         * Explicit 4-part weighted math breakdown showing how the score was calculated.
-         * Why key missing keywords matter for this specific role and company.
-         * Concrete next steps and bullet rewrites to hit 95%+ ATS compatibility.
+    5. HUMAN-READABLE RECRUITER MEMO ("human_explanation"):
+       - Write a candid, conversational feedback memo directly from a Lead Recruiter:
+         * State the honest overall score and why generic resumes sit in the 40-65 range.
+         * Outline the 4-part weighted category math breakdown.
+         * Detail the primary gaps, why they matter for this specific role and company, and actionable bullet rewrites.
+         * Highlight inferred skills vs explicit skills with confidence ratings.
 
     ${jobDescription ? `
     TARGET JOB DESCRIPTION:
     ${jobDescription}
     ` : 'TARGET ROLE: Senior Technical Role / FAANG & Top Tech Industry Benchmark'}
 
-    Return a JSON object matching the requested schema.
+    Return a valid JSON object matching the schema.
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-3.7-flash",
     contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
     config: {
       responseMimeType: "application/json",
@@ -92,6 +107,19 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
               required: ["category", "weight", "score", "earnedPoints", "mathExplanation", "explanation"]
             }
           },
+          skillsAnalysis: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                skill: { type: Type.STRING },
+                type: { type: Type.STRING, description: "explicit or inferred" },
+                confidence_level: { type: Type.STRING, description: "high, medium, or low" },
+                evidence: { type: Type.STRING }
+              },
+              required: ["skill", "type", "confidence_level", "evidence"]
+            }
+          },
           keywordsFound: { type: Type.ARRAY, items: { type: Type.STRING } },
           missingKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
           missingKeywordAnalysis: {
@@ -101,9 +129,12 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
               properties: {
                 keyword: { type: Type.STRING },
                 whyItMatters: { type: Type.STRING },
-                suggestedRewrite: { type: Type.STRING }
+                suggestedRewrite: { type: Type.STRING },
+                confidence_level: { type: Type.STRING, description: "high, medium, or low" },
+                isInferred: { type: Type.BOOLEAN },
+                inferredNote: { type: Type.STRING }
               },
-              required: ["keyword", "whyItMatters", "suggestedRewrite"]
+              required: ["keyword", "whyItMatters", "suggestedRewrite", "confidence_level", "isInferred"]
             }
           },
           formattingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -684,18 +715,18 @@ export const auditCode = async (code: string, context: any = {}) => {
 
 export const askAICoach = async (question: string, context: string = "") => {
   const prompt = `
-    You are the AI Career Advisor inside AI HireFlow. You have REAL access to the user's uploaded resume, tracked jobs, interview scores, and credit balance.
+    You are the AI Career Advisor inside AI HireFlow. You have REAL access to the user's uploaded resume, pipeline, interview scores, and credit balance.
 
     REAL CANDIDATE DATA & CONTEXT:
     ${context || 'No specific candidate context provided.'}
 
     MANDATORY RULES YOU MUST STRICTLY FOLLOW:
     1. Every response MUST reference at least one specific fact from their resume, pipeline, or recent activity (e.g. ATS score, tracked jobs count, missing keywords, interview readiness score, credit balance, or current role).
-    2. If they ask about salary negotiation, reference their current role and target role from their profile data.
-    3. If they ask about switching careers, map their existing skills to transferable ones using their resume data.
-    4. If they have 0 jobs tracked, suggest tracking before applying (point them to Job Finder or Job Tracker).
+    2. If they ask about salary or negotiation, reference their current role and target role from their real profile data.
+    3. If they ask about career switching, map their existing skills to transferable ones using their resume data.
+    4. If they have 0 jobs tracked, explicitly suggest tracking first in Job Finder or Job Tracker.
     5. Never give generic advice like "tailor your resume" without specifying WHICH section and WHICH keywords (reference their exact missing keywords or resume sections).
-    6. Keep responses STRICTLY UNDER 150 WORDS total.
+    6. Keep responses STRICTLY UNDER 150 WORDS total. Be crisp, strategic, and high-impact.
     7. End every response with exactly 1 specific next action in the app (e.g. "Next step: Run an ATS audit in Resume Analyzer" or "Next step: Practice technical questions in Interview Simulator").
     8. Tone: Strategic, direct, empathetic — like a senior engineer who's been there.
 
@@ -708,7 +739,7 @@ export const askAICoach = async (question: string, context: string = "") => {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.7-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -727,7 +758,7 @@ export const askAICoach = async (question: string, context: string = "") => {
   } catch (err) {
     console.warn("[AI Coach] Fallback to standard advice on error.", err);
     return {
-      answer: "I am ready to guide you. Based on your current pipeline and resume scores, focus on refining ATS keywords in Resume Analyzer, practicing mock interviews in Interview Lab, and sending targeted outreach pitches in Outreach Hub.",
+      answer: "I am ready to guide you. Based on your current pipeline and resume scores, focus on refining ATS keywords in Resume Analyzer, practicing mock interviews in Interview Lab, and sending targeted outreach pitches in Outreach Hub.\n\nNext step: Run an ATS audit in Resume Analyzer to uncover missing keywords.",
       actionItems: [
         "Audit resume for missing keywords in Resume Analyzer",
         "Practice a 15-minute mock interview in Interview Lab",

@@ -100,19 +100,23 @@ export default function UpgradeModal() {
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upgrade-modal-title"
             className="relative bg-surface border border-border rounded-[2.5rem] shadow-2xl w-full max-w-6xl overflow-hidden"
           >
             {/* Header */}
             <div className="p-8 border-b border-border flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">Upgrade Your Plan</h2>
+                <h2 id="upgrade-modal-title" className="text-2xl font-bold text-ink uppercase tracking-tight">Upgrade Your Plan</h2>
                 <p className="text-ink-dim text-sm mt-1 uppercase tracking-widest font-bold">Select a membership tier</p>
               </div>
               <button 
                 onClick={closeUpgradeModal}
-                className="p-2 hover:bg-ink/5 rounded-full transition-colors"
+                className="p-2 hover:bg-ink/5 rounded-full transition-colors cursor-pointer"
+                aria-label="Close upgrade modal"
               >
-                <X className="w-6 h-6 text-ink-dim" />
+                <X className="w-6 h-6 text-ink-dim" aria-hidden="true" />
               </button>
             </div>
 

@@ -25,7 +25,13 @@ import {
   Zap,
   ArrowRight,
   Search, 
-  Edit3
+  Edit3,
+  GraduationCap,
+  ShieldCheck,
+  AlertTriangle,
+  HelpCircle,
+  Layers,
+  Scale
 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import AILoadingStepper from '../components/AILoadingStepper';
@@ -238,10 +244,16 @@ export default function ResumeAnalyzer() {
               "relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl h-64 cursor-pointer transition-all",
               file ? "border-accent bg-accent/5" : "border-border hover:border-accent/40"
             )}>
-              <input type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
+              <input 
+                type="file" 
+                className="hidden" 
+                accept=".pdf" 
+                onChange={handleFileChange}
+                aria-label="Upload resume PDF file" 
+              />
               {file ? (
                 <div className="text-center">
-                  <div className="bg-accent p-3 rounded-full inline-block mb-3">
+                  <div className="bg-accent p-3 rounded-full inline-block mb-3" aria-hidden="true">
                     <FileText className="w-6 h-6 text-white" />
                   </div>
                   <p className="font-bold text-ink">{file.name}</p>
@@ -249,7 +261,7 @@ export default function ResumeAnalyzer() {
                 </div>
               ) : (
                 <div className="text-center px-4">
-                  <div className="bg-surface-light p-3 rounded-full inline-block mb-3">
+                  <div className="bg-surface-light p-3 rounded-full inline-block mb-3" aria-hidden="true">
                     <FileUp className="w-6 h-6 text-ink-dim" />
                   </div>
                   <p className="font-bold text-ink">Select Resume</p>
@@ -259,14 +271,15 @@ export default function ResumeAnalyzer() {
             </label>
             
             {error && (
-              <div className="mt-4 p-4 bg-rose-500/10 text-rose-400 text-sm rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-rose-500/20">
+              <div role="alert" className="mt-4 p-4 bg-rose-500/10 text-rose-400 text-sm rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-rose-500/20">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
                   <span>{error}</span>
                 </div>
                 <button
                   onClick={handleStartAnalysis}
-                  className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors shrink-0"
+                  className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors shrink-0 cursor-pointer"
+                  aria-label="Retry resume analysis"
                 >
                   Retry Analysis
                 </button>
@@ -277,12 +290,13 @@ export default function ResumeAnalyzer() {
           {/* Job Description Card */}
           <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm flex flex-col relative overflow-hidden">
             <h3 className="font-bold text-ink mb-6 flex items-center gap-2 uppercase text-xs tracking-widest">
-              <Target className="w-4 h-4 text-accent" /> Job Description
+              <Target className="w-4 h-4 text-accent" aria-hidden="true" /> Job Description
             </h3>
             <textarea
               value={jobDesc}
               onChange={(e) => setJobDesc(e.target.value)}
               placeholder="Paste the target job description here to check compatibility..."
+              aria-label="Target job description"
               className="flex-1 w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink disabled:opacity-50 min-h-[160px]"
             />
           </div>
@@ -331,21 +345,47 @@ export default function ResumeAnalyzer() {
           {/* Explainable AI Engine - Analysis View */}
           <div className="space-y-8">
             {/* Header Explainable Banner */}
-            <div className="bg-gradient-to-r from-accent/15 via-surface to-accent/5 p-6 rounded-3xl border border-accent/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-gradient-to-r from-accent/15 via-surface to-accent/5 p-6 md:p-8 rounded-3xl border border-accent/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2.5 py-0.5 bg-accent text-white text-[9px] font-extrabold uppercase tracking-widest rounded-full">
-                    Explainable AI Engine
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="px-2.5 py-0.5 bg-accent text-white text-[9px] font-extrabold uppercase tracking-widest rounded-full flex items-center gap-1">
+                    <BrainCircuit className="w-3 h-3" /> Explainable AI Auditor
                   </span>
                   <span className="text-[10px] font-bold text-accent uppercase tracking-wider">
-                    100% Transparent ATS Audit
+                    Transparent Recruiter Calibration
                   </span>
+                  {analysis.score <= 65 ? (
+                    <span className="px-2.5 py-0.5 bg-amber-500/10 text-amber-500 text-[9px] font-bold uppercase tracking-widest rounded-full border border-amber-500/20">
+                      Generic Baseline (40-65 Range)
+                    </span>
+                  ) : analysis.score <= 79 ? (
+                    <span className="px-2.5 py-0.5 bg-blue-500/10 text-blue-500 text-[9px] font-bold uppercase tracking-widest rounded-full border border-blue-500/20">
+                      Competitive Alignment (66-79 Range)
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-500 text-[9px] font-bold uppercase tracking-widest rounded-full border border-emerald-500/20">
+                      Top-Tier Match (80-100 Range)
+                    </span>
+                  )}
                 </div>
-                <h2 className="text-xl font-bold text-ink tracking-tight">Full Math Breakdown & Recruiter Rationale</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-ink tracking-tight">Full Math Breakdown & Recruiter Rationale</h2>
+                <p className="text-xs text-ink-dim mt-1 max-w-xl">
+                  {analysis.score <= 65 
+                    ? "Honest Scoring Rule: Generic resumes lacking hard quantified metrics or direct role alignment calibrate between 40-65. Follow the rewrites below to break into 80+."
+                    : "Calibrated against specific role requirements and company benchmarks with transparent category weights."}
+                </p>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-3xl font-black text-accent">{analysis.score}%</span>
-                <span className="status-pill status-applied text-xs">{analysis.atsCompatibility}</span>
+              <div className="flex items-center gap-4 bg-background/80 px-6 py-4 rounded-2xl border border-border shrink-0">
+                <div className="text-right">
+                  <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider block">ATS Match Score</span>
+                  <span className="text-3xl font-black text-accent">{analysis.score} <span className="text-sm font-normal text-ink-dim">/ 100</span></span>
+                </div>
+                <span className={cn(
+                  "status-pill text-xs font-bold",
+                  analysis.score >= 80 ? "status-offer" : analysis.score >= 65 ? "status-applied" : "status-interview"
+                )}>
+                  {analysis.atsCompatibility}
+                </span>
               </div>
             </div>
 
@@ -359,16 +399,16 @@ export default function ResumeAnalyzer() {
                     </div>
                     <div>
                       <h3 className="font-bold text-ink text-sm uppercase tracking-wider flex items-center gap-2">
-                        Recruiter Audit Feedback <span className="text-[10px] lowercase text-ink-dim font-mono">(human_explanation)</span>
+                        Lead Recruiter Audit Memo <span className="text-[10px] lowercase text-ink-dim font-mono">(human_explanation)</span>
                       </h3>
-                      <p className="text-xs text-ink-dim">Direct feedback written in plain English by Lead Technical Recruiter</p>
+                      <p className="text-xs text-ink-dim">Candid, transparent feedback written in plain English from hiring perspective</p>
                     </div>
                   </div>
                   <button
                     onClick={() => navigator.clipboard.writeText(analysis.human_explanation)}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-light border border-border rounded-xl text-[10px] font-bold text-ink-dim hover:text-accent hover:border-accent/30 transition-all uppercase tracking-widest"
                   >
-                    <Copy className="w-3.5 h-3.5" /> Copy Email
+                    <Copy className="w-3.5 h-3.5" /> Copy Memo
                   </button>
                 </div>
 
@@ -386,11 +426,11 @@ export default function ResumeAnalyzer() {
                     <Calculator className="w-4 h-4 text-accent" /> 4-Category Weighted Math Breakdown
                   </h3>
                   <p className="text-xs text-ink-dim mt-1">
-                    Mathematical proof showing exact weight formulas contributing to your final ATS score of {analysis.score}%.
+                    Mathematical formula verifying how each category weight contributes to your final ATS score of {analysis.score}/100.
                   </p>
                 </div>
-                <div className="px-3 py-1 bg-accent/10 border border-accent/20 rounded-xl text-accent text-xs font-mono font-bold">
-                  Weight Total: 100%
+                <div className="px-3 py-1 bg-accent/10 border border-accent/20 rounded-xl text-accent text-xs font-mono font-bold flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5" /> Weight Total: 100%
                 </div>
               </div>
 
@@ -429,7 +469,9 @@ export default function ResumeAnalyzer() {
 
               {/* Math Equation Formula Bar */}
               <div className="bg-surface-light p-4 rounded-2xl border border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
-                <span className="text-ink-dim font-bold uppercase tracking-wider">Total Mathematical Calculation:</span>
+                <span className="text-ink-dim font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <Calculator className="w-3.5 h-3.5 text-accent" /> Total Mathematical Sum:
+                </span>
                 <div className="flex items-center gap-2 flex-wrap">
                   {(analysis.scoreBreakdown || []).map((cat: any, i: number) => (
                     <span key={i} className="text-ink font-bold">
@@ -441,6 +483,58 @@ export default function ResumeAnalyzer() {
               </div>
             </div>
 
+            {/* Explicit vs Inferred Skills Audit Matrix */}
+            {analysis.skillsAnalysis && analysis.skillsAnalysis.length > 0 && (
+              <div className="bg-surface p-8 rounded-3xl border border-border">
+                <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
+                  <div>
+                    <h3 className="font-bold text-ink uppercase text-xs tracking-widest flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-accent" /> Audited Skills: Explicit vs. Inferred
+                    </h3>
+                    <p className="text-xs text-ink-dim mt-1">
+                      Inferred skills (implied from tooling or frameworks) are lowered in confidence to preserve audit integrity.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[9px] font-bold uppercase rounded-md border border-emerald-500/20">
+                      Explicit
+                    </span>
+                    <span className="px-2 py-0.5 bg-purple-500/10 text-purple-500 text-[9px] font-bold uppercase rounded-md border border-purple-500/20">
+                      Inferred
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {analysis.skillsAnalysis.map((sk: any, i: number) => (
+                    <div key={i} className="bg-background p-4 rounded-2xl border border-border flex flex-col justify-between space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-ink">{sk.skill}</span>
+                        <span className={cn(
+                          "px-2 py-0.5 text-[9px] font-bold uppercase rounded-md border",
+                          sk.type === 'inferred' 
+                            ? "bg-purple-500/10 text-purple-400 border-purple-500/20" 
+                            : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        )}>
+                          {sk.type === 'inferred' ? 'Inferred' : 'Explicit'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-ink-dim leading-relaxed">{sk.evidence}</p>
+                      <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[10px] font-mono">
+                        <span className="text-ink-dim">Confidence:</span>
+                        <span className={cn(
+                          "font-bold uppercase",
+                          sk.confidence_level === 'high' ? "text-emerald-400" : sk.confidence_level === 'medium' ? "text-amber-400" : "text-rose-400"
+                        )}>
+                          {sk.confidence_level}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Keyword Analysis & Specific Rewrites per Gap */}
             <div className="bg-surface p-8 rounded-3xl border border-border">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-border pb-4">
@@ -449,7 +543,7 @@ export default function ResumeAnalyzer() {
                     <Zap className="w-4 h-4 text-accent" /> Missing Keyword Rationale & Bullet Rewrites
                   </h3>
                   <p className="text-xs text-ink-dim mt-1">
-                    Recruiter explanation of WHY each missing keyword matters for this specific role + 1 high-impact rewrite per gap.
+                    Recruiter explanation of WHY each gap matters for THIS role at THIS company + 1 specific metric rewrite per gap.
                   </p>
                 </div>
 
@@ -480,14 +574,37 @@ export default function ResumeAnalyzer() {
                   {analysis.missingKeywordAnalysis.map((item: any, idx: number) => (
                     <div key={idx} className="bg-background p-6 rounded-2xl border border-border space-y-4">
                       <div className="flex items-center justify-between flex-wrap gap-2">
-                        <span className="px-3 py-1 bg-rose-500/10 text-rose-400 font-bold text-xs rounded-xl border border-rose-500/20 flex items-center gap-2">
-                          <AlertCircle className="w-3.5 h-3.5" /> Missing Skill: {item.keyword}
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-3 py-1 bg-rose-500/10 text-rose-400 font-bold text-xs rounded-xl border border-rose-500/20 flex items-center gap-2">
+                            <AlertCircle className="w-3.5 h-3.5" /> Missing Skill: {item.keyword}
+                          </span>
+                          <span className={cn(
+                            "px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-lg border",
+                            item.confidence_level === 'high' 
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : item.confidence_level === 'medium'
+                              ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                              : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                          )}>
+                            {item.confidence_level} Confidence
+                          </span>
+                          {item.isInferred && (
+                            <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase rounded-lg border border-purple-500/20">
+                              Inferred Gap
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] font-bold text-ink-dim uppercase tracking-wider">Gap #{idx + 1}</span>
                       </div>
 
+                      {item.inferredNote && (
+                        <p className="text-[11px] text-purple-300/90 italic bg-purple-500/5 p-2.5 rounded-lg border border-purple-500/10">
+                          <strong>Note on Inference:</strong> {item.inferredNote}
+                        </p>
+                      )}
+
                       <div>
-                        <p className="text-xs font-bold text-accent uppercase tracking-wider mb-1">Why It Matters For This Specific Job Title & Company:</p>
+                        <p className="text-xs font-bold text-accent uppercase tracking-wider mb-1">Why It Matters For THIS Role at THIS Company:</p>
                         <p className="text-xs text-ink leading-relaxed font-sans">{item.whyItMatters}</p>
                       </div>
 
@@ -572,17 +689,25 @@ export default function ResumeAnalyzer() {
           </div>
 
           <NextStepBridgeCard
-            title="Resume Evaluation Complete"
-            contextData={`ATS Compatibility Score: ${analysis.score}%. ${analysis.missingKeywords?.length > 0 ? `Identified ${analysis.missingKeywords.length} missing skill keywords (${analysis.missingKeywords.slice(0, 3).join(', ')}).` : 'High alignment with target specifications.'}`}
+            title="Resume evaluation complete"
+            contextData={`ATS match score: ${analysis.score}%. ${analysis.missingKeywords?.length > 0 ? `Identified ${analysis.missingKeywords.length} missing skill keywords (${analysis.missingKeywords.slice(0, 3).join(', ')}).` : 'High keyword alignment with target role specifications.'}`}
             primaryStep={{
-              label: "Search Matched Jobs",
+              label: "Search matched jobs",
               icon: Search,
-              to: "/finder"
+              to: "/jobs",
+              state: {
+                role: jobDesc ? jobDesc.split('\n')[0].slice(0, 50) : "Software Engineer",
+                autoSearch: true
+              }
             }}
             secondaryStep={{
-              label: "Refine Resume in Editor",
-              icon: Edit3,
-              to: "/editor"
+              label: "Build 30-day skill roadmap",
+              icon: GraduationCap,
+              to: "/learning",
+              state: {
+                targetRole: jobDesc ? jobDesc.split('\n')[0].slice(0, 50) : "Software Engineer",
+                missingSkills: analysis.missingKeywords || []
+              }
             }}
           />
 

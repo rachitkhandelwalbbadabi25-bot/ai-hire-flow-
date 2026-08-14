@@ -76,7 +76,7 @@ export default function Navbar({ user }: NavbarProps) {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-[100] bg-surface/80 backdrop-blur-md border-b border-border">
+      <nav aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-[100] bg-surface/80 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-4">
@@ -84,13 +84,15 @@ export default function Navbar({ user }: NavbarProps) {
                 <button 
                   onClick={() => setIsDrawerOpen(true)}
                   className="p-2 -ml-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all lg:hidden"
-                  aria-label="Open Menu"
+                  aria-label="Open navigation menu"
+                  aria-expanded={isDrawerOpen}
+                  aria-controls="mobile-navigation-drawer"
                 >
-                  <Menu className="w-6 h-6" />
+                  <Menu className="w-6 h-6" aria-hidden="true" />
                 </button>
               )}
-              <Link to="/" className="flex items-center gap-2.5 group">
-                <div className="bg-accent p-2 rounded-xl flex items-center justify-center shadow-lg shadow-accent/25 transition-transform group-hover:scale-105">
+              <Link to="/" className="flex items-center gap-2.5 group" aria-label="AI HireFlow Home">
+                <div className="bg-accent p-2 rounded-xl flex items-center justify-center shadow-lg shadow-accent/25 transition-transform group-hover:scale-105" aria-hidden="true">
                   <Briefcase className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex flex-col">
@@ -113,30 +115,34 @@ export default function Navbar({ user }: NavbarProps) {
                    <button
                     onClick={toggleTheme}
                     className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
+                    aria-label={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
                     title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
                   >
-                    {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                    {theme === 'light' ? <Moon className="w-5 h-5" aria-hidden="true" /> : <Sun className="w-5 h-5" aria-hidden="true" />}
                   </button>
                    <button
                     onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
                     className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center gap-1.5"
+                    aria-label={language === 'en' ? 'Switch interface to Hindi' : 'Switch interface to English'}
                     title={language === 'en' ? 'हिन्दी में बदलें' : 'Switch to English'}
                   >
-                    <Globe className="w-5 h-5" />
+                    <Globe className="w-5 h-5" aria-hidden="true" />
                     <span className="text-[10px] font-bold uppercase hidden md:inline">{language === 'en' ? 'EN' : 'HI'}</span>
                   </button>
                    <button
                     onClick={handleSignOut}
                     className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
+                    aria-label="Sign out of account"
                     title="Sign Out"
                   >
-                    <LogOut className="w-5 h-5" />
+                    <LogOut className="w-5 h-5" aria-hidden="true" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={signInWithGoogle}
                   className="bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer"
+                  aria-label="Get Started with Google Sign In"
                 >
                   {t('getStarted')}
                 </button>
@@ -148,7 +154,7 @@ export default function Navbar({ user }: NavbarProps) {
 
       {/* Desktop Persistent Sidebar Rail */}
       {user && (
-        <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r lg:border-border lg:bg-surface/90 lg:backdrop-blur-xl">
+        <aside aria-label="Sidebar Navigation" className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r lg:border-border lg:bg-surface/90 lg:backdrop-blur-xl">
           <div className="px-6 py-4 border-b border-border/40">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-3.5 h-3.5 text-accent" />
@@ -211,14 +217,19 @@ export default function Navbar({ user }: NavbarProps) {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              id="mobile-navigation-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Mobile Navigation Menu"
               className="fixed top-0 left-0 bottom-0 w-80 bg-surface border-r border-border z-[120] flex flex-col pt-20"
             >
               <div className="absolute top-4 right-4">
                 <button 
                    onClick={() => setIsDrawerOpen(false)}
                    className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
+                   aria-label="Close navigation menu"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-6 h-6" aria-hidden="true" />
                 </button>
               </div>
 

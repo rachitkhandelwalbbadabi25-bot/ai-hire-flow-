@@ -99,39 +99,46 @@ export default function OnboardingTour() {
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tour-step-title"
           className="bg-surface border border-border p-8 rounded-[2.5rem] max-w-lg w-full shadow-2xl relative overflow-hidden"
         >
           <button
             onClick={markCompleted}
-            className="absolute top-6 right-6 p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
+            className="absolute top-6 right-6 p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all cursor-pointer"
+            aria-label="Skip onboarding tour"
             title="Skip tour"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
 
           <div className="flex items-center gap-2 mb-6">
-            <Sparkles className="w-5 h-5 text-accent" />
+            <Sparkles className="w-5 h-5 text-accent" aria-hidden="true" />
             <span className="text-xs font-bold text-accent uppercase tracking-widest font-mono">
               Quick Start Guide ({currentStep + 1}/{steps.length})
             </span>
           </div>
 
           <div className="flex items-start gap-4 mb-6">
-            <div className={`p-4 rounded-2xl border flex items-center justify-center shrink-0 ${step.accent}`}>
+            <div className={`p-4 rounded-2xl border flex items-center justify-center shrink-0 ${step.accent}`} aria-hidden="true">
               <StepIcon className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-ink mb-2 tracking-tight">{step.title}</h3>
+              <h3 id="tour-step-title" className="text-xl font-bold text-ink mb-2 tracking-tight">{step.title}</h3>
               <p className="text-sm text-ink-dim leading-relaxed font-medium">{step.description}</p>
             </div>
           </div>
 
           {/* Progress dots */}
-          <div className="flex items-center justify-between pt-6 border-t border-border">
-            <div className="flex gap-2">
+          <div className="flex items-center justify-between pt-6 border-t border-border" aria-label={`Step ${currentStep + 1} of ${steps.length}`}>
+            <div className="flex gap-2" role="tablist" aria-label="Tour step indicators">
               {steps.map((_, idx) => (
                 <div
                   key={idx}
+                  role="tab"
+                  aria-selected={idx === currentStep}
+                  aria-label={`Step ${idx + 1}`}
                   className={`h-2 rounded-full transition-all ${
                     idx === currentStep ? 'w-8 bg-accent' : 'w-2 bg-white/20'
                   }`}
@@ -142,16 +149,18 @@ export default function OnboardingTour() {
             <div className="flex items-center gap-3">
               <button
                 onClick={markCompleted}
-                className="text-xs font-bold text-ink-dim hover:text-ink px-3 py-2 rounded-xl transition-colors"
+                className="text-xs font-bold text-ink-dim hover:text-ink px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                aria-label="Skip the onboarding walkthrough"
               >
                 Skip Tour
               </button>
               <button
                 onClick={handleNext}
                 className="bg-accent text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-accent/20 cursor-pointer"
+                aria-label={step.actionText}
               >
-                {step.actionText}
-                <ArrowRight className="w-4 h-4" />
+                <span>{step.actionText}</span>
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           </div>

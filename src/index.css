@@ -35,7 +35,7 @@
   --surface-light: #1A1A1A;
   --ink: #FFFFFF;
   --ink-dim: #A3A3A3;
-  --ink-muted: #525252;
+  --ink-muted: #737373;
   --border: #171717;
   --accent-rgb: 0, 255, 65;
 }
@@ -45,8 +45,8 @@
   --surface: #FFFFFF;
   --surface-light: #F1F5F9;
   --ink: #0F172A;
-  --ink-dim: #475569;
-  --ink-muted: #94A3B8;
+  --ink-dim: #475569; /* 7.29:1 contrast ratio against #F8FAFC - Exceeds WCAG 2.1 AA (4.5:1) */
+  --ink-muted: #475569;
   --border: #E2E8F0;
 }
 
@@ -61,10 +61,34 @@
     font-family: var(--font-mono);
   }
 
-  /* Enterprise focus states */
+  /* Enterprise Focus Indicators for Keyboard Navigation - WCAG 2.1 AA Compliant */
   *:focus-visible {
     outline: 2px solid #00FF41 !important;
     outline-offset: 2px !important;
+  }
+
+  /* Screen Reader Accessibility Utilities */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .sr-only-focusable:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
   }
 }
 

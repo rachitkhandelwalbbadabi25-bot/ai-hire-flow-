@@ -42,7 +42,7 @@ interface InterviewSimulatorProps {
 
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { formatCreditAvailability } from '../utils/formatters';
 import SmartContextChips from '../components/SmartContextChips';
 import { useSystemOS } from '../context/SystemOSContext';
@@ -51,6 +51,7 @@ import SkeletonLoader from '../components/SkeletonLoader';
 export default function InterviewSimulator() {
   const { user } = useAuth();
   if (!user) return null;
+  const location = useLocation();
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
   const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
@@ -58,14 +59,18 @@ export default function InterviewSimulator() {
   const { activeTargetRole, trackedJobs } = useSystemOS();
 
   useEffect(() => {
-    if (!jobDescription) {
+    if (location.state?.jobDescription) {
+      setJobDescription(location.state.jobDescription);
+    } else if (location.state?.role) {
+      setJobDescription(`Position: ${location.state.role}${location.state.company ? ` at ${location.state.company}` : ''}\nFocus: Technical interview, system design, and role-specific architecture.`);
+    } else if (!jobDescription) {
       if (trackedJobs.length > 0) {
         setJobDescription(`Position: ${trackedJobs[0].role}\nCompany: ${trackedJobs[0].company}\nNotes: ${trackedJobs[0].notes || 'Engineering interview preparation'}`);
       } else if (activeTargetRole) {
         setJobDescription(`Target Position: ${activeTargetRole}\nCompany: Top Enterprise Tech Company\nFocus: Technical round, system architecture, and behavioral leadership.`);
       }
     }
-  }, [activeTargetRole, trackedJobs]);
+  }, [location.state, activeTargetRole, trackedJobs]);
   const [jobDescription, setJobDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -252,11 +257,13 @@ export default function InterviewSimulator() {
             />
 
             <div className="mb-8">
-              <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-4 block px-1">Job Description</label>
+              <label htmlFor="interview-job-desc" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-4 block px-1">Job Description</label>
               <textarea
+                id="interview-job-desc"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 placeholder="Paste the target job description to build your customized interview simulation..."
+                aria-label="Job description for interview simulation"
                 className="w-full h-64 p-6 bg-background border border-border rounded-3xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed"
               />
             </div>
@@ -353,12 +360,14 @@ export default function InterviewSimulator() {
                   )}
 
                     <div className="space-y-4">
-                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1 font-sans">Your Response</label>
+                      <label htmlFor="interview-user-response" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1 font-sans">Your Response</label>
                       <textarea
+                        id="interview-user-response"
                         autoFocus
                         value={userAnswer}
                         onChange={(e) => setUserAnswer(e.target.value)}
                         placeholder="Type your response here..."
+                        aria-label="Your response to the interview question"
                         className="w-full h-48 p-6 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans disabled:opacity-50"
                       />
                     </div>
@@ -462,20 +471,30 @@ export default function InterviewSimulator() {
               })}
             </div>
 
-            <NextStepBridgeCard
-              title="Interview Drill Completed"
-              contextData={`Mock interview simulation finalized with an overall score of ${calculateTotalScore()}% across ${questions.length} evaluated questions.`}
-              primaryStep={{
-                label: "Close Skill Gaps in Roadmap",
-                icon: GraduationCap,
-                to: "/learning"
-              }}
-              secondaryStep={{
-                label: "View Application Tracker",
-                icon: Briefcase,
-                to: "/jobs"
-              }}
-            />
+            {(() => {
+              const missingPoints = Object.values(evaluations).flatMap((e: any) => e?.keyPointsMissing || []);
+              const totalScore = calculateTotalScore();
+              return (
+                <NextStepBridgeCard
+                  title="Interview simulation complete"
+                  contextData={`Overall score: ${totalScore}% across ${questions.length} evaluated questions. ${missingPoints.length > 0 ? `Identified growth areas: ${missingPoints.slice(0, 3).join(', ')}.` : 'Excellent performance demonstrated across all technical topics.'}`}
+                  primaryStep={{
+                    label: "Close skill gaps in learning path",
+                    icon: GraduationCap,
+                    to: "/learning",
+                    state: {
+                      targetRole: activeTargetRole || "Software Engineer",
+                      missingSkills: missingPoints
+                    }
+                  }}
+                  secondaryStep={{
+                    label: "Track application progress",
+                    icon: Briefcase,
+                    to: "/jobs"
+                  }}
+                />
+              );
+            })()}
 
             <div className="flex justify-center">
                <button 

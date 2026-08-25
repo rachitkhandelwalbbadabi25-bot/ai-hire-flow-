@@ -59,31 +59,31 @@ export default function RecommendedNextSteps({ className = '' }: RecommendedNext
       steps.push({
         id: 'step_resume_audit',
         stepNumber: 1,
-        title: 'Audit Master Resume & ATS Score',
-        category: 'Resume Engineering',
-        description: 'Upload your resume to calculate baseline keyword density, formatting compliance, and alignment against target roles.',
-        badgeText: 'Highest Priority',
+        title: 'Check Your Resume Score',
+        category: 'Resume',
+        description: 'Upload your resume to see your score, fix formatting, and check if you have the right keywords.',
+        badgeText: 'Step 1',
         badgeType: 'high',
         icon: FileText,
-        ctaLabel: 'Upload & Audit Resume',
+        ctaLabel: 'Upload Resume',
         ctaLink: '/analyzer',
-        reasoning: 'Unlocks personalized matching, gap detection, and customized interview simulations.'
+        reasoning: 'Helps your resume pass automated filters and catch recruiter attention.'
       });
     } else {
       steps.push({
         id: 'step_resume_improve',
         stepNumber: 1,
-        title: `Optimize Bullets with XYZ Formula`,
-        category: 'Resume Refinement',
+        title: 'Improve Your Bullet Points',
+        category: 'Resume',
         description: latestResume.missingKeywords && latestResume.missingKeywords.length > 0
-          ? `Address ${latestResume.missingKeywords.length} detected skill gaps (${latestResume.missingKeywords.slice(0, 2).join(', ')}) using verified XYZ impact bullets.`
-          : 'Refactor passive job bullets into high-impact XYZ accomplishment statements in the Resume Editor.',
-        badgeText: 'High ROI',
+          ? `Add missing skills like ${latestResume.missingKeywords.slice(0, 2).join(', ')} to make your experience stand out.`
+          : 'Turn your job bullet points into clear achievements with measurable results.',
+        badgeText: 'Recommended',
         badgeType: 'high',
         icon: FileText,
-        ctaLabel: 'Refine in Resume Editor',
+        ctaLabel: 'Edit Resume',
         ctaLink: '/editor',
-        reasoning: 'Google XYZ formula elevates recruiter signal and ATS parsing pass rates.'
+        reasoning: 'Clear achievement bullets make recruiters 3x more likely to invite you to interview.'
       });
     }
 
@@ -92,35 +92,35 @@ export default function RecommendedNextSteps({ className = '' }: RecommendedNext
       steps.push({
         id: 'step_discover_jobs',
         stepNumber: 2,
-        title: `Discover & Track Matched Roles`,
-        category: 'Opportunity Discovery',
-        description: `Explore live job openings calibrated specifically for ${activeTargetRole || 'Software Engineers'} with real-time match scoring.`,
-        badgeText: 'Pipeline Builder',
+        title: 'Find Matching Jobs',
+        category: 'Jobs',
+        description: `Explore live job openings that match your skills for ${activeTargetRole || 'your target role'}.`,
+        badgeText: 'Step 2',
         badgeType: 'recommended',
         icon: Search,
-        ctaLabel: 'Search Matched Listings',
+        ctaLabel: 'Search Jobs',
         ctaLink: '/finder',
-        reasoning: 'Tracking target companies powers personalized outreach and tailored mock drills.'
+        reasoning: 'Save jobs to easily track your applications in one place.'
       });
     } else {
       const topJob = trackedJobs[0];
       steps.push({
         id: 'step_outreach_pitch',
         stepNumber: 2,
-        title: `Draft Recruiter Pitch for ${topJob?.company || 'Target Company'}`,
-        category: 'Direct Outreach',
-        description: `Generate high-converting, personalized cold email & LinkedIn outreach messages for your ${topJob?.role || 'open position'} application.`,
-        badgeText: 'Active Outreach',
+        title: `Message ${topJob?.company || 'Recruiter'}`,
+        category: 'Outreach',
+        description: `Create a short, personalized note to send to hiring managers for ${topJob?.role || 'this job'}.`,
+        badgeText: 'Recommended',
         badgeType: 'recommended',
         icon: Send,
-        ctaLabel: 'Generate Cold Email Pitch',
+        ctaLabel: 'Write Message',
         ctaLink: '/outreach',
         ctaState: {
           company: topJob?.company,
           role: topJob?.role,
           openModal: true
         },
-        reasoning: 'Direct outreach to engineering hiring managers generates 3.5x higher interview response rates.'
+        reasoning: 'Direct outreach helps you skip the pile and get faster responses.'
       });
     }
 
@@ -129,49 +129,49 @@ export default function RecommendedNextSteps({ className = '' }: RecommendedNext
       steps.push({
         id: 'step_mock_simulation',
         stepNumber: 3,
-        title: `Practice Role-Specific Mock Interview`,
-        category: 'Interview Calibration',
-        description: `Rehearse technical architecture and STAR behavioral questions tailored for ${activeTargetRole || 'your target position'}.`,
-        badgeText: 'Interview Prep',
+        title: 'Practice a Mock Interview',
+        category: 'Interview',
+        description: `Rehearse common questions for ${activeTargetRole || 'your role'} and get instant tips to improve.`,
+        badgeText: 'Step 3',
         badgeType: 'growth',
         icon: MessageSquare,
-        ctaLabel: 'Start AI Mock Drill',
+        ctaLabel: 'Start Practice',
         ctaLink: '/interview',
         ctaState: {
           role: activeTargetRole,
           company: trackedJobs[0]?.company
         },
-        reasoning: 'Candidates completing at least 2 drills score 40% higher on hiring team evaluations.'
+        reasoning: 'Practicing even 1 mock interview builds confidence and sharper answers.'
       });
     } else if (allMissingSkills.length > 0 || !hasRoadmap) {
       steps.push({
         id: 'step_skill_roadmap',
         stepNumber: 3,
-        title: `Close Technical Gaps with Learning Roadmap`,
-        category: 'Skill Mastery',
+        title: 'Learn In-Demand Skills',
+        category: 'Skills',
         description: allMissingSkills.length > 0
-          ? `Target key technical gaps: ${allMissingSkills.slice(0, 3).join(', ')} with structured milestones and resources.`
-          : 'Generate a personalized 4-week technical upskilling curriculum to accelerate career velocity.',
-        badgeText: 'Skill Growth',
+          ? `Work on top requested skills: ${allMissingSkills.slice(0, 3).join(', ')}.`
+          : 'Follow a simple weekly plan to build skills employers are actively looking for.',
+        badgeText: 'Growth',
         badgeType: 'growth',
         icon: GraduationCap,
-        ctaLabel: 'View Upskilling Roadmap',
+        ctaLabel: 'View Learning Plan',
         ctaLink: '/learning',
-        reasoning: 'Targeted skill resolution transforms resume weaknesses into competitive advantages.'
+        reasoning: 'Closing skill gaps makes you eligible for higher-paying positions.'
       });
     } else {
       steps.push({
         id: 'step_behavioral_mastery',
         stepNumber: 3,
-        title: 'Calibrate Advanced Behavioral Answers',
-        category: 'Leadership Drill',
-        description: 'Simulate high-stakes behavioral questions and system design defense drills with real-time AI scoring.',
-        badgeText: 'Advanced Drill',
+        title: 'Practice Behavioral Questions',
+        category: 'Interview',
+        description: 'Get ready for leadership and situational questions with quick AI feedback.',
+        badgeText: 'Practice',
         badgeType: 'growth',
         icon: MessageSquare,
-        ctaLabel: 'Launch Advanced Simulator',
+        ctaLabel: 'Practice Questions',
         ctaLink: '/interview',
-        reasoning: 'Deepens behavioral readiness and STAR structure fluency before round 1.'
+        reasoning: 'Great stories and structured answers leave a lasting positive impression.'
       });
     }
 
@@ -204,14 +204,14 @@ export default function RecommendedNextSteps({ className = '' }: RecommendedNext
               <Sparkles className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-accent">
-              AI Dynamic Career Router
+              Recommended For You
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-ink font-mono tracking-tight">
-            Top 3 Recommended Next Steps
+            Your Next 3 Steps
           </h2>
           <p className="text-xs text-ink-dim font-sans max-w-xl">
-            Prioritized actions derived from your current resume audit, pipeline volume, and interview readiness.
+            Quick, personalized actions based on your current progress.
           </p>
         </div>
 
@@ -265,7 +265,7 @@ export default function RecommendedNextSteps({ className = '' }: RecommendedNext
 
                 {/* AI Reasoning Note */}
                 <div className="bg-surface/70 border border-border/80 rounded-lg p-2.5 text-[11px] font-sans text-ink-dim flex items-start gap-2">
-                  <span className="font-mono font-bold text-accent shrink-0 text-[10px]">WHY:</span>
+                  <span className="font-mono font-bold text-accent shrink-0 text-[10px] uppercase">Why:</span>
                   <span className="leading-tight">{step.reasoning}</span>
                 </div>
               </div>

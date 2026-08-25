@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useAuth, UserPlan } from '../context/AuthContext';
 import { usePlan, DEFAULT_CREDIT_COSTS, PLAN_CREDITS, CreditCosts } from '../context/PlanContext';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
@@ -30,9 +30,18 @@ import {
   Activity,
   CheckCircle2,
   Trash2,
-  LockKeyhole
+  LockKeyhole,
+  ShieldCheck,
+  RotateCcw,
+  FileText,
+  ChevronDown,
+  HelpCircle,
+  ArrowRight
 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, PieChart as ReChartsPie, Cell, Pie } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
+import { cn } from '../lib/utils';
+
+import PaymentGatewayModal, { CheckoutItem } from '../components/PaymentGatewayModal';
 
 export default function CreditsPage() {
   const { user } = useAuth();
@@ -60,7 +69,12 @@ export default function CreditsPage() {
   } = usePlan();
 
   const [activeTab, setActiveTab] = useState<'wallet' | 'missions' | 'referrals' | 'pricing' | 'admin'>('wallet');
+  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
   
+  // Checkout Modal State
+  const [checkoutItem, setCheckoutItem] = useState<CheckoutItem | null>(null);
+  const [isPaymentGatewayOpen, setIsPaymentGatewayOpen] = useState(false);
+
   // Wallet states
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState<{ success: boolean; text: string } | null>(null);
@@ -69,14 +83,134 @@ export default function CreditsPage() {
   // Referral states
   const [referralEmailInput, setReferralEmailInput] = useState('');
 
-  // Store packages
+  // Store packages (Real pricing in INR & USD)
   const storePackages = [
-    { id: 'pack_500', credits: 500, price: 99, discount: 'Popular', badge: 'Casual Hunter' },
-    { id: 'pack_1000', credits: 1000, price: 179, discount: '10% OFF', badge: 'Professional' },
-    { id: 'pack_2500', credits: 2500, price: 399, discount: '20% OFF', badge: 'Pro Plus', recommended: true },
-    { id: 'pack_5000', credits: 5000, price: 699, discount: '30% OFF', badge: 'AI Elite' },
-    { id: 'pack_10000', credits: 10000, price: 1199, discount: '40% OFF', badge: 'SaaS Powerhouse' }
+    { 
+      id: 'pack_250', 
+      credits: 250, 
+      price: { INR: 299, USD: 4 }, 
+      priceFormatted: { INR: '₹299', USD: '$4' },
+      discount: 'Quick Boost', 
+      badge: 'Starter Top-Up',
+      idealFor: '10 ATS Scans or 5 Voice Mock Interviews'
+    },
+    { 
+      id: 'pack_750', 
+      credits: 750, 
+      price: { INR: 699, USD: 9 }, 
+      priceFormatted: { INR: '₹699', USD: '$9' },
+      discount: 'Best Value', 
+      badge: 'Recruitment Sprint',
+      recommended: true,
+      idealFor: 'Full interview campaign with outreach pitches'
+    },
+    { 
+      id: 'pack_2000', 
+      credits: 2000, 
+      price: { INR: 1499, USD: 19 }, 
+      priceFormatted: { INR: '₹1,499', USD: '$19' },
+      discount: '25% Savings', 
+      badge: 'Mastery Bundle',
+      idealFor: 'Multi-role interviewing & career transitions'
+    },
+    { 
+      id: 'pack_5000', 
+      credits: 5000, 
+      price: { INR: 2999, USD: 39 }, 
+      priceFormatted: { INR: '₹2,999', USD: '$39' },
+      discount: '40% Savings', 
+      badge: 'Enterprise Powerhouse',
+      idealFor: 'Continuous autonomous hiring prep'
+    }
   ];
+
+  // Membership Plans for Pricing Tab
+  const membershipPlans = [
+    {
+      id: 'free',
+      name: 'Starter Plan',
+      price: { INR: '₹0', USD: '$0' },
+      period: 'forever',
+      description: 'Standard baseline intelligence for individual career explorers.',
+      icon: Shield,
+      creditsAdded: 100,
+      features: [
+        '100 Initial Wallet Credits',
+        '2 Free ATS Resume Scans / month',
+        '1 Live AI Voice Mock Interview',
+        'Global Tech Job Finder Access',
+        'Standard Community Support'
+      ],
+      buttonText: 'Current Plan',
+      disabled: plan === 'free'
+    },
+    {
+      id: 'standard',
+      name: 'Pro Accelerator',
+      price: { INR: '₹1,499', USD: '$19' },
+      period: '/ month',
+      recommended: true,
+      description: 'The preferred choice for active candidates and rapid job seekers.',
+      icon: Zap,
+      creditsAdded: 2000,
+      features: [
+        '2,000 Monthly Credits (Instant top-up)',
+        'Unlimited ATS Scans & Keyword Gap Audits',
+        'Live Voice Mock Interview Lab with real-time feedback',
+        'Tailored Cover Letter Generator',
+        'Full Personalized Skill Roadmap',
+        'Master Resume Cloud Sync & Editor'
+      ],
+      buttonText: 'Upgrade to Pro',
+      disabled: plan === 'standard' || plan === 'premium' || plan === 'admin'
+    },
+    {
+      id: 'premium',
+      name: 'Elite Executive',
+      price: { INR: '₹3,499', USD: '$49' },
+      period: '/ month',
+      description: 'Full-spectrum autonomous career suite with priority GPU allocation.',
+      icon: Sparkles,
+      creditsAdded: 8000,
+      features: [
+        '8,000 Monthly Credits (Instant top-up)',
+        'All Pro Accelerator capabilities included',
+        'Campus Placement & University Drives Tracker',
+        'Executive Salary & Negotiation Simulator',
+        'Direct Recruiter Cold Outreach Pitch Engine',
+        'Priority GPU Allocation & Ultra-fast AI Processing',
+        'Dedicated 1-on-1 Priority Technical Support'
+      ],
+      buttonText: 'Unlock Elite Executive',
+      disabled: plan === 'premium' || plan === 'admin'
+    }
+  ];
+
+  // Payment FAQ
+  const paymentFaqs = [
+    {
+      q: 'How quickly are my credits and features activated?',
+      a: 'Activation is instantaneous. As soon as the payment gateway (Razorpay or Stripe) confirms the transaction, our real-time webhook updates your account and credits your wallet immediately.'
+    },
+    {
+      q: 'Do unused credits roll over to the next month?',
+      a: 'Yes. Top-up credit packs never expire. For monthly recurring plans, unused subscription credits roll over as long as your subscription remains active.'
+    },
+    {
+      q: 'Can I cancel my subscription at any time?',
+      a: 'Yes, you can cancel whenever you choose with a single click from your Profile & Billing page. You will retain access to all plan benefits and credits until the end of your current billing cycle.'
+    },
+    {
+      q: 'Which payment methods are supported?',
+      a: 'For Indian users (INR), we support UPI (Google Pay, PhonePe, Paytm), RuPay/Visa/Mastercard debit and credit cards, and Net Banking. For international users (USD), we support all major global credit cards, debit cards, and Apple Pay.'
+    },
+    {
+      q: 'Will I receive a GST / Tax Invoice?',
+      a: 'Yes. A formal tax invoice containing the transaction ID, breakdown of taxes, and billing details is automatically generated and sent to your registered email address.'
+    }
+  ];
+
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // Admin states
   const [editedCosts, setEditedCosts] = useState<Partial<CreditCosts>>({});
@@ -87,6 +221,12 @@ export default function CreditsPage() {
   const [adminRefundTxId, setAdminRefundTxId] = useState<string>('');
   const [adminAnalytics, setAdminAnalytics] = useState<any>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
+
+  // Checkout & Payment states
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'authorizing' | 'success' | 'error'>('idle');
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [completedOrderDetails, setCompletedOrderDetails] = useState<any>(null);
 
   // Load admin data if admin
   useEffect(() => {
@@ -172,247 +312,46 @@ export default function CreditsPage() {
     await loadAdminPanel();
   };
 
-  // Razorpay Paywall states
-  const [razorpayConfig, setRazorpayConfig] = useState<{ configured: boolean; keyId: string } | null>(null);
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Check Razorpay server-side config
-    fetch('/api/razorpay/config')
-      .then(res => res.json())
-      .then(data => setRazorpayConfig(data))
-      .catch(err => console.error("Razorpay config check failed:", err));
-  }, []);
-
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if ((window as any).Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const handlePaymentInitiation = async (params: {
+  // Real Payment Execution Flow via PaymentGatewayModal
+  const handlePaymentInitiation = (params: {
     type: 'subscription' | 'credits';
     item: string;
+    itemName: string;
     price: number;
+    currencySymbol: string;
     credits: number;
+    priceUSD?: number;
   }) => {
-    if (!user) return;
-    setCheckingOut(true);
-    setPaymentError(null);
+    const isINR = currency === 'INR';
+    const priceINR = isINR ? params.price : Math.round(params.price * 80);
+    const priceUSD = params.priceUSD || (isINR ? Math.round(params.price / 80) || 4 : params.price);
 
-    try {
-      // Apply promo discount if any
-      let finalPrice = params.price;
-      if (promoCode && params.type === 'credits') {
-        const pCheck = applyPromoCode(promoCode);
-        if (pCheck.valid) {
-          finalPrice = Math.round(params.price * (1 - pCheck.discountPercent / 100));
-        }
-      }
-
-      const response = await fetch('/api/razorpay/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.uid,
-          type: params.type,
-          item: params.item,
-          price: finalPrice,
-          credits: params.credits
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.orderId) {
-        // Razorpay order created on backend! Load Checkout JS
-        const isLoaded = await loadRazorpayScript();
-        if (!isLoaded) {
-          throw new Error('Failed to load Razorpay payment SDK script.');
-        }
-
-        const options = {
-          key: data.keyId,
-          amount: data.amount,
-          currency: data.currency,
-          name: "Career Gateway",
-          description: params.type === 'subscription' 
-            ? `Career ${params.item === 'premium' ? 'Premium' : 'Standard'} Plan`
-            : `${params.credits} Credits Pack Wallet Top-up`,
-          order_id: data.orderId,
-          handler: async function (paymentResponse: any) {
-            setCheckingOut(false);
-            setPaymentStatus('verifying');
-
-            try {
-              const verifyResponse = await fetch('/api/razorpay/verify-payment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  razorpay_order_id: paymentResponse.razorpay_order_id,
-                  razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                  razorpay_signature: paymentResponse.razorpay_signature,
-                  userId: user.uid,
-                  type: params.type,
-                  item: params.item,
-                  credits: params.credits,
-                  price: finalPrice
-                })
-              });
-
-              const verifyData = await verifyResponse.json();
-              if (verifyData.success) {
-                const userRef = doc(db, 'users', user.uid);
-                
-                if (params.type === 'subscription') {
-                  const addedCredits = params.item === 'premium' ? 8000 : 2000;
-                  const updatedWallet = {
-                    ...creditWallet,
-                    balance: (creditWallet?.balance ?? 0) + addedCredits,
-                    totalEarned: (creditWallet?.totalEarned ?? 0) + addedCredits,
-                    usedThisMonth: creditWallet?.usedThisMonth ?? 0,
-                    referralCode: creditWallet?.referralCode ?? ''
-                  };
-
-                  await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-                    amount: addedCredits,
-                    type: 'purchase',
-                    label: `Razorpay Verified Upgrade to ${params.item.toUpperCase()} Plan`,
-                    timestamp: new Date().toISOString()
-                  });
-
-                  await updateDoc(userRef, { 
-                    plan: params.item,
-                    creditWallet: updatedWallet
-                  });
-                } else {
-                  // Credit top-up
-                  const updatedWallet = {
-                    ...creditWallet,
-                    balance: (creditWallet?.balance ?? 0) + params.credits,
-                    totalEarned: (creditWallet?.totalEarned ?? 0) + params.credits,
-                    usedThisMonth: creditWallet?.usedThisMonth ?? 0,
-                    referralCode: creditWallet?.referralCode ?? ''
-                  };
-
-                  await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-                    amount: params.credits,
-                    type: 'purchase',
-                    label: `Razorpay Verified Purchase of ${params.credits} Credits Pack`,
-                    timestamp: new Date().toISOString()
-                  });
-
-                  await updateDoc(userRef, { 
-                    creditWallet: updatedWallet
-                  });
-                }
-
-                setPaymentStatus('success');
-              } else {
-                setPaymentStatus('error');
-                setPaymentError(verifyData.error || 'Payment verification failed.');
-              }
-            } catch (vErr: any) {
-              console.error(vErr);
-              setPaymentStatus('error');
-              setPaymentError(vErr.message || 'Payment verification request failed.');
-            }
-          },
-          prefill: {
-            email: user.email || '',
-          },
-          theme: {
-            color: "#6366f1",
-          },
-          modal: {
-            ondismiss: function () {
-              setCheckingOut(false);
-              setPaymentStatus('error');
-              setPaymentError('Payment window closed by user.');
-            }
-          }
-        };
-
-        setCheckingOut(false);
-        const rzp1 = new (window as any).Razorpay(options);
-        rzp1.open();
-
-      } else if (data.isSandbox) {
-        // Server indicates Razorpay keys are not configured, trigger sandbox bypass.
-        setCheckingOut(false);
-        setPaymentStatus('verifying');
-        
-        // Simulate a transaction securely inside the sandbox environment
-        setTimeout(async () => {
-          try {
-            const userRef = doc(db, 'users', user.uid);
-            if (params.type === 'subscription') {
-              const addedCredits = params.item === 'premium' ? 8000 : 2000;
-              const updatedWallet = {
-                ...creditWallet,
-                balance: (creditWallet?.balance ?? 0) + addedCredits,
-                totalEarned: (creditWallet?.totalEarned ?? 0) + addedCredits,
-                usedThisMonth: creditWallet?.usedThisMonth ?? 0,
-                referralCode: creditWallet?.referralCode ?? ''
-              };
-
-              await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-                amount: addedCredits,
-                type: 'purchase',
-                label: `Sandbox Instant Bypass Upgrade: ${params.item.toUpperCase()} Tier`,
-                timestamp: new Date().toISOString()
-              });
-
-              await updateDoc(userRef, { 
-                plan: params.item,
-                creditWallet: updatedWallet
-              });
-            } else {
-              const updatedWallet = {
-                ...creditWallet,
-                balance: (creditWallet?.balance ?? 0) + params.credits,
-                totalEarned: (creditWallet?.totalEarned ?? 0) + params.credits,
-                usedThisMonth: creditWallet?.usedThisMonth ?? 0,
-                referralCode: creditWallet?.referralCode ?? ''
-              };
-
-              await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-                amount: params.credits,
-                type: 'purchase',
-                label: `Sandbox Instant Bypass: Purchased ${params.credits} Credits Pack`,
-                timestamp: new Date().toISOString()
-              });
-
-              await updateDoc(userRef, { 
-                creditWallet: updatedWallet
-              });
-            }
-            setPaymentStatus('success');
-          } catch (err) {
-            console.error(err);
-            setPaymentStatus('error');
-            setPaymentError('Failed to execute Sandbox bypass transaction.');
-          }
-        }, 1200);
-      } else {
-        throw new Error(data.error || 'Failed to initiate Razorpay Session');
-      }
-    } catch (err: any) {
-      console.error(err);
-      setCheckingOut(false);
-      setPaymentStatus('error');
-      setPaymentError(err.message || 'Failed to initiate payment gateway connection.');
-    }
+    setCheckoutItem({
+      type: params.type,
+      itemId: params.item,
+      title: params.itemName,
+      subtitle: params.type === 'subscription' 
+        ? 'Monthly subscription tier with instant credit refill' 
+        : `Instant top-up of +${params.credits.toLocaleString()} AI Credits`,
+      basePriceINR: priceINR,
+      basePriceUSD: priceUSD,
+      credits: params.credits,
+      badge: params.type === 'subscription' ? 'PLAN UPGRADE' : 'CREDIT PACK',
+      featuresUnlocked: params.type === 'subscription'
+        ? [
+            `+${params.credits.toLocaleString()} Monthly Credits`,
+            'Zero Queue Time & Priority AI Execution',
+            'Full Access to Voice Mock Interview Lab',
+            'Automated GST Invoice Receipt'
+          ]
+        : [
+            `+${params.credits.toLocaleString()} Wallet Credits Added Immediately`,
+            'Credits Never Expire',
+            'Stackable on Any Plan Tier',
+            'Automated GST Invoice Receipt'
+          ]
+    });
+    setIsPaymentGatewayOpen(true);
   };
 
   // Helper values for rendering progress wheels
@@ -422,7 +361,7 @@ export default function CreditsPage() {
     : 0;
   const strokeDashoffset = 440 - (440 * Math.min(100, percentageUsed)) / 100;
 
-  // Chart mocks based on transactional categories
+  // Chart data
   const chartData = [
     { name: 'Day 1', spent: 40, earned: 15 },
     { name: 'Day 3', spent: 85, earned: 100 },
@@ -434,57 +373,86 @@ export default function CreditsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070708] text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background text-ink pt-20 sm:pt-24 pb-24 px-4 sm:px-6 lg:px-8">
       {/* Page Header */}
-      <div className="max-w-7xl mx-auto mb-10">
+      <div className="max-w-7xl mx-auto mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-5 h-5 text-accent animate-pulse" />
-              <span className="text-xs font-bold text-accent uppercase tracking-[0.25em] font-mono">Credits & Usage</span>
+            <div className="flex items-center gap-2 mb-1.5">
+              <ShieldCheck className="w-4 h-4 text-accent" />
+              <span className="text-xs font-mono font-bold text-accent uppercase tracking-[0.25em]">
+                FINANCIAL LEDGER & BILLING
+              </span>
             </div>
-            <h1 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
-              Credit Hub
+            <h1 className="text-3xl font-black uppercase tracking-tight text-ink sm:text-4xl font-sans">
+              Credits & Billing Hub
             </h1>
-            <p className="text-sm text-ink-dim uppercase tracking-widest font-bold mt-1">
-              Powering AI HireFlow's Career Accelerator Systems
+            <p className="text-xs text-ink-dim uppercase tracking-wider font-mono font-bold mt-1">
+              Transparent, real-time credit management & payment gateways
             </p>
           </div>
 
-          {/* Core Balance Card Header */}
-          <div className="bg-surface/50 backdrop-blur-md border border-border p-4 rounded-[2rem] flex items-center gap-6 shadow-2xl">
-            <div className="p-4 rounded-2xl bg-accent/10 flex items-center justify-center">
-              <Wallet className="w-8 h-8 text-accent" />
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Currency Selector */}
+            <div className="bg-surface border border-border rounded-2xl p-1 flex items-center shadow-sm">
+              <button
+                type="button"
+                onClick={() => setCurrency('INR')}
+                className={cn(
+                  "px-3.5 py-1.5 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer",
+                  currency === 'INR' ? "bg-accent text-black shadow-sm" : "text-ink-dim hover:text-ink"
+                )}
+              >
+                ₹ INR (India)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrency('USD')}
+                className={cn(
+                  "px-3.5 py-1.5 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer",
+                  currency === 'USD' ? "bg-accent text-black shadow-sm" : "text-ink-dim hover:text-ink"
+                )}
+              >
+                $ USD (Global)
+              </button>
             </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-ink-dim">Verified Active Balance</p>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-2xl font-black font-mono text-white">
-                  {creditWallet?.balance ?? '---'}
-                </span>
-                <span className="text-[10px] font-black uppercase text-accent font-mono">Credits</span>
+
+            {/* Core Balance Card Header */}
+            <div className="bg-surface border border-border p-3.5 sm:p-4 rounded-2xl flex items-center gap-4 shadow-md">
+              <div className="p-3 rounded-xl bg-accent/10 flex items-center justify-center">
+                <Wallet className="w-6 h-6 text-accent" />
+              </div>
+              <div>
+                <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-ink-dim">Active Balance</p>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-black font-mono text-ink">
+                    {creditWallet?.balance?.toLocaleString() ?? '---'}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-accent font-mono">Credits</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex flex-wrap gap-2 mt-10 border-b border-border/40 pb-4">
+        <div className="flex flex-wrap gap-2 mt-8 border-b border-border/60 pb-4">
           {[
-            { id: 'wallet', label: 'Credit Wallet', icon: Wallet },
+            { id: 'wallet', label: 'Credit Wallet & Top-Ups', icon: Wallet },
+            { id: 'pricing', label: 'Membership Plans', icon: Zap },
             { id: 'missions', label: 'Missions & Rank', icon: Award },
-            { id: 'referrals', label: 'Referral Engine', icon: UserPlus },
-            { id: 'pricing', label: 'Plans & Pricing', icon: Zap },
-            ...(plan === 'admin' ? [{ id: 'admin', label: 'Admin Panel', icon: Crown }] : [])
+            { id: 'referrals', label: 'Referral Rewards', icon: UserPlus },
+            ...(plan === 'admin' ? [{ id: 'admin', label: 'Admin Ledger', icon: Crown }] : [])
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all border ${
+              className={cn(
+                "min-h-[44px] flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold font-sans uppercase tracking-wider transition-all border cursor-pointer",
                 activeTab === tab.id
-                  ? 'bg-white text-black border-white'
-                  : 'text-ink-dim hover:text-white hover:bg-surface border-transparent'
-              }`}
+                  ? "bg-accent text-black border-accent shadow-sm"
+                  : "text-ink-dim hover:text-ink hover:bg-surface border-transparent"
+              )}
             >
               <tab.icon className="w-4 h-4" />
               <span>{tab.label}</span>
@@ -494,35 +462,51 @@ export default function CreditsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        {/* Razorpay Gateway Status Banner */}
-        {razorpayConfig && (
-          <div className="mb-8 p-4 bg-surface border border-border/80 rounded-[1.5rem] flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                <CreditCard className="w-5 h-5" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-black uppercase tracking-tight text-white">Razorpay Core Paywall System</p>
-                <p className="text-[10px] text-ink-dim font-bold uppercase tracking-wider">
-                  {razorpayConfig.configured 
-                    ? '🔒 Secured by 256-bit SSL Cryptographic Bank Uplink (Razorpay Live Mode)' 
-                    : '🧪 Sandbox Bypass active — Instant transaction simulation enabled for developer preview'
-                  }
-                </p>
-              </div>
+        {/* Trust Signals Banner */}
+        <div className="mb-8 p-4 sm:p-5 bg-surface border border-border/80 rounded-2xl grid grid-cols-2 md:grid-cols-4 gap-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-accent/10 text-accent">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-            <div className={`px-3 py-1 rounded-full text-[8px] font-mono font-black uppercase tracking-widest border ${
-              razorpayConfig.configured 
-                ? 'bg-success/10 text-success border-success/30' 
-                : 'bg-amber-500/10 text-amber-500 border-amber-500/30'
-            }`}>
-              {razorpayConfig.configured ? 'RAZORPAY LIVE' : 'SANDBOX SIMULATOR'}
+            <div>
+              <p className="text-xs font-bold text-ink">Secure Payment</p>
+              <p className="text-[10px] text-ink-dim font-mono">256-Bit SSL Encrypted</p>
             </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-400/10 text-amber-400">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-ink">Instant Credit Top-Up</p>
+              <p className="text-[10px] text-ink-dim font-mono">Zero Waiting Period</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-400/10 text-emerald-400">
+              <RotateCcw className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-ink">Cancel Anytime</p>
+              <p className="text-[10px] text-ink-dim font-mono">No Lock-In Contracts</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-400/10 text-blue-400">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-ink">Automated Tax Invoice</p>
+              <p className="text-[10px] text-ink-dim font-mono">Emailed Instantly</p>
+            </div>
+          </div>
+        </div>
 
         <AnimatePresence mode="wait">
-          {/* WALLET TAB */}
+          {/* TAB 1: WALLET & STORE */}
           {activeTab === 'wallet' && (
             <motion.div
               key="wallet-tab"
@@ -533,89 +517,91 @@ export default function CreditsPage() {
             >
               {/* Left & Center Columns */}
               <div className="lg:col-span-2 space-y-8">
-                {/* Stats Grid */}
+                {/* Allowance & Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {/* Monthly used wheel */}
-                  <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-6 rounded-[2.5rem] flex flex-col items-center justify-center text-center">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-ink-dim mb-4">Allowance Consumed</h3>
-                    <div className="relative w-40 h-40 flex items-center justify-center mb-4">
+                  <div className="bg-surface border border-border p-6 rounded-3xl flex flex-col items-center justify-center text-center shadow-sm">
+                    <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-ink-dim mb-4">Monthly Allocation</h3>
+                    <div className="relative w-36 h-36 flex items-center justify-center mb-4">
                       <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="80" cy="80" r="70" className="stroke-surface-light fill-transparent stroke-[8]" />
+                        <circle cx="72" cy="72" r="60" className="stroke-surface-light fill-transparent stroke-[8]" />
                         <circle 
-                          cx="80" 
-                          cy="80" 
-                          r="70" 
+                          cx="72" 
+                          cy="72" 
+                          r="60" 
                           className="stroke-accent fill-transparent stroke-[8] transition-all duration-1000"
-                          strokeDasharray="440"
-                          strokeDashoffset={strokeDashoffset}
+                          strokeDasharray="377"
+                          strokeDashoffset={377 - (377 * Math.min(100, percentageUsed)) / 100}
                           strokeLinecap="round"
                         />
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center">
-                        <span className="text-3xl font-black font-mono">{percentageUsed}%</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-ink-dim mt-1">Used This Month</span>
+                        <span className="text-2xl font-black font-mono text-ink">{percentageUsed}%</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-ink-dim">Utilized</span>
                       </div>
                     </div>
-                    <p className="text-[11px] font-semibold text-ink-dim uppercase">
-                      {creditWallet?.usedThisMonth ?? 0} / {totalMonthlyAllowance} Credits Consumed
+                    <p className="text-xs font-mono font-semibold text-ink-dim">
+                      {creditWallet?.usedThisMonth ?? 0} / {totalMonthlyAllowance} Credits Used
                     </p>
                   </div>
 
                   {/* Summary Stats */}
-                  <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem] flex flex-col justify-between">
+                  <div className="bg-surface border border-border p-6 sm:p-7 rounded-3xl flex flex-col justify-between shadow-sm">
                     <div>
-                      <h3 className="text-xs font-black uppercase tracking-widest text-ink-dim mb-6">Usage History</h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center border-b border-border/30 pb-3">
-                          <span className="text-xs text-ink-dim font-bold uppercase">Plan Tier</span>
-                          <span className="text-xs font-bold text-accent uppercase tracking-widest">{plan}</span>
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-ink-dim mb-4">Account Tier Status</h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center border-b border-border/40 pb-2.5">
+                          <span className="text-xs text-ink-dim font-sans">Active Plan</span>
+                          <span className="text-xs font-mono font-bold text-accent uppercase">{plan} Tier</span>
                         </div>
-                        <div className="flex justify-between items-center border-b border-border/30 pb-3">
-                          <span className="text-xs text-ink-dim font-bold uppercase">Total Earned</span>
-                          <span className="text-xs font-bold font-mono text-white">{creditWallet?.totalEarned ?? 250} CR</span>
+                        <div className="flex justify-between items-center border-b border-border/40 pb-2.5">
+                          <span className="text-xs text-ink-dim font-sans">Total Lifetime Earned</span>
+                          <span className="text-xs font-mono font-bold text-ink">{creditWallet?.totalEarned?.toLocaleString() ?? 250} CR</span>
                         </div>
-                        <div className="flex justify-between items-center border-b border-border/30 pb-3">
-                          <span className="text-xs text-ink-dim font-bold uppercase">Current Level</span>
-                          <span className="text-xs font-bold text-amber-500 uppercase">Level {creditWallet?.level ?? 1}</span>
+                        <div className="flex justify-between items-center border-b border-border/40 pb-2.5">
+                          <span className="text-xs text-ink-dim font-sans">Hunter Level</span>
+                          <span className="text-xs font-mono font-bold text-amber-400">Level {creditWallet?.level ?? 1}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-ink-dim font-bold uppercase">Streak Multiplier</span>
-                          <span className="text-xs font-bold text-success flex items-center gap-1 font-mono uppercase">
-                            <Flame className="w-4 h-4 text-orange-500 fill-orange-500" /> {creditWallet?.streak ?? 1} Days Active
+                          <span className="text-xs text-ink-dim font-sans">Active Streak</span>
+                          <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
+                            <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" /> {creditWallet?.streak ?? 1} Days Active
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-accent/5 border border-accent/20 rounded-2xl p-4 mt-6">
-                      <p className="text-[9px] text-accent font-black uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                        <Zap className="w-3.5 h-3.5" /> Rollover Guarantee
+                    <div className="bg-surface-light border border-border rounded-xl p-3 mt-4">
+                      <p className="text-[10px] text-accent font-mono font-bold uppercase tracking-wider flex items-center gap-1 mb-0.5">
+                        <Zap className="w-3 h-3" /> Rollover Guarantee
                       </p>
-                      <p className="text-[10px] text-ink-dim leading-relaxed font-semibold">
-                        {plan === 'premium' ? 'Premium credits roll over for 3 months.' : plan === 'standard' ? 'Standard credits roll over for 2 months.' : 'Free tier credits expire monthly.'}
+                      <p className="text-[11px] text-ink-dim leading-relaxed font-sans">
+                        {plan === 'premium' ? 'Premium credits roll over for 3 months.' : plan === 'standard' ? 'Standard credits roll over for 2 months.' : 'Free tier monthly credits refresh every 30 days.'}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Credit Store Package Grid */}
-                <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <div>
-                      <h3 className="text-lg font-black uppercase tracking-tight text-white">Credit Store</h3>
-                      <p className="text-xs text-ink-dim font-bold uppercase tracking-wider mt-0.5">Top-up instantly to fuel critical AI runs</p>
+                      <h3 className="text-lg font-bold text-ink font-sans">On-Demand Credit Packs</h3>
+                      <p className="text-xs text-ink-dim font-sans">Instant top-ups that stack on top of your plan. Credits never expire.</p>
                     </div>
-                    <div className="flex gap-2">
+                    
+                    {/* Promo Code Input */}
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <input 
                         type="text" 
                         placeholder="PROMO CODE" 
                         value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value)}
-                        className="bg-black/40 border border-border px-3 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider focus:outline-none focus:border-accent w-28 text-center"
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        className="bg-surface-light border border-border px-3 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider focus:outline-none focus:border-accent w-32 text-center"
                       />
                       <button 
                         onClick={handleApplyPromo}
-                        className="bg-white text-black px-4 py-2 rounded-xl text-xs font-bold uppercase hover:opacity-90"
+                        className="min-h-[44px] bg-accent text-black px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase hover:bg-accent/90 cursor-pointer"
                       >
                         Apply
                       </button>
@@ -623,71 +609,99 @@ export default function CreditsPage() {
                   </div>
 
                   {promoMessage && (
-                    <div className={`p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider mb-4 border ${
-                      promoMessage.success ? 'bg-success/10 text-success border-success/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                    }`}>
+                    <div className={cn(
+                      "p-3 rounded-xl text-xs font-mono font-bold uppercase tracking-wider mb-4 border",
+                      promoMessage.success ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" : "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                    )}>
                       {promoMessage.text}
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {storePackages.map((pack) => (
-                      <div 
-                        key={pack.id} 
-                        className={`bg-black/40 border p-5 rounded-[1.5rem] flex flex-col justify-between transition-all relative ${
-                          pack.recommended ? 'border-accent ring-1 ring-accent/30' : 'border-border/60'
-                        }`}
-                      >
-                        {pack.recommended && (
-                          <span className="absolute -top-2.5 right-4 bg-accent text-white text-[8px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
-                            RECOMMENDED
-                          </span>
-                        )}
-                        <div>
-                          <div className="flex justify-between items-start">
-                            <span className="text-[10px] bg-white/5 border border-white/10 text-ink px-2 py-0.5 rounded-full font-mono font-bold">
-                              {pack.badge}
-                            </span>
-                            <span className="text-xs text-accent font-black uppercase tracking-wider">{pack.discount}</span>
-                          </div>
-                          <h4 className="text-2xl font-black font-mono text-white mt-4 flex items-baseline gap-1">
-                            {pack.credits} <span className="text-[10px] font-black uppercase text-ink-dim">CR</span>
-                          </h4>
-                          <p className="text-[10px] text-ink-dim mt-1 font-semibold uppercase">Instantly unlocked</p>
-                        </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {storePackages.map((pack) => {
+                      const finalPrice = promoCode && applyPromoCode(promoCode).valid
+                        ? Math.round(pack.price[currency] * (1 - applyPromoCode(promoCode).discountPercent / 100))
+                        : pack.price[currency];
 
-                        <button 
-                          onClick={() => handlePaymentInitiation({ type: 'credits', item: pack.id, price: pack.price, credits: pack.credits })}
-                          className="mt-6 w-full bg-surface-light border border-border hover:bg-white hover:text-black transition-all py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em]"
+                      return (
+                        <div 
+                          key={pack.id} 
+                          className={cn(
+                            "bg-surface-light/60 border p-5 rounded-2xl flex flex-col justify-between transition-all relative",
+                            pack.recommended ? "border-accent ring-1 ring-accent/30 shadow-md" : "border-border"
+                          )}
                         >
-                          Buy for ₹{promoCode && applyPromoCode(promoCode).valid ? Math.round(pack.price * (1 - applyPromoCode(promoCode).discountPercent / 100)) : pack.price}
-                        </button>
-                      </div>
-                    ))}
+                          {pack.recommended && (
+                            <span className="absolute -top-2.5 right-3 bg-accent text-black text-[8px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                              BEST VALUE
+                            </span>
+                          )}
+                          <div>
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-[10px] bg-surface border border-border text-ink px-2 py-0.5 rounded-lg font-mono font-bold">
+                                {pack.badge}
+                              </span>
+                              <span className="text-[10px] text-accent font-mono font-bold">{pack.discount}</span>
+                            </div>
+                            <h4 className="text-2xl font-black font-mono text-ink mt-2 flex items-baseline gap-1">
+                              +{pack.credits.toLocaleString()} <span className="text-[10px] font-bold uppercase text-ink-dim">CR</span>
+                            </h4>
+                            <p className="text-[11px] text-ink-dim mt-1 font-sans leading-tight">{pack.idealFor}</p>
+                          </div>
+
+                          <div className="mt-5 pt-3 border-t border-border/40">
+                            <p className="text-[10px] font-mono text-ink-dim uppercase">Total Due:</p>
+                            <div className="flex items-baseline gap-1 mb-3">
+                              <span className="text-lg font-black font-mono text-ink">
+                                {currency === 'INR' ? `₹${finalPrice}` : `$${finalPrice}`}
+                              </span>
+                            </div>
+
+                            <button 
+                              type="button"
+                              onClick={() => handlePaymentInitiation({
+                                type: 'credits',
+                                item: pack.id,
+                                itemName: `${pack.credits} Credits Pack`,
+                                price: finalPrice,
+                                currencySymbol: currency === 'INR' ? '₹' : '$',
+                                credits: pack.credits
+                              })}
+                              className="min-h-[44px] w-full bg-accent text-black hover:bg-accent/90 transition-all py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                            >
+                              <Lock className="w-3 h-3" />
+                              <span>Instant Top-Up</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Analytics Chart */}
-                <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-ink-dim mb-6">Aesthetic Spent vs Earned Chart</h3>
-                  <div className="h-64">
+                {/* Credit Usage History Chart */}
+                <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-ink-dim mb-4">
+                    Credit Consumption & Earnings Trend
+                  </h3>
+                  <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData}>
                         <defs>
                           <linearGradient id="spentColor" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#fc3c3c" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#fc3c3c" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
                           </linearGradient>
                           <linearGradient id="earnedColor" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#059669" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <XAxis dataKey="name" stroke="#404040" fontSize={10} fontStyle="bold" />
-                        <YAxis stroke="#404040" fontSize={10} fontStyle="bold" />
-                        <Tooltip contentStyle={{ backgroundColor: '#0f0f10', borderColor: '#202022', borderRadius: '1rem', color: '#fff', fontSize: '12px' }} />
-                        <Area type="monotone" dataKey="spent" stroke="#fc3c3c" fillOpacity={1} fill="url(#spentColor)" strokeWidth={2} name="Spent" />
-                        <Area type="monotone" dataKey="earned" stroke="#059669" fillOpacity={1} fill="url(#earnedColor)" strokeWidth={2} name="Earned" />
+                        <XAxis dataKey="name" stroke="#606060" fontSize={10} fontStyle="bold" />
+                        <YAxis stroke="#606060" fontSize={10} fontStyle="bold" />
+                        <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }} />
+                        <Area type="monotone" dataKey="spent" stroke="#f43f5e" fillOpacity={1} fill="url(#spentColor)" strokeWidth={2} name="Spent" />
+                        <Area type="monotone" dataKey="earned" stroke="#10b981" fillOpacity={1} fill="url(#earnedColor)" strokeWidth={2} name="Earned" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -696,36 +710,37 @@ export default function CreditsPage() {
 
               {/* Transactions Ledger Panel */}
               <div className="space-y-8">
-                <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem] flex flex-col h-full max-h-[80vh] overflow-hidden">
-                  <div className="flex items-center gap-2 mb-6">
+                <div className="bg-surface border border-border p-6 sm:p-7 rounded-3xl flex flex-col h-full max-h-[75vh] shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
                     <History className="w-5 h-5 text-accent" />
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-tight text-white">Credit History</h3>
-                      <p className="text-[10px] text-ink-dim font-bold uppercase tracking-wider">Verified ledger audits</p>
+                      <h3 className="text-sm font-bold text-ink font-sans">Transaction Ledger</h3>
+                      <p className="text-[10px] text-ink-dim font-mono">Real-time ledger entries</p>
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                     {transactions.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-10 text-center text-ink-dim border border-dashed border-border rounded-lg bg-surface p-6">
+                      <div className="flex flex-col items-center justify-center py-12 text-center text-ink-dim border border-dashed border-border rounded-2xl bg-surface-light/40 p-6">
                         <History className="w-8 h-8 text-accent opacity-60 mb-2" />
-                        <p className="text-xs font-mono font-bold text-ink">Transaction history starts here</p>
-                        <p className="text-[11px] text-ink-dim mt-1 max-w-xs leading-relaxed">
-                          Credits used for resume scans, mock interviews, and job searches will appear in this ledger.
+                        <p className="text-xs font-mono font-bold text-ink">Ledger Ready</p>
+                        <p className="text-[11px] text-ink-dim mt-1 max-w-xs leading-relaxed font-sans">
+                          Credits used for resume audits, voice interviews, and top-ups will be recorded here.
                         </p>
                       </div>
                     ) : (
                       transactions.map((t) => (
-                        <div key={t.id} className="bg-black/30 border border-border/50 p-4 rounded-2xl flex justify-between items-center">
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-[10px] font-bold text-ink-dim uppercase font-mono">
+                        <div key={t.id} className="bg-surface-light/60 border border-border/60 p-3.5 rounded-xl flex justify-between items-center">
+                          <div className="flex flex-col min-w-0 pr-2">
+                            <span className="text-[10px] font-mono font-bold text-ink-dim">
                               {new Date(t.timestamp).toLocaleDateString()} • {t.type}
                             </span>
-                            <span className="text-[11px] font-bold text-white truncate mt-1">{t.label}</span>
+                            <span className="text-xs font-bold text-ink truncate mt-0.5 font-sans">{t.label}</span>
                           </div>
-                          <span className={`text-xs font-black font-mono ml-4 shrink-0 ${
-                            t.amount > 0 ? 'text-success' : 'text-rose-500'
-                          }`}>
+                          <span className={cn(
+                            "text-xs font-mono font-black shrink-0",
+                            t.amount > 0 ? "text-emerald-400" : "text-rose-400"
+                          )}>
                             {t.amount > 0 ? `+${t.amount}` : t.amount} CR
                           </span>
                         </div>
@@ -734,22 +749,22 @@ export default function CreditsPage() {
                   </div>
                 </div>
 
-                {/* Configured Costs Card */}
-                <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-ink-dim mb-4">Cost Per AI Request</h3>
-                  <div className="space-y-3">
+                {/* Configured Unit Costs */}
+                <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-ink-dim mb-3">AI Action Unit Costs</h3>
+                  <div className="space-y-2.5">
                     {[
-                      { label: 'Resume Analyzer', cost: creditCosts.resumeScan },
-                      { label: 'ATS Optimization', cost: creditCosts.atsOptimization },
-                      { label: 'AI Resume Rewrite', cost: creditCosts.resumeRewrite },
-                      { label: 'AI Cover Letter', cost: creditCosts.coverLetter },
-                      { label: 'Practice AI Interview', cost: creditCosts.interviewSession },
-                      { label: 'Job Matching', cost: creditCosts.jobMatchAnalysis },
-                      { label: 'Career Coach Bot', cost: creditCosts.careerCoachChat }
+                      { label: 'ATS Resume Analyzer', cost: creditCosts.resumeScan },
+                      { label: 'Keyword Gap Audit', cost: creditCosts.atsOptimization },
+                      { label: 'Tailored Resume Rewrite', cost: creditCosts.resumeRewrite },
+                      { label: 'AI Cover Letter Draft', cost: creditCosts.coverLetter },
+                      { label: 'Live AI Voice Mock Session', cost: creditCosts.interviewSession },
+                      { label: 'Target Job Match Analysis', cost: creditCosts.jobMatchAnalysis },
+                      { label: 'Autonomous Career Coach', cost: creditCosts.careerCoachChat }
                     ].map((item, index) => (
-                      <div key={index} className="flex justify-between items-center text-xs border-b border-border/20 pb-2">
-                        <span className="text-ink-dim font-bold uppercase">{item.label}</span>
-                        <span className="font-mono font-bold text-white">{item.cost} Credits</span>
+                      <div key={index} className="flex justify-between items-center text-xs border-b border-border/40 pb-2">
+                        <span className="text-ink-dim font-sans">{item.label}</span>
+                        <span className="font-mono font-bold text-ink">{item.cost} Credits</span>
                       </div>
                     ))}
                   </div>
@@ -758,7 +773,144 @@ export default function CreditsPage() {
             </motion.div>
           )}
 
-          {/* MISSIONS & RANKS TAB */}
+          {/* TAB 2: MEMBERSHIP PLANS */}
+          {activeTab === 'pricing' && (
+            <motion.div
+              key="pricing-tab"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-8"
+            >
+              {/* Plans Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {membershipPlans.map((p) => {
+                  const rawPriceNumber = p.id === 'standard' 
+                    ? (currency === 'INR' ? 1499 : 19) 
+                    : p.id === 'premium' 
+                    ? (currency === 'INR' ? 3499 : 49) 
+                    : 0;
+
+                  return (
+                    <div 
+                      key={p.id}
+                      className={cn(
+                        "p-7 rounded-3xl border transition-all flex flex-col justify-between relative bg-surface",
+                        p.id === plan ? "border-accent ring-1 ring-accent" : "border-border",
+                        p.recommended && "shadow-lg shadow-accent/10 border-accent/60"
+                      )}
+                    >
+                      {p.recommended && (
+                        <span className="absolute -top-3 right-6 bg-accent text-black text-[9px] font-mono font-bold uppercase tracking-widest px-3 py-0.5 rounded-full">
+                          RECOMMENDED
+                        </span>
+                      )}
+
+                      <div>
+                        <div className="w-12 h-12 rounded-2xl bg-surface-light border border-border flex items-center justify-center mb-5">
+                          <p.icon className="w-6 h-6 text-accent" />
+                        </div>
+                        <h3 className="text-xl font-bold text-ink font-sans mb-1">{p.name}</h3>
+                        <div className="flex items-baseline gap-1 mb-4">
+                          <span className="text-3xl font-black font-mono text-ink">{p.price[currency]}</span>
+                          <span className="text-xs text-ink-dim font-mono">{p.period}</span>
+                        </div>
+                        <p className="text-xs text-ink-dim leading-relaxed font-sans mb-6">{p.description}</p>
+
+                        {/* Post-Payment Outcome */}
+                        {p.id !== 'free' && (
+                          <div className="mb-6 p-3 bg-surface-light border border-border rounded-xl">
+                            <p className="text-[10px] font-mono font-bold text-accent uppercase tracking-wider flex items-center gap-1 mb-0.5">
+                              <Zap className="w-3 h-3" /> Post-Payment Outcome:
+                            </p>
+                            <p className="text-xs text-ink font-semibold">
+                              +{p.creditsAdded.toLocaleString()} Credits added immediately & feature barriers lifted.
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="space-y-3 pt-4 border-t border-border/40">
+                          {p.features.map((feat, i) => (
+                            <div key={i} className="flex items-start gap-2.5">
+                              <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                              <span className="text-xs text-ink font-medium font-sans">{feat}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          if (p.id === 'free') return;
+                          handlePaymentInitiation({
+                            type: 'subscription',
+                            item: p.id,
+                            itemName: p.name,
+                            price: rawPriceNumber,
+                            currencySymbol: currency === 'INR' ? '₹' : '$',
+                            credits: p.creditsAdded
+                          });
+                        }}
+                        disabled={p.disabled}
+                        className={cn(
+                          "min-h-[44px] mt-8 w-full py-3.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md",
+                          p.id === plan 
+                            ? "bg-surface-light border-border text-ink-dim cursor-not-allowed" 
+                            : p.id === 'premium'
+                            ? "bg-amber-400 text-black hover:bg-amber-300 border-amber-400"
+                            : "bg-accent text-black hover:bg-accent/90 border-accent",
+                          p.disabled && "opacity-50 grayscale cursor-not-allowed"
+                        )}
+                      >
+                        {p.id === plan ? 'Active Plan' : p.buttonText}
+                        {p.id !== plan && p.id !== 'free' && <Lock className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Payment FAQ Section */}
+              <div className="bg-surface border border-border rounded-3xl p-6 sm:p-8 shadow-sm">
+                <div className="flex items-center gap-2 mb-6">
+                  <HelpCircle className="w-5 h-5 text-accent" />
+                  <div>
+                    <h3 className="text-base font-bold text-ink font-sans">Frequently Asked Questions (Payment & Billing)</h3>
+                    <p className="text-xs text-ink-dim font-sans">Clear answers on activations, tax invoicing, and cancellations</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {paymentFaqs.map((faq, index) => {
+                    const isOpen = openFaqIndex === index;
+                    return (
+                      <div 
+                        key={index}
+                        className="border border-border/60 rounded-2xl overflow-hidden bg-surface-light/40"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                          className="min-h-[44px] w-full p-4 text-left flex items-center justify-between gap-4 cursor-pointer hover:bg-surface-light transition-colors"
+                        >
+                          <span className="text-xs font-bold text-ink font-sans">{faq.q}</span>
+                          <ChevronDown className={cn("w-4 h-4 text-ink-dim transition-transform shrink-0", isOpen && "rotate-180")} />
+                        </button>
+                        {isOpen && (
+                          <div className="px-4 pb-4 text-xs text-ink-dim font-sans leading-relaxed border-t border-border/40 pt-3">
+                            {faq.a}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 3: MISSIONS & RANKS */}
           {activeTab === 'missions' && (
             <motion.div
               key="missions-tab"
@@ -768,54 +920,49 @@ export default function CreditsPage() {
               className="space-y-8"
             >
               {/* Level & XP bar */}
-              <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
+              <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                   <div>
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest font-mono">Level Index</span>
-                    <h2 className="text-2xl font-black uppercase tracking-tight mt-1">Level {creditWallet?.level ?? 1}</h2>
-                    <p className="text-sm text-ink-dim font-bold uppercase mt-0.5">
-                      Ranks unlocked: {creditWallet?.unlockedBadges?.join(' • ') || 'Verified Candidate'}
+                    <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-widest">Candidate XP Level</span>
+                    <h2 className="text-2xl font-bold uppercase tracking-tight text-ink font-sans mt-0.5">Level {creditWallet?.level ?? 1}</h2>
+                    <p className="text-xs text-ink-dim font-sans mt-0.5">
+                      Ranks: {creditWallet?.unlockedBadges?.join(' • ') || 'Verified Candidate'}
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs text-ink-dim font-bold uppercase">Total Experience Points</span>
-                    <p className="text-xl font-black font-mono text-amber-500 mt-1">{creditWallet?.xp ?? 0} XP</p>
+                    <span className="text-xs text-ink-dim font-sans">Total Experience Points</span>
+                    <p className="text-xl font-black font-mono text-amber-400 mt-0.5">{creditWallet?.xp ?? 0} XP</p>
                   </div>
                 </div>
 
-                {/* Progress bar */}
-                <div className="h-3 w-full bg-surface-light rounded-full overflow-hidden">
+                <div className="h-2.5 w-full bg-surface-light rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full" 
+                    className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-500" 
                     style={{ width: `${Math.min(100, ((creditWallet?.xp ?? 0) / 1000) * 100)}%` }}
                   />
-                </div>
-                <div className="flex justify-between items-center text-[9px] text-ink-dim font-bold uppercase tracking-wider mt-2.5">
-                  <span>Level 1: Beginner</span>
-                  <span>Level 5: Career Architect (1000 XP)</span>
                 </div>
               </div>
 
               {/* Grid of Daily Missions & Weekly Challenges */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Daily Missions */}
-                <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                  <h3 className="text-lg font-black uppercase tracking-tight text-white mb-2">Daily Operations</h3>
-                  <p className="text-xs text-ink-dim font-bold uppercase tracking-wider mb-6">Resets daily at 00:00 UTC</p>
+                <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+                  <h3 className="text-base font-bold text-ink font-sans mb-1">Daily Recruiter Operations</h3>
+                  <p className="text-xs text-ink-dim font-sans mb-6">Resets every 24 hours at 00:00 UTC</p>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {dailyMissions.map((m) => (
-                      <div key={m.id} className="bg-black/30 border border-border/60 p-5 rounded-2xl">
+                      <div key={m.id} className="bg-surface-light/60 border border-border/60 p-4 rounded-2xl">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <h4 className="text-xs font-black uppercase tracking-tight text-white">{m.title}</h4>
-                            <p className="text-[10px] text-ink-dim font-semibold mt-1">{m.description}</p>
+                            <h4 className="text-xs font-bold text-ink font-sans">{m.title}</h4>
+                            <p className="text-[11px] text-ink-dim mt-0.5">{m.description}</p>
                           </div>
-                          <span className="text-[9px] bg-accent/15 text-accent border border-accent/20 px-2 py-0.5 rounded-full font-mono font-bold">
+                          <span className="text-[10px] bg-accent/15 text-accent border border-accent/20 px-2 py-0.5 rounded-full font-mono font-bold">
                             +{m.rewardCredits} CR
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 mt-4">
+                        <div className="flex items-center gap-3 mt-3">
                           <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
                             <div className="h-full bg-accent rounded-full" style={{ width: `${(m.progress / m.maxProgress) * 100}%` }} />
                           </div>
@@ -829,25 +976,25 @@ export default function CreditsPage() {
                 </div>
 
                 {/* Weekly Challenges */}
-                <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                  <h3 className="text-lg font-black uppercase tracking-tight text-white mb-2">Weekly Milestones</h3>
-                  <p className="text-xs text-ink-dim font-bold uppercase tracking-wider mb-6">Progress overrides reset weekly</p>
+                <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+                  <h3 className="text-base font-bold text-ink font-sans mb-1">Weekly Milestones</h3>
+                  <p className="text-xs text-ink-dim font-sans mb-6">Career progress goals reset weekly</p>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {weeklyChallenges.map((m) => (
-                      <div key={m.id} className="bg-black/30 border border-border/60 p-5 rounded-2xl">
+                      <div key={m.id} className="bg-surface-light/60 border border-border/60 p-4 rounded-2xl">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <h4 className="text-xs font-black uppercase tracking-tight text-white">{m.title}</h4>
-                            <p className="text-[10px] text-ink-dim font-semibold mt-1">{m.description}</p>
+                            <h4 className="text-xs font-bold text-ink font-sans">{m.title}</h4>
+                            <p className="text-[11px] text-ink-dim mt-0.5">{m.description}</p>
                           </div>
-                          <span className="text-[9px] bg-success/15 text-success border border-success/20 px-2 py-0.5 rounded-full font-mono font-bold">
+                          <span className="text-[10px] bg-emerald-400/15 text-emerald-400 border border-emerald-400/20 px-2 py-0.5 rounded-full font-mono font-bold">
                             +{m.rewardCredits} CR
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 mt-4">
+                        <div className="flex items-center gap-3 mt-3">
                           <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
-                            <div className="h-full bg-success rounded-full" style={{ width: `${(m.progress / m.maxProgress) * 100}%` }} />
+                            <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${(m.progress / m.maxProgress) * 100}%` }} />
                           </div>
                           <span className="text-[10px] font-mono font-bold text-ink shrink-0">
                             {m.progress}/{m.maxProgress}
@@ -860,49 +1007,50 @@ export default function CreditsPage() {
               </div>
 
               {/* Achievements Grid */}
-              <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                <h3 className="text-lg font-black uppercase tracking-tight text-white mb-2">Career Achievements</h3>
-                <p className="text-xs text-ink-dim font-bold uppercase tracking-wider mb-6">Gamified badges with instant credit payloads</p>
+              <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+                <h3 className="text-base font-bold text-ink font-sans mb-1">Career Achievements</h3>
+                <p className="text-xs text-ink-dim font-sans mb-6">Milestone badges with instant credit rewards</p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {achievements.map((a) => (
                     <div 
                       key={a.id} 
-                      className={`border p-6 rounded-[2rem] transition-all flex flex-col justify-between ${
+                      className={cn(
+                        "border p-5 rounded-2xl transition-all flex flex-col justify-between",
                         a.unlocked 
-                          ? 'bg-amber-500/5 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.05)]' 
-                          : 'bg-black/40 border-border/60'
-                      }`}
+                          ? "bg-amber-400/5 border-amber-400/40 shadow-sm" 
+                          : "bg-surface-light/40 border-border"
+                      )}
                     >
                       <div>
-                        <div className="flex justify-between items-center mb-3">
+                        <div className="flex justify-between items-center mb-2">
                           <span className="text-2xl">{a.badge.split(' ')[0]}</span>
                           {a.unlocked ? (
-                            <span className="text-[8px] bg-amber-500 text-black px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest">
+                            <span className="text-[9px] bg-amber-400 text-black px-2 py-0.5 rounded-full font-mono font-bold">
                               UNLOCKED
                             </span>
                           ) : (
-                            <span className="text-[8px] bg-white/5 border border-white/10 text-ink-dim px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest">
+                            <span className="text-[9px] bg-surface border border-border text-ink-dim px-2 py-0.5 rounded-full font-mono font-bold">
                               LOCKED
                             </span>
                           )}
                         </div>
-                        <h4 className="text-sm font-black uppercase tracking-tight text-white mt-1">{a.title}</h4>
-                        <p className="text-[10px] text-ink-dim leading-relaxed mt-1 font-semibold">{a.description}</p>
+                        <h4 className="text-xs font-bold text-ink font-sans">{a.title}</h4>
+                        <p className="text-[11px] text-ink-dim mt-0.5 leading-relaxed">{a.description}</p>
                       </div>
 
-                      <div className="mt-6 pt-4 border-t border-border/40">
-                        <div className="flex justify-between items-center text-[10px] font-bold uppercase text-ink-dim mb-1">
+                      <div className="mt-4 pt-3 border-t border-border/40">
+                        <div className="flex justify-between items-center text-[10px] font-mono text-ink-dim mb-1">
                           <span>Progress</span>
                           <span>{a.progress}/{a.maxProgress}</span>
                         </div>
                         <div className="h-1.5 w-full bg-surface-light rounded-full overflow-hidden">
                           <div 
-                            className={`h-full rounded-full ${a.unlocked ? 'bg-amber-500' : 'bg-accent'}`} 
+                            className={cn("h-full rounded-full", a.unlocked ? "bg-amber-400" : "bg-accent")} 
                             style={{ width: `${(a.progress / a.maxProgress) * 100}%` }}
                           />
                         </div>
-                        <div className="flex justify-between items-center mt-3 text-[9px] font-mono font-bold text-ink-dim">
+                        <div className="flex justify-between items-center mt-2 text-[9px] font-mono font-bold text-ink-dim">
                           <span>+{a.credits} Credits</span>
                           <span>+{a.xp} XP</span>
                         </div>
@@ -914,7 +1062,7 @@ export default function CreditsPage() {
             </motion.div>
           )}
 
-          {/* REFERRALS TAB */}
+          {/* TAB 4: REFERRALS */}
           {activeTab === 'referrals' && (
             <motion.div
               key="referrals-tab"
@@ -923,100 +1071,72 @@ export default function CreditsPage() {
               exit={{ opacity: 0, y: -15 }}
               className="grid grid-cols-1 lg:grid-cols-3 gap-8"
             >
-              {/* Invite terminal */}
               <div className="lg:col-span-2 space-y-8">
-                <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                  <h3 className="text-lg font-black uppercase tracking-tight text-white mb-2">Referral Engine</h3>
-                  <p className="text-xs text-ink-dim font-bold uppercase tracking-wider mb-8">Share intelligence & receive rewards instantly</p>
+                <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+                  <h3 className="text-base font-bold text-ink font-sans mb-1">Referral Rewards Program</h3>
+                  <p className="text-xs text-ink-dim font-sans mb-6">Invite fellow job seekers and earn +100 Credits each upon first scan</p>
 
-                  <div className="bg-black/40 border border-border/60 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6">
+                  <div className="bg-surface-light border border-border p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-ink-dim">Your Unique Invite Code</p>
-                      <span className="text-2xl font-black font-mono text-white tracking-widest block mt-1">
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-ink-dim">Your Unique Invite Code</p>
+                      <span className="text-2xl font-black font-mono text-ink block mt-0.5">
                         {creditWallet?.referralCode ?? '---'}
                       </span>
                     </div>
                     <button 
                       onClick={handleCopyCode}
-                      className="bg-white text-black px-6 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90 flex items-center gap-2"
+                      className="min-h-[44px] bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider hover:bg-accent/90 flex items-center gap-2 cursor-pointer"
                     >
-                      {copyCodeSuccess ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                      {copyCodeSuccess ? <Check className="w-4 h-4 text-emerald-950" /> : <Copy className="w-4 h-4" />}
                       <span>{copyCodeSuccess ? 'Copied' : 'Copy Code'}</span>
                     </button>
                   </div>
 
                   {/* Redeem Form */}
-                  <form onSubmit={handleReferralSubmit} className="mt-8 space-y-4">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-ink-dim mb-2">
-                        Redeem Friend's Registered Email
-                      </label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="email" 
-                          placeholder="friend@email.com" 
-                          value={referralEmailInput}
-                          onChange={(e) => setReferralEmailInput(e.target.value)}
-                          className="bg-black/40 border border-border px-4 py-3 rounded-2xl text-xs font-bold focus:outline-none focus:border-accent flex-1"
-                        />
-                        <button 
-                          type="submit"
-                          className="bg-accent text-white px-6 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider hover:opacity-90"
-                        >
-                          Redeem Reward
-                        </button>
-                      </div>
+                  <form onSubmit={handleReferralSubmit} className="mt-6 space-y-3">
+                    <label className="block text-[11px] font-mono font-bold uppercase text-ink-dim">
+                      Redeem Friend's Registered Email
+                    </label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="email" 
+                        placeholder="friend@email.com" 
+                        value={referralEmailInput}
+                        onChange={(e) => setReferralEmailInput(e.target.value)}
+                        className="bg-surface-light border border-border px-4 py-2.5 rounded-xl text-xs font-sans text-ink focus:outline-none focus:border-accent flex-1"
+                      />
+                      <button 
+                        type="submit"
+                        className="min-h-[44px] bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider hover:bg-accent/90 cursor-pointer"
+                      >
+                        Redeem
+                      </button>
                     </div>
-                    <p className="text-[10px] text-ink-dim font-semibold uppercase leading-relaxed">
-                      * Reward Rule: Active when both sign up, verify, and complete first resume analysis (+100 credits for both users).
-                    </p>
                   </form>
-                </div>
-
-                {/* Referral Rules detail */}
-                <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-ink-dim mb-4">Verification Steps</h3>
-                  <div className="space-y-4">
-                    {[
-                      { step: '1', title: 'Invite Link Shared', desc: 'Friend signs up via your unique uplink reference.' },
-                      { step: '2', title: 'Profile Setup completed', desc: 'Friend completes verifying security credentials.' },
-                      { step: '3', title: 'Analyze & Reward', desc: 'Friend analyzes their first ATS Resume. Automatically triggers +100 credits grant.' }
-                    ].map((item, index) => (
-                      <div key={index} className="flex gap-4 items-start bg-black/20 p-4 rounded-xl">
-                        <div className="w-6 h-6 rounded-lg bg-accent/20 text-accent flex items-center justify-center font-mono font-bold text-xs">
-                          {item.step}
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black uppercase tracking-tight text-white">{item.title}</h4>
-                          <p className="text-[10px] text-ink-dim font-semibold mt-0.5">{item.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </div>
 
               {/* Leaderboard panel */}
-              <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                <div className="flex items-center gap-2 mb-6">
+              <div className="bg-surface border border-border p-6 sm:p-7 rounded-3xl shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
                   <Users className="w-5 h-5 text-accent" />
                   <div>
-                    <h3 className="text-sm font-black uppercase tracking-tight text-white">Top Referrers</h3>
-                    <p className="text-[10px] text-ink-dim font-bold uppercase tracking-wider">Top members</p>
+                    <h3 className="text-sm font-bold text-ink font-sans">Top Referrers</h3>
+                    <p className="text-[10px] text-ink-dim font-mono">Community Leaders</p>
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {leaderboard.map((item, idx) => (
-                    <div key={idx} className="bg-black/30 border border-border/40 p-4 rounded-2xl flex items-center justify-between">
+                    <div key={idx} className="bg-surface-light/60 border border-border/40 p-3.5 rounded-xl flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="font-mono font-bold text-xs text-ink-dim w-4">#{idx+1}</span>
                         <div>
-                          <p className="text-xs font-black uppercase tracking-tight text-white">{item.name}</p>
-                          <p className="text-[9px] text-ink-dim font-bold uppercase mt-0.5">{item.badge}</p>
+                          <p className="text-xs font-bold text-ink font-sans">{item.name}</p>
+                          <p className="text-[9px] text-ink-dim font-mono">{item.badge}</p>
                         </div>
                       </div>
-                      <span className="font-mono font-bold text-xs text-accent">+{item.earned} Credits</span>
+                      <span className="font-mono font-bold text-xs text-accent">+{item.earned} CR</span>
                     </div>
                   ))}
                 </div>
@@ -1024,154 +1144,7 @@ export default function CreditsPage() {
             </motion.div>
           )}
 
-          {/* PRICING PLANS TAB */}
-          {activeTab === 'pricing' && (
-            <motion.div
-              key="pricing-tab"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-8"
-            >
-              {/* Free Plan */}
-              <div className={`p-8 rounded-[2.5rem] border flex flex-col justify-between transition-all relative ${
-                plan === 'free' ? 'border-ink bg-surface/40' : 'border-border/60 bg-black/40'
-              }`}>
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-surface border border-border flex items-center justify-center mb-6">
-                    <Shield className="w-6 h-6 text-ink-dim" />
-                  </div>
-                  <h3 className="text-xl font-black uppercase tracking-tight text-white mb-1">FREE</h3>
-                  <div className="flex items-baseline gap-1 mb-4">
-                    <span className="text-3xl font-black text-white">₹0</span>
-                    <span className="text-[10px] text-ink-dim font-bold uppercase">/ month</span>
-                  </div>
-                  <p className="text-xs text-ink-dim leading-relaxed font-semibold mb-8">Standard intelligence limits for casual career explorers.</p>
-
-                  <div className="space-y-4 pt-6 border-t border-border/30">
-                    <div className="flex items-start gap-2.5 text-xs text-ink">
-                      <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                      <span><strong>250</strong> Credits allowance/month</span>
-                    </div>
-                    <div className="flex items-start gap-2.5 text-xs text-ink-dim">
-                      <Lock className="w-4 h-4 text-ink-dim/40 shrink-0 mt-0.5" />
-                      <span>Free credits expire monthly</span>
-                    </div>
-                    <div className="flex items-start gap-2.5 text-xs text-ink-dim">
-                      <Lock className="w-4 h-4 text-ink-dim/40 shrink-0 mt-0.5" />
-                      <span>No Roll-over backup available</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  disabled={plan === 'free'}
-                  className={`mt-10 w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                    plan === 'free' ? 'bg-white/5 border-border text-ink-dim cursor-not-allowed' : 'bg-surface-light border-border text-white hover:bg-white hover:text-black'
-                  }`}
-                >
-                  {plan === 'free' ? 'Your Current Plan' : 'Select Free'}
-                </button>
-              </div>
-
-              {/* Standard Plan */}
-              <div className={`p-8 rounded-[2.5rem] border flex flex-col justify-between transition-all relative ${
-                plan === 'standard' ? 'border-blue-500 bg-blue-500/5' : 'border-border/60 bg-black/40'
-              }`}>
-                <span className="absolute -top-3 right-6 bg-blue-500 text-white text-[8px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full">
-                  MOST POPULAR
-                </span>
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-surface border border-border flex items-center justify-center mb-6">
-                    <Zap className="w-6 h-6 text-blue-500" />
-                  </div>
-                  <h3 className="text-xl font-black uppercase tracking-tight text-white mb-1">STANDARD</h3>
-                  <div className="flex items-baseline gap-1 mb-4">
-                    <span className="text-3xl font-black text-white">₹200</span>
-                    <span className="text-[10px] text-ink-dim font-bold uppercase">/ month</span>
-                  </div>
-                  <p className="text-xs text-ink-dim leading-relaxed font-semibold mb-8">Advanced parameters for active job hunters.</p>
-
-                  <div className="space-y-4 pt-6 border-t border-border/30">
-                    <div className="flex items-start gap-2.5 text-xs text-ink">
-                      <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                      <span><strong>2000</strong> Credits allowance/month</span>
-                    </div>
-                    <div className="flex items-start gap-2.5 text-xs text-ink">
-                      <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                      <span>Standard credits roll over for <strong>2 months</strong></span>
-                    </div>
-                    <div className="flex items-start gap-2.5 text-xs text-ink">
-                      <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                      <span>Resume editor & resume builder unlocked</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => handlePaymentInitiation({ type: 'subscription', item: 'standard', price: 200, credits: 2000 })}
-                  disabled={plan === 'standard' || plan === 'premium' || plan === 'admin'}
-                  className={`mt-10 w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                    plan === 'standard' 
-                      ? 'bg-blue-500 text-white border-blue-500 cursor-not-allowed' 
-                      : plan === 'premium' || plan === 'admin'
-                      ? 'bg-white/5 border-border text-ink-dim cursor-not-allowed'
-                      : 'bg-blue-500 text-white border-blue-500 hover:opacity-90 shadow-lg shadow-blue-500/10'
-                  }`}
-                >
-                  {plan === 'standard' ? 'Active Plan' : plan === 'premium' || plan === 'admin' ? 'Select Standard' : 'Upgrade to Standard'}
-                </button>
-              </div>
-
-              {/* Premium Plan */}
-              <div className={`p-8 rounded-[2.5rem] border flex flex-col justify-between transition-all relative ${
-                plan === 'premium' ? 'border-amber-500 bg-amber-500/5' : 'border-border/60 bg-black/40'
-              }`}>
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-surface border border-border flex items-center justify-center mb-6">
-                    <Sparkles className="w-6 h-6 text-amber-500" />
-                  </div>
-                  <h3 className="text-xl font-black uppercase tracking-tight text-white mb-1">PREMIUM</h3>
-                  <div className="flex items-baseline gap-1 mb-4">
-                    <span className="text-3xl font-black text-white">₹299</span>
-                    <span className="text-[10px] text-ink-dim font-bold uppercase">/ month</span>
-                  </div>
-                  <p className="text-xs text-ink-dim leading-relaxed font-semibold mb-8">Absolute power for serious developers and placement builders.</p>
-
-                  <div className="space-y-4 pt-6 border-t border-border/30">
-                    <div className="flex items-start gap-2.5 text-xs text-ink">
-                      <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                      <span><strong>8000</strong> Credits allowance/month</span>
-                    </div>
-                    <div className="flex items-start gap-2.5 text-xs text-ink">
-                      <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                      <span>Premium credits roll over for <strong>3 months</strong></span>
-                    </div>
-                    <div className="flex items-start gap-2.5 text-xs text-ink">
-                      <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                      <span>Dedicated roadmap creation & priorities processing</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => handlePaymentInitiation({ type: 'subscription', item: 'premium', price: 299, credits: 8000 })}
-                  disabled={plan === 'premium' || plan === 'admin'}
-                  className={`mt-10 w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                    plan === 'premium' 
-                      ? 'bg-amber-500 text-white border-amber-500 cursor-not-allowed' 
-                      : plan === 'admin'
-                      ? 'bg-white/5 border-border text-ink-dim cursor-not-allowed'
-                      : 'bg-amber-500 text-white border-amber-500 hover:opacity-90 shadow-lg shadow-amber-500/10'
-                  }`}
-                >
-                  {plan === 'premium' ? 'Active Plan' : plan === 'admin' ? 'Select Premium' : 'Upgrade to Premium'}
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ADMIN TAB */}
+          {/* TAB 5: ADMIN (ONLY ADMINS) */}
           {activeTab === 'admin' && plan === 'admin' && (
             <motion.div
               key="admin-tab"
@@ -1186,193 +1159,26 @@ export default function CreditsPage() {
                 </div>
               ) : (
                 <>
-                  {/* Global Analytics Overview */}
                   {adminAnalytics && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                      <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-6 rounded-[2rem]">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-ink-dim">Total Platform Users</span>
-                        <p className="text-3xl font-black font-mono text-white mt-1">{adminAnalytics.totalUsers}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-surface border border-border p-5 rounded-2xl">
+                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase">Total Platform Users</span>
+                        <p className="text-2xl font-black font-mono text-ink mt-1">{adminAnalytics.totalUsers}</p>
                       </div>
-                      <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-6 rounded-[2rem]">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-ink-dim">Total Credits Spent</span>
-                        <p className="text-3xl font-black font-mono text-white mt-1">{adminAnalytics.creditsSpent}</p>
+                      <div className="bg-surface border border-border p-5 rounded-2xl">
+                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase">Total Credits Spent</span>
+                        <p className="text-2xl font-black font-mono text-ink mt-1">{adminAnalytics.creditsSpent}</p>
                       </div>
-                      <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-6 rounded-[2rem]">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-ink-dim">Premium Conversions</span>
-                        <p className="text-3xl font-black font-mono text-amber-500 mt-1">{adminAnalytics.premiumUsers} Users</p>
+                      <div className="bg-surface border border-border p-5 rounded-2xl">
+                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase">Premium Tier Users</span>
+                        <p className="text-2xl font-black font-mono text-amber-400 mt-1">{adminAnalytics.premiumUsers}</p>
                       </div>
-                      <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-6 rounded-[2rem]">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-ink-dim">Est. Monthly Revenue</span>
-                        <p className="text-3xl font-black font-mono text-success mt-1">₹{adminAnalytics.estimatedRevenue}</p>
+                      <div className="bg-surface border border-border p-5 rounded-2xl">
+                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase">Gross Invoiced Revenue</span>
+                        <p className="text-2xl font-black font-mono text-emerald-400 mt-1">₹{adminAnalytics.estimatedRevenue}</p>
                       </div>
                     </div>
                   )}
-
-                  {/* Backend Adjusters */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Modify Costs Panel */}
-                    <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                      <h3 className="text-lg font-black uppercase tracking-tight text-white mb-6">Configure Credit Costs</h3>
-                      <div className="space-y-4">
-                        {[
-                          { key: 'resumeScan', label: 'Resume Scan' },
-                          { key: 'atsOptimization', label: 'ATS Optimization' },
-                          { key: 'resumeRewrite', label: 'Resume Rewrite' },
-                          { key: 'coverLetter', label: 'Cover Letter' },
-                          { key: 'interviewSession', label: 'AI Interview Session' },
-                          { key: 'jobMatchAnalysis', label: 'Job Match Analysis' },
-                          { key: 'careerRoadmap', label: 'Career Roadmap' },
-                          { key: 'linkedinReview', label: 'LinkedIn Review' },
-                          { key: 'portfolioReview', label: 'Portfolio Review' },
-                          { key: 'careerCoachChat', label: 'Career Coach Chat' }
-                        ].map((item) => (
-                          <div key={item.key} className="flex justify-between items-center bg-black/20 p-3 rounded-xl border border-border/20">
-                            <span className="text-xs font-bold text-ink-dim uppercase">{item.label}</span>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="number" 
-                                placeholder={`${creditCosts[item.key as keyof CreditCosts]}`}
-                                onChange={(e) => setEditedCosts(prev => ({ ...prev, [item.key]: parseInt(e.target.value) || 0 }))}
-                                className="bg-black border border-border w-16 text-center py-1 rounded-lg text-xs font-mono font-bold"
-                              />
-                              <span className="text-[10px] font-black text-ink-dim uppercase">CR</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <button 
-                        onClick={handleAdminCostsSubmit}
-                        className="mt-6 w-full bg-white text-black py-3 rounded-xl text-xs font-black uppercase tracking-widest"
-                      >
-                        Publish Backend Configuration
-                      </button>
-                    </div>
-
-                    {/* Users & Transaction Adjustment Panel */}
-                    <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem] space-y-6">
-                      <h3 className="text-lg font-black uppercase tracking-tight text-white">Manual Adjuster Ledger</h3>
-                      
-                      {/* Select user */}
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-ink-dim mb-2">Target User</label>
-                        <select 
-                          value={selectedAdminUser} 
-                          onChange={(e) => setSelectedAdminUser(e.target.value)}
-                          className="bg-black border border-border px-4 py-3 rounded-xl text-xs font-bold text-white w-full"
-                        >
-                          <option value="">Select Target User Profile</option>
-                          {adminUsers.map((u) => (
-                            <option key={u.uid} value={u.uid}>
-                              {u.displayName || u.email} ({u.plan})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Amount and Label */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-ink-dim mb-2">Credits Value</label>
-                          <input 
-                            type="number" 
-                            placeholder="Amount" 
-                            value={adminAdjustmentAmount}
-                            onChange={(e) => setAdminAdjustmentAmount(e.target.value)}
-                            className="bg-black border border-border px-4 py-3 rounded-xl text-xs font-bold text-white w-full font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-ink-dim mb-2">Transaction Label</label>
-                          <input 
-                            type="text" 
-                            placeholder="Description" 
-                            value={adminAdjustmentLabel}
-                            onChange={(e) => setAdminAdjustmentLabel(e.target.value)}
-                            className="bg-black border border-border px-4 py-3 rounded-xl text-xs font-bold text-white w-full"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Adjustment Buttons */}
-                      <div className="flex gap-4">
-                        <button 
-                          onClick={() => handleAdminAdjustment('reward')}
-                          className="flex-1 bg-success text-white py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2"
-                        >
-                          <PlusCircle className="w-4 h-4" /> Reward Credits
-                        </button>
-                        <button 
-                          onClick={() => handleAdminAdjustment('deduct')}
-                          className="flex-1 bg-rose-500 text-white py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2"
-                        >
-                          <MinusCircle className="w-4 h-4" /> Deduct Credits
-                        </button>
-                      </div>
-
-                      {/* Refund Actions */}
-                      <div className="pt-6 border-t border-border/40 space-y-4">
-                        <h4 className="text-xs font-black uppercase tracking-widest text-ink-dim">Issue Refund</h4>
-                        <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-ink-dim mb-2">Failed Transaction ID Reference</label>
-                          <input 
-                            type="text" 
-                            placeholder="tx_xxxxxxxxxx" 
-                            value={adminRefundTxId}
-                            onChange={(e) => setAdminRefundTxId(e.target.value)}
-                            className="bg-black border border-border px-4 py-3 rounded-xl text-xs font-bold text-white w-full font-mono"
-                          />
-                        </div>
-                        <button 
-                          onClick={handleAdminRefund}
-                          className="w-full bg-surface-light border border-border text-white py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white hover:text-black transition-all"
-                        >
-                          <RefreshCw className="w-4 h-4" /> Issue Transaction Refund
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Anti-Abuse Controls */}
-                  <div className="bg-surface/30 backdrop-blur-md border border-border/80 p-8 rounded-[2.5rem]">
-                    <h3 className="text-lg font-black uppercase tracking-tight text-white mb-6">Anti-Abuse Controls & Ban List</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-border/40 text-ink-dim font-bold uppercase">
-                            <th className="pb-3">User Profile</th>
-                            <th className="pb-3">Email Verification</th>
-                            <th className="pb-3">Referral Status</th>
-                            <th className="pb-3 text-right">Referral Program Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {adminUsers.map((u) => (
-                            <tr key={u.uid} className="border-b border-border/20">
-                              <td className="py-4 font-bold">{u.displayName || 'Anonymous Hunter'}</td>
-                              <td className="py-4 font-mono text-ink-dim">{u.email}</td>
-                              <td className="py-4">
-                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                                  u.creditWallet?.banReferrals ? 'bg-rose-500/10 text-rose-500' : 'bg-success/10 text-success'
-                                }`}>
-                                  {u.creditWallet?.banReferrals ? 'Banned' : 'Authorized'}
-                                </span>
-                              </td>
-                              <td className="py-4 text-right">
-                                <button 
-                                  onClick={() => handleAdminBanToggle(u.uid, !!u.creditWallet?.banReferrals)}
-                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                                    u.creditWallet?.banReferrals ? 'bg-success text-white' : 'bg-rose-500 text-white'
-                                  }`}
-                                >
-                                  {u.creditWallet?.banReferrals ? 'Unban User' : 'Ban From Referrals'}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
                 </>
               )}
             </motion.div>
@@ -1380,67 +1186,12 @@ export default function CreditsPage() {
         </AnimatePresence>
       </div>
 
-      {/* Razorpay Secure Payment Overlay Notification */}
-      <AnimatePresence>
-        {(checkingOut || paymentStatus !== 'idle') && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface border border-border/80 p-8 rounded-[2.5rem] max-w-md w-full text-center relative shadow-2xl"
-            >
-              {checkingOut && (
-                <div className="flex flex-col items-center py-6">
-                  <RefreshCw className="w-12 h-12 text-accent animate-spin mb-4" />
-                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Connecting Razorpay...</h3>
-                  <p className="text-xs text-ink-dim mt-2 tracking-wide font-medium">Initializing secure checkout</p>
-                </div>
-              )}
-
-              {paymentStatus === 'verifying' && (
-                <div className="flex flex-col items-center py-6">
-                  <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Verifying Transaction...</h3>
-                  <p className="text-xs text-ink-dim mt-2 uppercase tracking-widest font-bold font-mono">Verifying secure ledger transaction</p>
-                </div>
-              )}
-
-              {paymentStatus === 'success' && (
-                <div className="flex flex-col items-center py-6">
-                  <div className="w-16 h-16 bg-success/10 border border-success/30 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle2 className="w-8 h-8 text-success animate-pulse" />
-                  </div>
-                  <h3 className="text-lg font-black uppercase tracking-tight text-success">Uplink Established!</h3>
-                  <p className="text-xs text-ink mt-2 font-bold uppercase tracking-wide">Razorpay transaction verified successfully. Your resources have been updated.</p>
-                  <button 
-                    onClick={() => setPaymentStatus('idle')}
-                    className="mt-6 px-6 py-2.5 bg-white text-black font-bold uppercase text-[10px] tracking-widest rounded-xl hover:opacity-95 transition-all"
-                  >
-                    Enter System
-                  </button>
-                </div>
-              )}
-
-              {paymentStatus === 'error' && (
-                <div className="flex flex-col items-center py-6">
-                  <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/30 rounded-full flex items-center justify-center mb-4">
-                    <MinusCircle className="w-8 h-8 text-rose-500" />
-                  </div>
-                  <h3 className="text-lg font-black uppercase tracking-tight text-rose-500 font-mono">Routing Blocked</h3>
-                  <p className="text-xs text-ink-dim mt-2 font-semibold uppercase leading-relaxed font-mono">{paymentError || 'An unexpected error occurred during routing.'}</p>
-                  <button 
-                    onClick={() => setPaymentStatus('idle')}
-                    className="mt-6 px-6 py-2.5 bg-surface border border-border text-white font-bold uppercase text-[10px] tracking-widest rounded-xl hover:bg-white hover:text-black transition-all"
-                  >
-                    Acknowledge
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Real Payment Gateway Modal */}
+      <PaymentGatewayModal 
+        isOpen={isPaymentGatewayOpen}
+        onClose={() => setIsPaymentGatewayOpen(false)}
+        item={checkoutItem}
+      />
     </div>
   );
 }

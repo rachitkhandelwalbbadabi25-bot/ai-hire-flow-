@@ -40,16 +40,6 @@
   --accent-rgb: 0, 255, 65;
 }
 
-.light {
-  --background: #F8FAFC;
-  --surface: #FFFFFF;
-  --surface-light: #F1F5F9;
-  --ink: #0F172A;
-  --ink-dim: #475569; /* 7.29:1 contrast ratio against #F8FAFC - Exceeds WCAG 2.1 AA (4.5:1) */
-  --ink-muted: #475569;
-  --border: #E2E8F0;
-}
-
 @layer base {
   body {
     @apply font-sans antialiased text-ink bg-background min-h-screen;

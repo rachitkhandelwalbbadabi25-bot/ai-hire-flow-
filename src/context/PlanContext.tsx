@@ -208,14 +208,20 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   // Load Configurable Backend Costs
   useEffect(() => {
     const costDocRef = doc(db, 'config', 'creditCosts');
-    const unsubscribe = onSnapshot(costDocRef, (snap) => {
-      if (snap.exists()) {
-        setCreditCosts({ ...DEFAULT_CREDIT_COSTS, ...snap.data() });
-      } else {
-        setDoc(costDocRef, DEFAULT_CREDIT_COSTS).catch(console.error);
+    const unsubscribe = onSnapshot(
+      costDocRef,
+      (snap) => {
+        if (snap.exists()) {
+          setCreditCosts({ ...DEFAULT_CREDIT_COSTS, ...snap.data() });
+        } else {
+          setCreditCosts(DEFAULT_CREDIT_COSTS);
+        }
+      },
+      (error) => {
+        console.warn("Could not read remote credit costs, fallback to default:", error.message);
         setCreditCosts(DEFAULT_CREDIT_COSTS);
       }
-    });
+    );
     return () => unsubscribe();
   }, []);
 
@@ -228,123 +234,129 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     }
 
     const userRef = doc(db, 'users', user.uid);
-    const unsubUser = onSnapshot(userRef, async (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        let wallet = data.creditWallet as CreditWallet;
-        
-        // Auto-migrate or initialize Credit Wallet
-        if (!wallet) {
-          const generatedCode = 'HF-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-          const defaultWallet: CreditWallet = {
-            balance: PLAN_CREDITS[plan as keyof typeof PLAN_CREDITS] || 250,
-            usedThisMonth: 0,
-            totalEarned: PLAN_CREDITS[plan as keyof typeof PLAN_CREDITS] || 250,
-            expiringSoon: 0,
-            lastMonthlyGrant: new Date().toISOString(),
-            streak: 1,
-            lastLoginDate: new Date().toISOString().split('T')[0],
-            xp: 50, // bonus for registering
-            level: 1,
-            referralCode: generatedCode,
-            referredBy: null,
-            hasUploadedResume: false,
-            hasCompletedAnalysis: false,
-            banReferrals: false,
-            unlockedBadges: ['Verified Candidate']
-          };
+    const unsubUser = onSnapshot(
+      userRef,
+      async (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          let wallet = data.creditWallet as CreditWallet;
           
-          await updateDoc(userRef, { creditWallet: defaultWallet });
-          wallet = defaultWallet;
-          
-          // Log initial grant
-          await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-            amount: defaultWallet.balance,
-            type: 'grant',
-            label: `Initial Free Tier Monthly Grant`,
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          // Check for login streak or daily reset
-          const today = new Date().toISOString().split('T')[0];
-          const lastDate = wallet.lastLoginDate;
-
-          if (lastDate !== today) {
-            let newStreak = wallet.streak;
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-            if (lastDate === yesterdayStr) {
-              newStreak += 1;
-            } else {
-              newStreak = 1;
-            }
-
-            // Streak Reward Scheme:
-            // Day 1: 5, Day 2: 5, Day 3: 10, Day 7: 25, Day 15: 50, Day 30: 100
-            let rewardCredits = 5;
-            if (newStreak === 3) rewardCredits = 10;
-            else if (newStreak === 7) rewardCredits = 25;
-            else if (newStreak === 15) rewardCredits = 50;
-            else if (newStreak === 30) rewardCredits = 100;
-
-            const updatedWallet = {
-              ...wallet,
-              streak: newStreak,
-              lastLoginDate: today,
-              balance: wallet.balance + rewardCredits,
-              totalEarned: wallet.totalEarned + rewardCredits,
-              xp: wallet.xp + 10 // login bonus XP
+          // Auto-migrate or initialize Credit Wallet
+          if (!wallet) {
+            const generatedCode = 'HF-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const defaultWallet: CreditWallet = {
+              balance: PLAN_CREDITS[plan as keyof typeof PLAN_CREDITS] || 250,
+              usedThisMonth: 0,
+              totalEarned: PLAN_CREDITS[plan as keyof typeof PLAN_CREDITS] || 250,
+              expiringSoon: 0,
+              lastMonthlyGrant: new Date().toISOString(),
+              streak: 1,
+              lastLoginDate: new Date().toISOString().split('T')[0],
+              xp: 50, // bonus for registering
+              level: 1,
+              referralCode: generatedCode,
+              referredBy: null,
+              hasUploadedResume: false,
+              hasCompletedAnalysis: false,
+              banReferrals: false,
+              unlockedBadges: ['Verified Candidate']
             };
-
-            await updateDoc(userRef, { creditWallet: updatedWallet });
-            wallet = updatedWallet;
-
-            // Log streak reward transaction
+            
+            await updateDoc(userRef, { creditWallet: defaultWallet });
+            wallet = defaultWallet;
+            
+            // Log initial grant
             await addDoc(collection(db, 'users', user.uid, 'transactions'), {
-              amount: rewardCredits,
-              type: 'bonus',
-              label: `Day ${newStreak} Login Streak Reward`,
+              amount: defaultWallet.balance,
+              type: 'grant',
+              label: `Initial Free Tier Monthly Grant`,
               timestamp: new Date().toISOString()
             });
+          } else {
+            // Check for login streak or daily reset
+            const today = new Date().toISOString().split('T')[0];
+            const lastDate = wallet.lastLoginDate;
 
-            triggerNotification(`Daily Streak Day ${newStreak}!`, `You earned +${rewardCredits} Credits and +10 XP for staying consistent.`, 'streak', rewardCredits);
-            
-            // Trigger streak achievements
-            if (newStreak >= 7) {
-              await updateAchievementProgress('weekly_warrior', newStreak);
+            if (lastDate !== today) {
+              let newStreak = wallet.streak;
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+              const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+              if (lastDate === yesterdayStr) {
+                newStreak += 1;
+              } else {
+                newStreak = 1;
+              }
+
+              // Streak Reward Scheme:
+              // Day 1: 5, Day 2: 5, Day 3: 10, Day 7: 25, Day 15: 50, Day 30: 100
+              let rewardCredits = 5;
+              if (newStreak === 3) rewardCredits = 10;
+              else if (newStreak === 7) rewardCredits = 25;
+              else if (newStreak === 15) rewardCredits = 50;
+              else if (newStreak === 30) rewardCredits = 100;
+
+              const updatedWallet = {
+                ...wallet,
+                streak: newStreak,
+                lastLoginDate: today,
+                balance: wallet.balance + rewardCredits,
+                totalEarned: wallet.totalEarned + rewardCredits,
+                xp: wallet.xp + 10 // login bonus XP
+              };
+
+              await updateDoc(userRef, { creditWallet: updatedWallet });
+              wallet = updatedWallet;
+
+              // Log streak reward transaction
+              await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+                amount: rewardCredits,
+                type: 'bonus',
+                label: `Day ${newStreak} Login Streak Reward`,
+                timestamp: new Date().toISOString()
+              });
+
+              triggerNotification(`Daily Streak Day ${newStreak}!`, `You earned +${rewardCredits} Credits and +10 XP for staying consistent.`, 'streak', rewardCredits);
+              
+              // Trigger streak achievements
+              if (newStreak >= 7) {
+                await updateAchievementProgress('weekly_warrior', newStreak);
+              }
+              await updateAchievementProgress('consistency_master', 1); // logins accumulation
             }
-            await updateAchievementProgress('consistency_master', 1); // logins accumulation
           }
-        }
 
-        // Calculate Level from XP
-        // Level 1: <100, Level 2: 100-299, Level 3: 300-599, Level 4: 600-999, Level 5: 1000+
-        let correctLevel = 1;
-        let badgeTitle = 'Career Beginner';
-        if (wallet.xp >= 1000) { correctLevel = 5; badgeTitle = 'Career Architect'; }
-        else if (wallet.xp >= 600) { correctLevel = 4; badgeTitle = 'Interview Warrior'; }
-        else if (wallet.xp >= 300) { correctLevel = 3; badgeTitle = 'Resume Ninja'; }
-        else if (wallet.xp >= 100) { correctLevel = 2; badgeTitle = 'Career Explorer'; }
+          // Calculate Level from XP
+          // Level 1: <100, Level 2: 100-299, Level 3: 300-599, Level 4: 600-999, Level 5: 1000+
+          let correctLevel = 1;
+          let badgeTitle = 'Career Beginner';
+          if (wallet.xp >= 1000) { correctLevel = 5; badgeTitle = 'Career Architect'; }
+          else if (wallet.xp >= 600) { correctLevel = 4; badgeTitle = 'Interview Warrior'; }
+          else if (wallet.xp >= 300) { correctLevel = 3; badgeTitle = 'Resume Ninja'; }
+          else if (wallet.xp >= 100) { correctLevel = 2; badgeTitle = 'Career Explorer'; }
 
-        if (wallet.level !== correctLevel) {
-          const newBadges = [...(wallet.unlockedBadges || [])];
-          if (!newBadges.includes(badgeTitle)) {
-            newBadges.push(badgeTitle);
+          if (wallet.level !== correctLevel) {
+            const newBadges = [...(wallet.unlockedBadges || [])];
+            if (!newBadges.includes(badgeTitle)) {
+              newBadges.push(badgeTitle);
+            }
+            
+            await updateDoc(userRef, { 
+              'creditWallet.level': correctLevel,
+              'creditWallet.unlockedBadges': newBadges
+            });
+            
+            triggerNotification(`Leveled Up to Lvl ${correctLevel}!`, `You unlocked the "${badgeTitle}" rank and profile badge!`, 'achievement');
           }
-          
-          await updateDoc(userRef, { 
-            'creditWallet.level': correctLevel,
-            'creditWallet.unlockedBadges': newBadges
-          });
-          
-          triggerNotification(`Leveled Up to Lvl ${correctLevel}!`, `You unlocked the "${badgeTitle}" rank and profile badge!`, 'achievement');
-        }
 
-        setCreditWallet(wallet);
+          setCreditWallet(wallet);
+        }
+      },
+      (error) => {
+        console.warn("User wallet sync warning:", error.message);
       }
-    });
+    );
 
     // Load Transactions ledger
     const transactionsQuery = query(
@@ -352,13 +364,19 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       orderBy('timestamp', 'desc'),
       limit(15)
     );
-    const unsubTransactions = onSnapshot(transactionsQuery, (snap) => {
-      const records: CreditTransaction[] = [];
-      snap.forEach((doc) => {
-        records.push({ id: doc.id, ...doc.data() } as CreditTransaction);
-      });
-      setTransactions(records);
-    });
+    const unsubTransactions = onSnapshot(
+      transactionsQuery,
+      (snap) => {
+        const records: CreditTransaction[] = [];
+        snap.forEach((doc) => {
+          records.push({ id: doc.id, ...doc.data() } as CreditTransaction);
+        });
+        setTransactions(records);
+      },
+      (error) => {
+        console.warn("Transactions ledger sync warning:", error.message);
+      }
+    );
 
     return () => {
       unsubUser();
@@ -371,53 +389,59 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     if (!user || !creditWallet) return;
 
     const userRef = doc(db, 'users', user.uid);
-    const unsubProgress = onSnapshot(userRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const userAchievements = data.achievementsState || {};
-        const userMissions = data.missionsState || {};
+    const unsubProgress = onSnapshot(
+      userRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const userAchievements = data.achievementsState || {};
+          const userMissions = data.missionsState || {};
 
-        // Merge achievements
-        const mergedAchievements = staticAchievements.map((ach) => {
-          const state = userAchievements[ach.id] || {};
-          return {
-            ...ach,
-            progress: Math.min(ach.maxProgress, state.progress || 0),
-            unlocked: !!state.unlocked,
-            unlockedAt: state.unlockedAt || undefined
-          };
-        });
-        setAchievements(mergedAchievements);
+          // Merge achievements
+          const mergedAchievements = staticAchievements.map((ach) => {
+            const state = userAchievements[ach.id] || {};
+            return {
+              ...ach,
+              progress: Math.min(ach.maxProgress, state.progress || 0),
+              unlocked: !!state.unlocked,
+              unlockedAt: state.unlockedAt || undefined
+            };
+          });
+          setAchievements(mergedAchievements);
 
-        // Merge daily missions
-        const mergedMissions = staticDailyMissions.map((mis) => {
-          const state = userMissions[mis.id] || {};
-          // If date doesn't match today, reset daily progress
-          const todayStr = new Date().toISOString().split('T')[0];
-          const isToday = state.date === todayStr;
-          return {
-            ...mis,
-            progress: isToday ? Math.min(mis.maxProgress, state.progress || 0) : 0,
-            completed: isToday ? !!state.completed : false
-          };
-        });
-        setDailyMissions(mergedMissions);
+          // Merge daily missions
+          const mergedMissions = staticDailyMissions.map((mis) => {
+            const state = userMissions[mis.id] || {};
+            // If date doesn't match today, reset daily progress
+            const todayStr = new Date().toISOString().split('T')[0];
+            const isToday = state.date === todayStr;
+            return {
+              ...mis,
+              progress: isToday ? Math.min(mis.maxProgress, state.progress || 0) : 0,
+              completed: isToday ? !!state.completed : false
+            };
+          });
+          setDailyMissions(mergedMissions);
 
-        // Merge weekly challenges
-        const mergedWeekly = staticWeeklyChallenges.map((weekly) => {
-          const state = userMissions[weekly.id] || {};
-          // Simple week check (UTC days since epoch / 7)
-          const currentWeek = Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 7)).toString();
-          const isThisWeek = state.weekId === currentWeek;
-          return {
-            ...weekly,
-            progress: isThisWeek ? Math.min(weekly.maxProgress, state.progress || 0) : 0,
-            completed: isThisWeek ? !!state.completed : false
-          };
-        });
-        setWeeklyChallenges(mergedWeekly);
+          // Merge weekly challenges
+          const mergedWeekly = staticWeeklyChallenges.map((weekly) => {
+            const state = userMissions[weekly.id] || {};
+            // Simple week check (UTC days since epoch / 7)
+            const currentWeek = Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 7)).toString();
+            const isThisWeek = state.weekId === currentWeek;
+            return {
+              ...weekly,
+              progress: isThisWeek ? Math.min(weekly.maxProgress, state.progress || 0) : 0,
+              completed: isThisWeek ? !!state.completed : false
+            };
+          });
+          setWeeklyChallenges(mergedWeekly);
+        }
+      },
+      (error) => {
+        console.warn("User progress sync warning:", error.message);
       }
-    });
+    );
 
     return () => unsubProgress();
   }, [user, creditWallet]);
@@ -922,11 +946,10 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     
     // 1. Resume Editor check
     if (feature === 'resumeEditor') {
-      const hasAccess = plan === 'standard' || plan === 'premium' || (plan as string) === 'admin';
       return {
-        hasAccess,
-        remaining: hasAccess ? 1 : 0,
-        limit: 1
+        hasAccess: true,
+        remaining: 'Unlimited',
+        limit: 'Unlimited'
       };
     }
 

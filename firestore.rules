@@ -10,7 +10,10 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isAdmin() { 
-      return isSignedIn() && request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com"; 
+      return isSignedIn() && 
+             'email' in request.auth.token && 
+             request.auth.token.email != null && 
+             request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com"; 
     }
     
     function isValidId(id) { return id is string && id.size() <= 128; }
@@ -22,50 +25,31 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Config Collection for Credit Costs
-    match /config/creditCosts {
-      allow read: if isSignedIn();
+    // Config Collection for Credit Costs and App Settings (Publicly readable, admin writable)
+    match /config/{configId} {
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     // 1. User Profile Rules
     match /users/{userId} {
       function isValidUser(data) {
-        return data.email is string &&
-          data.plan is string && data.plan in ['free', 'standard', 'premium', 'admin'];
+        return (!('email' in data) || data.email is string) &&
+               (!('plan' in data) || data.plan in ['free', 'standard', 'premium', 'admin']);
       }
 
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       
       allow create: if isOwner(userId) && isValidUser(incoming()) && (
-        incoming().plan == 'admin' ? request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com" : true
+        ('plan' in incoming() && incoming().plan == 'admin') ? ('email' in request.auth.token && request.auth.token.email != null && request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com") : true
       );
 
-      allow update: if isOwner(userId) && isValidUser(incoming()) && (
-        (incoming().plan != existing().plan ? (
-           incoming().plan == 'admin' ? request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com" : 
-           (incoming().plan == 'premium' || incoming().plan == 'standard') ? (isAdmin() || request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com") :
-           true
-        ) : true) &&
-        incoming().diff(existing()).affectedKeys().hasAll([]) // Allow general update by owner/system actions
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) && (
+        ('plan' in incoming() && incoming().plan == 'admin') ? ('email' in request.auth.token && request.auth.token.email != null && request.auth.token.email.lower() == "rrachitkhandelwal8@gmail.com") : true
       );
 
-      // Support Sub-collections (Resumes, Jobs, Simulations, Transactions, etc.)
-      match /simulations/{simulationId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /cache/{cacheId} {
-        function isValidCache(data) {
-          return data.resumeHash is string && 
-                 data.jobDescHash is string && 
-                 data.expiresAt is string;
-        }
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isValidCache(incoming());
-      }
-
+      // Support Sub-collections (Resumes, Jobs, Simulations, Transactions, Contacts, Config, Cache, etc.)
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
@@ -78,3 +62,4 @@ service cloud.firestore {
     }
   }
 }
+

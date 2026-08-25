@@ -4,8 +4,9 @@ import { auth, signInWithGoogle } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import PlanBadge from './PlanBadge';
+import HeaderQuickSearch from './HeaderQuickSearch';
+import MobileBottomNav from './MobileBottomNav';
 import { useLanguage } from '../context/LanguageContext';
 import { 
   BarChart3, 
@@ -24,8 +25,6 @@ import {
   Home,
   GraduationCap,
   Mic,
-  Sun,
-  Moon,
   Globe,
   Award,
   MessageCircle
@@ -38,7 +37,6 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user }: NavbarProps) {
-  const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { plan } = usePlan();
   const location = useLocation();
@@ -83,7 +81,7 @@ export default function Navbar({ user }: NavbarProps) {
               {user && (
                 <button 
                   onClick={() => setIsDrawerOpen(true)}
-                  className="p-2 -ml-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all lg:hidden"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all lg:hidden cursor-pointer"
                   aria-label="Open navigation menu"
                   aria-expanded={isDrawerOpen}
                   aria-controls="mobile-navigation-drawer"
@@ -91,7 +89,7 @@ export default function Navbar({ user }: NavbarProps) {
                   <Menu className="w-6 h-6" aria-hidden="true" />
                 </button>
               )}
-              <Link to="/" className="flex items-center gap-2.5 group" aria-label="AI HireFlow Home">
+              <Link to="/" className="min-h-[44px] flex items-center gap-2.5 group" aria-label="AI HireFlow Home">
                 <div className="bg-accent p-2 rounded-xl flex items-center justify-center shadow-lg shadow-accent/25 transition-transform group-hover:scale-105" aria-hidden="true">
                   <Briefcase className="w-5 h-5 text-white" />
                 </div>
@@ -107,22 +105,15 @@ export default function Navbar({ user }: NavbarProps) {
             </div>
 
             <div className="flex items-center gap-4">
+              {user && <HeaderQuickSearch />}
               {user ? (
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
                    <div className="hidden sm:block">
                       <PlanBadge />
                    </div>
                    <button
-                    onClick={toggleTheme}
-                    className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
-                    aria-label={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-                    title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-                  >
-                    {theme === 'light' ? <Moon className="w-5 h-5" aria-hidden="true" /> : <Sun className="w-5 h-5" aria-hidden="true" />}
-                  </button>
-                   <button
                     onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-                    className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center gap-1.5"
+                    className="min-h-[44px] min-w-[44px] p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     aria-label={language === 'en' ? 'Switch interface to Hindi' : 'Switch interface to English'}
                     title={language === 'en' ? 'हिन्दी में बदलें' : 'Switch to English'}
                   >
@@ -131,7 +122,7 @@ export default function Navbar({ user }: NavbarProps) {
                   </button>
                    <button
                     onClick={handleSignOut}
-                    className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
+                    className="min-h-[44px] min-w-[44px] p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center justify-center cursor-pointer"
                     aria-label="Sign out of account"
                     title="Sign Out"
                   >
@@ -141,7 +132,7 @@ export default function Navbar({ user }: NavbarProps) {
               ) : (
                 <button
                   onClick={signInWithGoogle}
-                  className="bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer"
+                  className="min-h-[44px] bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer flex items-center justify-center"
                   aria-label="Get Started with Google Sign In"
                 >
                   {t('getStarted')}
@@ -226,35 +217,35 @@ export default function Navbar({ user }: NavbarProps) {
               <div className="absolute top-4 right-4">
                 <button 
                    onClick={() => setIsDrawerOpen(false)}
-                   className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all"
+                   className="min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all cursor-pointer"
                    aria-label="Close navigation menu"
                 >
                   <X className="w-6 h-6" aria-hidden="true" />
                 </button>
               </div>
 
-              <div className="px-6 mb-6">
-                 <div className="flex items-center gap-2 mb-2">
+              <div className="px-6 mb-4">
+                 <div className="flex items-center gap-2 mb-1.5">
                     <Sparkles className="w-4 h-4 text-accent" />
                     <span className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em]">Navigation</span>
                  </div>
-                 <h2 className="text-sm font-bold text-ink uppercase tracking-widest">Main Modules</h2>
+                 <h2 className="text-sm font-bold text-ink uppercase tracking-widest">All Modules</h2>
               </div>
 
-              <div className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
+              <div className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "flex items-center gap-4 px-6 py-3.5 rounded-2xl text-sm font-semibold transition-all group",
+                      "min-h-[48px] flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all group",
                       location.pathname === item.path
-                        ? "bg-accent/10 text-accent border border-accent/20"
+                        ? "bg-accent/10 text-accent border border-accent/20 shadow-sm"
                         : "text-ink-dim hover:text-ink hover:bg-surface-light"
                     )}
                   >
                     <item.icon className={cn(
-                      "w-5 h-5 transition-transform group-hover:scale-110",
+                      "w-5 h-5 transition-transform group-hover:scale-110 shrink-0",
                       location.pathname === item.path ? "text-accent" : "text-ink-dim group-hover:text-ink"
                     )} />
                     <span className="tracking-tight text-xs">{item.name}</span>
@@ -264,12 +255,12 @@ export default function Navbar({ user }: NavbarProps) {
 
               <div className="p-6 border-t border-border mt-auto">
                  <div className="bg-surface-light p-4 rounded-2xl flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
                        <UserIcon className="w-4 h-4 text-accent" />
                     </div>
-                    <div>
-                       <p className="text-xs font-bold text-ink">{user?.displayName}</p>
-                       <p className="text-[10px] text-accent font-mono">{getPlanLabel(plan)}</p>
+                    <div className="min-w-0 flex-1">
+                       <p className="text-xs font-bold text-ink truncate">{user?.displayName}</p>
+                       <p className="text-[10px] text-accent font-mono truncate">{getPlanLabel(plan)}</p>
                     </div>
                  </div>
               </div>
@@ -277,6 +268,9 @@ export default function Navbar({ user }: NavbarProps) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Mobile Bottom Tab Bar (< 768px / mobile) */}
+      {user && <MobileBottomNav onOpenOverflowDrawer={() => setIsDrawerOpen(true)} />}
     </>
   );
 }

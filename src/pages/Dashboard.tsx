@@ -412,13 +412,6 @@ export default function Dashboard() {
 
       <RecommendedNextSteps className="mb-8" />
 
-      <SmartContextChips 
-        className="mb-8"
-        onSelectRole={(role) => navigate(`/finder`)}
-        onSelectJob={(jobTitle) => navigate(`/jobs`)}
-        onSelectSkill={(skill) => navigate(`/learning`)}
-      />
-
       {/* ========================================================================= */}
       {/* STATE-BASED PRIMARY HERO BANNER (#1 PRIORITY)                             */}
       {/* ========================================================================= */}
@@ -878,92 +871,137 @@ export default function Dashboard() {
       {/* ========================================================================= */}
       {/* AI CAREER ADVISOR / COACH                                                  */}
       {/* ========================================================================= */}
-      <div className="bg-surface border border-border rounded-2xl p-8 mb-10 relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-          <div className="lg:w-1/3">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-accent" />
-              <span className="text-[10px] font-bold text-accent uppercase tracking-wider font-mono">EXPERT ADVISORY</span>
+      <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 mb-10 relative overflow-hidden shadow-sm">
+        <div className="flex flex-col lg:flex-row gap-8 items-stretch">
+          {/* Left info column */}
+          <div className="lg:w-1/3 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-accent" />
+                <span className="text-[10px] font-bold text-accent uppercase tracking-wider font-mono">EXPERT ADVISORY</span>
+              </div>
+              <h2 className="text-2xl font-bold text-ink uppercase tracking-tight font-mono mb-2">AI Career Advisor</h2>
+              <p className="text-xs text-ink-dim leading-relaxed mb-4">
+                Consult with our built-in Career Strategist & Executive Coach. Get tailored advice on salary negotiations, handling employment gaps, or executive positioning.
+              </p>
             </div>
-            <h2 className="text-2xl font-bold text-ink uppercase tracking-tight font-mono mb-2">AI Career Advisor</h2>
-            <p className="text-xs text-ink-dim leading-relaxed mb-4">
-              Consult with our built-in Stanford Career Strategist & Executive Coach. Get instant answers regarding salary negotiations, career gaps, or interview strategy.
-            </p>
-            <div className="bg-background p-4 rounded-xl border border-border space-y-2">
+
+            <div className="bg-background p-4 rounded-xl border border-border space-y-2 mt-auto">
               <p className="text-[10px] font-bold text-ink-dim uppercase tracking-wider">Suggested queries:</p>
-              <ul className="space-y-1.5 text-xs text-ink-dim">
-                <li className="cursor-pointer hover:text-accent transition-colors flex items-center gap-1.5" onClick={() => setCoachQuestion("How do I address a 6-month employment gap elegantly?")}>
-                  <ChevronRight className="w-3 h-3 text-accent" /> Addressing employment gaps
+              <ul className="space-y-2 text-xs text-ink-dim">
+                <li 
+                  className="cursor-pointer hover:text-accent transition-colors flex items-center gap-1.5 group/q" 
+                  onClick={() => setCoachQuestion("How do I address a 6-month employment gap elegantly?")}
+                >
+                  <ChevronRight className="w-3.5 h-3.5 text-accent shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
+                  <span>Addressing employment gaps</span>
                 </li>
-                <li className="cursor-pointer hover:text-accent transition-colors flex items-center gap-1.5" onClick={() => setCoachQuestion("What are the best negotiation strategies for tech offers?")}>
-                  <ChevronRight className="w-3 h-3 text-accent" /> Offer negotiation strategy
+                <li 
+                  className="cursor-pointer hover:text-accent transition-colors flex items-center gap-1.5 group/q" 
+                  onClick={() => setCoachQuestion("What are the best negotiation strategies for tech offers?")}
+                >
+                  <ChevronRight className="w-3.5 h-3.5 text-accent shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
+                  <span>Offer negotiation strategy</span>
                 </li>
-                <li className="cursor-pointer hover:text-accent transition-colors flex items-center gap-1.5" onClick={() => setCoachQuestion("How can I frame myself as a tech leader without official title?")}>
-                  <ChevronRight className="w-3 h-3 text-accent" /> Framing informal leadership
+                <li 
+                  className="cursor-pointer hover:text-accent transition-colors flex items-center gap-1.5 group/q" 
+                  onClick={() => setCoachQuestion("How can I frame myself as a tech leader without official title?")}>
+                  <ChevronRight className="w-3.5 h-3.5 text-accent shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
+                  <span>Framing informal leadership</span>
                 </li>
               </ul>
             </div>
           </div>
 
-          <div className="lg:w-2/3 w-full space-y-4">
-            <form onSubmit={handleAskCoach} className="relative">
-              <input 
-                type="text" 
-                value={coachQuestion}
-                onChange={(e) => setCoachQuestion(e.target.value)}
-                placeholder="Ask the executive coach anything about your job search strategy..."
-                className="w-full bg-background border border-border rounded-xl px-5 py-3.5 pr-14 text-sm text-ink focus:outline-none focus:border-accent/50 transition-all placeholder:text-ink-dim/40"
-              />
-              <button 
-                type="submit" 
-                disabled={isCoachLoading}
-                className="absolute right-2 top-2 bg-accent text-black p-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-
-            <AnimatePresence mode="wait">
-              {isCoachLoading && (
-                <div className="mt-4">
-                  <AILoadingStepper presetKey="career_coach" title="Executive Strategy & Negotiation Engine" />
-                </div>
-              )}
-
-              {coachAnswer && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="p-6 bg-background rounded-xl border border-border space-y-3"
-                >
-                  <div className="flex items-center gap-2 pb-2 border-b border-border">
-                    <UserCheck className="w-4 h-4 text-accent" />
-                    <span className="text-xs font-bold text-ink uppercase tracking-wider font-mono">Executive Advisory Insight</span>
+          {/* Right chat & answer column */}
+          <div className="lg:w-2/3 w-full flex flex-col justify-between space-y-4 bg-background/50 p-4 sm:p-6 rounded-2xl border border-border/80">
+            {/* Conversation / Response display area (TOP / MIDDLE) */}
+            <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+              <AnimatePresence mode="wait">
+                {isCoachLoading ? (
+                  <div className="py-4">
+                    <AILoadingStepper presetKey="career_coach" title="Executive Strategy & Negotiation Engine" />
                   </div>
-                  
-                  <div className="text-xs text-ink-dim leading-relaxed whitespace-pre-line font-sans">
-                    {coachAnswer.answer}
-                  </div>
-
-                  {coachAnswer.actionItems && coachAnswer.actionItems.length > 0 && (
-                    <div className="pt-3 border-t border-border mt-3">
-                      <p className="text-[10px] font-bold text-accent uppercase tracking-wider font-mono mb-2">KEY STEPS</p>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {coachAnswer.actionItems.map((item: string, idx: number) => (
-                          <div key={idx} className="p-3 bg-surface rounded-lg border border-border flex items-start gap-2">
-                            <span className="bg-accent/10 text-accent text-[10px] font-mono font-bold w-4 h-4 rounded flex items-center justify-center shrink-0">
-                              {idx + 1}
-                            </span>
-                            <span className="text-xs text-ink font-medium leading-tight">{item}</span>
-                          </div>
-                        ))}
+                ) : coachAnswer ? (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="p-5 bg-background rounded-xl border border-border space-y-3 shadow-inner"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-border">
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-accent" />
+                        <span className="text-xs font-bold text-ink uppercase tracking-wider font-mono">Executive Advisory Insight</span>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCoachAnswer(null);
+                          setCoachQuestion("");
+                        }}
+                        className="text-[10px] font-mono text-ink-dim hover:text-accent transition-colors uppercase"
+                      >
+                        New Question
+                      </button>
                     </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    
+                    <div className="text-xs text-ink-dim leading-relaxed whitespace-pre-line font-sans">
+                      {coachAnswer.answer}
+                    </div>
+
+                    {coachAnswer.actionItems && coachAnswer.actionItems.length > 0 && (
+                      <div className="pt-3 border-t border-border mt-3">
+                        <p className="text-[10px] font-bold text-accent uppercase tracking-wider font-mono mb-2">RECOMMENDED ACTION ITEMS</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                          {coachAnswer.actionItems.map((item: string, idx: number) => (
+                            <div key={idx} className="p-2.5 bg-surface rounded-lg border border-border flex items-start gap-2">
+                              <span className="bg-accent/10 text-accent text-[10px] font-mono font-bold w-4 h-4 rounded flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span className="text-[11px] text-ink font-medium leading-snug">{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ) : (
+                  <div className="text-center py-6 px-4 space-y-2">
+                    <div className="w-10 h-10 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-3 text-accent">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <h4 className="text-sm font-bold text-ink">Ready to assist your career strategy</h4>
+                    <p className="text-xs text-ink-dim max-w-md mx-auto">
+                      Ask any question below or click a suggested query on the left. The advisor analyzes your live resume, pipeline, and skills context.
+                    </p>
+                  </div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Chat Input & Button (PLACED AT THE BOTTOM) */}
+            <form onSubmit={handleAskCoach} className="pt-3 border-t border-border/80">
+              <div className="relative flex items-center">
+                <input 
+                  type="text" 
+                  value={coachQuestion}
+                  onChange={(e) => setCoachQuestion(e.target.value)}
+                  placeholder="Ask the executive coach anything about your job search strategy..."
+                  className="w-full bg-background border border-border rounded-xl pl-4 pr-28 py-3.5 text-xs sm:text-sm text-ink focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all placeholder:text-ink-dim/40 shadow-sm"
+                />
+                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <button 
+                    type="submit" 
+                    disabled={isCoachLoading || !coachQuestion.trim()}
+                    className="bg-accent text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <span>Ask</span>
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       </div>

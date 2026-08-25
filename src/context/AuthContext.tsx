@@ -48,16 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unsubRef.current = onSnapshot(userRef, async (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
-            const isEmailAdmin = firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email);
+            const isEmailAdmin = !!(firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email));
             
-            if (isEmailAdmin && data.plan !== 'admin') {
-              await setDoc(userRef, { plan: 'admin' }, { merge: true });
-              setPlan('admin');
-            } else {
-              setPlan(data.plan || 'free');
-            }
+            // Respect stored user plan, default to admin if admin email and no plan set
+            const currentPlan = data.plan || (isEmailAdmin ? 'admin' : 'free');
+            setPlan(currentPlan);
           } else {
-            const isEmailAdmin = firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email);
+            const isEmailAdmin = !!(firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email));
             const initialPlan: UserPlan = isEmailAdmin ? 'admin' : 'free';
             
             await setDoc(userRef, {

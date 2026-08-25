@@ -21,7 +21,7 @@ export default function Layout({ user, children }: LayoutProps) {
       <UpgradeModal />
       <NeuralStatus />
       {user && <OnboardingTour />}
-      <main className={user ? "pt-24 pb-12 lg:ml-64 transition-all" : ""}>
+      <main className={user ? "pt-20 sm:pt-24 pb-28 md:pb-12 lg:ml-64 transition-all" : ""}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -34,7 +34,7 @@ export default function Layout({ user, children }: LayoutProps) {
           </motion.div>
         </AnimatePresence>
       </main>
-      <footer className={`py-12 border-t border-border bg-surface ${user ? "lg:ml-64" : ""}`}>
+      <footer className={`py-12 border-t border-border bg-surface mb-16 md:mb-0 ${user ? "lg:ml-64" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-4">
           <p className="text-ink-dim text-sm font-sans">
             © 2026 AI HireFlow. Precision engineered for the bold.

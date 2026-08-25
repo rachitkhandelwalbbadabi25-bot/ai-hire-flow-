@@ -1,13 +1,13 @@
 import { useState, ChangeEvent, useEffect } from 'react';
 import { User } from 'firebase/auth';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
-import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { extractTextFromPDF } from '../lib/pdf';
 import { analyzeResume, generateCoverLetter } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { firestoreCache } from '../services/FirestoreCache';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   FileUp, 
   CheckCircle2, 
@@ -31,23 +31,63 @@ import {
   AlertTriangle,
   HelpCircle,
   Layers,
-  Scale
+  Scale,
+  Clock,
+  RotateCcw,
+  BookOpen
 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import AILoadingStepper from '../components/AILoadingStepper';
 import { cn } from '../lib/utils';
-
-interface ResumeAnalyzerProps {
-  user: User;
-}
-
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
-import { Link } from 'react-router-dom';
 import { formatCreditAvailability } from '../utils/formatters';
 import SmartContextChips from '../components/SmartContextChips';
 import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
+
+interface MasterResumeData {
+  summary?: string;
+  experience?: {
+    id: string;
+    company: string;
+    role: string;
+    period: string;
+    bullets: string[];
+    isExpanded?: boolean;
+  }[];
+  skills?: string[];
+  updatedAt?: string;
+}
+
+function formatMasterResumeToText(resume: MasterResumeData): string {
+  const parts: string[] = [];
+  if (resume.summary && resume.summary.trim()) {
+    parts.push(`PROFESSIONAL SUMMARY:\n${resume.summary.trim()}`);
+  }
+  if (resume.skills && resume.skills.length > 0) {
+    parts.push(`TECHNICAL & CORE SKILLS:\n${resume.skills.join(', ')}`);
+  }
+  if (resume.experience && resume.experience.length > 0) {
+    const expLines: string[] = ['PROFESSIONAL EXPERIENCE:'];
+    resume.experience.forEach(exp => {
+      const header = [
+        exp.role || 'Position',
+        exp.company ? `at ${exp.company}` : '',
+        exp.period ? `(${exp.period})` : ''
+      ].filter(Boolean).join(' ');
+      expLines.push(header);
+      if (exp.bullets && exp.bullets.length > 0) {
+        exp.bullets.forEach(b => {
+          if (b && b.trim()) expLines.push(`• ${b.trim()}`);
+        });
+      }
+      expLines.push('');
+    });
+    parts.push(expLines.join('\n'));
+  }
+  return parts.join('\n\n').trim();
+}
 
 export default function ResumeAnalyzer() {
   const { user } = useAuth();
@@ -55,17 +95,65 @@ export default function ResumeAnalyzer() {
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const location = useLocation();
   const navigate = useNavigate();
+
   const [file, setFile] = useState<File | null>(null);
   const [jobDesc, setJobDesc] = useState('');
+  const [masterResume, setMasterResume] = useState<MasterResumeData | null>(null);
+  const [loadingMaster, setLoadingMaster] = useState(true);
+  const [useSavedResume, setUseSavedResume] = useState(false);
+  const [isUploadMode, setIsUploadMode] = useState(false);
 
   const { hasAccess: canScan, remaining: scansLeft, limit: scanLimit } = checkAccess('resumeScans');
   const { hasAccess: canGenCL, remaining: clLeft, limit: clLimit } = checkAccess('coverLetters');
+
+  const scanCreditCost = creditCosts?.resumeScan ?? 20;
+  const coverLetterCreditCost = creditCosts?.coverLetter ?? 15;
+
+  // Check for saved Master Resume in Resume Editor
+  useEffect(() => {
+    const fetchMasterResume = async () => {
+      try {
+        const docRef = doc(db, 'users', user.uid, 'config', 'masterResume');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data() as MasterResumeData;
+          const hasContent = !!(
+            (data.summary && data.summary.trim()) ||
+            (data.experience && data.experience.length > 0) ||
+            (data.skills && data.skills.length > 0)
+          );
+          if (hasContent) {
+            setMasterResume(data);
+            setUseSavedResume(true);
+            setIsUploadMode(false);
+          } else {
+            setMasterResume(null);
+            setUseSavedResume(false);
+            setIsUploadMode(true);
+          }
+        } else {
+          setMasterResume(null);
+          setUseSavedResume(false);
+          setIsUploadMode(true);
+        }
+      } catch (err) {
+        console.warn("Error loading master resume in analyzer:", err);
+        setMasterResume(null);
+        setUseSavedResume(false);
+        setIsUploadMode(true);
+      } finally {
+        setLoadingMaster(false);
+      }
+    };
+    fetchMasterResume();
+  }, [user.uid]);
 
   useEffect(() => {
     if (location.state?.jobDescription) {
       setJobDesc(location.state.jobDescription);
     }
   }, [location.state]);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
@@ -75,13 +163,17 @@ export default function ResumeAnalyzer() {
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       setFile(e.target.files[0]);
+      setUseSavedResume(false);
       setError(null);
     }
   };
 
   const handleStartAnalysis = async () => {
-    if (!file) {
-      setError("Please upload a resume (PDF) first.");
+    // Validation: Require either saved master resume OR uploaded PDF
+    const isUsingMaster = useSavedResume && !!masterResume && !isUploadMode;
+    
+    if (!isUsingMaster && !file) {
+      setError("Please select your saved Master Resume or upload a PDF file first.");
       return;
     }
 
@@ -90,7 +182,19 @@ export default function ResumeAnalyzer() {
     setCacheSource(null);
 
     try {
-      const text = await extractTextFromPDF(file);
+      let text = '';
+      let resumeTitle = '';
+
+      if (isUsingMaster && masterResume) {
+        text = formatMasterResumeToText(masterResume);
+        resumeTitle = `Master Resume (${masterResume.experience?.[0]?.role || 'Saved Profile'})`;
+        if (!text || text.length < 20) {
+          throw new Error("Saved Master Resume is empty. Please add details in Resume Editor or upload a PDF.");
+        }
+      } else if (file) {
+        text = await extractTextFromPDF(file);
+        resumeTitle = file.name;
+      }
       
       // STEP 1: Check In-Memory (Browser) Cache
       const inMemoryKey = cacheManager.generateResumeKey(text, jobDesc);
@@ -153,9 +257,10 @@ export default function ResumeAnalyzer() {
       await deductCredit('resumeScans');
       
       const resumeRef = await addDoc(collection(db, 'users', user.uid, 'resumes'), {
-        fileName: file.name,
+        fileName: resumeTitle,
         content: text,
         jobDesc: jobDesc,
+        isMasterResume: isUsingMaster,
         createdAt: new Date().toISOString()
       });
 
@@ -184,11 +289,17 @@ export default function ResumeAnalyzer() {
 
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Internal Analysis Error. Please ensure PDF integrity.");
+      setError(err.message || "Internal Analysis Error. Please ensure resume integrity.");
     } finally {
       setIsAnalyzing(false);
     }
   };
+
+  const isPrePopulated = !!masterResume && useSavedResume && !isUploadMode;
+
+  const formattedLastUpdated = masterResume?.updatedAt 
+    ? new Date(masterResume.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : 'Recently Saved';
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -222,106 +333,312 @@ export default function ResumeAnalyzer() {
         </div>
       )}
 
-      {!analysis && !isAnalyzing ? (
+      {!analysis ? (
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-8"
         >
+          {/* Missing Master Resume Onboarding Nudge Banner */}
+          {!loadingMaster && !masterResume && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-accent/5 border border-accent/20 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
+            >
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-xl text-accent shrink-0 mt-0.5 sm:mt-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-wider">
+                      AI System Context Engine
+                    </span>
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 bg-background border border-border text-ink-dim rounded-full">
+                      pre_populated: false
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-ink mt-0.5">
+                    Save Your Master Resume Once to Skip PDF Uploads
+                  </h3>
+                  <p className="text-xs text-ink-dim mt-0.5 max-w-xl">
+                    Create your profile in the Resume Editor once. The AI will automatically pre-populate every scan, drill, and cold pitch.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/editor"
+                className="px-4 py-2 bg-accent hover:bg-accent/90 text-black font-mono font-bold text-xs rounded-xl shadow-md shadow-accent/20 transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Build Master Resume</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </motion.div>
+          )}
+
           <SmartContextChips 
             onSelectRole={(role) => setJobDesc(`Target Role: ${role}\nResponsibilities: Software development, technical design, clean architecture.`)}
             onSelectJob={(jobTitle) => setJobDesc(`Position: ${jobTitle}\nKey Requirements: Technical leadership, system design, and software development.`)}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Upload Card */}
-          <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm">
-            <h3 className="font-bold text-ink mb-6 flex items-center gap-2 uppercase text-xs tracking-widest">
-              <FileUp className="w-4 h-4 text-accent" /> Upload Resume
-            </h3>
-            
-            <label className={cn(
-              "relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl h-64 cursor-pointer transition-all",
-              file ? "border-accent bg-accent/5" : "border-border hover:border-accent/40"
-            )}>
-              <input 
-                type="file" 
-                className="hidden" 
-                accept=".pdf" 
-                onChange={handleFileChange}
-                aria-label="Upload resume PDF file" 
-              />
-              {file ? (
-                <div className="text-center">
-                  <div className="bg-accent p-3 rounded-full inline-block mb-3" aria-hidden="true">
-                    <FileText className="w-6 h-6 text-white" />
-                  </div>
-                  <p className="font-bold text-ink">{file.name}</p>
-                  <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">Uploaded Successfully</p>
+            {/* Left Card: Master Resume Pre-Populated OR Upload Card */}
+            <div className="bg-surface p-7 sm:p-8 rounded-3xl border border-border shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-5">
+                  <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-widest">
+                    {isPrePopulated ? (
+                      <>
+                        <Sparkles className="w-4 h-4 text-accent" /> Master Resume (Auto-Loaded)
+                      </>
+                    ) : (
+                      <>
+                        <FileUp className="w-4 h-4 text-accent" /> Resume Source
+                      </>
+                    )}
+                  </h3>
+
+                  {isPrePopulated ? (
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-2.5 h-2.5" /> Pre-Populated
+                    </span>
+                  ) : masterResume ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUploadMode(false);
+                        setUseSavedResume(true);
+                        setFile(null);
+                        setError(null);
+                      }}
+                      className="text-[10px] font-mono font-bold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Use Saved Master Resume
+                    </button>
+                  ) : null}
                 </div>
-              ) : (
-                <div className="text-center px-4">
-                  <div className="bg-surface-light p-3 rounded-full inline-block mb-3" aria-hidden="true">
-                    <FileUp className="w-6 h-6 text-ink-dim" />
+
+                {/* Pre-Populated Master Resume View */}
+                {isPrePopulated && masterResume ? (
+                  <div className="space-y-4">
+                    <div className="bg-background/90 border border-accent/30 rounded-2xl p-5 relative overflow-hidden">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-wider block">
+                            Saved Master Profile
+                          </span>
+                          <h4 className="text-base font-bold text-ink font-sans mt-0.5">
+                            {masterResume.experience?.[0]?.role || 'Professional Profile'}
+                          </h4>
+                          {masterResume.experience?.[0]?.company && (
+                            <p className="text-xs text-ink-dim">
+                              Latest: {masterResume.experience[0].company} ({masterResume.experience[0].period || 'Present'})
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className="text-[10px] font-mono text-ink-dim flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-accent" /> {formattedLastUpdated}
+                          </span>
+                          <span className="text-[10px] font-mono font-bold text-ink-dim mt-1">
+                            {masterResume.experience?.length || 0} Roles Added
+                          </span>
+                        </div>
+                      </div>
+
+                      {masterResume.summary && (
+                        <p className="text-xs text-ink-dim font-sans line-clamp-2 leading-relaxed mb-3 bg-surface/50 p-2.5 rounded-xl border border-border/60">
+                          "{masterResume.summary}"
+                        </p>
+                      )}
+
+                      {/* Top Skills Tags */}
+                      {masterResume.skills && masterResume.skills.length > 0 && (
+                        <div className="space-y-1.5">
+                          <span className="text-[9px] font-mono font-bold text-ink-dim uppercase tracking-wider">
+                            Synced Skills:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto no-scrollbar">
+                            {masterResume.skills.slice(0, 6).map((skill, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 bg-surface border border-border rounded-lg text-[10px] font-mono font-bold text-ink"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                            {masterResume.skills.length > 6 && (
+                              <span className="px-1.5 py-0.5 bg-surface-light text-[10px] font-mono text-ink-dim rounded-lg">
+                                +{masterResume.skills.length - 6} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-ink-dim px-1">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                        No re-upload needed · Auto-synced
+                      </span>
+                      <Link to="/editor" className="text-accent hover:underline text-[11px] font-mono font-bold flex items-center gap-1">
+                        <Edit3 className="w-3 h-3" /> Edit Profile
+                      </Link>
+                    </div>
                   </div>
-                  <p className="font-bold text-ink">Select Resume</p>
-                  <p className="text-[10px] text-ink-dim mt-1 uppercase tracking-widest font-bold">PDF Format Only</p>
+                ) : (
+                  /* Standard PDF Upload Dropzone */
+                  <div>
+                    <label className={cn(
+                      "relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl h-56 cursor-pointer transition-all",
+                      file ? "border-accent bg-accent/5" : "border-border hover:border-accent/40"
+                    )}>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept=".pdf" 
+                        onChange={handleFileChange}
+                        aria-label="Upload resume PDF file" 
+                      />
+                      {file ? (
+                        <div className="text-center px-4">
+                          <div className="bg-accent p-3 rounded-full inline-block mb-2 shadow-md shadow-accent/20" aria-hidden="true">
+                            <FileText className="w-6 h-6 text-black" />
+                          </div>
+                          <p className="font-bold text-ink text-sm">{file.name}</p>
+                          <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">PDF Ready to Analyze</p>
+                        </div>
+                      ) : (
+                        <div className="text-center px-4">
+                          <div className="bg-surface-light p-3 rounded-full inline-block mb-2" aria-hidden="true">
+                            <FileUp className="w-6 h-6 text-ink-dim" />
+                          </div>
+                          <p className="font-bold text-ink text-sm">Select or Drop Resume PDF</p>
+                          <p className="text-[10px] text-ink-dim mt-1 uppercase tracking-widest font-bold">PDF Format Only</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                )}
+
+                {error && (
+                  <div role="alert" className="mt-4 p-4 bg-rose-500/10 text-rose-400 text-sm rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-rose-500/20">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                      <span>{error}</span>
+                    </div>
+                    <button
+                      onClick={handleStartAnalysis}
+                      className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors shrink-0 cursor-pointer"
+                      aria-label="Retry resume analysis"
+                    >
+                      Retry Analysis
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Secondary Action: Always available toggle for uploading a different resume */}
+              {isPrePopulated && (
+                <div className="pt-4 mt-4 border-t border-border/80 flex items-center justify-between">
+                  <span className="text-[11px] text-ink-dim font-sans">
+                    Testing a different file?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUploadMode(true);
+                      setUseSavedResume(false);
+                    }}
+                    className="px-3 py-1.5 bg-surface-light hover:bg-surface border border-border hover:border-accent/40 rounded-xl text-xs font-mono font-bold text-ink transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileUp className="w-3.5 h-3.5 text-accent" />
+                    <span>Upload Different Resume</span>
+                  </button>
                 </div>
               )}
-            </label>
-            
-            {error && (
-              <div role="alert" className="mt-4 p-4 bg-rose-500/10 text-rose-400 text-sm rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-rose-500/20">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>{error}</span>
+            </div>
+
+            {/* Right Card: Job Description Card */}
+            <div className="bg-surface p-7 sm:p-8 rounded-3xl border border-border shadow-sm flex flex-col justify-between relative overflow-hidden">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-5">
+                  <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-widest">
+                    <Target className="w-4 h-4 text-accent" aria-hidden="true" /> Target Job Description
+                  </h3>
+                  <span className="text-[9px] font-mono text-ink-dim uppercase">
+                    Optional for ATS Match
+                  </span>
                 </div>
-                <button
-                  onClick={handleStartAnalysis}
-                  className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors shrink-0 cursor-pointer"
-                  aria-label="Retry resume analysis"
-                >
-                  Retry Analysis
-                </button>
+
+                <textarea
+                  value={jobDesc}
+                  onChange={(e) => setJobDesc(e.target.value)}
+                  placeholder="Paste the target job description or select a role chip above to generate match score and tailored cover letter..."
+                  aria-label="Target job description"
+                  className="w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink disabled:opacity-50 min-h-[190px]"
+                />
               </div>
-            )}
-          </div>
 
-          {/* Job Description Card */}
-          <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm flex flex-col relative overflow-hidden">
-            <h3 className="font-bold text-ink mb-6 flex items-center gap-2 uppercase text-xs tracking-widest">
-              <Target className="w-4 h-4 text-accent" aria-hidden="true" /> Job Description
-            </h3>
-            <textarea
-              value={jobDesc}
-              onChange={(e) => setJobDesc(e.target.value)}
-              placeholder="Paste the target job description here to check compatibility..."
-              aria-label="Target job description"
-              className="flex-1 w-full p-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none font-sans leading-relaxed text-ink disabled:opacity-50 min-h-[160px]"
-            />
-          </div>
+              <div className="pt-3 mt-3 border-t border-border/60 flex items-center justify-between text-[11px] text-ink-dim font-mono">
+                <span>Tailored Cover Letter:</span>
+                <span className={jobDesc.trim() ? "text-success font-bold" : "text-ink-dim"}>
+                  {jobDesc.trim() ? "Enabled (+15 Credits)" : "Paste JD to Enable"}
+                </span>
+              </div>
+            </div>
 
-          <div className="md:col-span-2">
-            {isAnalyzing ? (
-              <AILoadingStepper 
-                presetKey="resume_audit" 
-                title="ATS Structural & Keyword Audit Pipeline" 
-                className="mt-2"
-              />
-            ) : (
-              <button
-                onClick={handleStartAnalysis}
-                disabled={isAnalyzing}
-                className="w-full bg-accent text-white p-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-2xl shadow-accent/20 overflow-hidden relative cursor-pointer"
-              >
-                <BrainCircuit className="w-6 h-6" />
-                Analyze Resume
-              </button>
-            )}
-          </div>
+            {/* Bottom Full-Width CTA & Credit Cost Preview */}
+            <div className="md:col-span-2 space-y-3">
+              {isAnalyzing ? (
+                <AILoadingStepper 
+                  presetKey="resume_audit" 
+                  title="ATS Structural & Keyword Audit Pipeline" 
+                  className="mt-2"
+                />
+              ) : (
+                <div className="bg-surface border border-accent/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+                  <div className="flex items-center gap-3 self-start sm:self-center">
+                    <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-xl text-accent">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-ink uppercase">
+                          Analysis Credit Preview:
+                        </span>
+                        <span className="px-2 py-0.5 bg-accent text-black font-mono font-extrabold text-[11px] rounded-md shadow-sm">
+                          {scanCreditCost + (jobDesc.trim() ? coverLetterCreditCost : 0)} Credits
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-ink-dim font-sans mt-0.5">
+                        {scanCreditCost} credits (Resume ATS Audit) {jobDesc.trim() ? `+ ${coverLetterCreditCost} credits (Cover Letter)` : ''} · Wallet Balance: {creditWallet?.balance ?? 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleStartAnalysis}
+                    disabled={isAnalyzing}
+                    className="w-full sm:w-auto px-8 py-4 bg-accent hover:bg-accent/90 text-black font-mono font-extrabold text-sm rounded-xl flex items-center justify-center gap-2.5 shadow-xl shadow-accent/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <BrainCircuit className="w-5 h-5" />
+                    <span>
+                      {isPrePopulated ? 'Use Saved Resume & Run Audit' : 'Analyze Uploaded Resume'}
+                    </span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
-      ) : (
+      ) : analysis ? (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -354,11 +671,11 @@ export default function ResumeAnalyzer() {
                   <span className="text-[10px] font-bold text-accent uppercase tracking-wider">
                     Transparent Recruiter Calibration
                   </span>
-                  {analysis.score <= 65 ? (
+                  {(analysis.score ?? 0) <= 65 ? (
                     <span className="px-2.5 py-0.5 bg-amber-500/10 text-amber-500 text-[9px] font-bold uppercase tracking-widest rounded-full border border-amber-500/20">
                       Generic Baseline (40-65 Range)
                     </span>
-                  ) : analysis.score <= 79 ? (
+                  ) : (analysis.score ?? 0) <= 79 ? (
                     <span className="px-2.5 py-0.5 bg-blue-500/10 text-blue-500 text-[9px] font-bold uppercase tracking-widest rounded-full border border-blue-500/20">
                       Competitive Alignment (66-79 Range)
                     </span>
@@ -370,7 +687,7 @@ export default function ResumeAnalyzer() {
                 </div>
                 <h2 className="text-xl md:text-2xl font-bold text-ink tracking-tight">Full Math Breakdown & Recruiter Rationale</h2>
                 <p className="text-xs text-ink-dim mt-1 max-w-xl">
-                  {analysis.score <= 65 
+                  {(analysis.score ?? 0) <= 65 
                     ? "Honest Scoring Rule: Generic resumes lacking hard quantified metrics or direct role alignment calibrate between 40-65. Follow the rewrites below to break into 80+."
                     : "Calibrated against specific role requirements and company benchmarks with transparent category weights."}
                 </p>
@@ -378,13 +695,13 @@ export default function ResumeAnalyzer() {
               <div className="flex items-center gap-4 bg-background/80 px-6 py-4 rounded-2xl border border-border shrink-0">
                 <div className="text-right">
                   <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider block">ATS Match Score</span>
-                  <span className="text-3xl font-black text-accent">{analysis.score} <span className="text-sm font-normal text-ink-dim">/ 100</span></span>
+                  <span className="text-3xl font-black text-accent">{analysis.score ?? 0} <span className="text-sm font-normal text-ink-dim">/ 100</span></span>
                 </div>
                 <span className={cn(
                   "status-pill text-xs font-bold",
-                  analysis.score >= 80 ? "status-offer" : analysis.score >= 65 ? "status-applied" : "status-interview"
+                  (analysis.score ?? 0) >= 80 ? "status-offer" : (analysis.score ?? 0) >= 65 ? "status-applied" : "status-interview"
                 )}>
-                  {analysis.atsCompatibility}
+                  {analysis.atsCompatibility || 'Calibrated'}
                 </span>
               </div>
             </div>
@@ -426,7 +743,7 @@ export default function ResumeAnalyzer() {
                     <Calculator className="w-4 h-4 text-accent" /> 4-Category Weighted Math Breakdown
                   </h3>
                   <p className="text-xs text-ink-dim mt-1">
-                    Mathematical formula verifying how each category weight contributes to your final ATS score of {analysis.score}/100.
+                    Mathematical formula verifying how each category weight contributes to your final ATS score of {analysis?.score ?? 0}/100.
                   </p>
                 </div>
                 <div className="px-3 py-1 bg-accent/10 border border-accent/20 rounded-xl text-accent text-xs font-mono font-bold flex items-center gap-1.5">
@@ -478,7 +795,7 @@ export default function ResumeAnalyzer() {
                       {cat.earnedPoints ?? Math.round(((cat.score || 0) * (cat.weight || 0)) / 100)}{i < (analysis.scoreBreakdown || []).length - 1 ? " + " : ""}
                     </span>
                   ))}
-                  <span className="text-accent font-black text-sm">= {analysis.score} / 100</span>
+                  <span className="text-accent font-black text-sm">= {analysis?.score ?? 0} / 100</span>
                 </div>
               </div>
             </div>
@@ -690,7 +1007,7 @@ export default function ResumeAnalyzer() {
 
           <NextStepBridgeCard
             title="Resume evaluation complete"
-            contextData={`ATS match score: ${analysis.score}%. ${analysis.missingKeywords?.length > 0 ? `Identified ${analysis.missingKeywords.length} missing skill keywords (${analysis.missingKeywords.slice(0, 3).join(', ')}).` : 'High keyword alignment with target role specifications.'}`}
+            contextData={`ATS match score: ${analysis?.score ?? 0}%. ${(analysis?.missingKeywords || []).length > 0 ? `Identified ${(analysis?.missingKeywords || []).length} missing skill keywords (${(analysis?.missingKeywords || []).slice(0, 3).join(', ')}).` : 'High keyword alignment with target role specifications.'}`}
             primaryStep={{
               label: "Search matched jobs",
               icon: Search,
@@ -720,7 +1037,7 @@ export default function ResumeAnalyzer() {
             </button>
           </div>
         </motion.div>
-      )}
+      ) : null}
     </div>
   );
 }

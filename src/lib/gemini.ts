@@ -22,8 +22,42 @@ const getAI = () => {
 
 const ai = getAI();
 
-const cleanJson = (text: string): string => {
-  return text.replace(/```json/g, '').replace(/```/g, '').trim();
+export const cleanJson = (text: string): string => {
+  if (!text) return '';
+  return text.replace(/```json/gi, '').replace(/```/g, '').trim();
+};
+
+export const parseSafeJson = <T = any>(raw: string, fallback?: T): T => {
+  if (!raw) return fallback as T;
+  const cleaned = cleanJson(raw);
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch (initialErr) {
+    // Attempt extracting outermost balanced [ ... ] or { ... }
+    const firstBracket = cleaned.indexOf('[');
+    const lastBracket = cleaned.lastIndexOf(']');
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+
+    if (firstBracket !== -1 && lastBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+      try {
+        return JSON.parse(cleaned.slice(firstBracket, lastBracket + 1)) as T;
+      } catch (err) {
+        // try next
+      }
+    }
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      try {
+        return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1)) as T;
+      } catch (err) {
+        // failed
+      }
+    }
+    if (fallback !== undefined) {
+      return fallback;
+    }
+    throw new Error(`Failed to parse response as JSON: ${cleaned.slice(0, 150)}`);
+  }
 };
 
 /**
@@ -48,7 +82,7 @@ async function executeAICompletion<T = any>({
   if (provider === 'velona') {
     let fullPrompt = prompt;
     if (jsonMode) {
-      fullPrompt = `${prompt}\n\nCRITICAL OUTPUT REQUIREMENT: You MUST respond ONLY with valid, unescaped, parseable JSON matching the requested structure. No markdown wrappers (\`\`\`json), no trailing commas, and no introductory remarks outside the JSON.`;
+      fullPrompt = `${prompt}\n\nCRITICAL OUTPUT REQUIREMENT: You MUST respond ONLY with valid, unescaped, parseable JSON matching the requested structure. Do not output conversational text or markdown code fences outside the JSON payload.`;
     }
     const raw = await generateWithVelona({
       prompt: fullPrompt,
@@ -57,20 +91,8 @@ async function executeAICompletion<T = any>({
       jsonMode
     });
     if (jsonMode) {
-      const cleaned = cleanJson(raw);
-      try {
-        return JSON.parse(cleaned) as T;
-      } catch (err) {
-        const match = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-        if (match) {
-          try {
-            return JSON.parse(match[0]) as T;
-          } catch {
-            // failed regex parse
-          }
-        }
-        throw new Error(`Velona (GLM 5.3 Flash) response could not be parsed as JSON: ${raw.slice(0, 150)}`);
-      }
+      const parsed = parseSafeJson<any>(raw);
+      return parsed as T;
     }
     return raw as unknown as T;
   }
@@ -293,7 +315,7 @@ export const findJobs = async (queryStr: string, location: string = "", candidat
     }
   };
 
-  return await executeAICompletion({
+  const results = await executeAICompletion({
     prompt,
     jsonMode: true,
     geminiCall: async () => {
@@ -324,6 +346,17 @@ export const findJobs = async (queryStr: string, location: string = "", candidat
       }
     }
   });
+
+  if (Array.isArray(results)) {
+    return results;
+  }
+  if (results && typeof results === 'object') {
+    const list = (results as any).jobs || (results as any).results || (results as any).answer || Object.values(results).find(v => Array.isArray(v));
+    if (Array.isArray(list)) {
+      return list;
+    }
+  }
+  return [];
 };
 
 export const matchJobsWithProfile = async (userProfileText: string, jobListings: any[]) => {

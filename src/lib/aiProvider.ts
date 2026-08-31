@@ -38,11 +38,36 @@ export function setActiveProvider(provider: AIProviderId): void {
   }
 }
 
+/**
+ * Safely parse JSON from a fetch Response.
+ * If the response contains HTML or non-JSON content, it provides a clear,
+ * diagnostic error message rather than throwing an unhandled SyntaxError.
+ */
+async function parseJsonResponse(res: Response, endpointDescription: string): Promise<any> {
+  const contentType = res.headers.get('content-type') || '';
+  const text = await res.text();
+
+  if (!contentType.includes('application/json') && !text.trim().startsWith('{') && !text.trim().startsWith('[')) {
+    const preview = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+    if (!res.ok) {
+      throw new Error(`Server returned HTTP ${res.status} (${res.statusText || 'Error'}) from ${endpointDescription}. Preview: ${preview || '(empty)'}`);
+    }
+    throw new Error(`Expected JSON response from ${endpointDescription} but received HTML/Text (HTTP ${res.status}): ${preview}`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (err: any) {
+    const preview = text.slice(0, 100).replace(/\s+/g, ' ').trim();
+    throw new Error(`Invalid JSON returned by ${endpointDescription} (HTTP ${res.status}): ${preview}`);
+  }
+}
+
 export async function fetchAIProviders(): Promise<AIProviderInfo[]> {
   try {
     const res = await fetch('/api/ai/providers');
     if (res.ok) {
-      const data = await res.json();
+      const data = await parseJsonResponse(res, '/api/ai/providers');
       return data.providers || [];
     }
   } catch (err) {
@@ -77,7 +102,8 @@ export async function generateWithVelona(options: {
   jsonMode?: boolean;
   maxTokens?: number;
 }): Promise<string> {
-  const res = await fetch('/api/velona/generate', {
+  const endpoint = '/api/velona/generate';
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -89,7 +115,7 @@ export async function generateWithVelona(options: {
     })
   });
 
-  const data = await res.json();
+  const data = await parseJsonResponse(res, endpoint);
 
   if (!res.ok) {
     const errMsg = data.error || `Velona request failed with status ${res.status}`;
@@ -103,10 +129,11 @@ export async function generateWithVelona(options: {
 }
 
 export async function testVelonaIntegration(prompt?: string) {
-  const res = await fetch('/api/velona/test', {
+  const endpoint = '/api/velona/test';
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt })
   });
-  return await res.json();
+  return await parseJsonResponse(res, endpoint);
 }

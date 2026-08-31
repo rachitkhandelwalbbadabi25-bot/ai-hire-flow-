@@ -65,13 +65,9 @@ export default function CodeRabbit() {
     addLog("Checking logic chains...");
     
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error("Authorization Key missing. Please check your system settings.");
-      }
-
       await deductCredit('portfolioReview');
       await new Promise(r => setTimeout(r, 800));
-      addLog("Analyzing syntax tree...");
+      addLog("Analyzing syntax tree with Velona GLM 5.3 Flash...");
       
       const response = await auditCode(code, { 
         platform: 'React',

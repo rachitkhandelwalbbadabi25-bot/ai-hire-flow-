@@ -2,6 +2,8 @@ import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
 
+export const maxDuration = 60;
+
 export const app = express();
 
 app.use(cors({
@@ -40,15 +42,18 @@ export function getVelonaApiKey(): string | undefined {
 
 export async function callVelonaChatCompletion({
   messages,
-  temperature = 0.7,
+  temperature = 0.3,
   jsonMode = false,
-  maxTokens
+  maxTokens,
+  requestId
 }: {
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
   jsonMode?: boolean;
   maxTokens?: number;
+  requestId?: string;
 }) {
+  const reqTag = requestId ? `[Req:${requestId}]` : '';
   const apiKey = getVelonaApiKey();
   if (!apiKey) {
     const error: any = new Error('VELONA_API_KEY is not configured in server environment or secrets.');
@@ -57,16 +62,30 @@ export async function callVelonaChatCompletion({
     throw error;
   }
 
+  // Ensure prompt includes explicit JSON directive if jsonMode is requested
+  let formattedMessages = [...messages];
+  if (jsonMode) {
+    const lastMsg = formattedMessages[formattedMessages.length - 1];
+    if (lastMsg && lastMsg.role === 'user' && !lastMsg.content.includes('JSON')) {
+      formattedMessages[formattedMessages.length - 1] = {
+        ...lastMsg,
+        content: `${lastMsg.content}\n\nIMPORTANT: Output valid, parseable raw JSON only.`
+      };
+    }
+  }
+
   const payload: any = {
     model: VELONA_MODEL_ID,
-    messages,
+    messages: formattedMessages,
     temperature,
-    ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
     ...(maxTokens ? { max_tokens: maxTokens } : {})
   };
 
+  const velonaStart = Date.now();
+  console.log(`[AI HireFlow][Velona]${reqTag} Velona request start: model=${VELONA_MODEL_ID}, messagesCount=${messages.length}, jsonMode=${jsonMode}, maxTokens=${maxTokens || 'default'}`);
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  const timeoutId = setTimeout(() => controller.abort(), 58000);
 
   try {
     const response = await fetch(`${VELONA_BASE_URL}/chat/completions`, {
@@ -80,6 +99,7 @@ export async function callVelonaChatCompletion({
     });
 
     clearTimeout(timeoutId);
+    const velonaElapsed = Date.now() - velonaStart;
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -90,6 +110,8 @@ export async function callVelonaChatCompletion({
       } catch {
         // errorDetails is text
       }
+
+      console.error(`[AI HireFlow][Velona]${reqTag} Velona error response: HTTP ${response.status} in ${velonaElapsed}ms: ${errorDetails}`);
 
       const err: any = new Error(errorDetails || `Velona API responded with HTTP status ${response.status}`);
       err.status = response.status;
@@ -107,20 +129,32 @@ export async function callVelonaChatCompletion({
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
+    const completionTokens = data.usage?.completion_tokens || 0;
+    const promptTokens = data.usage?.prompt_tokens || 0;
+    const totalTokens = data.usage?.total_tokens || 0;
+
+    console.log(`[AI HireFlow][Velona]${reqTag} Velona response received: HTTP ${response.status} in ${velonaElapsed}ms, tokens={prompt:${promptTokens}, completion:${completionTokens}, total:${totalTokens}}, contentLength=${content.length}`);
+
     return {
       text: content,
       model: data.model || VELONA_MODEL_ID,
       provider: 'velona',
-      usage: data.usage
+      usage: data.usage,
+      timing: {
+        velonaDurationMs: velonaElapsed
+      }
     };
   } catch (err: any) {
     clearTimeout(timeoutId);
+    const velonaElapsed = Date.now() - velonaStart;
     if (err.name === 'AbortError') {
-      const timeoutErr: any = new Error('Velona API request timed out after 60 seconds.');
+      console.error(`[AI HireFlow][Velona]${reqTag} Velona request aborted after timeout (${velonaElapsed}ms).`);
+      const timeoutErr: any = new Error('Velona API request timed out after 58 seconds.');
       timeoutErr.status = 504;
       timeoutErr.code = 'TIMEOUT';
       throw timeoutErr;
     }
+    console.error(`[AI HireFlow][Velona]${reqTag} Velona request failed after ${velonaElapsed}ms:`, err.message);
     throw err;
   }
 }
@@ -128,26 +162,16 @@ export async function callVelonaChatCompletion({
 // Get AI Provider Status
 app.get('/api/ai/providers', (req, res) => {
   const velonaKey = getVelonaApiKey();
-  const geminiKey = process.env.GEMINI_API_KEY;
   res.json({
     providers: [
       {
-        id: 'gemini',
-        name: 'Gemini 3.7 Flash',
-        providerName: 'Google DeepMind',
-        model: 'gemini-3.7-flash',
-        configured: !!geminiKey,
-        isDefault: true,
-        capabilities: ['structured_json', 'vision', 'fast_inference']
-      },
-      {
         id: 'velona',
-        name: 'Velona GLM 5.3 Flash',
+        name: 'Velona (GLM 5.3 Flash)',
         providerName: 'Z.ai via Velona',
         model: VELONA_MODEL_ID,
         configured: !!velonaKey,
-        isDefault: false,
-        capabilities: ['structured_json', 'openai_compatible', 'fast_inference'],
+        isDefault: true,
+        capabilities: ['structured_json', 'openai_compatible', 'fast_inference', 'ats_scoring', 'job_matching'],
         pricing: {
           input: '₹7.7090 / 1M tokens',
           output: '₹25.6960 / 1M tokens',
@@ -155,21 +179,27 @@ app.get('/api/ai/providers', (req, res) => {
         }
       }
     ],
-    defaultProvider: 'gemini'
+    defaultProvider: 'velona'
   });
 });
 
 // Velona Generation endpoint
 app.post(['/api/velona/generate', '/api/ai/generate'], async (req, res) => {
+  const requestStart = Date.now();
+  const requestId = Math.random().toString(36).substring(2, 9);
+  
   try {
     const { 
       prompt, 
       systemPrompt, 
       messages: incomingMessages, 
-      temperature = 0.7, 
+      temperature = 0.3, 
       jsonMode = false, 
       maxTokens
     } = req.body;
+
+    const promptLength = prompt ? prompt.length : (incomingMessages ? JSON.stringify(incomingMessages).length : 0);
+    console.log(`[AI HireFlow][Velona][Req:${requestId}] Request start: timestamp=${new Date().toISOString()}, endpoint=${req.path}, jsonMode=${jsonMode}, promptLength=${promptLength}`);
 
     if (!prompt && (!incomingMessages || incomingMessages.length === 0)) {
       return res.status(400).json({ error: 'Prompt string or messages array is required.' });
@@ -189,18 +219,30 @@ app.post(['/api/velona/generate', '/api/ai/generate'], async (req, res) => {
       messages,
       temperature,
       jsonMode,
-      maxTokens
+      maxTokens,
+      requestId
     });
 
-    res.json(result);
+    const totalDuration = Date.now() - requestStart;
+    console.log(`[AI HireFlow][Velona][Req:${requestId}] Request complete: totalTime=${totalDuration}ms, status=200`);
+
+    res.json({
+      ...result,
+      timing: {
+        ...result.timing,
+        totalDurationMs: totalDuration
+      }
+    });
   } catch (err: any) {
-    console.error('AI Generation error (Velona):', err);
+    const totalDuration = Date.now() - requestStart;
+    console.error(`[AI HireFlow][Velona][Req:${requestId}] AI Generation error after ${totalDuration}ms:`, err);
     const status = err.status || 500;
     res.status(status).json({ 
       error: err.message || 'Internal AI generation error',
       code: err.code || 'UNKNOWN_ERROR',
       provider: 'velona',
-      model: VELONA_MODEL_ID
+      model: VELONA_MODEL_ID,
+      timing: { totalDurationMs: totalDuration }
     });
   }
 });

@@ -87,7 +87,7 @@ class FirestoreCacheService {
       jobDescHash,
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
-      model: 'gemini-3-flash-preview',
+      model: 'z-ai/glm-5.3-flash',
       tokensUsed: 0,
     };
 

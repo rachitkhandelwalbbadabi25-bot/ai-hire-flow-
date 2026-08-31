@@ -1,4 +1,4 @@
-export type AIProviderId = 'gemini' | 'velona';
+export type AIProviderId = 'velona' | 'gemini';
 
 export interface AIProviderInfo {
   id: AIProviderId;
@@ -20,13 +20,13 @@ const STORAGE_KEY = 'ai_hireflow_selected_provider';
 export function getActiveProvider(): AIProviderId {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'velona' || saved === 'gemini') {
+    if (saved === 'velona') {
       return saved;
     }
   } catch (e) {
     // LocalStorage unavailable
   }
-  return 'gemini';
+  return 'velona';
 }
 
 export function setActiveProvider(provider: AIProviderId): void {
@@ -74,23 +74,16 @@ export async function fetchAIProviders(): Promise<AIProviderInfo[]> {
     console.warn('Failed to fetch AI providers from server:', err);
   }
 
-  // Fallback defaults
+  // Primary Velona provider default
   return [
     {
-      id: 'gemini',
-      name: 'Gemini 3.7 Flash',
-      providerName: 'Google DeepMind',
-      model: 'gemini-3.7-flash',
-      configured: true,
-      isDefault: true
-    },
-    {
       id: 'velona',
-      name: 'Velona GLM 5.3 Flash',
+      name: 'Velona (GLM 5.3 Flash)',
       providerName: 'Z.ai via Velona',
       model: 'z-ai/glm-5.3-flash',
-      configured: false,
-      isDefault: false
+      configured: true,
+      isDefault: true,
+      capabilities: ['Fast Inference', 'JSON Mode', 'Deep Reasoning', 'ATS Audits', 'Job Match Engine']
     }
   ];
 }

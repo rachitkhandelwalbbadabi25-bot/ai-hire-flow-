@@ -264,14 +264,21 @@ export default function ResumeAnalyzer() {
         createdAt: new Date().toISOString()
       });
 
-      const analysisResult = await analyzeResume(text, jobDesc);
-      let cl: string | null = null;
-      
-      if (jobDesc) {
-        await deductCredit('coverLetters');
-        const clResult = await generateCoverLetter(text, jobDesc);
-        cl = clResult.content;
-      }
+      // Execute analysis and optional cover letter concurrently to avoid sequential latency
+      const [analysisResult, clResult] = await Promise.all([
+        analyzeResume(text, jobDesc),
+        jobDesc ? (async () => {
+          try {
+            await deductCredit('coverLetters');
+            return await generateCoverLetter(text, jobDesc);
+          } catch (e) {
+            console.warn("Cover letter generation error:", e);
+            return null;
+          }
+        })() : Promise.resolve(null)
+      ]);
+
+      const cl = clResult?.content || null;
 
       const resultsToStore = {
         analysis: analysisResult,

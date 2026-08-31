@@ -21,6 +21,7 @@ import { PlanProvider } from './context/PlanContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { SystemOSProvider } from './context/SystemOSContext';
 import { A11yProvider } from './context/A11yContext';
+import { AIProviderProvider } from './context/AIProviderContext';
 import { Sparkles } from 'lucide-react';
 
 function AppRoutes() {
@@ -85,11 +86,13 @@ export default function App() {
       <LanguageProvider>
         <AuthProvider>
           <PlanProvider>
-            <SystemOSProvider>
-              <ThemeProvider>
-                <AppRoutes />
-              </ThemeProvider>
-            </SystemOSProvider>
+            <AIProviderProvider>
+              <SystemOSProvider>
+                <ThemeProvider>
+                  <AppRoutes />
+                </ThemeProvider>
+              </SystemOSProvider>
+            </AIProviderProvider>
           </PlanProvider>
         </AuthProvider>
       </LanguageProvider>

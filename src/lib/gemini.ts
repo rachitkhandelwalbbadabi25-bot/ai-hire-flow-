@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { getActiveProvider, generateWithVelona } from "./aiProvider";
 
 const getAI = () => {
   let key = undefined;
@@ -24,6 +25,59 @@ const ai = getAI();
 const cleanJson = (text: string): string => {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
 };
+
+/**
+ * Universal AI Execution Wrapper:
+ * Dispatches to Velona (GLM 5.3 Flash) via backend proxy when active provider is 'velona',
+ * or executes Google Gemini SDK directly when active provider is 'gemini'.
+ */
+async function executeAICompletion<T = any>({
+  prompt,
+  systemPrompt,
+  jsonMode = false,
+  temperature = 0.7,
+  geminiCall
+}: {
+  prompt: string;
+  systemPrompt?: string;
+  jsonMode?: boolean;
+  temperature?: number;
+  geminiCall: () => Promise<T>;
+}): Promise<T> {
+  const provider = getActiveProvider();
+  if (provider === 'velona') {
+    let fullPrompt = prompt;
+    if (jsonMode) {
+      fullPrompt = `${prompt}\n\nCRITICAL OUTPUT REQUIREMENT: You MUST respond ONLY with valid, unescaped, parseable JSON matching the requested structure. No markdown wrappers (\`\`\`json), no trailing commas, and no introductory remarks outside the JSON.`;
+    }
+    const raw = await generateWithVelona({
+      prompt: fullPrompt,
+      systemPrompt: systemPrompt || (jsonMode ? "You are an expert AI talent systems engine for AI HireFlow. Output strictly valid, parseable JSON." : undefined),
+      temperature,
+      jsonMode
+    });
+    if (jsonMode) {
+      const cleaned = cleanJson(raw);
+      try {
+        return JSON.parse(cleaned) as T;
+      } catch (err) {
+        const match = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        if (match) {
+          try {
+            return JSON.parse(match[0]) as T;
+          } catch {
+            // failed regex parse
+          }
+        }
+        throw new Error(`Velona (GLM 5.3 Flash) response could not be parsed as JSON: ${raw.slice(0, 150)}`);
+      }
+    }
+    return raw as unknown as T;
+  }
+
+  // Otherwise execute Gemini
+  return await geminiCall();
+}
 
 export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
   const prompt = `
@@ -82,83 +136,89 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
     Return a valid JSON object matching the schema.
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3.7-flash",
-    contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          score: { type: Type.NUMBER },
-          atsCompatibility: { type: Type.STRING },
-          scoreBreakdown: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                category: { type: Type.STRING },
-                weight: { type: Type.NUMBER },
-                score: { type: Type.NUMBER },
-                earnedPoints: { type: Type.NUMBER },
-                mathExplanation: { type: Type.STRING },
-                explanation: { type: Type.STRING }
+  return await executeAICompletion({
+    prompt: `${prompt}\n\nCandidate Resume:\n${resumeText}`,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.7-flash",
+        contents: [{ parts: [{ text: prompt }, { text: resumeText }] }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              score: { type: Type.NUMBER },
+              atsCompatibility: { type: Type.STRING },
+              scoreBreakdown: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    category: { type: Type.STRING },
+                    weight: { type: Type.NUMBER },
+                    score: { type: Type.NUMBER },
+                    earnedPoints: { type: Type.NUMBER },
+                    mathExplanation: { type: Type.STRING },
+                    explanation: { type: Type.STRING }
+                  },
+                  required: ["category", "weight", "score", "earnedPoints", "mathExplanation", "explanation"]
+                }
               },
-              required: ["category", "weight", "score", "earnedPoints", "mathExplanation", "explanation"]
-            }
-          },
-          skillsAnalysis: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                skill: { type: Type.STRING },
-                type: { type: Type.STRING, description: "explicit or inferred" },
-                confidence_level: { type: Type.STRING, description: "high, medium, or low" },
-                evidence: { type: Type.STRING }
+              skillsAnalysis: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    skill: { type: Type.STRING },
+                    type: { type: Type.STRING, description: "explicit or inferred" },
+                    confidence_level: { type: Type.STRING, description: "high, medium, or low" },
+                    evidence: { type: Type.STRING }
+                  },
+                  required: ["skill", "type", "confidence_level", "evidence"]
+                }
               },
-              required: ["skill", "type", "confidence_level", "evidence"]
-            }
-          },
-          keywordsFound: { type: Type.ARRAY, items: { type: Type.STRING } },
-          missingKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-          missingKeywordAnalysis: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                keyword: { type: Type.STRING },
-                whyItMatters: { type: Type.STRING },
-                suggestedRewrite: { type: Type.STRING },
-                confidence_level: { type: Type.STRING, description: "high, medium, or low" },
-                isInferred: { type: Type.BOOLEAN },
-                inferredNote: { type: Type.STRING }
+              keywordsFound: { type: Type.ARRAY, items: { type: Type.STRING } },
+              missingKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+              missingKeywordAnalysis: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    keyword: { type: Type.STRING },
+                    whyItMatters: { type: Type.STRING },
+                    suggestedRewrite: { type: Type.STRING },
+                    confidence_level: { type: Type.STRING, description: "high, medium, or low" },
+                    isInferred: { type: Type.BOOLEAN },
+                    inferredNote: { type: Type.STRING }
+                  },
+                  required: ["keyword", "whyItMatters", "suggestedRewrite", "confidence_level", "isInferred"]
+                }
               },
-              required: ["keyword", "whyItMatters", "suggestedRewrite", "confidence_level", "isInferred"]
-            }
-          },
-          formattingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
-          impactSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
-          summary: { type: Type.STRING },
-          human_explanation: { type: Type.STRING }
-        },
-        required: [
-          "score", 
-          "atsCompatibility", 
-          "scoreBreakdown",
-          "keywordsFound", 
-          "missingKeywords", 
-          "missingKeywordAnalysis",
-          "formattingSuggestions", 
-          "impactSuggestions", 
-          "summary",
-          "human_explanation"
-        ]
-      }
+              formattingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+              impactSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+              summary: { type: Type.STRING },
+              human_explanation: { type: Type.STRING }
+            },
+            required: [
+              "score", 
+              "atsCompatibility", 
+              "scoreBreakdown",
+              "keywordsFound", 
+              "missingKeywords", 
+              "missingKeywordAnalysis", 
+              "formattingSuggestions", 
+              "impactSuggestions", 
+              "summary",
+              "human_explanation"
+            ]
+          }
+        }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const findJobs = async (queryStr: string, location: string = "", candidateProfileText: string = "") => {
@@ -233,32 +293,37 @@ export const findJobs = async (queryStr: string, location: string = "", candidat
     }
   };
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        ...config,
-        tools: [{ googleSearch: {} }],
-        toolConfig: { includeServerSideToolInvocations: true },
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: prompt,
+          config: {
+            ...config,
+            tools: [{ googleSearch: {} }],
+            toolConfig: { includeServerSideToolInvocations: true },
+          }
+        });
+        return JSON.parse(cleanJson(response.text || '[]'));
+      } catch (error: any) {
+        console.warn("[Neural Search] Search Grounding or API failure. Falling back to generative search.", error);
+        try {
+          const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: prompt + "\nNOTE: Real-time search is currently restricted. Provide realistic placeholders or typical examples based on your latest training knowledge to maintain UX.",
+            config: config
+          });
+          return JSON.parse(cleanJson(response.text || '[]'));
+        } catch (fallbackError) {
+          console.error("[Neural Search] Critical API failure.", fallbackError);
+          throw error;
+        }
       }
-    });
-    return JSON.parse(cleanJson(response.text || '[]'));
-  } catch (error: any) {
-    console.warn("[Neural Search] Search Grounding or API failure. Falling back to generative search.", error);
-    // Fallback to standard generative results if Grounding tool hits quota (429) or internal error (500)
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt + "\nNOTE: Real-time search is currently restricted. Provide realistic placeholders or typical examples based on your latest training knowledge to maintain UX.",
-        config: config
-      });
-      return JSON.parse(cleanJson(response.text || '[]'));
-    } catch (fallbackError) {
-      console.error("[Neural Search] Critical API failure.", fallbackError);
-      throw error;
     }
-  }
+  });
 };
 
 export const matchJobsWithProfile = async (userProfileText: string, jobListings: any[]) => {
@@ -291,34 +356,40 @@ export const matchJobsWithProfile = async (userProfileText: string, jobListings:
     - isPoorFit: boolean
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            company: { type: Type.STRING },
-            location: { type: Type.STRING },
-            link: { type: Type.STRING },
-            description: { type: Type.STRING },
-            datePosted: { type: Type.STRING },
-            matchScore: { type: Type.NUMBER },
-            roleTier: { type: Type.STRING, description: "safe, stretch, or reach" },
-            matchExplanation: { type: Type.STRING },
-            isPoorFit: { type: Type.BOOLEAN }
-          },
-          required: ["title", "company", "matchScore", "roleTier", "matchExplanation"]
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                company: { type: Type.STRING },
+                location: { type: Type.STRING },
+                link: { type: Type.STRING },
+                description: { type: Type.STRING },
+                datePosted: { type: Type.STRING },
+                matchScore: { type: Type.NUMBER },
+                roleTier: { type: Type.STRING, description: "safe, stretch, or reach" },
+                matchExplanation: { type: Type.STRING },
+                isPoorFit: { type: Type.BOOLEAN }
+              },
+              required: ["title", "company", "matchScore", "roleTier", "matchExplanation"]
+            }
+          }
         }
-      }
+      });
+
+      return JSON.parse(cleanJson(response.text || '[]'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '[]'));
 };
 
 export const generateInterviewQuestions = async (jobDescription: string, resumeText: string = "") => {
@@ -340,28 +411,34 @@ export const generateInterviewQuestions = async (jobDescription: string, resumeT
     - rationale: string (why this question is being asked for this role)
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            question: { type: Type.STRING },
-            category: { type: Type.STRING },
-            rationale: { type: Type.STRING }
-          },
-          required: ["id", "question", "category"]
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                question: { type: Type.STRING },
+                category: { type: Type.STRING },
+                rationale: { type: Type.STRING }
+              },
+              required: ["id", "question", "category"]
+            }
+          }
         }
-      }
+      });
+
+      return JSON.parse(cleanJson(response.text || '[]'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '[]'));
 };
 
 export const evaluateInterviewAnswer = async (question: string, answer: string, jobDescription: string) => {
@@ -379,25 +456,31 @@ export const evaluateInterviewAnswer = async (question: string, answer: string, 
     - keyPointsMissing: string[]
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          feedback: { type: Type.STRING },
-          improvementTips: { type: Type.ARRAY, items: { type: Type.STRING } },
-          score: { type: Type.NUMBER },
-          keyPointsMissing: { type: Type.ARRAY, items: { type: Type.STRING } }
-        },
-        required: ["feedback", "score"]
-      }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              feedback: { type: Type.STRING },
+              improvementTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+              score: { type: Type.NUMBER },
+              keyPointsMissing: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["feedback", "score"]
+          }
+        }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateLearningPath = async (missingSkills: string[], targetRole: string) => {
@@ -458,32 +541,38 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
     }
   };
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        ...config,
-        tools: [{ googleSearch: {} }],
-        toolConfig: { includeServerSideToolInvocations: true },
-      }
-    });
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: prompt,
+          config: {
+            ...config,
+            tools: [{ googleSearch: {} }],
+            toolConfig: { includeServerSideToolInvocations: true },
+          }
+        });
 
-    return JSON.parse(cleanJson(response.text || '{}'));
-  } catch (error: any) {
-    console.warn("[Neural roadmap] Search Grounding or API failure. Falling back to generative roadmap.", error);
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt + "\nNOTE: Google Search Grounding is hit by quota limits or internal error. Use curated training knowledge to provide the most industry-standard resources available.",
-        config: config
-      });
-      return JSON.parse(cleanJson(response.text || '{}'));
-    } catch (fallbackError) {
-      console.error("[Neural roadmap] Critical API failure.", fallbackError);
-      throw error;
+        return JSON.parse(cleanJson(response.text || '{}'));
+      } catch (error: any) {
+        console.warn("[Neural roadmap] Search Grounding or API failure. Falling back to generative roadmap.", error);
+        try {
+          const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: prompt + "\nNOTE: Google Search Grounding is hit by quota limits or internal error. Use curated training knowledge to provide the most industry-standard resources available.",
+            config: config
+          });
+          return JSON.parse(cleanJson(response.text || '{}'));
+        } catch (fallbackError) {
+          console.error("[Neural roadmap] Critical API failure.", fallbackError);
+          throw error;
+        }
+      }
     }
-  }
+  });
 };
 
 export const improveBulletPointWithAI = async (
@@ -534,99 +623,109 @@ export const improveBulletPointWithAI = async (
     Return a valid JSON object matching the schema.
   `;
 
+  const fallbackResult = () => {
+    const cleanOriginal = bullet.trim() || "Engineered software modules";
+    const hasNumbers = /\d+%|\d+x|\$\d+|\d+\s*(users|ms|seconds|minutes|hours|days|teams|microservices|req\/s)/i.test(cleanOriginal);
+
+    return {
+      original: cleanOriginal,
+      recruiterNote: "Structured bullet points using Google's XYZ formula dramatically increase recruiter engagement and pass automated ATS filters.",
+      suggestions: [
+        {
+          original: cleanOriginal,
+          rewritten: hasNumbers
+            ? `Engineered high-throughput architecture, achieving verifiable production gains by designing modular services and automated pipelines.`
+            : `Accelerated system throughput as measured by [reducing latency by 35% / scaling to 15k+ daily users] by refactoring core service endpoints and optimizing query execution paths.`,
+          reasoning: "Translates passive task description into active leadership with explicit XYZ causality and architectural ownership.",
+          impact_estimate: "+40% Recruiter Signal & ATS Keyword Match",
+          confidence_level: hasNumbers ? "high" : "medium",
+          focusType: "Scale & Performance",
+          hasMetricProxy: !hasNumbers,
+          metricGuidance: !hasNumbers ? "No hard metric detected. Replace bracketed latency/user figures with your service's Datadog, CloudWatch, or Grafana metrics." : undefined,
+          xyzBreakdown: {
+            accomplishedX: "Accelerated system throughput and reliability",
+            measuredByY: hasNumbers ? "verified production benchmarks" : "[reducing latency by 35% / supporting 15k+ users]",
+            doingZ: "refactoring core service endpoints and optimizing query execution paths"
+          }
+        },
+        {
+          original: cleanOriginal,
+          rewritten: `Delivered production features as measured by [shortening release turnaround by 30%] by implementing clean API contracts, automated unit testing, and continuous integration workflows.`,
+          reasoning: "Emphasizes velocity, developer efficiency, and engineering best practices favored by hiring managers.",
+          impact_estimate: "+30% Engineering Management Appeal",
+          confidence_level: "medium",
+          focusType: "Business Velocity & Quality",
+          hasMetricProxy: true,
+          metricGuidance: "Suggested deployment turnaround metric proxy. Verify sprint velocity or deployment frequency improvements with your engineering team.",
+          xyzBreakdown: {
+            accomplishedX: "Delivered production features with higher deployment frequency",
+            measuredByY: "[shortening release turnaround by 30%]",
+            doingZ: "implementing clean API contracts, automated unit testing, and continuous integration workflows"
+          }
+        }
+      ]
+    };
+  };
+
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            original: { type: Type.STRING },
-            recruiterNote: { type: Type.STRING },
-            suggestions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  original: { type: Type.STRING },
-                  rewritten: { type: Type.STRING },
-                  reasoning: { type: Type.STRING },
-                  impact_estimate: { type: Type.STRING },
-                  confidence_level: { type: Type.STRING, enum: ["high", "medium", "low"] },
-                  focusType: { type: Type.STRING },
-                  hasMetricProxy: { type: Type.BOOLEAN },
-                  metricGuidance: { type: Type.STRING },
-                  xyzBreakdown: {
+    const result = await executeAICompletion({
+      prompt,
+      jsonMode: true,
+      geminiCall: async () => {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.7-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                original: { type: Type.STRING },
+                recruiterNote: { type: Type.STRING },
+                suggestions: {
+                  type: Type.ARRAY,
+                  items: {
                     type: Type.OBJECT,
                     properties: {
-                      accomplishedX: { type: Type.STRING },
-                      measuredByY: { type: Type.STRING },
-                      doingZ: { type: Type.STRING }
+                      original: { type: Type.STRING },
+                      rewritten: { type: Type.STRING },
+                      reasoning: { type: Type.STRING },
+                      impact_estimate: { type: Type.STRING },
+                      confidence_level: { type: Type.STRING, enum: ["high", "medium", "low"] },
+                      focusType: { type: Type.STRING },
+                      hasMetricProxy: { type: Type.BOOLEAN },
+                      metricGuidance: { type: Type.STRING },
+                      xyzBreakdown: {
+                        type: Type.OBJECT,
+                        properties: {
+                          accomplishedX: { type: Type.STRING },
+                          measuredByY: { type: Type.STRING },
+                          doingZ: { type: Type.STRING }
+                        },
+                        required: ["accomplishedX", "measuredByY", "doingZ"]
+                      }
                     },
-                    required: ["accomplishedX", "measuredByY", "doingZ"]
+                    required: ["original", "rewritten", "reasoning", "impact_estimate", "confidence_level", "hasMetricProxy", "xyzBreakdown"]
                   }
-                },
-                required: ["original", "rewritten", "reasoning", "impact_estimate", "confidence_level", "hasMetricProxy", "xyzBreakdown"]
-              }
+                }
+              },
+              required: ["original", "suggestions", "recruiterNote"]
             }
-          },
-          required: ["original", "suggestions", "recruiterNote"]
-        }
+          }
+        });
+
+        return JSON.parse(cleanJson(response.text || '{}'));
       }
     });
 
-    const parsed = JSON.parse(cleanJson(response.text || '{}'));
-    if (parsed.suggestions && parsed.suggestions.length > 0) {
-      return parsed;
+    if (result && result.suggestions && result.suggestions.length > 0) {
+      return result;
     }
   } catch (error) {
     console.warn("AI Writing Assistant generation fallback triggered:", error);
   }
 
-  // Graceful deterministic fallback adhering strictly to XYZ formula rules
-  const cleanOriginal = bullet.trim() || "Engineered software modules";
-  const hasNumbers = /\d+%|\d+x|\$\d+|\d+\s*(users|ms|seconds|minutes|hours|days|teams|microservices|req\/s)/i.test(cleanOriginal);
-
-  return {
-    original: cleanOriginal,
-    recruiterNote: "Structured bullet points using Google's XYZ formula dramatically increase recruiter engagement and pass automated ATS filters.",
-    suggestions: [
-      {
-        original: cleanOriginal,
-        rewritten: hasNumbers
-          ? `Engineered high-throughput architecture, achieving verifiable production gains by designing modular services and automated pipelines.`
-          : `Accelerated system throughput as measured by [reducing latency by 35% / scaling to 15k+ daily users] by refactoring core service endpoints and optimizing query execution paths.`,
-        reasoning: "Translates passive task description into active leadership with explicit XYZ causality and architectural ownership.",
-        impact_estimate: "+40% Recruiter Signal & ATS Keyword Match",
-        confidence_level: hasNumbers ? "high" : "medium",
-        focusType: "Scale & Performance",
-        hasMetricProxy: !hasNumbers,
-        metricGuidance: !hasNumbers ? "No hard metric detected. Replace bracketed latency/user figures with your service's Datadog, CloudWatch, or Grafana metrics." : undefined,
-        xyzBreakdown: {
-          accomplishedX: "Accelerated system throughput and reliability",
-          measuredByY: hasNumbers ? "verified production benchmarks" : "[reducing latency by 35% / supporting 15k+ users]",
-          doingZ: "refactoring core service endpoints and optimizing query execution paths"
-        }
-      },
-      {
-        original: cleanOriginal,
-        rewritten: `Delivered production features as measured by [shortening release turnaround by 30%] by implementing clean API contracts, automated unit testing, and continuous integration workflows.`,
-        reasoning: "Emphasizes velocity, developer efficiency, and engineering best practices favored by hiring managers.",
-        impact_estimate: "+30% Engineering Management Appeal",
-        confidence_level: "medium",
-        focusType: "Business Velocity & Quality",
-        hasMetricProxy: true,
-        metricGuidance: "Suggested deployment turnaround metric proxy. Verify sprint velocity or deployment frequency improvements with your engineering team.",
-        xyzBreakdown: {
-          accomplishedX: "Delivered production features with higher deployment frequency",
-          measuredByY: "[shortening release turnaround by 30%]",
-          doingZ: "implementing clean API contracts, automated unit testing, and continuous integration workflows"
-        }
-      }
-    ]
-  };
+  return fallbackResult();
 };
 
 export const refactorResumeText = async (text: string, context: string = "") => {
@@ -646,23 +745,29 @@ export const refactorResumeText = async (text: string, context: string = "") => 
     - explanation: string (why these changes were made, detailing X, Y, Z components)
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3.7-flash",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          refactoredText: { type: Type.STRING },
-          explanation: { type: Type.STRING }
-        },
-        required: ["refactoredText"]
-      }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.7-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              refactoredText: { type: Type.STRING },
+              explanation: { type: Type.STRING }
+            },
+            required: ["refactoredText"]
+          }
+        }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const rewriteResumeBullets = async (bullets: string[], targetRoleContext: string = "") => {
@@ -684,29 +789,35 @@ export const rewriteResumeBullets = async (bullets: string[], targetRoleContext:
     Return a JSON array of suggestion objects.
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            originalBullet: { type: Type.STRING },
-            rewrittenBullet: { type: Type.STRING },
-            impactPotential: { type: Type.STRING, description: "high, medium, or low" },
-            explanation: { type: Type.STRING },
-            suggestedMetricProxy: { type: Type.STRING }
-          },
-          required: ["originalBullet", "rewrittenBullet", "impactPotential", "explanation"]
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                originalBullet: { type: Type.STRING },
+                rewrittenBullet: { type: Type.STRING },
+                impactPotential: { type: Type.STRING, description: "high, medium, or low" },
+                explanation: { type: Type.STRING },
+                suggestedMetricProxy: { type: Type.STRING }
+              },
+              required: ["originalBullet", "rewrittenBullet", "impactPotential", "explanation"]
+            }
+          }
         }
-      }
+      });
+
+      return JSON.parse(cleanJson(response.text || '[]'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '[]'));
 };
 
 export const generateResume = async (userData: any) => {
@@ -722,55 +833,61 @@ export const generateResume = async (userData: any) => {
     - projects: { name: string, description: string }[]
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          skills: { type: Type.ARRAY, items: { type: Type.STRING } },
-          experience: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                company: { type: Type.STRING },
-                role: { type: Type.STRING },
-                period: { type: Type.STRING },
-                bullets: { type: Type.ARRAY, items: { type: Type.STRING } }
-              }
-            }
-          },
-          education: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                school: { type: Type.STRING },
-                degree: { type: Type.STRING },
-                period: { type: Type.STRING }
-              }
-            }
-          },
-          projects: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                description: { type: Type.STRING }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              summary: { type: Type.STRING },
+              skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+              experience: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    company: { type: Type.STRING },
+                    role: { type: Type.STRING },
+                    period: { type: Type.STRING },
+                    bullets: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  }
+                }
+              },
+              education: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    school: { type: Type.STRING },
+                    degree: { type: Type.STRING },
+                    period: { type: Type.STRING }
+                  }
+                }
+              },
+              projects: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    description: { type: Type.STRING }
+                  }
+                }
               }
             }
           }
         }
-      }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateCoverLetter = async (resumeText: string, jobDescription: string) => {
@@ -784,21 +901,27 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
     - content: string (the full text of the cover letter)
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          content: { type: Type.STRING }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              content: { type: Type.STRING }
+            }
+          }
         }
-      }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateOutreachEmail = async (
@@ -833,23 +956,29 @@ export const generateOutreachEmail = async (
     - body: string (the cold outreach email text following the exact 3-paragraph, max 120-word structure)
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          subject: { type: Type.STRING },
-          body: { type: Type.STRING }
-        },
-        required: ["subject", "body"]
-      }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              subject: { type: Type.STRING },
+              body: { type: Type.STRING }
+            },
+            required: ["subject", "body"]
+          }
+        }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const auditCode = async (code: string, context: any = {}) => {
@@ -881,23 +1010,29 @@ export const askAICoach = async (question: string, context: string = "") => {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            answer: { type: Type.STRING },
-            actionItems: { type: Type.ARRAY, items: { type: Type.STRING } }
-          },
-          required: ["answer", "actionItems"]
-        }
+    return await executeAICompletion({
+      prompt,
+      jsonMode: true,
+      geminiCall: async () => {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.7-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                answer: { type: Type.STRING },
+                actionItems: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["answer", "actionItems"]
+            }
+          }
+        });
+
+        return JSON.parse(cleanJson(response.text || '{}'));
       }
     });
-
-    return JSON.parse(cleanJson(response.text || '{}'));
   } catch (err) {
     console.warn("[AI Coach] Fallback to standard advice on error.", err);
     return {
@@ -931,49 +1066,55 @@ export const generateCompanyPrep = async (companyName: string) => {
     - prepStrategy: string (holistic advice on how to secure an offer here)
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          companyName: { type: Type.STRING },
-          difficulty: { type: Type.STRING },
-          estimatedPrepTime: { type: Type.STRING },
-          roundBreakdown: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                roundName: { type: Type.STRING },
-                description: { type: Type.STRING },
-                focusTopics: { type: Type.ARRAY, items: { type: Type.STRING } }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              companyName: { type: Type.STRING },
+              difficulty: { type: Type.STRING },
+              estimatedPrepTime: { type: Type.STRING },
+              roundBreakdown: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    roundName: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    focusTopics: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  },
+                  required: ["roundName", "description", "focusTopics"]
+                }
               },
-              required: ["roundName", "description", "focusTopics"]
-            }
-          },
-          topQuestions: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                question: { type: Type.STRING },
-                topic: { type: Type.STRING },
-                tip: { type: Type.STRING }
+              topQuestions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    question: { type: Type.STRING },
+                    topic: { type: Type.STRING },
+                    tip: { type: Type.STRING }
+                  },
+                  required: ["question", "topic", "tip"]
+                }
               },
-              required: ["question", "topic", "tip"]
-            }
-          },
-          prepStrategy: { type: Type.STRING }
-        },
-        required: ["companyName", "difficulty", "estimatedPrepTime", "roundBreakdown", "topQuestions", "prepStrategy"]
-      }
+              prepStrategy: { type: Type.STRING }
+            },
+            required: ["companyName", "difficulty", "estimatedPrepTime", "roundBreakdown", "topQuestions", "prepStrategy"]
+          }
+        }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateAptitudeQuestions = async (topic: string) => {
@@ -990,35 +1131,41 @@ export const generateAptitudeQuestions = async (topic: string) => {
       - explanation: string (detailed step-by-step logic)
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          topicName: { type: Type.STRING },
-          questions: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                question: { type: Type.STRING },
-                options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                correctIndex: { type: Type.NUMBER },
-                explanation: { type: Type.STRING }
-              },
-              required: ["question", "options", "correctIndex", "explanation"]
-            }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              topicName: { type: Type.STRING },
+              questions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    question: { type: Type.STRING },
+                    options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    correctIndex: { type: Type.NUMBER },
+                    explanation: { type: Type.STRING }
+                  },
+                  required: ["question", "options", "correctIndex", "explanation"]
+                }
+              }
+            },
+            required: ["topicName", "questions"]
           }
-        },
-        required: ["topicName", "questions"]
-      }
+        }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateStartupChallenge = async (specialization: string) => {
@@ -1035,27 +1182,33 @@ export const generateStartupChallenge = async (specialization: string) => {
     - modelSolutionArchitecture: string (a concise summary of how an expert would build it in modern tech stacks, like React, Node, Redis, PostgreSQL)
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          description: { type: Type.STRING },
-          scaleContext: { type: Type.STRING },
-          coreTask: { type: Type.STRING },
-          checklist: { type: Type.ARRAY, items: { type: Type.STRING } },
-          modelSolutionArchitecture: { type: Type.STRING }
-        },
-        required: ["title", "description", "scaleContext", "coreTask", "checklist", "modelSolutionArchitecture"]
-      }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              description: { type: Type.STRING },
+              scaleContext: { type: Type.STRING },
+              coreTask: { type: Type.STRING },
+              checklist: { type: Type.ARRAY, items: { type: Type.STRING } },
+              modelSolutionArchitecture: { type: Type.STRING }
+            },
+            required: ["title", "description", "scaleContext", "coreTask", "checklist", "modelSolutionArchitecture"]
+          }
+        }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 export const generateOnboardingPlan = async (resumeText: string, careerGoals: string) => {
@@ -1083,30 +1236,36 @@ export const generateOnboardingPlan = async (resumeText: string, careerGoals: st
     Return a JSON array of objects representing Day 1 through Day 7 tasks.
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            day: { type: Type.NUMBER },
-            title: { type: Type.STRING },
-            description: { type: Type.STRING },
-            creditCost: { type: Type.NUMBER },
-            unlockedFeature: { type: Type.STRING },
-            note: { type: Type.STRING }
-          },
-          required: ["day", "title", "description", "creditCost", "unlockedFeature"]
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                day: { type: Type.NUMBER },
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+                creditCost: { type: Type.NUMBER },
+                unlockedFeature: { type: Type.STRING },
+                note: { type: Type.STRING }
+              },
+              required: ["day", "title", "description", "creditCost", "unlockedFeature"]
+            }
+          }
         }
-      }
+      });
+
+      return JSON.parse(cleanJson(response.text || '[]'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '[]'));
 };
 
 export const evaluateStartupSolution = async (challengeTitle: string, challengeRequirements: string, proposedSolution: string) => {
@@ -1129,25 +1288,31 @@ export const evaluateStartupSolution = async (challengeTitle: string, challengeR
     - scaleCheck: string (specific critique on how well they handled the scaling context)
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          score: { type: Type.NUMBER },
-          grade: { type: Type.STRING },
-          feedback: { type: Type.STRING },
-          scaleCheck: { type: Type.STRING }
-        },
-        required: ["score", "grade", "feedback", "scaleCheck"]
-      }
+  return await executeAICompletion({
+    prompt,
+    jsonMode: true,
+    geminiCall: async () => {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              score: { type: Type.NUMBER },
+              grade: { type: Type.STRING },
+              feedback: { type: Type.STRING },
+              scaleCheck: { type: Type.STRING }
+            },
+            required: ["score", "grade", "feedback", "scaleCheck"]
+          }
+        }
+      });
+
+      return JSON.parse(cleanJson(response.text || '{}'));
     }
   });
-
-  return JSON.parse(cleanJson(response.text || '{}'));
 };
 
 

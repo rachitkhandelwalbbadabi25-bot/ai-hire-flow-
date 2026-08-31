@@ -2,5 +2,7 @@
   "name": "AI Resume + Job Tracker",
   "description": "Production-ready AI-powered resume analyzer, job tracking dashboard, and cover letter generator designed to accelerate your career growth.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

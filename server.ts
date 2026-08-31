@@ -26,6 +26,220 @@ async function startServer() {
     res.json({ status: 'ok' });
   });
 
+  // =========================================================================
+  // VELONA (Z.ai / GLM-5.3-Flash) AI PROVIDER INTEGRATION
+  // =========================================================================
+  const VELONA_BASE_URL = 'https://velona.in/v1';
+  const VELONA_MODEL_ID = process.env.VELONA_MODEL || 'z-ai/glm-5.3-flash';
+
+  function getVelonaApiKey(): string | undefined {
+    return (
+      process.env.VELONA_API_KEY ||
+      process.env.VELONA_KEY ||
+      process.env.VELONA_AUTH_TOKEN ||
+      process.env.Z_AI_API_KEY
+    );
+  }
+
+  async function callVelonaChatCompletion({
+    messages,
+    temperature = 0.7,
+    jsonMode = false,
+    maxTokens
+  }: {
+    messages: Array<{ role: string; content: string }>;
+    temperature?: number;
+    jsonMode?: boolean;
+    maxTokens?: number;
+  }) {
+    const apiKey = getVelonaApiKey();
+    if (!apiKey) {
+      const error: any = new Error('VELONA_API_KEY is not configured in Google AI Studio Secrets or server environment.');
+      error.status = 401;
+      error.code = 'MISSING_API_KEY';
+      throw error;
+    }
+
+    const payload: any = {
+      model: VELONA_MODEL_ID,
+      messages,
+      temperature,
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      ...(maxTokens ? { max_tokens: maxTokens } : {})
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    try {
+      const response = await fetch(`${VELONA_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        let errorDetails = '';
+        try {
+          const errJson = await response.json();
+          errorDetails = errJson.error?.message || errJson.message || JSON.stringify(errJson);
+        } catch {
+          errorDetails = await response.text();
+        }
+
+        const err: any = new Error(errorDetails || `Velona API responded with HTTP status ${response.status}`);
+        err.status = response.status;
+        if (response.status === 401) {
+          err.code = 'INVALID_API_KEY';
+          err.message = `Velona Authentication Failed: Invalid or expired API key. (${errorDetails})`;
+        } else if (response.status === 402 || response.status === 429) {
+          err.code = 'INSUFFICIENT_BALANCE_OR_RATE_LIMIT';
+          err.message = `Velona Quota/Balance Error: ${errorDetails || 'Insufficient prepaid balance or rate limit exceeded.'}`;
+        } else {
+          err.code = 'VELONA_API_ERROR';
+        }
+        throw err;
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      return {
+        text: content,
+        model: data.model || VELONA_MODEL_ID,
+        provider: 'velona',
+        usage: data.usage
+      };
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        const timeoutErr: any = new Error('Velona API request timed out after 60 seconds.');
+        timeoutErr.status = 504;
+        timeoutErr.code = 'TIMEOUT';
+        throw timeoutErr;
+      }
+      throw err;
+    }
+  }
+
+  // Get AI Provider Status
+  app.get('/api/ai/providers', (req, res) => {
+    const velonaKey = getVelonaApiKey();
+    const geminiKey = process.env.GEMINI_API_KEY;
+    res.json({
+      providers: [
+        {
+          id: 'gemini',
+          name: 'Gemini 3.7 Flash',
+          providerName: 'Google DeepMind',
+          model: 'gemini-3.7-flash',
+          configured: !!geminiKey,
+          isDefault: true,
+          capabilities: ['structured_json', 'vision', 'fast_inference']
+        },
+        {
+          id: 'velona',
+          name: 'Velona GLM 5.3 Flash',
+          providerName: 'Z.ai via Velona',
+          model: VELONA_MODEL_ID,
+          configured: !!velonaKey,
+          isDefault: false,
+          capabilities: ['structured_json', 'openai_compatible', 'fast_inference'],
+          pricing: {
+            input: '₹7.7090 / 1M tokens',
+            output: '₹25.6960 / 1M tokens',
+            context: '1311K'
+          }
+        }
+      ],
+      defaultProvider: 'gemini'
+    });
+  });
+
+  // Velona Generation endpoint
+  app.post(['/api/velona/generate', '/api/ai/generate'], async (req, res) => {
+    try {
+      const { 
+        prompt, 
+        systemPrompt, 
+        messages: incomingMessages, 
+        temperature = 0.7, 
+        jsonMode = false, 
+        maxTokens,
+        provider = 'velona'
+      } = req.body;
+
+      if (!prompt && (!incomingMessages || incomingMessages.length === 0)) {
+        return res.status(400).json({ error: 'Prompt string or messages array is required.' });
+      }
+
+      let messages: Array<{ role: string; content: string }> = [];
+      if (incomingMessages && Array.isArray(incomingMessages) && incomingMessages.length > 0) {
+        messages = incomingMessages;
+      } else {
+        if (systemPrompt) {
+          messages.push({ role: 'system', content: systemPrompt });
+        }
+        messages.push({ role: 'user', content: prompt });
+      }
+
+      const result = await callVelonaChatCompletion({
+        messages,
+        temperature,
+        jsonMode,
+        maxTokens
+      });
+
+      res.json(result);
+    } catch (err: any) {
+      console.error('AI Generation error (Velona):', err);
+      const status = err.status || 500;
+      res.status(status).json({ 
+        error: err.message || 'Internal AI generation error',
+        code: err.code || 'UNKNOWN_ERROR',
+        provider: 'velona',
+        model: VELONA_MODEL_ID
+      });
+    }
+  });
+
+  // Dedicated Velona test endpoint for verification
+  app.post('/api/velona/test', async (req, res) => {
+    try {
+      const testPrompt = req.body?.prompt || 'Respond in 1 concise sentence confirming that Velona GLM 5.3 Flash is active and operational for AI HireFlow.';
+      const result = await callVelonaChatCompletion({
+        messages: [
+          { role: 'system', content: 'You are an AI assistant powered by Z.ai GLM 5.3 Flash on Velona platform.' },
+          { role: 'user', content: testPrompt }
+        ],
+        temperature: 0.2
+      });
+
+      res.json({
+        success: true,
+        endpoint: `${VELONA_BASE_URL}/chat/completions`,
+        model: VELONA_MODEL_ID,
+        provider: 'Z.ai / Velona',
+        response: result.text,
+        usage: result.usage
+      });
+    } catch (err: any) {
+      console.error('Velona test failed:', err);
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message || 'Velona test request failed',
+        code: err.code || 'TEST_FAILED',
+        model: VELONA_MODEL_ID,
+        endpoint: `${VELONA_BASE_URL}/chat/completions`
+      });
+    }
+  });
+
   // Flexible key getters to support all common Secret name variations
   function getRazorpayKeyId(): string | undefined {
     return (

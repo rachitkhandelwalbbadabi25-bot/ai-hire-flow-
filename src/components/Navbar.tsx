@@ -5,6 +5,7 @@ import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import PlanBadge from './PlanBadge';
+import AIProviderSelector from './AIProviderSelector';
 import HeaderQuickSearch from './HeaderQuickSearch';
 import MobileBottomNav from './MobileBottomNav';
 import { useLanguage } from '../context/LanguageContext';
@@ -108,6 +109,7 @@ export default function Navbar({ user }: NavbarProps) {
               {user && <HeaderQuickSearch />}
               {user ? (
                 <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
+                   <AIProviderSelector />
                    <div className="hidden sm:block">
                       <PlanBadge />
                    </div>

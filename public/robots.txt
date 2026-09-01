@@ -1,3 +1,18 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /credits
+Disallow: /jobs
+Disallow: /analyzer
+Disallow: /finder
+Disallow: /interview
+Disallow: /learning
+Disallow: /editor
+Disallow: /resume-editor
+Disallow: /campus
+Disallow: /outreach
+
+Sitemap: https://www.aihireflow.in/sitemap.xml
+

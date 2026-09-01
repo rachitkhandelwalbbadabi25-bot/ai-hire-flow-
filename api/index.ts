@@ -69,7 +69,7 @@ export async function callVelonaChatCompletion({
     if (lastMsg && lastMsg.role === 'user' && !lastMsg.content.includes('JSON')) {
       formattedMessages[formattedMessages.length - 1] = {
         ...lastMsg,
-        content: `${lastMsg.content}\n\nIMPORTANT: Output valid, parseable raw JSON only.`
+        content: `${lastMsg.content}\n\nIMPORTANT: Output valid, parseable raw JSON only without markdown fences or extraneous text.`
       };
     }
   }
@@ -84,79 +84,120 @@ export async function callVelonaChatCompletion({
   const velonaStart = Date.now();
   console.log(`[AI HireFlow][Velona]${reqTag} Velona request start: model=${VELONA_MODEL_ID}, messagesCount=${messages.length}, jsonMode=${jsonMode}, maxTokens=${maxTokens || 'default'}`);
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 58000);
+  // Resilient execution with retry for transient cold-start / network glitches (500/502/503/504)
+  const maxRetries = 2;
+  let lastError: any = null;
 
-  try {
-    const response = await fetch(`${VELONA_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const attemptStart = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 75000);
 
-    clearTimeout(timeoutId);
-    const velonaElapsed = Date.now() - velonaStart;
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorDetails = errorBody;
-      try {
-        const errJson = JSON.parse(errorBody);
-        errorDetails = errJson.error?.message || errJson.message || errorBody;
-      } catch {
-        // errorDetails is text
+    try {
+      if (attempt > 0) {
+        const backoffMs = 400 * Math.pow(2, attempt - 1);
+        console.log(`[AI HireFlow][Velona]${reqTag} Retrying Velona request (attempt ${attempt + 1}/${maxRetries + 1}) after ${backoffMs}ms backoff...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
 
-      console.error(`[AI HireFlow][Velona]${reqTag} Velona error response: HTTP ${response.status} in ${velonaElapsed}ms: ${errorDetails}`);
+      const response = await fetch(`${VELONA_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'User-Agent': 'AI-HireFlow/2.0',
+          'Connection': 'keep-alive'
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
 
-      const err: any = new Error(errorDetails || `Velona API responded with HTTP status ${response.status}`);
-      err.status = response.status;
-      if (response.status === 401) {
-        err.code = 'INVALID_API_KEY';
-        err.message = `Velona Authentication Failed: Invalid or expired API key. (${errorDetails})`;
-      } else if (response.status === 402 || response.status === 429) {
-        err.code = 'INSUFFICIENT_BALANCE_OR_RATE_LIMIT';
-        err.message = `Velona Quota/Balance Error: ${errorDetails || 'Insufficient prepaid balance or rate limit exceeded.'}`;
+      clearTimeout(timeoutId);
+      const attemptElapsed = Date.now() - attemptStart;
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        let errorDetails = errorBody;
+        try {
+          const errJson = JSON.parse(errorBody);
+          errorDetails = errJson.error?.message || errJson.message || errorBody;
+        } catch {
+          // errorDetails is plain text
+        }
+
+        console.warn(`[AI HireFlow][Velona]${reqTag} Velona HTTP ${response.status} on attempt ${attempt + 1} (${attemptElapsed}ms): ${errorDetails}`);
+
+        // If error is transient (500, 502, 503, 504), retry
+        const isTransient = [500, 502, 503, 504].includes(response.status);
+        const err: any = new Error(errorDetails || `Velona API responded with HTTP status ${response.status}`);
+        err.status = response.status;
+        
+        if (response.status === 401) {
+          err.code = 'INVALID_API_KEY';
+          err.message = `Velona Authentication Failed: Invalid or expired API key. (${errorDetails})`;
+          throw err; // Non-retryable
+        } else if (response.status === 402 || response.status === 429) {
+          err.code = 'INSUFFICIENT_BALANCE_OR_RATE_LIMIT';
+          err.message = `Velona Quota/Balance Error: ${errorDetails || 'Insufficient prepaid balance or rate limit exceeded.'}`;
+          throw err; // Non-retryable
+        } else {
+          err.code = 'VELONA_API_ERROR';
+        }
+
+        if (isTransient && attempt < maxRetries) {
+          lastError = err;
+          continue; // Try next attempt
+        }
+        throw err;
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      const completionTokens = data.usage?.completion_tokens || 0;
+      const promptTokens = data.usage?.prompt_tokens || 0;
+      const totalTokens = data.usage?.total_tokens || 0;
+      const totalElapsed = Date.now() - velonaStart;
+
+      console.log(`[AI HireFlow][Velona]${reqTag} Velona response received: HTTP ${response.status} in ${totalElapsed}ms (attempt ${attempt + 1}), tokens={prompt:${promptTokens}, completion:${completionTokens}, total:${totalTokens}}, contentLength=${content.length}`);
+
+      return {
+        text: content,
+        model: data.model || VELONA_MODEL_ID,
+        provider: 'velona',
+        usage: data.usage,
+        timing: {
+          velonaDurationMs: totalElapsed
+        }
+      };
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      const attemptElapsed = Date.now() - attemptStart;
+      
+      if (err.name === 'AbortError') {
+        console.error(`[AI HireFlow][Velona]${reqTag} Velona request aborted after timeout (${attemptElapsed}ms) on attempt ${attempt + 1}.`);
+        lastError = new Error('Velona API request timed out after 75 seconds.');
+        lastError.status = 504;
+        lastError.code = 'TIMEOUT';
       } else {
-        err.code = 'VELONA_API_ERROR';
+        lastError = err;
       }
-      throw err;
-    }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    const completionTokens = data.usage?.completion_tokens || 0;
-    const promptTokens = data.usage?.prompt_tokens || 0;
-    const totalTokens = data.usage?.total_tokens || 0;
-
-    console.log(`[AI HireFlow][Velona]${reqTag} Velona response received: HTTP ${response.status} in ${velonaElapsed}ms, tokens={prompt:${promptTokens}, completion:${completionTokens}, total:${totalTokens}}, contentLength=${content.length}`);
-
-    return {
-      text: content,
-      model: data.model || VELONA_MODEL_ID,
-      provider: 'velona',
-      usage: data.usage,
-      timing: {
-        velonaDurationMs: velonaElapsed
+      // Check if we should retry network errors
+      if (attempt < maxRetries && (err.name === 'FetchError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || err.name === 'AbortError')) {
+        console.warn(`[AI HireFlow][Velona]${reqTag} Retrying after network error: ${err.message}`);
+        continue;
       }
-    };
-  } catch (err: any) {
-    clearTimeout(timeoutId);
-    const velonaElapsed = Date.now() - velonaStart;
-    if (err.name === 'AbortError') {
-      console.error(`[AI HireFlow][Velona]${reqTag} Velona request aborted after timeout (${velonaElapsed}ms).`);
-      const timeoutErr: any = new Error('Velona API request timed out after 58 seconds.');
-      timeoutErr.status = 504;
-      timeoutErr.code = 'TIMEOUT';
-      throw timeoutErr;
+
+      if (attempt >= maxRetries) {
+        break;
+      }
     }
-    console.error(`[AI HireFlow][Velona]${reqTag} Velona request failed after ${velonaElapsed}ms:`, err.message);
-    throw err;
   }
+
+  const totalElapsed = Date.now() - velonaStart;
+  console.error(`[AI HireFlow][Velona]${reqTag} All ${maxRetries + 1} Velona attempts failed after ${totalElapsed}ms:`, lastError?.message);
+  throw lastError || new Error('Velona API request failed after retries.');
 }
 
 // Get AI Provider Status

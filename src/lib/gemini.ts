@@ -81,6 +81,20 @@ async function executeAICompletion<T = any>({
 // 1. RESUME ANALYZER & ATS AUDIT ENGINE
 // =========================================================================
 export const analyzeResume = async (resumeText: string, jobDescription?: string) => {
+  // Sanitize and bound resume and job description length to preserve fast token generation
+  const cleanResume = (resumeText || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n\s*\n+/g, '\n\n')
+    .trim()
+    .slice(0, 6000);
+
+  const cleanJD = (jobDescription || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+    .slice(0, 2500);
+
   const prompt = `
     You are an Explainable AI Resume Auditor and Veteran Technical Talent Leader for AI HireFlow.
     Analyze the candidate's resume against the target role/job description and produce a transparent, calibrated ATS audit report.
@@ -94,20 +108,20 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
        - "Role & Domain Relevance" (Weight: 15)
        - "Structure & ATS Parsability" (Weight: 15)
        For each: category, weight, score (0-100), earnedPoints ((score/100)*weight), mathExplanation (e.g. "(60/100) × 40% = 24.0 pts"), explanation (1 concise sentence under 12 words).
-    3. SKILLS AUDIT (top 5 key skills):
+    3. SKILLS AUDIT (top 4 key skills):
        - skill, type ("explicit"|"inferred"), confidence_level ("high"|"medium"|"low"), evidence (max 6 words).
     4. GAP ANALYSIS (top 3 key gaps):
-       - keyword, whyItMatters (max 10 words), suggestedRewrite (1 high-impact XYZ bullet), confidence_level ("high"|"medium"|"low"), isInferred (boolean), inferredNote (max 8 words).
+       - keyword, whyItMatters (max 10 words), suggestedRewrite (1 high-impact XYZ bullet under 25 words), confidence_level ("high"|"medium"|"low"), isInferred (boolean), inferredNote (max 8 words).
     5. SUGGESTIONS & RECRUITER MEMO:
        - formattingSuggestions (2 concise strings)
        - impactSuggestions (2 concise strings)
        - summary (1 concise sentence)
-       - human_explanation (1 short recruiter paragraph under 45 words)
+       - human_explanation (1 short recruiter paragraph under 40 words)
 
-    ${jobDescription ? `TARGET JOB DESCRIPTION:\n${jobDescription}` : 'TARGET ROLE: Senior Technical Role / Industry Benchmark'}
+    ${cleanJD ? `TARGET JOB DESCRIPTION:\n${cleanJD}` : 'TARGET ROLE: Senior Technical Role / Industry Benchmark'}
 
     CANDIDATE RESUME:
-    ${resumeText}
+    ${cleanResume}
 
     Return a JSON object with fields:
     - score: number (0-100)
@@ -125,9 +139,10 @@ export const analyzeResume = async (resumeText: string, jobDescription?: string)
 
   return await executeAICompletion({
     prompt,
-    systemPrompt: "You are a fast, high-signal ATS Resume Auditor API for AI HireFlow. Output strictly valid, concise raw JSON.",
+    systemPrompt: "You are a fast, high-signal ATS Resume Auditor API for AI HireFlow. Output strictly valid, concise raw JSON only.",
     jsonMode: true,
-    temperature: 0.2
+    temperature: 0.1,
+    maxTokens: 1600
   });
 };
 
@@ -142,6 +157,12 @@ export const findJobs = async (queryStr: string, location: string = "", candidat
                           queryStr.toLowerCase().includes('tcs') ||
                           queryStr.toLowerCase().includes('infosys');
 
+  const cleanProfile = (candidateProfileText || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+    .slice(0, 800);
+
   const prompt = `
     You are a semantic job matching engine for AI HireFlow.
     Synthesize 4 active, realistic job opportunities for "${queryStr}" in "${location || 'Remote / Worldwide'}".
@@ -150,18 +171,18 @@ export const findJobs = async (queryStr: string, location: string = "", candidat
     Context: Prioritize Indian tech ecosystems (top portals: Naukri, Instahyre, LinkedIn India; MNCs vs Startups).
     ` : ''}
 
-    ${candidateProfileText ? `CANDIDATE PROFILE:\n${candidateProfileText}` : ''}
+    ${cleanProfile ? `CANDIDATE PROFILE HIGHLIGHTS:\n${cleanProfile}` : ''}
 
     RULES:
     - Score 0-100 based on skills (40%), experience (30%), domain fit (20%), location (10%).
-    - Return a JSON array of exactly 4 job opportunities. Keep descriptions under 25 words and match explanations to 1 concise sentence.
+    - Return a JSON array of exactly 4 job opportunities. Keep descriptions under 20 words and match explanations to 1 concise sentence.
 
     For each job, include:
     - title: string
     - company: string
     - location: string
     - link: string (realistic application URL)
-    - description: string (concise summary under 25 words)
+    - description: string (concise summary under 20 words)
     - datePosted: string (e.g. "1 day ago", "Just now")
     - matchScore: number (0-100)
     - roleTier: "safe" | "stretch" | "reach"
@@ -171,8 +192,10 @@ export const findJobs = async (queryStr: string, location: string = "", candidat
 
   const results = await executeAICompletion({
     prompt,
+    systemPrompt: "You are an expert AI talent systems engine for AI HireFlow. Output strictly valid, concise JSON array only.",
     jsonMode: true,
-    temperature: 0.2
+    temperature: 0.1,
+    maxTokens: 1100
   });
 
   if (Array.isArray(results)) {
@@ -199,10 +222,10 @@ export const matchJobsWithProfile = async (userProfileText: string, jobListings:
     - Output JSON array ranked by matchScore (highest first).
 
     User Profile:
-    ${userProfileText}
+    ${(userProfileText || '').slice(0, 1000)}
 
     Job Listings:
-    ${JSON.stringify(jobListings)}
+    ${JSON.stringify(jobListings).slice(0, 2000)}
 
     Return a JSON array of objects with:
     - title: string
@@ -219,7 +242,9 @@ export const matchJobsWithProfile = async (userProfileText: string, jobListings:
 
   const results = await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.1,
+    maxTokens: 1000
   });
 
   if (Array.isArray(results)) {
@@ -237,15 +262,15 @@ export const matchJobsWithProfile = async (userProfileText: string, jobListings:
 // =========================================================================
 export const generateInterviewQuestions = async (jobDescription: string, resumeText: string = "") => {
   const prompt = `
-    Based on the following job description and candidate resume, generate a list of 5 to 7 high-signal interview questions.
-    Mix behavioral, technical, and architectural questions.
+    Based on the following job description and candidate resume, generate a list of 5 high-signal interview questions.
+    Mix behavioral, technical, and architectural questions. Keep questions crisp and rationales under 15 words.
     
     SPECIAL CONTEXT: 
     - If the role is in India, include questions typical of Indian Campus Placements (Aptitude, OOPS, DBMS, OS for MNCs like TCS/Infosys).
     - If it's for a high-growth startup, focus on ownership, distributed systems, and rapid delivery culture.
     
-    Job Description: ${jobDescription || 'Senior Software Engineer / Full Stack Developer'}
-    Candidate Resume: ${resumeText || 'Candidate with full-stack engineering background'}
+    Job Description: ${(jobDescription || 'Senior Software Engineer / Full Stack Developer').slice(0, 1000)}
+    Candidate Resume: ${(resumeText || 'Candidate with full-stack engineering background').slice(0, 1500)}
     
     Return a JSON array where each item is:
     - id: string (unique e.g. "q1", "q2")
@@ -256,7 +281,9 @@ export const generateInterviewQuestions = async (jobDescription: string, resumeT
 
   const results = await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 800
   });
 
   if (Array.isArray(results)) {
@@ -272,21 +299,24 @@ export const generateInterviewQuestions = async (jobDescription: string, resumeT
 export const evaluateInterviewAnswer = async (question: string, answer: string, jobDescription: string) => {
   const prompt = `
     Evaluate the candidate's answer to the interview question using the STAR (Situation, Task, Action, Result) framework.
+    Keep feedback under 40 words and 3 concise tips.
     
-    Role Context: ${jobDescription}
+    Role Context: ${(jobDescription || '').slice(0, 500)}
     Question: ${question}
-    Candidate Answer: ${answer}
+    Candidate Answer: ${(answer || '').slice(0, 1000)}
     
     Return a JSON object with:
-    - feedback: string (concise, high-impact recruiter/interviewer feedback)
+    - feedback: string (concise recruiter feedback)
     - improvementTips: string[] (3 actionable bullet points)
     - score: number (0-10 scale)
-    - keyPointsMissing: string[] (technical or behavioral aspects the candidate omitted)
+    - keyPointsMissing: string[] (aspects omitted)
   `;
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 500
   });
 };
 
@@ -317,7 +347,9 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 800
   });
 };
 
@@ -342,22 +374,22 @@ export const improveBulletPointWithAI = async (
 
     2. METRIC TRUTHFULNESS & PROXY:
        - If the original bullet contains numbers/metrics, preserve them.
-       - If NO metric exists, set hasMetricProxy: true and provide realistic bracketed metric suggestions (e.g. "[reducing latency by 35%]", "[scaling to 20k+ concurrent users]").
+       - If NO metric exists, set hasMetricProxy: true and provide realistic bracketed metric suggestions.
 
     3. CONFIDENCE & IMPACT:
        - confidence_level: "high" | "medium" | "low"
        - impact_estimate: (e.g. "+40% Recruiter Signal", "High ATS Keyword Match")
 
     ORIGINAL BULLET POINT:
-    "${bullet}"
+    "${(bullet || '').slice(0, 400)}"
 
-    ${roleContext ? `TARGET ROLE: ${roleContext}` : ''}
-    ${companyContext ? `COMPANY: ${companyContext}` : ''}
+    ${roleContext ? `TARGET ROLE: ${roleContext.slice(0, 100)}` : ''}
+    ${companyContext ? `COMPANY: ${companyContext.slice(0, 100)}` : ''}
 
     Return a JSON object with:
     - original: string
     - recruiterNote: string
-    - suggestions: array of 2-3 objects {
+    - suggestions: array of 2 objects {
         original: string,
         rewritten: string,
         reasoning: string,
@@ -406,7 +438,9 @@ export const improveBulletPointWithAI = async (
   try {
     const result = await executeAICompletion({
       prompt,
-      jsonMode: true
+      jsonMode: true,
+      temperature: 0.2,
+      maxTokens: 800
     });
 
     if (result && result.suggestions && result.suggestions.length > 0) {
@@ -428,8 +462,8 @@ export const refactorResumeText = async (text: string, context: string = "") => 
     - Never fabricate numbers. If no metric exists, suggest a reasonable proxy or bracketed placeholder.
     - Maintain tense consistency.
     
-    Current Text: ${text}
-    ${context ? `Target Role Context: ${context}` : ''}
+    Current Text: ${(text || '').slice(0, 500)}
+    ${context ? `Target Role Context: ${context.slice(0, 100)}` : ''}
     
     Return a JSON object with:
     - refactoredText: string (the polished bullet point in XYZ format)
@@ -438,7 +472,9 @@ export const refactorResumeText = async (text: string, context: string = "") => 
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 400
   });
 };
 
@@ -453,9 +489,9 @@ export const rewriteResumeBullets = async (bullets: string[], targetRoleContext:
     - Rank by impact potential (high/medium/low).
 
     Input Bullets:
-    ${JSON.stringify(bullets)}
+    ${JSON.stringify(bullets.slice(0, 5))}
 
-    ${targetRoleContext ? `Target Role Context: ${targetRoleContext}` : ''}
+    ${targetRoleContext ? `Target Role Context: ${targetRoleContext.slice(0, 100)}` : ''}
 
     Return a JSON array of suggestion objects:
     - originalBullet: string
@@ -467,7 +503,9 @@ export const rewriteResumeBullets = async (bullets: string[], targetRoleContext:
 
   const results = await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 800
   });
 
   if (Array.isArray(results)) return results;
@@ -481,7 +519,7 @@ export const rewriteResumeBullets = async (bullets: string[], targetRoleContext:
 export const generateResume = async (userData: any) => {
   const prompt = `
     Generate a professional, ATS-friendly resume based on the following user details:
-    ${JSON.stringify(userData)}
+    ${JSON.stringify(userData).slice(0, 3000)}
     
     Return a JSON object with sections:
     - summary: string
@@ -493,17 +531,31 @@ export const generateResume = async (userData: any) => {
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 1200
   });
 };
 
 export const generateCoverLetter = async (resumeText: string, jobDescription: string) => {
+  const cleanResume = (resumeText || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+    .slice(0, 3000);
+
+  const cleanJD = (jobDescription || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+    .slice(0, 1500);
+
   const prompt = `
     Generate a personalized, persuasive cover letter based on the following resume and job description.
     Keep it concise, high-impact, and under 250 words across 3 focused paragraphs.
     
-    Resume: ${resumeText}
-    Job Description: ${jobDescription}
+    Resume: ${cleanResume}
+    Job Description: ${cleanJD}
     
     Return a JSON object with:
     - content: string (the full 3-paragraph text of the cover letter)
@@ -512,7 +564,8 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
   return await executeAICompletion({
     prompt,
     jsonMode: true,
-    temperature: 0.3
+    temperature: 0.2,
+    maxTokens: 600
   });
 };
 
@@ -538,7 +591,7 @@ export const generateOutreachEmail = async (
     - Output JSON with subject + body.
 
     Candidate Context:
-    ${candidateContext}
+    ${(candidateContext || '').slice(0, 1000)}
 
     Recipient Details:
     - Name: ${contactName}
@@ -552,7 +605,9 @@ export const generateOutreachEmail = async (
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 500
   });
 };
 
@@ -570,7 +625,7 @@ export const auditCode = async (code: string, context: any = {}) => {
 
     Source Code to Audit:
     \`\`\`
-    ${code}
+    ${(code || '').slice(0, 3000)}
     \`\`\`
 
     Return a JSON object with:
@@ -582,7 +637,9 @@ export const auditCode = async (code: string, context: any = {}) => {
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 1100
   });
 };
 
@@ -594,7 +651,7 @@ export const askAICoach = async (question: string, context: string = "") => {
     You are the AI Career Advisor inside AI HireFlow. You have REAL access to the user's uploaded resume, pipeline, interview scores, and credit balance.
 
     REAL CANDIDATE DATA & CONTEXT:
-    ${context || 'No specific candidate context provided.'}
+    ${(context || 'No specific candidate context provided.').slice(0, 1200)}
 
     MANDATORY RULES:
     1. Reference at least one specific fact from their profile (e.g. ATS score, tracked jobs count, missing keywords, current role).
@@ -613,7 +670,9 @@ export const askAICoach = async (question: string, context: string = "") => {
   try {
     return await executeAICompletion({
       prompt,
-      jsonMode: true
+      jsonMode: true,
+      temperature: 0.2,
+      maxTokens: 500
     });
   } catch (err) {
     console.warn("[AI Coach] Fallback to standard advice on error.", err);
@@ -653,7 +712,9 @@ export const generateCompanyPrep = async (companyName: string) => {
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 800
   });
 };
 
@@ -673,7 +734,9 @@ export const generateAptitudeQuestions = async (topic: string) => {
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 800
   });
 };
 
@@ -692,7 +755,9 @@ export const generateStartupChallenge = async (specialization: string) => {
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 800
   });
 };
 
@@ -701,10 +766,10 @@ export const generateOnboardingPlan = async (resumeText: string, careerGoals: st
     You are the AI Career Strategist for AI HireFlow. Analyze candidate resume and career goals, then output a hyper-personalized 7-day onboarding action plan.
 
     Candidate Resume Context:
-    ${resumeText || 'No resume uploaded yet.'}
+    ${(resumeText || 'No resume uploaded yet.').slice(0, 1500)}
 
     Candidate Career Goals:
-    ${careerGoals || 'Targeting full stack engineering roles and top tier software opportunities.'}
+    ${(careerGoals || 'Targeting full stack engineering roles and top tier software opportunities.').slice(0, 500)}
 
     Return a JSON array of objects representing Day 1 through Day 7 tasks:
     - day: number (1 to 7)
@@ -717,7 +782,9 @@ export const generateOnboardingPlan = async (resumeText: string, careerGoals: st
 
   const results = await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 700
   });
 
   if (Array.isArray(results)) return results;
@@ -734,10 +801,10 @@ export const evaluateStartupSolution = async (challengeTitle: string, challengeR
     Evaluate the candidate's proposed solution/architecture for the startup challenge: "${challengeTitle}".
     
     Challenge Context & Requirements:
-    ${challengeRequirements}
+    ${(challengeRequirements || '').slice(0, 800)}
     
     Candidate's Proposed Solution:
-    ${proposedSolution}
+    ${(proposedSolution || '').slice(0, 2000)}
     
     Return a JSON object with:
     - score: number (from 0 to 100)
@@ -748,6 +815,8 @@ export const evaluateStartupSolution = async (challengeTitle: string, challengeR
 
   return await executeAICompletion({
     prompt,
-    jsonMode: true
+    jsonMode: true,
+    temperature: 0.2,
+    maxTokens: 700
   });
 };

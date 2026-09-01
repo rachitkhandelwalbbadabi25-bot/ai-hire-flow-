@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target } from 'lucide-react';
 import { findJobs } from '../lib/gemini';
@@ -46,12 +46,14 @@ export default function JobFinder() {
   const locationState = useLocation();
 
   const { activeTargetRole } = useSystemOS();
+  const hasAutoSearchedRef = useRef(false);
 
   useEffect(() => {
     if (locationState.state?.role || locationState.state?.query) {
       const targetQuery = locationState.state.role || locationState.state.query;
       setQuery(targetQuery);
-      if (locationState.state?.autoSearch) {
+      if (locationState.state?.autoSearch && !hasAutoSearchedRef.current) {
+        hasAutoSearchedRef.current = true;
         handleSearchWithQuery(targetQuery, location);
       }
     } else if (!query && activeTargetRole) {

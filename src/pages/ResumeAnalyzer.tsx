@@ -241,58 +241,58 @@ export default function ResumeAnalyzer() {
         return;
       }
 
-      // STEP 3: Fallback to Gemini API
+      // STEP 3: Execute Fast Velona ATS Scan
       if (!canScan) {
         setError(`Analysis capacity reached: ${scansLeft}/${scanLimit} scans remaining. Upgrade for more bandwidth.`);
         setIsAnalyzing(false);
         return;
       }
       
-      if (jobDesc && !canGenCL) {
-        setError(`Cover Letter capacity reached: ${clLeft}/${clLimit} generations remaining. Upgrade for more bandwidth.`);
-        setIsAnalyzing(false);
-        return;
-      }
-      
       await deductCredit('resumeScans');
-      
-      const resumeRef = await addDoc(collection(db, 'users', user.uid, 'resumes'), {
-        fileName: resumeTitle,
-        content: text,
-        jobDesc: jobDesc,
-        isMasterResume: isUsingMaster,
-        createdAt: new Date().toISOString()
-      });
 
-      // Execute analysis and optional cover letter concurrently to avoid sequential latency
-      const [analysisResult, clResult] = await Promise.all([
-        analyzeResume(text, jobDesc),
-        jobDesc ? (async () => {
-          try {
-            await deductCredit('coverLetters');
-            return await generateCoverLetter(text, jobDesc);
-          } catch (e) {
-            console.warn("Cover letter generation error:", e);
-            return null;
-          }
-        })() : Promise.resolve(null)
-      ]);
+      // Execute primary resume audit - optimized for GLM 5.3 Flash
+      const analysisResult = await analyzeResume(text, jobDesc);
 
-      const cl = clResult?.content || null;
+      // Execute optional cover letter sequentially to avoid Velona rate limits / connection choking
+      let cl: string | null = null;
+      if (jobDesc && canGenCL) {
+        try {
+          await deductCredit('coverLetters');
+          const clResult = await generateCoverLetter(text, jobDesc);
+          cl = clResult?.content || null;
+        } catch (e) {
+          console.warn("Cover letter generation secondary error:", e);
+        }
+      }
 
       const resultsToStore = {
         analysis: analysisResult,
         coverLetter: cl
       };
 
-      await updateDoc(doc(db, 'users', user.uid, 'resumes', resumeRef.id), resultsToStore);
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'resumes'), {
+          fileName: resumeTitle,
+          content: text,
+          jobDesc: jobDesc,
+          isMasterResume: isUsingMaster,
+          createdAt: new Date().toISOString(),
+          ...resultsToStore
+        });
+      } catch (dbErr) {
+        console.warn("Firestore resume persistence warning:", dbErr);
+      }
 
       setAnalysis(analysisResult);
       setCoverLetter(cl);
       
       // Save to both caches
       cacheManager.set(inMemoryKey, resultsToStore, 24 * 60 * 60 * 1000);
-      await firestoreCache.setCache(user.uid, text, jobDesc, resultsToStore);
+      try {
+        await firestoreCache.setCache(user.uid, text, jobDesc, resultsToStore);
+      } catch (cacheErr) {
+        console.warn("Firestore cache set error:", cacheErr);
+      }
 
     } catch (err: any) {
       console.error(err);

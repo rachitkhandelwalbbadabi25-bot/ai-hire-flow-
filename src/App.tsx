@@ -1,9 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from './lib/firebase';
 import Layout from './components/Layout';
 import Landing from './pages/Landing';
+import ATSResumeCheckerSEO from './pages/ATSResumeCheckerSEO';
+import ResumeBuilderSEO from './pages/ResumeBuilderSEO';
+import AIInterviewPrepSEO from './pages/AIInterviewPrepSEO';
+import AIJobSearchSEO from './pages/AIJobSearchSEO';
+import CareerRoadmapSEO from './pages/CareerRoadmapSEO';
 import Dashboard from './pages/Dashboard';
 import ResumeAnalyzer from './pages/ResumeAnalyzer';
 import JobTracker from './pages/JobTracker';
@@ -16,7 +18,7 @@ import CampusPlacement from './pages/CampusPlacement';
 import OutreachHub from './pages/OutreachHub';
 import CreditsPage from './pages/Credits';
 import { ThemeProvider } from './context/ThemeContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { PlanProvider } from './context/PlanContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { SystemOSProvider } from './context/SystemOSContext';
@@ -25,16 +27,7 @@ import { AIProviderProvider } from './context/AIProviderContext';
 import { Sparkles } from 'lucide-react';
 
 function AppRoutes() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return unsubscribe;
-  }, []);
+  const { user, loading: authLoading } = useAuth();
 
   if (authLoading) {
     return (
@@ -61,19 +54,31 @@ function AppRoutes() {
     <Router>
       <Layout user={user}>
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
-          <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" />} />
-          <Route path="/analyzer" element={user ? <ResumeAnalyzer /> : <Navigate to="/" />} />
-          <Route path="/finder" element={user ? <JobFinder /> : <Navigate to="/" />} />
-          <Route path="/interview" element={user ? <InterviewSimulator /> : <Navigate to="/" />} />
-          <Route path="/learning" element={user ? <LearningPath /> : <Navigate to="/" />} />
-          <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" />} />
-          <Route path="/resume-editor" element={user ? <ResumeEditor /> : <Navigate to="/" />} />
-          <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" />} />
-          <Route path="/campus" element={user ? <CampusPlacement /> : <Navigate to="/" />} />
-          <Route path="/outreach" element={user ? <OutreachHub /> : <Navigate to="/" />} />
-          <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
-          <Route path="/credits" element={user ? <CreditsPage /> : <Navigate to="/" />} />
+          <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
+          
+          {/* Public SEO Landing Pages (Always accessible) */}
+          <Route path="/ats-resume-checker" element={<ATSResumeCheckerSEO />} />
+          <Route path="/resume-builder" element={<ResumeBuilderSEO />} />
+          <Route path="/ai-interview-preparation" element={<AIInterviewPrepSEO />} />
+          <Route path="/ai-job-search" element={<AIJobSearchSEO />} />
+          <Route path="/career-roadmap" element={<CareerRoadmapSEO />} />
+
+          {/* Authenticated Application Routes */}
+          <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" replace />} />
+          <Route path="/analyzer" element={user ? <ResumeAnalyzer /> : <Navigate to="/" replace />} />
+          <Route path="/finder" element={user ? <JobFinder /> : <Navigate to="/" replace />} />
+          <Route path="/interview" element={user ? <InterviewSimulator /> : <Navigate to="/" replace />} />
+          <Route path="/learning" element={user ? <LearningPath /> : <Navigate to="/" replace />} />
+          <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" replace />} />
+          <Route path="/resume-editor" element={user ? <ResumeEditor /> : <Navigate to="/" replace />} />
+          <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" replace />} />
+          <Route path="/campus" element={user ? <CampusPlacement /> : <Navigate to="/" replace />} />
+          <Route path="/outreach" element={user ? <OutreachHub /> : <Navigate to="/" replace />} />
+          <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" replace />} />
+          <Route path="/credits" element={user ? <CreditsPage /> : <Navigate to="/" replace />} />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
         </Routes>
       </Layout>
     </Router>

@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, signOut } from 'firebase/auth';
 import { auth, signInWithGoogle } from '../lib/firebase';
 import { cn } from '../lib/utils';
@@ -9,6 +9,7 @@ import AIProviderSelector from './AIProviderSelector';
 import HeaderQuickSearch from './HeaderQuickSearch';
 import MobileBottomNav from './MobileBottomNav';
 import { useLanguage } from '../context/LanguageContext';
+import { PUBLIC_SEO_ROUTES } from './Layout';
 import { 
   BarChart3, 
   FileSearch, 
@@ -28,7 +29,8 @@ import {
   Mic,
   Globe,
   Award,
-  MessageCircle
+  MessageCircle,
+  ArrowRight
 } from 'lucide-react';
 
 import { usePlan } from '../context/PlanContext';
@@ -41,9 +43,23 @@ export default function Navbar({ user }: NavbarProps) {
   const { language, setLanguage, t } = useLanguage();
   const { plan } = usePlan();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  const isPublicRoute = PUBLIC_SEO_ROUTES.includes(location.pathname);
+
   const handleSignOut = () => signOut(auth);
+
+  const handleSignIn = async () => {
+    try {
+      const loggedInUser = await signInWithGoogle();
+      if (loggedInUser) {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Sign in error:', err);
+    }
+  };
 
   const navItems = [
     { name: t('dashboard'), path: '/dashboard', icon: Home },
@@ -79,7 +95,7 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-4">
-              {user && (
+              {user && !isPublicRoute && (
                 <button 
                   onClick={() => setIsDrawerOpen(true)}
                   className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all lg:hidden cursor-pointer"
@@ -90,7 +106,7 @@ export default function Navbar({ user }: NavbarProps) {
                   <Menu className="w-6 h-6" aria-hidden="true" />
                 </button>
               )}
-              <Link to="/" className="min-h-[44px] flex items-center gap-2.5 group" aria-label="AI HireFlow Home">
+              <Link to={user ? "/dashboard" : "/"} className="min-h-[44px] flex items-center gap-2.5 group" aria-label="AI HireFlow Home">
                 <div className="bg-accent p-2 rounded-xl flex items-center justify-center shadow-lg shadow-accent/25 transition-transform group-hover:scale-105" aria-hidden="true">
                   <Briefcase className="w-5 h-5 text-white" />
                 </div>
@@ -106,13 +122,24 @@ export default function Navbar({ user }: NavbarProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              {user && <HeaderQuickSearch />}
+              {user && !isPublicRoute && <HeaderQuickSearch />}
               {user ? (
                 <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
-                   <AIProviderSelector />
-                   <div className="hidden sm:block">
-                      <PlanBadge />
-                   </div>
+                   {!isPublicRoute && <AIProviderSelector />}
+                   {!isPublicRoute && (
+                     <div className="hidden sm:block">
+                        <PlanBadge />
+                     </div>
+                   )}
+                   {isPublicRoute && (
+                     <Link
+                       to="/dashboard"
+                       className="min-h-[40px] bg-accent text-black px-4 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider hover:opacity-90 transition-all shadow-md shadow-accent/20 flex items-center gap-1.5"
+                     >
+                       <LayoutDashboard className="w-3.5 h-3.5" />
+                       <span>Dashboard</span>
+                     </Link>
+                   )}
                    <button
                     onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
                     className="min-h-[44px] min-w-[44px] p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -133,7 +160,7 @@ export default function Navbar({ user }: NavbarProps) {
                 </div>
               ) : (
                 <button
-                  onClick={signInWithGoogle}
+                  onClick={handleSignIn}
                   className="min-h-[44px] bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer flex items-center justify-center"
                   aria-label="Get Started with Google Sign In"
                 >
@@ -145,8 +172,8 @@ export default function Navbar({ user }: NavbarProps) {
         </div>
       </nav>
 
-      {/* Desktop Persistent Sidebar Rail */}
-      {user && (
+      {/* Desktop Persistent Sidebar Rail (Only on authenticated app routes) */}
+      {user && !isPublicRoute && (
         <aside aria-label="Sidebar Navigation" className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r lg:border-border lg:bg-surface/90 lg:backdrop-blur-xl">
           <div className="px-6 py-4 border-b border-border/40">
             <div className="flex items-center gap-2 mb-1">
@@ -194,9 +221,9 @@ export default function Navbar({ user }: NavbarProps) {
         </aside>
       )}
 
-      {/* Side Drawer Overlay (Mobile / Tablet below lg) */}
+      {/* Side Drawer Overlay (Mobile / Tablet below lg, only on authenticated app routes) */}
       <AnimatePresence>
-        {isDrawerOpen && user && (
+        {isDrawerOpen && user && !isPublicRoute && (
           <div className="lg:hidden">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -271,8 +298,8 @@ export default function Navbar({ user }: NavbarProps) {
         )}
       </AnimatePresence>
 
-      {/* Mobile Bottom Tab Bar (< 768px / mobile) */}
-      {user && <MobileBottomNav onOpenOverflowDrawer={() => setIsDrawerOpen(true)} />}
+      {/* Mobile Bottom Tab Bar (< 768px / mobile, only on authenticated app routes) */}
+      {user && !isPublicRoute && <MobileBottomNav onOpenOverflowDrawer={() => setIsDrawerOpen(true)} />}
     </>
   );
 }

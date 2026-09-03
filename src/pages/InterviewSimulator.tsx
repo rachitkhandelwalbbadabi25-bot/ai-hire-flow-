@@ -57,6 +57,14 @@ interface Evaluation {
   keyPointsMissing: string[];
   selfAssessed?: boolean;
   checkedKeyPoints?: string[];
+  starScores?: {
+    situation: number;
+    task: number;
+    action: number;
+    result: number;
+  };
+  strengths?: string[];
+  weaknesses?: string[];
 }
 
 export default function InterviewSimulator() {
@@ -76,6 +84,7 @@ export default function InterviewSimulator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluations, setEvaluations] = useState<Record<string, Evaluation>>({});
+  const [activeQuestionEvaluation, setActiveQuestionEvaluation] = useState<Evaluation | null>(null);
   const [recentResumeText, setRecentResumeText] = useState('');
   const [isFromCache, setIsFromCache] = useState(false);
   const [isDegradedFallback, setIsDegradedFallback] = useState(false);
@@ -267,13 +276,17 @@ export default function InterviewSimulator() {
     }
   };
 
-  const finishQuestionEvaluation = async (qId: string, evaluation: Evaluation) => {
+  const finishQuestionEvaluation = (qId: string, evaluation: Evaluation) => {
     const updatedEvaluations = { ...evaluations, [qId]: evaluation };
     setEvaluations(updatedEvaluations);
+    setActiveQuestionEvaluation(evaluation);
+  };
 
+  const handleProceedToNextQuestion = async () => {
     if (currentIdx < questions.length - 1) {
       setCurrentIdx(prev => prev + 1);
       setUserAnswer('');
+      setActiveQuestionEvaluation(null);
       setShowRubricAssessment(false);
       setCheckedKeyPoints({});
       setSelfScore(7);
@@ -281,7 +294,7 @@ export default function InterviewSimulator() {
     } else {
       // Completed all questions
       let scoreSum = 0;
-      Object.values(updatedEvaluations).forEach((e: any) => {
+      Object.values(evaluations).forEach((e: any) => {
         scoreSum += e.score;
       });
       const aggregateScore = questions.length > 0 ? Math.round((scoreSum / questions.length) * 10) : 0;
@@ -290,7 +303,7 @@ export default function InterviewSimulator() {
         await addDoc(collection(db, 'users', user.uid, 'simulations'), {
           jobDescription,
           questions,
-          evaluations: updatedEvaluations,
+          evaluations,
           score: aggregateScore,
           isDegradedFallback,
           createdAt: new Date().toISOString()
@@ -299,6 +312,7 @@ export default function InterviewSimulator() {
         console.error('Failed to persist simulation record:', dbErr);
       }
 
+      setActiveQuestionEvaluation(null);
       setStep('results');
     }
   };
@@ -307,6 +321,7 @@ export default function InterviewSimulator() {
     setStep('setup');
     setQuestions([]);
     setEvaluations({});
+    setActiveQuestionEvaluation(null);
     setCurrentIdx(0);
     setUserAnswer('');
     setShowRubricAssessment(false);
@@ -614,72 +629,200 @@ export default function InterviewSimulator() {
                 </div>
 
                 {/* Candidate Response Field */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="interview-user-response" className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-widest block font-sans">
-                      Your Technical Answer & Structured Response
-                    </label>
-                    <span className="text-[10px] text-ink-dim font-mono">
-                      {userAnswer.trim().split(/\s+/).filter(Boolean).length} words
-                    </span>
+                {!activeQuestionEvaluation && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="interview-user-response" className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-widest block font-sans">
+                        Your Technical Answer & Structured Response
+                      </label>
+                      <span className="text-[10px] text-ink-dim font-mono">
+                        {userAnswer.trim().split(/\s+/).filter(Boolean).length} words
+                      </span>
+                    </div>
+                    <textarea
+                      id="interview-user-response"
+                      autoFocus
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      placeholder="Structure your answer clearly: outline the core architecture, tradeoffs, algorithms, failure modes, or STAR situation..."
+                      aria-label="Your response to the interview question"
+                      className="w-full h-48 sm:h-56 p-4 sm:p-5 bg-background border border-border rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
+                    />
                   </div>
-                  <textarea
-                    id="interview-user-response"
-                    autoFocus
-                    value={userAnswer}
-                    onChange={(e) => setUserAnswer(e.target.value)}
-                    placeholder="Structure your answer clearly: outline the core architecture, tradeoffs, algorithms, failure modes, or STAR situation..."
-                    aria-label="Your response to the interview question"
-                    className="w-full h-48 sm:h-56 p-4 sm:p-5 bg-background border border-border rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
-                  />
-                </div>
+                )}
 
-                {/* Action Row */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={resetSimulator}
-                    className="min-h-[44px] px-4 py-2 text-ink-dim hover:text-ink text-xs font-mono font-bold uppercase transition-colors cursor-pointer text-left sm:text-center"
+                {/* ACTIVE QUESTION EVALUATION FEEDBACK CARD */}
+                {activeQuestionEvaluation && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-6 sm:p-7 bg-surface-light border border-accent/30 rounded-3xl space-y-6"
                   >
-                    Cancel Drill
-                  </button>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Award className="w-5 h-5 text-accent" />
+                          <h4 className="text-base sm:text-lg font-bold text-ink font-sans">
+                            Candidate Response Evaluated
+                          </h4>
+                        </div>
+                        <p className="text-xs text-ink-dim font-sans mt-0.5">
+                          Evaluated against technical hiring benchmarks
+                        </p>
+                      </div>
 
-                  <div className="flex items-center gap-3">
-                    {/* If in AI mode, give option to view rubric directly */}
-                    {!showRubricAssessment && (
-                      <button
-                        type="button"
-                        onClick={handleOpenRubricEvaluation}
-                        disabled={!userAnswer.trim()}
-                        className="min-h-[44px] px-5 py-2.5 bg-surface-light border border-border text-ink hover:bg-surface rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                      >
-                        <Sliders className="w-3.5 h-3.5 text-accent" />
-                        <span>Self-Assess with Rubric</span>
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <div className="px-4 py-2 bg-accent/10 border border-accent/30 rounded-2xl flex items-baseline gap-1">
+                          <span className="text-xs font-mono font-bold text-ink-dim uppercase">Score</span>
+                          <span className="text-xl sm:text-2xl font-black font-mono text-accent">
+                            {activeQuestionEvaluation.score}
+                          </span>
+                          <span className="text-xs font-mono text-ink-dim">/ 10</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Candidate's Submitted Answer Snapshot */}
+                    <div className="p-3.5 bg-background/60 border border-border/60 rounded-xl space-y-1">
+                      <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider block">
+                        Your Submitted Response:
+                      </span>
+                      <p className="text-xs text-ink/90 font-sans leading-relaxed line-clamp-3">
+                        {userAnswer}
+                      </p>
+                    </div>
+
+                    {/* Recruiter Feedback Statement */}
+                    <div className="p-4 bg-background border border-border rounded-2xl space-y-2">
+                      <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-widest flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-accent" /> Recruiter Assessment
+                      </span>
+                      <p className="text-xs sm:text-sm text-ink font-sans leading-relaxed">
+                        "{activeQuestionEvaluation.feedback}"
+                      </p>
+                    </div>
+
+                    {/* STAR Breakdown if Available */}
+                    {activeQuestionEvaluation.starScores && (
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-widest block">
+                          STAR Framework Scoring
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {[
+                            { label: 'Situation', val: activeQuestionEvaluation.starScores.situation },
+                            { label: 'Task', val: activeQuestionEvaluation.starScores.task },
+                            { label: 'Action', val: activeQuestionEvaluation.starScores.action },
+                            { label: 'Result', val: activeQuestionEvaluation.starScores.result }
+                          ].map((item, idx) => (
+                            <div key={idx} className="p-3 bg-background border border-border rounded-xl text-center">
+                              <span className="text-[10px] font-mono font-bold text-ink-dim uppercase block">
+                                {item.label}
+                              </span>
+                              <span className="text-base sm:text-lg font-black font-mono text-ink mt-0.5 block">
+                                {item.val} <span className="text-[10px] text-ink-dim font-normal">/ 10</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
 
-                    {!showRubricAssessment && mode === 'ai' && !isDegradedFallback && (
+                    {/* Strengths & Improvement Tips Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      {activeQuestionEvaluation.strengths && activeQuestionEvaluation.strengths.length > 0 && (
+                        <div className="p-4 bg-emerald-400/5 border border-emerald-400/20 rounded-2xl space-y-2">
+                          <p className="font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 text-[10px]">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Key Strengths
+                          </p>
+                          <ul className="space-y-1.5">
+                            {activeQuestionEvaluation.strengths.map((str, i) => (
+                              <li key={i} className="text-ink/90 flex items-start gap-2 font-sans">
+                                <span className="text-emerald-400 mt-0.5">•</span>
+                                <span>{str}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="p-4 bg-amber-400/5 border border-amber-400/20 rounded-2xl space-y-2">
+                        <p className="font-mono font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5 text-[10px]">
+                          <RotateCcw className="w-3.5 h-3.5 text-amber-400" /> Improvement Tips
+                        </p>
+                        <ul className="space-y-1.5">
+                          {(activeQuestionEvaluation.improvementTips || []).map((tip, i) => (
+                            <li key={i} className="text-ink/90 flex items-start gap-2 font-sans">
+                              <span className="text-amber-400 mt-0.5">•</span>
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Advance Button */}
+                    <div className="pt-2 flex justify-end">
                       <button
                         type="button"
-                        onClick={submitAnswer}
-                        disabled={!userAnswer.trim() || isEvaluating}
-                        className="min-h-[44px] bg-accent text-black px-6 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        onClick={handleProceedToNextQuestion}
+                        className="min-h-[44px] bg-accent text-black px-7 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all flex items-center gap-2 cursor-pointer"
                       >
-                        {isEvaluating ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Evaluating AI Response...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Submit to AI Evaluator</span>
-                            <Send className="w-3.5 h-3.5" />
-                          </>
-                        )}
+                        <span>{currentIdx < questions.length - 1 ? 'Continue to Next Question' : 'View Full Simulation Report'}</span>
+                        <ArrowRight className="w-4 h-4" />
                       </button>
-                    )}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Action Row when not evaluating or reviewed */}
+                {!activeQuestionEvaluation && (
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={resetSimulator}
+                      className="min-h-[44px] px-4 py-2 text-ink-dim hover:text-ink text-xs font-mono font-bold uppercase transition-colors cursor-pointer text-left sm:text-center"
+                    >
+                      Cancel Drill
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      {/* If in AI mode, give option to view rubric directly */}
+                      {!showRubricAssessment && (
+                        <button
+                          type="button"
+                          onClick={handleOpenRubricEvaluation}
+                          disabled={!userAnswer.trim()}
+                          className="min-h-[44px] px-5 py-2.5 bg-surface-light border border-border text-ink hover:bg-surface rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                          <Sliders className="w-3.5 h-3.5 text-accent" />
+                          <span>Self-Assess with Rubric</span>
+                        </button>
+                      )}
+
+                      {!showRubricAssessment && mode === 'ai' && !isDegradedFallback && (
+                        <button
+                          type="button"
+                          onClick={submitAnswer}
+                          disabled={!userAnswer.trim() || isEvaluating}
+                          className="min-h-[44px] bg-accent text-black px-6 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        >
+                          {isEvaluating ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Evaluating AI Response...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Submit to AI Evaluator</span>
+                              <Send className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* INTERACTIVE SELF-ASSESSMENT RUBRIC SECTION */}
                 {showRubricAssessment && currentQ.rubric && (

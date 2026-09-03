@@ -3,7 +3,7 @@ import { User } from 'firebase/auth';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
-import { extractTextFromPDF } from '../lib/pdf';
+import { extractTextFromFile } from '../lib/pdf';
 import { analyzeResume, generateCoverLetter } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { firestoreCache } from '../services/FirestoreCache';
@@ -189,13 +189,15 @@ export default function ResumeAnalyzer() {
         text = formatMasterResumeToText(masterResume);
         resumeTitle = `Master Resume (${masterResume.experience?.[0]?.role || 'Saved Profile'})`;
         if (!text || text.length < 20) {
-          throw new Error("Saved Master Resume is empty. Please add details in Resume Editor or upload a PDF.");
+          throw new Error("Saved Master Resume is empty. Please add details in Resume Editor or upload a PDF/document.");
         }
       } else if (file) {
-        text = await extractTextFromPDF(file);
+        text = await extractTextFromFile(file);
         resumeTitle = file.name;
       }
       
+      const fileType = file ? (file.name.split('.').pop() || 'pdf') : 'master_resume';
+
       // STEP 1: Check In-Memory (Browser) Cache
       const inMemoryKey = cacheManager.generateResumeKey(text, jobDesc);
       
@@ -250,8 +252,8 @@ export default function ResumeAnalyzer() {
       
       await deductCredit('resumeScans');
 
-      // Execute primary resume audit - optimized for GLM 5.3 Flash
-      const analysisResult = await analyzeResume(text, jobDesc);
+      // Execute primary resume audit - powered by Velona GLM 5.3 Flash
+      const analysisResult = await analyzeResume(text, jobDesc, { fileType });
 
       // Execute optional cover letter sequentially to avoid Velona rate limits / connection choking
       let cl: string | null = null;
@@ -296,7 +298,7 @@ export default function ResumeAnalyzer() {
 
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Internal Analysis Error. Please ensure resume integrity.");
+      setError(err.message || "Resume analysis failed. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -507,9 +509,9 @@ export default function ResumeAnalyzer() {
                       <input 
                         type="file" 
                         className="hidden" 
-                        accept=".pdf" 
+                        accept=".pdf,.docx,.txt" 
                         onChange={handleFileChange}
-                        aria-label="Upload resume PDF file" 
+                        aria-label="Upload resume file (PDF, DOCX, TXT)" 
                       />
                       {file ? (
                         <div className="text-center px-4">
@@ -517,15 +519,15 @@ export default function ResumeAnalyzer() {
                             <FileText className="w-6 h-6 text-black" />
                           </div>
                           <p className="font-bold text-ink text-sm">{file.name}</p>
-                          <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">PDF Ready to Analyze</p>
+                          <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">Document Ready to Analyze</p>
                         </div>
                       ) : (
                         <div className="text-center px-4">
                           <div className="bg-surface-light p-3 rounded-full inline-block mb-2" aria-hidden="true">
                             <FileUp className="w-6 h-6 text-ink-dim" />
                           </div>
-                          <p className="font-bold text-ink text-sm">Select or Drop Resume PDF</p>
-                          <p className="text-[10px] text-ink-dim mt-1 uppercase tracking-widest font-bold">PDF Format Only</p>
+                          <p className="font-bold text-ink text-sm">Select or Drop Resume</p>
+                          <p className="text-[10px] text-ink-dim mt-1 uppercase tracking-widest font-bold">PDF, DOCX, or TXT</p>
                         </div>
                       )}
                     </label>
@@ -761,17 +763,44 @@ export default function ResumeAnalyzer() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {(analysis.scoreBreakdown || []).map((cat: any, idx: number) => (
                   <div key={idx} className="bg-background p-6 rounded-2xl border border-border flex flex-col justify-between space-y-4">
-                    <div>
-                      <div className="flex justify-between items-start mb-2">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
                         <span className="text-xs font-bold text-ink uppercase tracking-wider">{cat.category}</span>
                         <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-surface border border-border rounded-lg text-accent">
                           Weight: {cat.weight}%
                         </span>
                       </div>
-                      <p className="text-xs text-ink-dim leading-relaxed mb-4">{cat.explanation}</p>
+                      <p className="text-xs text-ink-dim leading-relaxed">{cat.explanation}</p>
+
+                      {/* Extracted Evidence from Resume */}
+                      {cat.evidence && (
+                        <div className="bg-surface/70 border border-border/80 p-3 rounded-xl">
+                          <span className="text-[9px] font-mono font-bold text-accent uppercase tracking-wider block mb-1">
+                            Audited Resume Evidence:
+                          </span>
+                          <p className="text-xs text-ink italic font-sans">"{cat.evidence}"</p>
+                        </div>
+                      )}
+
+                      {/* Actionable Recommendations */}
+                      {Array.isArray(cat.recommendations) && cat.recommendations.length > 0 && (
+                        <div className="space-y-1 pt-1">
+                          <span className="text-[9px] font-mono font-bold text-ink-dim uppercase tracking-wider block">
+                            Recommendations:
+                          </span>
+                          <ul className="space-y-1">
+                            {cat.recommendations.map((rec: string, rIdx: number) => (
+                              <li key={rIdx} className="text-[11px] text-ink-dim flex items-start gap-1.5 leading-snug">
+                                <span className="text-accent font-bold mt-0.5">•</span>
+                                <span>{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
+                    <div className="pt-2 border-t border-border/60">
                       {/* Progress Bar */}
                       <div className="w-full bg-surface-light h-2 rounded-full overflow-hidden mb-3 border border-border">
                         <div 

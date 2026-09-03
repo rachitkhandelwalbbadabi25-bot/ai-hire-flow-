@@ -45,13 +45,21 @@ export async function callVelonaChatCompletion({
   temperature = 0.3,
   jsonMode = false,
   maxTokens,
-  requestId
+  requestId,
+  operation = 'general',
+  meta
 }: {
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
   jsonMode?: boolean;
   maxTokens?: number;
   requestId?: string;
+  operation?: string;
+  meta?: {
+    fileType?: string;
+    charCount?: number;
+    wordCount?: number;
+  };
 }) {
   const reqTag = requestId ? `[Req:${requestId}]` : '';
   const apiKey = getVelonaApiKey();
@@ -62,8 +70,19 @@ export async function callVelonaChatCompletion({
     throw error;
   }
 
+  // Sanitize and ensure valid messages
+  let formattedMessages = (messages || [])
+    .filter(m => m && typeof m.content === 'string' && m.content.trim().length > 0)
+    .map(m => ({
+      role: m.role || 'user',
+      content: m.content.trim()
+    }));
+
+  if (formattedMessages.length === 0) {
+    formattedMessages = [{ role: 'user', content: 'Hello' }];
+  }
+
   // Ensure prompt includes explicit JSON directive if jsonMode is requested
-  let formattedMessages = [...messages];
   if (jsonMode) {
     const lastMsg = formattedMessages[formattedMessages.length - 1];
     if (lastMsg && lastMsg.role === 'user' && !lastMsg.content.includes('JSON')) {
@@ -74,29 +93,53 @@ export async function callVelonaChatCompletion({
     }
   }
 
-  const payload: any = {
-    model: VELONA_MODEL_ID,
-    messages: formattedMessages,
-    temperature,
-    ...(maxTokens ? { max_tokens: maxTokens } : {})
-  };
+  // Safe bounded max_tokens for GLM-5.3-Flash (up to 3000 tokens for detailed ATS audits)
+  const safeMaxTokens = maxTokens ? Math.min(Math.max(128, maxTokens), 3500) : 2500;
+  const safeTemperature = typeof temperature === 'number' ? Math.max(0.05, Math.min(0.9, temperature)) : 0.2;
 
   const velonaStart = Date.now();
-  console.log(`[AI HireFlow][Velona]${reqTag} Velona request start: model=${VELONA_MODEL_ID}, messagesCount=${messages.length}, jsonMode=${jsonMode}, maxTokens=${maxTokens || 'default'}`);
+  const approxPromptLength = formattedMessages.reduce((sum, m) => sum + m.content.length, 0);
+  console.log(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Start: model=${VELONA_MODEL_ID}, promptSize=${approxPromptLength} chars, fileType=${meta?.fileType || 'N/A'}, textChars=${meta?.charCount ?? 'N/A'}, textWords=${meta?.wordCount ?? 'N/A'}, jsonMode=${jsonMode}, maxTokens=${safeMaxTokens}`);
 
   // Resilient execution with retry for transient cold-start / network glitches (500/502/503/504)
-  const maxRetries = 2;
+  const maxRetries = 3;
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const attemptStart = Date.now();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 75000);
+    const timeoutId = setTimeout(() => controller.abort(), 80000);
+
+    // On retry attempts after a 500, adapt message structure to merged user message (handles any gateway system-role incompatibilities)
+    let currentMessages = formattedMessages;
+    if (attempt > 0) {
+      const systemParts = formattedMessages.filter(m => m.role === 'system').map(m => m.content);
+      const nonSystemParts = formattedMessages.filter(m => m.role !== 'system');
+      
+      if (systemParts.length > 0 && nonSystemParts.length > 0) {
+        const mergedSystem = systemParts.join('\n\n');
+        const firstUser = nonSystemParts[0];
+        currentMessages = [
+          {
+            role: 'user',
+            content: `[System Instructions: ${mergedSystem}]\n\n${firstUser.content}`
+          },
+          ...nonSystemParts.slice(1)
+        ];
+      }
+    }
+
+    const payload: any = {
+      model: VELONA_MODEL_ID,
+      messages: currentMessages,
+      temperature: safeTemperature,
+      stream: false,
+      max_tokens: safeMaxTokens
+    };
 
     try {
       if (attempt > 0) {
-        const backoffMs = 400 * Math.pow(2, attempt - 1);
-        console.log(`[AI HireFlow][Velona]${reqTag} Retrying Velona request (attempt ${attempt + 1}/${maxRetries + 1}) after ${backoffMs}ms backoff...`);
+        const backoffMs = Math.min(2500, 400 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 200));
         await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
 
@@ -106,8 +149,7 @@ export async function callVelonaChatCompletion({
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
-          'User-Agent': 'AI-HireFlow/2.0',
-          'Connection': 'keep-alive'
+          'User-Agent': 'AI-HireFlow/2.0'
         },
         body: JSON.stringify(payload),
         signal: controller.signal
@@ -126,9 +168,6 @@ export async function callVelonaChatCompletion({
           // errorDetails is plain text
         }
 
-        console.warn(`[AI HireFlow][Velona]${reqTag} Velona HTTP ${response.status} on attempt ${attempt + 1} (${attemptElapsed}ms): ${errorDetails}`);
-
-        // If error is transient (500, 502, 503, 504), retry
         const isTransient = [500, 502, 503, 504].includes(response.status);
         const err: any = new Error(errorDetails || `Velona API responded with HTTP status ${response.status}`);
         err.status = response.status;
@@ -147,22 +186,32 @@ export async function callVelonaChatCompletion({
 
         if (isTransient && attempt < maxRetries) {
           lastError = err;
-          continue; // Try next attempt
+          continue; // Try next attempt with adaptive format and exponential backoff
         }
+        
+        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona HTTP ${response.status} on final attempt ${attempt + 1} (${attemptElapsed}ms): ${errorDetails}`);
         throw err;
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || '';
+      const choice = data.choices?.[0];
+      const content = choice?.message?.content || '';
+      const finishReason = choice?.finish_reason || 'stop';
       const completionTokens = data.usage?.completion_tokens || 0;
       const promptTokens = data.usage?.prompt_tokens || 0;
       const totalTokens = data.usage?.total_tokens || 0;
       const totalElapsed = Date.now() - velonaStart;
 
-      console.log(`[AI HireFlow][Velona]${reqTag} Velona response received: HTTP ${response.status} in ${totalElapsed}ms (attempt ${attempt + 1}), tokens={prompt:${promptTokens}, completion:${completionTokens}, total:${totalTokens}}, contentLength=${content.length}`);
+      // Safe diagnostics: Operation, Model, HTTP status, duration, length, finish_reason, tokens. NEVER log resume text.
+      console.log(`[AI HireFlow][Diagnostics] op=${operation}, model=${VELONA_MODEL_ID}, fileType=${meta?.fileType || 'text'}, charCount=${meta?.charCount ?? approxPromptLength}, wordCount=${meta?.wordCount ?? Math.round(approxPromptLength / 6)}, promptSize=${approxPromptLength}, status=${response.status}, duration=${totalElapsed}ms, responseLength=${content.length}, finish_reason=${finishReason}, tokens={prompt:${promptTokens}, completion:${completionTokens}, total:${totalTokens}}`);
+
+      if (finishReason === 'length') {
+        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] WARNING: Model response hit finish_reason=length (token limit reached, potential output cutoff).`);
+      }
 
       return {
         text: content,
+        finishReason,
         model: data.model || VELONA_MODEL_ID,
         provider: 'velona',
         usage: data.usage,
@@ -175,7 +224,7 @@ export async function callVelonaChatCompletion({
       const attemptElapsed = Date.now() - attemptStart;
       
       if (err.name === 'AbortError') {
-        console.error(`[AI HireFlow][Velona]${reqTag} Velona request aborted after timeout (${attemptElapsed}ms) on attempt ${attempt + 1}.`);
+        console.error(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona request aborted after timeout (${attemptElapsed}ms) on attempt ${attempt + 1}.`);
         lastError = new Error('Velona API request timed out after 75 seconds.');
         lastError.status = 504;
         lastError.code = 'TIMEOUT';
@@ -185,7 +234,7 @@ export async function callVelonaChatCompletion({
 
       // Check if we should retry network errors
       if (attempt < maxRetries && (err.name === 'FetchError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || err.name === 'AbortError')) {
-        console.warn(`[AI HireFlow][Velona]${reqTag} Retrying after network error: ${err.message}`);
+        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Retrying after network error: ${err.message}`);
         continue;
       }
 
@@ -196,7 +245,7 @@ export async function callVelonaChatCompletion({
   }
 
   const totalElapsed = Date.now() - velonaStart;
-  console.error(`[AI HireFlow][Velona]${reqTag} All ${maxRetries + 1} Velona attempts failed after ${totalElapsed}ms:`, lastError?.message);
+  console.error(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] All ${maxRetries + 1} Velona attempts failed after ${totalElapsed}ms:`, lastError?.message);
   throw lastError || new Error('Velona API request failed after retries.');
 }
 
@@ -236,11 +285,13 @@ app.post(['/api/velona/generate', '/api/ai/generate'], async (req, res) => {
       messages: incomingMessages, 
       temperature = 0.3, 
       jsonMode = false, 
-      maxTokens
+      maxTokens,
+      operation = 'general',
+      meta
     } = req.body;
 
     const promptLength = prompt ? prompt.length : (incomingMessages ? JSON.stringify(incomingMessages).length : 0);
-    console.log(`[AI HireFlow][Velona][Req:${requestId}] Request start: timestamp=${new Date().toISOString()}, endpoint=${req.path}, jsonMode=${jsonMode}, promptLength=${promptLength}`);
+    console.log(`[AI HireFlow][Velona][Req:${requestId}][Op:${operation}] Request start: timestamp=${new Date().toISOString()}, endpoint=${req.path}, jsonMode=${jsonMode}, promptLength=${promptLength}, fileType=${meta?.fileType || 'N/A'}, charCount=${meta?.charCount ?? 'N/A'}`);
 
     if (!prompt && (!incomingMessages || incomingMessages.length === 0)) {
       return res.status(400).json({ error: 'Prompt string or messages array is required.' });
@@ -261,7 +312,9 @@ app.post(['/api/velona/generate', '/api/ai/generate'], async (req, res) => {
       temperature,
       jsonMode,
       maxTokens,
-      requestId
+      requestId,
+      operation,
+      meta
     });
 
     const totalDuration = Date.now() - requestStart;

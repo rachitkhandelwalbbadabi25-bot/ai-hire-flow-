@@ -94,6 +94,12 @@ export async function generateWithVelona(options: {
   temperature?: number;
   jsonMode?: boolean;
   maxTokens?: number;
+  operation?: string;
+  meta?: {
+    fileType?: string;
+    charCount?: number;
+    wordCount?: number;
+  };
 }): Promise<string> {
   const endpoint = '/api/velona/generate';
   const res = await fetch(endpoint, {
@@ -104,7 +110,9 @@ export async function generateWithVelona(options: {
       systemPrompt: options.systemPrompt,
       temperature: options.temperature ?? 0.7,
       jsonMode: options.jsonMode ?? false,
-      maxTokens: options.maxTokens
+      maxTokens: options.maxTokens,
+      operation: options.operation || 'general',
+      meta: options.meta
     })
   });
 

@@ -155,6 +155,7 @@ export default function ResumeAnalyzer() {
   }, [location.state]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<string>('Reading resume...');
   const [analysis, setAnalysis] = useState<any>(null);
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -180,6 +181,7 @@ export default function ResumeAnalyzer() {
     setIsAnalyzing(true);
     setError(null);
     setCacheSource(null);
+    setAnalysisStatus('Reading resume...');
 
     try {
       let text = '';
@@ -192,7 +194,7 @@ export default function ResumeAnalyzer() {
           throw new Error("Saved Master Resume is empty. Please add details in Resume Editor or upload a PDF/document.");
         }
       } else if (file) {
-        text = await extractTextFromFile(file);
+        text = await extractTextFromFile(file, (status) => setAnalysisStatus(status));
         resumeTitle = file.name;
       }
       
@@ -253,6 +255,7 @@ export default function ResumeAnalyzer() {
       await deductCredit('resumeScans');
 
       // Execute primary resume audit - powered by Velona GLM 5.3 Flash
+      setAnalysisStatus('Analyzing resume with GLM 5.3 Flash...');
       const analysisResult = await analyzeResume(text, jobDesc, { fileType });
 
       // Execute optional cover letter sequentially to avoid Velona rate limits / connection choking
@@ -336,7 +339,7 @@ export default function ResumeAnalyzer() {
       {isAnalyzing && (
         <div className="my-8">
           <p className="text-xs font-bold text-accent uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" /> Analyzing resume against target parameters...
+            <Loader2 className="w-4 h-4 animate-spin" /> {analysisStatus}
           </p>
           <SkeletonLoader type="card" lines={6} />
         </div>

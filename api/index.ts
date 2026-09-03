@@ -1,6 +1,7 @@
 import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
+import { handleOcrRequest } from './ocr.ts';
 
 export const maxDuration = 60;
 
@@ -13,7 +14,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -573,6 +575,9 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
     res.status(500).json({ error: err.message || 'Failed to verify payment signature' });
   }
 });
+
+// Resume PDF & Image OCR Analysis Endpoint
+app.post('/api/ocr', handleOcrRequest);
 
 // JSON 404 handler for any unmatched /api/* route
 app.all('/api/*', (req, res) => {

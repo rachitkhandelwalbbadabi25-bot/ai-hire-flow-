@@ -93,8 +93,8 @@ export async function callVelonaChatCompletion({
     }
   }
 
-  // Safe bounded max_tokens for GLM-5.3-Flash (up to 3000 tokens for detailed ATS audits)
-  const safeMaxTokens = maxTokens ? Math.min(Math.max(128, maxTokens), 3500) : 2500;
+  // Safe bounded max_tokens for GLM-5.3-Flash (ensures sufficient floor for reasoning tokens)
+  const safeMaxTokens = maxTokens ? Math.min(Math.max(1600, maxTokens), 4096) : 3000;
   const safeTemperature = typeof temperature === 'number' ? Math.max(0.05, Math.min(0.9, temperature)) : 0.2;
 
   const velonaStart = Date.now();
@@ -202,16 +202,37 @@ export async function callVelonaChatCompletion({
       const totalTokens = data.usage?.total_tokens || 0;
       const totalElapsed = Date.now() - velonaStart;
 
-      // Safe diagnostics: Operation, Model, HTTP status, duration, length, finish_reason, tokens. NEVER log resume text.
-      console.log(`[AI HireFlow][Diagnostics] op=${operation}, model=${VELONA_MODEL_ID}, fileType=${meta?.fileType || 'text'}, charCount=${meta?.charCount ?? approxPromptLength}, wordCount=${meta?.wordCount ?? Math.round(approxPromptLength / 6)}, promptSize=${approxPromptLength}, status=${response.status}, duration=${totalElapsed}ms, responseLength=${content.length}, finish_reason=${finishReason}, tokens={prompt:${promptTokens}, completion:${completionTokens}, total:${totalTokens}}`);
+      let jsonParseStatus = 'N/A';
+      if (jsonMode) {
+        try {
+          const stripped = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+          JSON.parse(stripped);
+          jsonParseStatus = 'SUCCESS';
+        } catch {
+          jsonParseStatus = 'FAILED';
+        }
+      }
+
+      // Safe diagnostics: strictly operational metrics without sensitive user prompt/resume content
+      console.log(`[AI HireFlow][Diagnostics] operation=${operation}, model=${VELONA_MODEL_ID}, status=${response.status}, duration=${totalElapsed}ms, prompt_tokens=${promptTokens}, completion_tokens=${completionTokens}, total_tokens=${totalTokens}, finish_reason=${finishReason}, response_length=${content.length}, json_parse=${jsonParseStatus}`);
 
       if (finishReason === 'length') {
-        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] WARNING: Model response hit finish_reason=length (token limit reached, potential output cutoff).`);
+        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] WARNING: Model response hit finish_reason=length (token limit reached, output truncated).`);
+      }
+
+      let cleanText = content;
+      if (jsonMode && typeof cleanText === 'string') {
+        cleanText = cleanText
+          .replace(/^```(?:json)?\s*/i, '')
+          .replace(/\s*```\s*$/i, '')
+          .trim();
       }
 
       return {
-        text: content,
+        text: cleanText,
+        rawText: content,
         finishReason,
+        isTruncated: finishReason === 'length',
         model: data.model || VELONA_MODEL_ID,
         provider: 'velona',
         usage: data.usage,

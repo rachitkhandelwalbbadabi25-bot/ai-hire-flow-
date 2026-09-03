@@ -1,4 +1,4 @@
-import { generateWithVelona } from "./aiProvider";
+import { generateWithVelona, generateWithVelonaDetailed } from "./aiProvider";
 
 export const cleanJson = (text: string): string => {
   if (!text) return '';
@@ -64,89 +64,18 @@ function sanitizeControlCharsInStrings(jsonStr: string): string {
 }
 
 /**
- * Attempts to repair partially truncated JSON arrays or objects.
- */
-function tryRepairTruncatedJson<T>(str: string, targetType: 'object' | 'array'): T | null {
-  try {
-    const sanitized = sanitizeControlCharsInStrings(str).trim();
-    
-    // Case 1: Truncated array: e.g. [ {"a": 1}, {"a": 2}, {"a": 3
-    if (targetType === 'array') {
-      let lastCloseBrace = -1;
-      let depth = 0;
-      let inString = false;
-      let escaped = false;
-      
-      for (let i = 0; i < sanitized.length; i++) {
-        const c = sanitized[i];
-        if (escaped) { escaped = false; continue; }
-        if (c === '\\') { escaped = true; continue; }
-        if (c === '"') { inString = !inString; continue; }
-        if (!inString) {
-          if (c === '{') depth++;
-          else if (c === '}') {
-            depth--;
-            if (depth === 0) {
-              lastCloseBrace = i;
-            }
-          }
-        }
-      }
-      
-      if (lastCloseBrace !== -1) {
-        const repaired = sanitized.slice(0, lastCloseBrace + 1).replace(/,\s*$/, '') + ']';
-        const parsed = JSON.parse(repaired);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed as unknown as T;
-        }
-      }
-    }
-
-    // Case 2: Truncated object: e.g. { "title": "abc", "description": "def", "nested": {
-    if (targetType === 'object') {
-      let inString = false;
-      let escaped = false;
-      let lastCleanSplit = -1;
-      let depth = 0;
-      
-      for (let i = 0; i < sanitized.length; i++) {
-        const c = sanitized[i];
-        if (escaped) { escaped = false; continue; }
-        if (c === '\\') { escaped = true; continue; }
-        if (c === '"') { inString = !inString; continue; }
-        if (!inString) {
-          if (c === '{') depth++;
-          else if (c === '}') depth--;
-          else if (c === ',' && depth === 1) {
-            lastCleanSplit = i;
-          }
-        }
-      }
-      
-      if (lastCleanSplit !== -1) {
-        const repaired = sanitized.slice(0, lastCleanSplit).trim() + '}';
-        const parsed = JSON.parse(repaired);
-        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-          return parsed as unknown as T;
-        }
-      }
-    }
-  } catch {
-    // Repair failed
-  }
-  return null;
-}
-
-/**
  * Robust, schema-safe JSON extractor:
  * 1. Handles markdown fences and extraneous text.
- * 2. Tracks balanced depth for brackets/braces to prevent slicing partial objects.
+ * 2. Tracks balanced depth for brackets/braces to ensure complete structure.
  * 3. Sanitizes unescaped control characters and trailing commas.
- * 4. Repaired recovery for partial/truncated payloads.
- * 5. Detects truncation and provides actionable diagnostics.
+ * 4. Detects truncation and provides clear structured diagnostics without fabricating data.
  */
 export const parseSafeJson = <T = any>(raw: string, fallback?: T): T => {
-  if (!raw || typeof raw !== 'string') return fallback as T;
+  if (!raw || typeof raw !== 'string') {
+    if (fallback !== undefined) return fallback;
+    throw new Error('Empty model response received.');
+  }
+
   const cleaned = cleanJson(raw);
 
   // 1. Direct parse attempt
@@ -211,15 +140,10 @@ export const parseSafeJson = <T = any>(raw: string, fallback?: T): T => {
     }
   }
 
-  // If unclosed structure, try partial repair before throwing
+  // If unclosed structure, fail cleanly without fabricating incomplete jobs or corrupt structures
   if (endIdx === -1 || depth !== 0) {
-    const candidateUnclosed = cleaned.slice(startIdx);
-    const repaired = tryRepairTruncatedJson<T>(candidateUnclosed, targetType);
-    if (repaired !== null) {
-      return repaired;
-    }
     if (fallback !== undefined) return fallback;
-    throw new Error(`Velona (GLM 5.3 Flash) response was truncated or incomplete (unclosed JSON structure, depth=${depth}, length=${cleaned.length}).`);
+    throw new Error(`Velona (GLM 5.3 Flash) response was truncated or incomplete (unclosed JSON ${targetType}, depth=${depth}). Please try again with a refined query.`);
   }
 
   const candidate = cleaned.slice(startIdx, endIdx + 1);
@@ -227,17 +151,13 @@ export const parseSafeJson = <T = any>(raw: string, fallback?: T): T => {
   try {
     return JSON.parse(candidate) as T;
   } catch {
-    // 3. Fallback: sanitize literal control characters in strings and remove trailing commas
+    // Fallback: sanitize literal unescaped control characters in strings and remove trailing commas
     try {
       const sanitized = sanitizeControlCharsInStrings(candidate).replace(/,\s*([\]}])/g, '$1');
       return JSON.parse(sanitized) as T;
-    } catch {
-      const repaired = tryRepairTruncatedJson<T>(candidate, targetType);
-      if (repaired !== null) {
-        return repaired;
-      }
+    } catch (parseErr: any) {
       if (fallback !== undefined) return fallback;
-      throw new Error(`Failed to parse extracted JSON (${targetType}): ${candidate.slice(0, 140)}`);
+      throw new Error(`Failed to parse extracted JSON (${targetType}): ${parseErr.message}`);
     }
   }
 };
@@ -273,7 +193,7 @@ async function executeAICompletion<T = any>({
     fullPrompt = `${prompt}\n\nCRITICAL: Respond ONLY with valid raw JSON matching the requested fields. No markdown fences, no conversational preamble.`;
   }
 
-  const raw = await generateWithVelona({
+  const detailed = await generateWithVelonaDetailed({
     prompt: fullPrompt,
     systemPrompt: systemPrompt || (jsonMode 
       ? "You are an expert AI talent systems engine for AI HireFlow. Output strictly valid, concise JSON." 
@@ -285,10 +205,14 @@ async function executeAICompletion<T = any>({
     meta
   });
 
-  if (jsonMode) {
-    return parseSafeJson<T>(raw);
+  if (detailed.isTruncated || detailed.finishReason === 'length') {
+    throw new Error(`AI response was truncated (token limit reached: ${detailed.usage?.completion_tokens || 'max'}). Please try again with a more specific search query.`);
   }
-  return raw as unknown as T;
+
+  if (jsonMode) {
+    return parseSafeJson<T>(detailed.text);
+  }
+  return detailed.text as unknown as T;
 }
 
 // =========================================================================
@@ -448,14 +372,21 @@ Respond with a single raw JSON object matching these exact keys:
   "summary": string,
   "human_explanation": string
 }
+
+CONCISENESS RULES:
+1. In scoreBreakdown, keep explanation under 20 words, evidence under 15 words, and recommendations to exactly 1 bullet under 15 words.
+2. In skillsAnalysis, include at most 6 top technical skills.
+3. In missingKeywordAnalysis, include at most 3 items with 1-sentence whyItMatters.
+4. Keep formattingSuggestions, impactSuggestions, strengths, and weaknesses to exactly 2 crisp items each under 15 words.
+5. Keep summary and human_explanation under 30 words each.
 `;
 
   const rawData = await executeAICompletion({
     prompt,
-    systemPrompt: "You are an expert, objective ATS Resume Auditor API for AI HireFlow powered by Velona GLM 5.3 Flash. Output strictly valid, comprehensive raw JSON only.",
+    systemPrompt: "You are an expert, objective ATS Resume Auditor API for AI HireFlow powered by Velona GLM 5.3 Flash. Output strictly valid, concise raw JSON only.",
     jsonMode: true,
     temperature: 0.15,
-    maxTokens: 2500,
+    maxTokens: 3200,
     operation: 'resume_analysis',
     meta: {
       fileType,
@@ -557,7 +488,88 @@ Respond with a single raw JSON object matching these exact keys:
 // =========================================================================
 // 2. JOB SEARCH & SEMANTIC MATCHING ENGINE
 // =========================================================================
-export const findJobs = async (queryStr: string, location: string = "", candidateProfileText: string = "") => {
+export interface JobOpportunity {
+  title: string;
+  company: string;
+  location: string;
+  link: string;
+  description: string;
+  datePosted: string;
+  matchScore?: number;
+  roleTier?: 'safe' | 'stretch' | 'reach' | string;
+  matchExplanation?: string;
+  isPoorFit?: boolean;
+}
+
+/**
+ * Validates and normalizes job opportunities returned from the AI engine.
+ * Ensures all required fields are present and safe defaults exist for optional fields.
+ */
+export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
+  let list: any[] = [];
+  if (Array.isArray(rawJobs)) {
+    list = rawJobs;
+  } else if (rawJobs && typeof rawJobs === 'object') {
+    const candidate = (rawJobs as any).jobs || (rawJobs as any).results || (rawJobs as any).opportunities || Object.values(rawJobs).find(v => Array.isArray(v));
+    if (Array.isArray(candidate)) {
+      list = candidate;
+    }
+  }
+
+  if (!Array.isArray(list) || list.length === 0) {
+    throw new Error("No job opportunities were returned by the AI engine. Please refine your search query or location.");
+  }
+
+  const normalized: JobOpportunity[] = [];
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue;
+
+    const title = String(item.title || item.role || '').trim();
+    const company = String(item.company || item.employer || '').trim();
+    if (!title && !company) continue;
+
+    const location = String(item.location || 'Remote / Worldwide').trim();
+    let link = String(item.link || item.url || item.applyUrl || '').trim();
+    if (!link || !link.startsWith('http')) {
+      link = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent((company ? company + ' ' : '') + (title || 'Software Engineer'))}`;
+    }
+
+    const description = String(item.description || item.summary || 'Core responsibilities and technical deliverables.').trim();
+    const datePosted = String(item.datePosted || item.posted || 'Recent').trim();
+
+    let matchScore = typeof item.matchScore === 'number' ? Math.round(item.matchScore) : parseInt(String(item.matchScore), 10);
+    if (isNaN(matchScore) || matchScore <= 0 || matchScore > 100) matchScore = 85;
+
+    let roleTier = typeof item.roleTier === 'string' ? item.roleTier.toLowerCase().trim() : '';
+    if (!['safe', 'stretch', 'reach'].includes(roleTier)) {
+      roleTier = matchScore >= 85 ? 'safe' : (matchScore >= 75 ? 'stretch' : 'reach');
+    }
+
+    const matchExplanation = String(item.matchExplanation || item.explanation || 'Matches candidate core competencies and background criteria.').trim();
+    const isPoorFit = Boolean(item.isPoorFit);
+
+    normalized.push({
+      title: title || 'Software Engineer',
+      company: company || 'Tech Company',
+      location: location || 'Remote',
+      link,
+      description,
+      datePosted,
+      matchScore,
+      roleTier: roleTier as 'safe' | 'stretch' | 'reach',
+      matchExplanation,
+      isPoorFit
+    });
+  }
+
+  if (normalized.length === 0) {
+    throw new Error("Received malformed job items from AI response. Please try again.");
+  }
+
+  return normalized;
+}
+
+export const findJobs = async (queryStr: string, location: string = "", candidateProfileText: string = ""): Promise<JobOpportunity[]> => {
   const isIndianContext = location.toLowerCase().includes('india') || 
                           queryStr.toLowerCase().includes('india') ||
                           queryStr.toLowerCase().includes('bangalore') ||
@@ -566,163 +578,87 @@ export const findJobs = async (queryStr: string, location: string = "", candidat
                           queryStr.toLowerCase().includes('infosys') ||
                           queryStr.toLowerCase().includes('hyderabad') ||
                           queryStr.toLowerCase().includes('pune') ||
-                          queryStr.toLowerCase().includes('delhi');
+                          queryStr.toLowerCase().includes('delhi') ||
+                          queryStr.toLowerCase().includes('gurugram') ||
+                          queryStr.toLowerCase().includes('noida');
 
   const cleanProfile = (candidateProfileText || '')
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
     .replace(/[ \t]+/g, ' ')
     .trim()
-    .slice(0, 800);
+    .slice(0, 400);
 
-  const prompt = `
-    You are a semantic job matching engine for AI HireFlow.
-    Synthesize 4 active, realistic job opportunities for "${queryStr}" in "${location || 'Remote / Worldwide'}".
+  const prompt = `You are the AI Job Finder matching engine for AI HireFlow.
+Synthesize 4 active, realistic job opportunities for "${queryStr}" in "${location || 'Remote / Worldwide'}".
 
-    ${isIndianContext ? `Context: Prioritize Indian tech ecosystems (top portals: Naukri, Instahyre, LinkedIn India; MNCs vs Startups).` : ''}
-    ${cleanProfile ? `CANDIDATE PROFILE HIGHLIGHTS:\n${cleanProfile}` : ''}
+${isIndianContext ? 'Context: Prioritize Indian tech ecosystems (top portals: Naukri, Instahyre, LinkedIn India; MNCs vs Startups).' : ''}
+${cleanProfile ? `Candidate Profile Context:\n${cleanProfile}` : ''}
 
-    RULES:
-    - Score 0-100 based on skills (40%), experience (30%), domain fit (20%), location (10%).
-    - Return a JSON array of exactly 4 job opportunities. Keep descriptions under 20 words and match explanations to 1 concise sentence.
+Output a single compact JSON array of exactly 4 job objects with these exact keys:
+- title: string (exact role title)
+- company: string (company name)
+- location: string (city or Remote)
+- link: string (realistic application URL)
+- description: string (concise core duty summary under 20 words)
+- datePosted: string (e.g. "Just now", "1d ago", "3d ago")
+- matchScore: number (integer 60-98 based on skills/domain fit)
+- roleTier: "safe" | "stretch" | "reach"
+- matchExplanation: string (single crisp sentence under 15 words explaining candidate fit)
+- isPoorFit: boolean (false)
 
-    For each job, include:
-    - title: string
-    - company: string
-    - location: string
-    - link: string (realistic application URL)
-    - description: string (concise summary under 20 words)
-    - datePosted: string (e.g. "1 day ago", "Just now")
-    - matchScore: number (0-100)
-    - roleTier: "safe" | "stretch" | "reach"
-    - matchExplanation: string (1 concise sentence explaining fit)
-    - isPoorFit: boolean
-  `;
+OUTPUT RULES:
+- Output ONLY the raw JSON array.
+- No markdown formatting, no code fences, no introductory or concluding text.`;
 
-  try {
-    const results = await executeAICompletion({
-      prompt,
-      systemPrompt: "You are an expert AI talent systems engine for AI HireFlow. Output strictly valid, concise JSON array only.",
-      jsonMode: true,
-      temperature: 0.1,
-      maxTokens: 2048,
-      operation: 'job_finder'
-    });
+  const results = await executeAICompletion<any>({
+    prompt,
+    systemPrompt: "You are an AI talent search backend API for AI HireFlow. Output strictly valid, compact JSON arrays only.",
+    jsonMode: true,
+    temperature: 0.15,
+    maxTokens: 1600,
+    operation: 'job_finder'
+  });
 
-    if (Array.isArray(results) && results.length > 0) {
-      return results;
-    }
-    if (results && typeof results === 'object') {
-      const list = (results as any).jobs || (results as any).results || (results as any).answer || Object.values(results).find(v => Array.isArray(v));
-      if (Array.isArray(list) && list.length > 0) {
-        return list;
-      }
-    }
-  } catch (err) {
-    console.warn(`[findJobs] AI extraction warning for query "${queryStr}":`, err);
-  }
-
-  // Graceful high-fidelity listing fallback tailored to query and location
-  const loc = location || (isIndianContext ? 'Bengaluru, India (Hybrid)' : 'San Francisco, CA / Remote');
-  const roleTitle = queryStr.trim() || 'Software Engineer';
-  
-  return [
-    {
-      title: `Senior ${roleTitle}`,
-      company: isIndianContext ? "Flipkart" : "Stripe",
-      location: loc,
-      link: isIndianContext ? "https://www.linkedin.com/jobs/search/?keywords=Flipkart" : "https://stripe.com/jobs",
-      description: `Build and scale high-throughput core systems and resilient services for millions of daily active users.`,
-      datePosted: "1 day ago",
-      matchScore: 94,
-      roleTier: "safe",
-      matchExplanation: `Strong match with your technical background and experience in production systems.`,
-      isPoorFit: false
-    },
-    {
-      title: `${roleTitle}`,
-      company: isIndianContext ? "Swiggy" : "Datadog",
-      location: loc,
-      link: isIndianContext ? "https://www.linkedin.com/jobs/search/?keywords=Swiggy" : "https://www.datadoghq.com/careers",
-      description: `Lead architectural design and deliver low-latency services with robust distributed observability.`,
-      datePosted: "2 days ago",
-      matchScore: 88,
-      roleTier: "safe",
-      matchExplanation: `Aligns well with your technical skill set and engineering competencies.`,
-      isPoorFit: false
-    },
-    {
-      title: `Lead ${roleTitle}`,
-      company: isIndianContext ? "Razorpay" : "Airbnb",
-      location: loc,
-      link: isIndianContext ? "https://razorpay.com/jobs" : "https://careers.airbnb.com",
-      description: `Drive engineering excellence, cross-functional technical strategy, and mission-critical platform scale.`,
-      datePosted: "3 days ago",
-      matchScore: 78,
-      roleTier: "stretch",
-      matchExplanation: `Excellent growth opportunity with higher technical leadership expectations.`,
-      isPoorFit: false
-    },
-    {
-      title: `Staff ${roleTitle}`,
-      company: isIndianContext ? "Google India" : "Google",
-      location: loc,
-      link: "https://careers.google.com",
-      description: `Architect large-scale foundational infrastructure and mentor top-tier engineering talent globally.`,
-      datePosted: "Just now",
-      matchScore: 71,
-      roleTier: "reach",
-      matchExplanation: `High-visibility leadership position with deep systems design requirements.`,
-      isPoorFit: false
-    }
-  ];
+  return validateAndNormalizeJobs(results);
 };
 
-export const matchJobsWithProfile = async (userProfileText: string, jobListings: any[]) => {
-  const prompt = `
-    You are a semantic job matching engine. Compare user's profile against job listings and rank by true fit, not keyword overlap.
+export const matchJobsWithProfile = async (userProfileText: string, jobListings: any[]): Promise<JobOpportunity[]> => {
+  const prompt = `You are a semantic job matching engine for AI HireFlow. Compare the user's profile against the given job listings and rank by true fit.
 
-    RULES:
-    - Score 0-100 based on: skills transferability (40%), experience level match (30%), culture/scope fit (20%), location/salary alignment (10%).
-    - Flag "reach" roles vs "safe" roles vs "stretch" roles.
-    - Explain the match in one sentence referencing specific user skills.
-    - If a job is a poor fit, say why honestly.
-    - Output JSON array ranked by matchScore (highest first).
+RULES:
+- Score 0-100 based on skills transferability (40%), experience level match (30%), culture/scope fit (20%), location alignment (10%).
+- Keep match explanations to 1 concise sentence under 15 words.
+- Flag roleTier as "reach" vs "safe" vs "stretch".
+- Output a compact JSON array ranked by matchScore (highest first).
 
-    User Profile:
-    ${(userProfileText || '').slice(0, 1000)}
+User Profile:
+${(userProfileText || '').slice(0, 600)}
 
-    Job Listings:
-    ${JSON.stringify(jobListings).slice(0, 2000)}
+Job Listings:
+${JSON.stringify(jobListings.map(j => ({ title: j.title, company: j.company, location: j.location, description: (j.description || '').slice(0, 80) }))).slice(0, 1200)}
 
-    Return a JSON array of objects with:
-    - title: string
-    - company: string
-    - location: string
-    - link: string
-    - description: string
-    - datePosted: string
-    - matchScore: number (0-100)
-    - roleTier: "safe" | "stretch" | "reach"
-    - matchExplanation: string
-    - isPoorFit: boolean
-  `;
+Return a JSON array of objects with:
+- title: string
+- company: string
+- location: string
+- link: string
+- description: string (concise under 20 words)
+- datePosted: string
+- matchScore: number (0-100)
+- roleTier: "safe" | "stretch" | "reach"
+- matchExplanation: string (single sentence under 15 words)
+- isPoorFit: boolean`;
 
   const results = await executeAICompletion({
     prompt,
+    systemPrompt: "You are an AI job ranking engine for AI HireFlow. Output strictly valid, compact JSON arrays only.",
     jsonMode: true,
-    temperature: 0.1,
-    maxTokens: 2048,
+    temperature: 0.15,
+    maxTokens: 1600,
     operation: 'job_matching'
   });
 
-  if (Array.isArray(results)) {
-    return results;
-  }
-  if (results && typeof results === 'object') {
-    const list = (results as any).jobs || (results as any).results || Object.values(results).find(v => Array.isArray(v));
-    if (Array.isArray(list)) return list;
-  }
-  return [];
+  return validateAndNormalizeJobs(results);
 };
 
 // =========================================================================
@@ -846,6 +782,7 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
     The target role is "${targetRole}".
     
     Provide curated, industry-standard learning resources from platforms like Coursera, Udemy, edX, YouTube, Official Documentation, and freeCodeCamp.
+    Limit roadmap to at most 3 focused sections. For each section, provide at most 2 high-quality resources with descriptions under 15 words.
     
     Return a JSON object with:
     - roadmapTitle: string
@@ -866,7 +803,7 @@ export const generateLearningPath = async (missingSkills: string[], targetRole: 
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 800
+    maxTokens: 2048
   });
 
   const roadmapTitle = res?.roadmapTitle || res?.title || `Accelerated Learning Path: ${targetRole}`;
@@ -998,7 +935,7 @@ export const improveBulletPointWithAI = async (
       prompt,
       jsonMode: true,
       temperature: 0.2,
-      maxTokens: 800
+      maxTokens: 1800
     });
 
     if (result && result.suggestions && result.suggestions.length > 0) {
@@ -1019,6 +956,7 @@ export const refactorResumeText = async (text: string, context: string = "") => 
     - Rewrite bullets using the XYZ formula: "Accomplished [X] as measured by [Y] by doing [Z]"
     - Never fabricate numbers. If no metric exists, suggest a reasonable proxy or bracketed placeholder.
     - Maintain tense consistency.
+    - Keep explanation under 25 words.
     
     Current Text: ${(text || '').slice(0, 500)}
     ${context ? `Target Role Context: ${context.slice(0, 100)}` : ''}
@@ -1032,7 +970,7 @@ export const refactorResumeText = async (text: string, context: string = "") => 
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 400
+    maxTokens: 1600
   });
 };
 
@@ -1045,6 +983,7 @@ export const rewriteResumeBullets = async (bullets: string[], targetRoleContext:
     - Never fabricate numbers. If no metric exists, suggest a reasonable proxy.
     - Maintain tense consistency.
     - Rank by impact potential (high/medium/low).
+    - Keep explanation under 20 words.
 
     Input Bullets:
     ${JSON.stringify(bullets.slice(0, 5))}
@@ -1063,7 +1002,7 @@ export const rewriteResumeBullets = async (bullets: string[], targetRoleContext:
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 800
+    maxTokens: 1800
   });
 
   if (Array.isArray(results)) return results;
@@ -1080,18 +1019,18 @@ export const generateResume = async (userData: any) => {
     ${JSON.stringify(userData).slice(0, 3000)}
     
     Return a JSON object with sections:
-    - summary: string
-    - skills: string[]
-    - experience: { company: string, role: string, period: string, bullets: string[] }[]
+    - summary: string (under 40 words)
+    - skills: string[] (top 10 skills)
+    - experience: { company: string, role: string, period: string, bullets: string[] }[] (max 2 bullets per role)
     - education: { school: string, degree: string, period: string }[]
-    - projects: { name: string, description: string }[]
+    - projects: { name: string, description: string }[] (max 2 projects, description under 25 words)
   `;
 
   return await executeAICompletion({
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 1200
+    maxTokens: 2400
   });
 };
 
@@ -1110,7 +1049,7 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
 
   const prompt = `
     Generate a personalized, persuasive cover letter based on the following resume and job description.
-    Keep it concise, high-impact, and under 250 words across 3 focused paragraphs.
+    Keep it concise, high-impact, and under 200 words across 3 focused paragraphs.
     
     Resume: ${cleanResume}
     Job Description: ${cleanJD}
@@ -1123,7 +1062,7 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 600
+    maxTokens: 1800
   });
 
   if (res && typeof res === 'object' && res.content) {
@@ -1173,7 +1112,7 @@ export const generateOutreachEmail = async (
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 500
+    maxTokens: 1600
   });
 
   let subject = res?.subject || (res?.email?.subject) || `Quick note regarding ${company} engineering`;
@@ -1209,17 +1148,17 @@ export const auditCode = async (code: string, context: any = {}) => {
     ${cleanCode}
 
     Return a JSON object with:
-    - explanation: string (Clear technical summary of the code's behavior, flaws, or architecture)
-    - rootCause: string (The exact root cause of any bug, memory leak, or performance bottleneck found)
+    - explanation: string (Clear technical summary of the code's behavior, flaws, or architecture under 50 words)
+    - rootCause: string (The exact root cause under 30 words)
     - fixedCode: string (The complete, optimized, cleaned-up replacement code)
-    - bestPractices: string[] (3-5 actionable engineering best practice recommendations)
+    - bestPractices: string[] (3 actionable engineering best practice recommendations, each under 15 words)
   `;
 
   const res = await executeAICompletion({
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 1100
+    maxTokens: 2400
   });
 
   return {
@@ -1263,7 +1202,7 @@ export const askAICoach = async (question: string, context: string = "") => {
       prompt,
       jsonMode: true,
       temperature: 0.2,
-      maxTokens: 500
+      maxTokens: 1600
     });
   } catch (err) {
     console.warn("[AI Coach] Fallback to standard advice on error.", err);
@@ -1285,6 +1224,7 @@ export const generateCompanyPrep = async (companyName: string) => {
   const prompt = `
     You are an elite tech campus placement consultant and recruitment lead.
     Generate a tailored preparation bundle for the target company: "${companyName}".
+    Keep round descriptions concise (under 20 words) and limit topQuestions to at most 3 questions.
     
     Return a JSON object with:
     - companyName: string
@@ -1298,14 +1238,14 @@ export const generateCompanyPrep = async (companyName: string) => {
       - question: string (frequently asked coding or core conceptual question for this company)
       - topic: string
       - tip: string (how to tackle this)
-    - prepStrategy: string (holistic advice on how to secure an offer here)
+    - prepStrategy: string (holistic advice under 40 words)
   `;
 
   const res = await executeAICompletion({
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 800
+    maxTokens: 2048
   });
 
   return {
@@ -1326,8 +1266,9 @@ export const generateCompanyPrep = async (companyName: string) => {
 
 export const generateAptitudeQuestions = async (topic: string) => {
   const prompt = `
-    Generate 5 highly-challenging, realistic technical placement interview questions or aptitude questions for the topic: "${topic}".
+    Generate 5 realistic technical placement interview questions or aptitude questions for the topic: "${topic}".
     These should replicate actual questions asked in MNCs and top tech firms (TCS, Infosys, Zoho, Cognizant, Amazon, etc.).
+    Keep explanations under 25 words each.
     
     Return a JSON object with:
     - topicName: string
@@ -1335,14 +1276,14 @@ export const generateAptitudeQuestions = async (topic: string) => {
       - question: string
       - options: string[] (exactly 4 options)
       - correctIndex: number (0 to 3)
-      - explanation: string (detailed step-by-step logic)
+      - explanation: string (step-by-step logic under 25 words)
   `;
 
   const res = await executeAICompletion({
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 800
+    maxTokens: 2048
   });
 
   let rawQuestions: any[] = [];
@@ -1395,18 +1336,18 @@ export const generateStartupChallenge = async (specialization: string) => {
     
     Return a JSON object with:
     - title: string
-    - description: string (the functional product requirements)
+    - description: string (the functional product requirements under 40 words)
     - scaleContext: string (e.g., "Must handle 1M webhooks per hour under $10 monthly budget")
-    - coreTask: string (explicit step-by-step instructions of what they must propose or implement)
-    - checklist: string[] (criteria for passing)
-    - modelSolutionArchitecture: string (a concise summary of how an expert would build it in modern tech stacks)
+    - coreTask: string (step-by-step instructions under 40 words)
+    - checklist: string[] (3 criteria for passing)
+    - modelSolutionArchitecture: string (concise summary under 40 words)
   `;
 
   const res = await executeAICompletion({
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 800
+    maxTokens: 2048
   });
 
   return {
@@ -1432,7 +1373,7 @@ export const generateOnboardingPlan = async (resumeText: string, careerGoals: st
     Return a JSON array of objects representing Day 1 through Day 7 tasks:
     - day: number (1 to 7)
     - title: string
-    - description: string (under 120 characters)
+    - description: string (under 100 characters)
     - creditCost: number (5-25 CR)
     - unlockedFeature: string
     - note: string
@@ -1442,7 +1383,7 @@ export const generateOnboardingPlan = async (resumeText: string, careerGoals: st
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 700
+    maxTokens: 2048
   });
 
   let list: any[] = [];
@@ -1479,15 +1420,15 @@ export const evaluateStartupSolution = async (challengeTitle: string, challengeR
     Return a JSON object with:
     - score: number (from 0 to 100)
     - grade: string (e.g. "Elite", "Strong Pass", "Needs Revision")
-    - feedback: string (CTO level technical assessment, bullet points on strengths and bottlenecks)
-    - scaleCheck: string (specific critique on how well they handled the scaling context)
+    - feedback: string (CTO level technical assessment, 2 bullet points on strengths and bottlenecks, under 60 words)
+    - scaleCheck: string (specific critique on scalability under 40 words)
   `;
 
   const res = await executeAICompletion({
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 700
+    maxTokens: 2048
   });
 
   const parsedScore = typeof res?.score === 'number' ? res.score : Number(String(res?.score || '').replace(/[^0-9.]/g, '')) || 78;

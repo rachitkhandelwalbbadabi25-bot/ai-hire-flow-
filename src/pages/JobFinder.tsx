@@ -118,7 +118,7 @@ export default function JobFinder() {
 
   const handleSearchWithQuery = async (searchQuery: string, searchLoc: string, e?: FormEvent) => {
     if (e) e.preventDefault();
-    if (!searchQuery) return;
+    if (loading || !searchQuery || !searchQuery.trim()) return;
 
     setLoading(true);
     setError(null);
@@ -313,7 +313,8 @@ export default function JobFinder() {
               {error}
             </p>
             <button 
-              onClick={(e) => handleSearch(e as any)}
+              id="retry-search-button"
+              onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Software Engineer", location)}
               className="px-6 py-2.5 bg-accent text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:opacity-90 transition-all cursor-pointer"
             >
               Retry Search

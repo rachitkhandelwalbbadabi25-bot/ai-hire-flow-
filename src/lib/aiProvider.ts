@@ -88,7 +88,23 @@ export async function fetchAIProviders(): Promise<AIProviderInfo[]> {
   ];
 }
 
-export async function generateWithVelona(options: {
+export interface VelonaDetailedResponse {
+  text: string;
+  finishReason: string;
+  isTruncated: boolean;
+  model: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  timing?: {
+    velonaDurationMs: number;
+    totalDurationMs: number;
+  };
+}
+
+export async function generateWithVelonaDetailed(options: {
   prompt: string;
   systemPrompt?: string;
   temperature?: number;
@@ -100,7 +116,7 @@ export async function generateWithVelona(options: {
     charCount?: number;
     wordCount?: number;
   };
-}): Promise<string> {
+}): Promise<VelonaDetailedResponse> {
   const endpoint = '/api/velona/generate';
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -126,7 +142,31 @@ export async function generateWithVelona(options: {
     throw err;
   }
 
-  return data.text || '';
+  return {
+    text: data.text || '',
+    finishReason: data.finishReason || 'stop',
+    isTruncated: Boolean(data.isTruncated || data.finishReason === 'length'),
+    model: data.model || 'z-ai/glm-5.3-flash',
+    usage: data.usage,
+    timing: data.timing
+  };
+}
+
+export async function generateWithVelona(options: {
+  prompt: string;
+  systemPrompt?: string;
+  temperature?: number;
+  jsonMode?: boolean;
+  maxTokens?: number;
+  operation?: string;
+  meta?: {
+    fileType?: string;
+    charCount?: number;
+    wordCount?: number;
+  };
+}): Promise<string> {
+  const detailed = await generateWithVelonaDetailed(options);
+  return detailed.text;
 }
 
 export async function testVelonaIntegration(prompt?: string) {

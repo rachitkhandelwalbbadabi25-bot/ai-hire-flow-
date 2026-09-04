@@ -43,6 +43,9 @@ export default function CampusPlacement() {
   const [isAnswered, setIsAnswered] = useState(false);
   const [drillScore, setDrillScore] = useState(0);
   const [drillComplete, setDrillComplete] = useState(false);
+  const [drillError, setDrillError] = useState<string | null>(null);
+  const [drillAttemptMap, setDrillAttemptMap] = useState<Record<string, number>>({});
+  const [previousQuestionsMap, setPreviousQuestionsMap] = useState<Record<string, string[]>>({});
 
   // Startup Elite Program State
   const [activeStartupTrack, setActiveStartupTrack] = useState<string | null>(null);
@@ -72,24 +75,45 @@ export default function CampusPlacement() {
     }
   };
 
-  const handleStartAptitudeDrill = async (topic: string) => {
+  const handleStartAptitudeDrill = async (topic: string | null) => {
+    if (!topic || loadingDrill) return;
+
+    // Reset drill UI state and clear errors
     setActiveDrillTopic(topic);
     setLoadingDrill(true);
+    setDrillError(null);
     setDrillQuestions([]);
     setCurrentQuestionIndex(0);
     setSelectedOptionIndex(null);
     setIsAnswered(false);
     setDrillScore(0);
     setDrillComplete(false);
+
+    const nextAttempt = (drillAttemptMap[topic] || 0) + 1;
+    setDrillAttemptMap(prev => ({ ...prev, [topic]: nextAttempt }));
+
+    const previousQuestions = previousQuestionsMap[topic] || [];
+
     try {
-      const data = await generateAptitudeQuestions(topic);
-      if (data && data.questions) {
+      const data = await generateAptitudeQuestions(topic, {
+        attempt: nextAttempt,
+        previousQuestions,
+        seed: `${topic}-${nextAttempt}-${Date.now()}`
+      });
+
+      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
         setDrillQuestions(data.questions);
+        const newQuestions = data.questions.map((q: any) => q.question);
+        setPreviousQuestionsMap(prev => ({
+          ...prev,
+          [topic]: [...(prev[topic] || []), ...newQuestions].slice(-30)
+        }));
       } else {
-        setSearchError("Could not generate questions. Please try again.");
+        throw new Error(`No questions generated for "${topic}". Please try again.`);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('[CampusPrep] Drill generation error:', err);
+      setDrillError(err?.message || `Failed to generate a new drill for "${topic}". Please try again.`);
     } finally {
       setLoadingDrill(false);
     }
@@ -433,9 +457,45 @@ export default function CampusPlacement() {
                 </div>
 
                 {loadingDrill ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="w-8 h-8 text-accent animate-spin" />
-                    <span className="text-[10px] font-bold text-ink-dim uppercase tracking-widest animate-pulse">Generating Interview Questions...</span>
+                  <div className="py-16 flex flex-col items-center justify-center gap-3.5 text-center">
+                    <Loader2 className="w-9 h-9 text-accent animate-spin" />
+                    <div>
+                      <span className="text-xs font-bold text-ink uppercase tracking-widest block">
+                        Generating Fresh Drill Questions...
+                      </span>
+                      <span className="text-[10px] text-ink-dim font-medium mt-1 block">
+                        Attempt #{(drillAttemptMap[activeDrillTopic || ''] || 1)} &bull; Velona AI Engine
+                      </span>
+                    </div>
+                  </div>
+                ) : drillError ? (
+                  <div className="py-12 px-6 text-center max-w-md mx-auto">
+                    <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-sm font-bold text-ink uppercase tracking-tight mb-1.5">Drill Generation Issue</h4>
+                    <p className="text-xs text-ink-dim mb-6 leading-relaxed">
+                      {drillError}
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleStartAptitudeDrill(activeDrillTopic)}
+                        disabled={loadingDrill}
+                        className="flex-1 bg-accent text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md shadow-accent/20 cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Try Again
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDrillError(null);
+                          setActiveDrillTopic(null);
+                        }}
+                        className="flex-1 bg-surface border border-border text-ink py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:border-accent/40 transition-all cursor-pointer"
+                      >
+                        Choose Topic
+                      </button>
+                    </div>
                   </div>
                 ) : drillComplete ? (
                   /* Score and completion view */
@@ -461,14 +521,20 @@ export default function CampusPlacement() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => handleStartAptitudeDrill(activeDrillTopic)}
-                        className="flex-1 bg-accent text-white py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md shadow-accent/20"
+                        disabled={loadingDrill}
+                        className="flex-1 bg-accent text-white py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md shadow-accent/20 cursor-pointer disabled:opacity-50"
                       >
-                        <RefreshCw className="w-4 h-4" />
+                        <RefreshCw className={`w-4 h-4 ${loadingDrill ? 'animate-spin' : ''}`} />
                         Try Again
                       </button>
                       <button
-                        onClick={() => setActiveDrillTopic(null)}
-                        className="flex-1 bg-surface border border-border text-ink py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:border-accent/40 transition-all"
+                        onClick={() => {
+                          setActiveDrillTopic(null);
+                          setDrillQuestions([]);
+                          setDrillComplete(false);
+                        }}
+                        disabled={loadingDrill}
+                        className="flex-1 bg-surface border border-border text-ink py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:border-accent/40 transition-all cursor-pointer"
                       >
                         Choose Topic
                       </button>
@@ -567,8 +633,18 @@ export default function CampusPlacement() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-8 text-center text-xs text-ink-dim font-medium">
-                    No questions generated. Please restart.
+                  <div className="p-8 text-center max-w-sm mx-auto space-y-4">
+                    <p className="text-xs text-ink-dim font-medium">
+                      No questions generated for this drill topic.
+                    </p>
+                    <button
+                      onClick={() => handleStartAptitudeDrill(activeDrillTopic)}
+                      disabled={loadingDrill}
+                      className="bg-accent text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-all inline-flex items-center gap-2 cursor-pointer shadow-md shadow-accent/20"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Generate Questions
+                    </button>
                   </div>
                 )}
               </div>

@@ -15,8 +15,6 @@ import {
   Cpu,
   Mic
 } from 'lucide-react';
-import SmartContextChips from '../components/SmartContextChips';
-import { useSystemOS } from '../context/SystemOSContext';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import AILoadingStepper from '../components/AILoadingStepper';
 import { auditCode } from '../lib/gemini';
@@ -122,11 +120,6 @@ export default function CodeRabbit() {
             <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-tighter">Lat: 24ms // Seg: Primary</p>
           </div>
         </div>
-
-        <SmartContextChips 
-          className="mb-8"
-          onSelectSkill={(skill) => setCode(`// Code exercise or debug task for skill gap: ${skill}\nfunction process${skill.replace(/[^a-zA-Z0-9]/g, '')}() {\n  // TODO: Implement solution for ${skill}\n}`)}
-        />
 
         {/* Main Interface Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">

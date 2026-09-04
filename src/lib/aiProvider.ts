@@ -117,7 +117,7 @@ export async function generateWithVelonaDetailed(options: {
     wordCount?: number;
   };
 }): Promise<VelonaDetailedResponse> {
-  const endpoint = '/api/velona/generate';
+  const endpoint = (typeof window !== 'undefined' ? '' : 'http://localhost:3000') + '/api/velona/generate';
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

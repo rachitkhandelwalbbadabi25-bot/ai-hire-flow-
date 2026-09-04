@@ -36,9 +36,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
-import SmartContextChips from '../components/SmartContextChips';
 import QuickStartChecklist from '../components/QuickStartChecklist';
-import RecommendedNextSteps from '../components/RecommendedNextSteps';
 import { useSystemOS } from '../context/SystemOSContext';
 import { askAICoach } from '../lib/gemini';
 import AILoadingStepper from '../components/AILoadingStepper';
@@ -410,8 +408,6 @@ export default function Dashboard() {
         className="mb-8"
       />
 
-      <RecommendedNextSteps className="mb-8" />
-
       {/* ========================================================================= */}
       {/* STATE-BASED PRIMARY HERO BANNER (#1 PRIORITY)                             */}
       {/* ========================================================================= */}
@@ -583,9 +579,9 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* STATE 3: HAS JOBS TRACKED -> SHOW PIPELINE SUMMARY & NEXT ACTIONS */}
+      {/* STATE 3: HAS JOBS TRACKED -> SHOW PIPELINE SUMMARY */}
       {hasJobs && (
-        <section className="mb-10 space-y-6">
+        <section className="mb-10">
           {/* Pipeline Bar */}
           <div className="bg-surface border border-border rounded-2xl p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-border">
@@ -602,7 +598,7 @@ export default function Dashboard() {
                 onClick={() => navigate('/jobs')}
                 className="bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-2 hover:bg-accent/90 transition-all self-start sm:self-center"
               >
-                Manage Pipeline Kanban <ArrowRight className="w-3.5 h-3.5" />
+                Manage Job Tracker <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -626,53 +622,6 @@ export default function Dashboard() {
                 <p className="text-[10px] font-bold text-ink-dim uppercase tracking-wider">Interview Readiness</p>
                 <p className="text-3xl font-extrabold font-mono text-ink mt-1">{stats.simulationsRun > 0 ? `${stats.interviewReadiness}%` : 'N/A'}</p>
                 <p className="text-[10px] text-ink-dim mt-1">{stats.simulationsRun} drills completed</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Queue */}
-          <div className="bg-surface border border-border rounded-2xl p-6">
-            <h3 className="text-sm font-bold text-ink uppercase tracking-wider font-mono mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-accent" /> Recommended Immediate Actions
-            </h3>
-            
-            <div className="space-y-3">
-              <div className="bg-background border border-border hover:border-accent/40 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-bold font-mono text-accent bg-accent/10 px-2 py-0.5 rounded">High Priority</span>
-                    <span className="text-xs text-ink font-bold">Simulate Interview Rounds</span>
-                  </div>
-                  <p className="text-xs text-ink-dim">
-                    {stats.interviews > 0 
-                      ? `You have ${stats.interviews} upcoming interview rounds. Calibrate technical and behavioral questions in the Lab.` 
-                      : 'Prepare for unexpected technical screenings by running mock interview simulations.'}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => navigate('/interview')}
-                  className="bg-accent text-black px-4 py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider hover:bg-accent/90 transition-all shrink-0 self-start sm:self-center"
-                >
-                  Start Mock Drill
-                </button>
-              </div>
-
-              <div className="bg-background border border-border hover:border-accent/40 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-bold font-mono text-ink-dim bg-surface px-2 py-0.5 rounded border border-border">Outreach</span>
-                    <span className="text-xs text-ink font-bold">Draft Referral Outreach Emails</span>
-                  </div>
-                  <p className="text-xs text-ink-dim">
-                    Generate cold Gmail outreach pitches to recruiters and engineering managers at your tracked companies.
-                  </p>
-                </div>
-                <button 
-                  onClick={() => navigate('/outreach')}
-                  className="bg-surface-light border border-border hover:border-accent/40 text-ink px-4 py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all shrink-0 self-start sm:self-center"
-                >
-                  Open Outreach Hub
-                </button>
               </div>
             </div>
           </div>

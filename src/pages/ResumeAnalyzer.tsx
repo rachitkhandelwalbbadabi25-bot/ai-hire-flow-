@@ -42,8 +42,6 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { formatCreditAvailability } from '../utils/formatters';
-import SmartContextChips from '../components/SmartContextChips';
-import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 interface MasterResumeData {
@@ -365,10 +363,7 @@ export default function ResumeAnalyzer() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-wider">
-                      AI System Context Engine
-                    </span>
-                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 bg-background border border-border text-ink-dim rounded-full">
-                      pre_populated: false
+                      Master Resume Profile
                     </span>
                   </div>
                   <h3 className="text-sm font-bold text-ink mt-0.5">
@@ -389,11 +384,6 @@ export default function ResumeAnalyzer() {
               </Link>
             </motion.div>
           )}
-
-          <SmartContextChips 
-            onSelectRole={(role) => setJobDesc(`Target Role: ${role}\nResponsibilities: Software development, technical design, clean architecture.`)}
-            onSelectJob={(jobTitle) => setJobDesc(`Position: ${jobTitle}\nKey Requirements: Technical leadership, system design, and software development.`)}
-          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Left Card: Master Resume Pre-Populated OR Upload Card */}

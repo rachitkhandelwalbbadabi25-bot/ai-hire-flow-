@@ -33,8 +33,6 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { generateOutreachEmail } from "../lib/gemini";
-import SmartContextChips from "../components/SmartContextChips";
-import { useSystemOS } from "../context/SystemOSContext";
 import SkeletonLoader from "../components/SkeletonLoader";
 import EmptyState from "../components/EmptyState";
 
@@ -281,19 +279,6 @@ export default function OutreachHub() {
           connections dynamically.
         </p>
       </div>
-
-      <SmartContextChips 
-        className="mb-8"
-        onSelectJob={(jobDesc) => {
-          const parts = jobDesc.split(' at ');
-          if (parts.length === 2) {
-            setNewCompany(parts[1]);
-          } else {
-            setNewCompany(jobDesc);
-          }
-          setShowAddModal(true);
-        }}
-      />
 
       {/* Add Connection Modal */}
       <AnimatePresence>

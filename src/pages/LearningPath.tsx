@@ -48,7 +48,6 @@ interface LearningPathProps {
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { Link, useLocation } from 'react-router-dom';
-import SmartContextChips from '../components/SmartContextChips';
 import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
@@ -168,16 +167,6 @@ export default function LearningPath() {
           Convert alignment gaps into strategic growth trajectories using validated career requirements.
         </p>
       </div>
-
-      <SmartContextChips 
-        className="mb-8"
-        onSelectRole={(role) => setTargetRole(role)}
-        onSelectSkill={(skill) => {
-          if (!skillsStr.includes(skill)) {
-            setSkillsStr(skillsStr ? `${skillsStr}, ${skill}` : skill);
-          }
-        }}
-      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Sidebar Config */}

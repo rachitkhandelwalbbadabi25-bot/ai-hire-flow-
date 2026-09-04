@@ -19,7 +19,6 @@ import {
 import { cn, formatDate } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
-import SmartContextChips from '../components/SmartContextChips';
 import { useSystemOS } from '../context/SystemOSContext';
 import EmptyState from '../components/EmptyState';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
@@ -147,11 +146,6 @@ export default function JobTracker() {
           </button>
         </div>
       </div>
-
-      <SmartContextChips 
-        className="mb-8"
-        onSelectRole={(role) => setSearch(role)}
-      />
 
       {loading ? (
         <div className="h-64 flex items-center justify-center">

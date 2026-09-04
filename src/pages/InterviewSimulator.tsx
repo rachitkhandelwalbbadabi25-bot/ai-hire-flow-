@@ -35,7 +35,6 @@ import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { Link, useLocation } from 'react-router-dom';
 import { formatCreditAvailability } from '../utils/formatters';
-import SmartContextChips from '../components/SmartContextChips';
 import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { INTERVIEW_QUESTION_BANK, BankQuestion, getQuestionsForRoleAndSkills, RubricCriteria } from '../data/interviewQuestionBank';
@@ -447,12 +446,6 @@ export default function InterviewSimulator() {
                 </button>
               </div>
             </div>
-
-            {/* Smart Context Quick Chips */}
-            <SmartContextChips 
-              onSelectRole={(role) => setJobDescription(`Target Role: ${role}\nCompany: High Growth Technology Enterprise\nResponsibilities: Scalable architecture, production resilience, and cross-functional leadership.`)}
-              onSelectJob={(jobTitle) => setJobDescription(`Interview Drill for: ${jobTitle}\nFocusing on core engineering requirements, concurrency, and behavioral leadership.`)}
-            />
 
             {/* Target Role & Weak Skills Selection */}
             {mode === 'text_practice' && (

@@ -1351,26 +1351,71 @@ export const generateCompanyPrep = async (companyName: string) => {
   };
 };
 
-export const generateAptitudeQuestions = async (topic: string) => {
+export interface AptitudeQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+export interface GenerateAptitudeOptions {
+  attempt?: number;
+  previousQuestions?: string[];
+  seed?: string;
+}
+
+export const generateAptitudeQuestions = async (
+  topic: string,
+  drillOptions?: GenerateAptitudeOptions
+): Promise<{ topicName: string; questions: AptitudeQuestion[] }> => {
+  const attempt = drillOptions?.attempt || 1;
+  const previousQuestions = (drillOptions?.previousQuestions || [])
+    .filter(Boolean)
+    .slice(-10); // Keep last 10 to avoid excessive token size while preventing repeats
+  const seed = drillOptions?.seed || Math.random().toString(36).substring(2, 8);
+
+  // Subtopic guidance to enforce variety across attempts
+  let subtopicGuidance = "";
+  const lowerTopic = (topic || "").toLowerCase();
+  if (lowerTopic.includes("logical") || lowerTopic.includes("quant")) {
+    subtopicGuidance = "Include questions covering varied topics such as: Probability, Permutations & Combinations, Time & Work, Speed Distance & Time, Syllogisms, Blood Relations, Number Series, Data Sufficiency, or Ratio & Proportion.";
+  } else if (lowerTopic.includes("cs") || lowerTopic.includes("fundamental")) {
+    subtopicGuidance = "Include questions covering varied topics such as: Operating Systems (process scheduling, deadlocks, paging), DBMS & SQL (ACID, normal forms, indexing, joins), OOP (polymorphism, abstraction, design patterns), Computer Networks (TCP/IP, HTTP/HTTPS, DNS, OSI), or Data Structures.";
+  } else if (lowerTopic.includes("system") || lowerTopic.includes("design")) {
+    subtopicGuidance = "Include questions covering varied topics such as: Scalability, Caching (Redis/Memcached eviction), Load Balancing, Database Sharding & Replication, CAP Theorem, Rate Limiting algorithms, Message Queues (Kafka/RabbitMQ), or Microservice Resilience.";
+  }
+
   const prompt = `
-    Generate 5 realistic technical placement interview questions or aptitude questions for the topic: "${topic}".
-    These should replicate actual questions asked in MNCs and top tech firms (TCS, Infosys, Zoho, Cognizant, Amazon, etc.).
-    Keep explanations under 25 words each.
-    
-    Return a JSON object with:
-    - topicName: string
-    - questions: array of objects:
-      - question: string
-      - options: string[] (exactly 4 options)
-      - correctIndex: number (0 to 3)
-      - explanation: string (step-by-step logic under 25 words)
-  `;
+Generate 5 realistic technical placement interview questions or aptitude questions for the topic: "${topic}".
+These should replicate actual questions asked in MNCs and top tech firms (TCS, Infosys, Zoho, Cognizant, Amazon, Google, etc.).
+ATTEMPT NUMBER: ${attempt} (Generation Seed: ${seed}).
+
+CRITICAL INSTRUCTIONS:
+1. GENERATE A FRESH, COMPLETELY NEW QUESTION SET:
+   - This is practice attempt #${attempt}. Do NOT repeat, paraphrase, or reuse any questions from previous practice attempts.
+   ${previousQuestions.length > 0 ? `PREVIOUS QUESTIONS ALREADY SEEN BY CANDIDATE (STRICTLY DO NOT REUSE THESE):\n${previousQuestions.map((q, idx) => `   ${idx + 1}. "${q.slice(0, 140)}"`).join('\n')}\n` : ''}
+2. DIVERSE COVERAGE:
+   ${subtopicGuidance || 'Ensure each of the 5 questions tests a distinctly different concept or subtopic.'}
+3. STRUCTURE REQUIREMENTS:
+   - Every question must have exactly 4 distinct, plausible options.
+   - "correctIndex" MUST be a valid 0-based integer index (0, 1, 2, or 3) pointing to the exact correct choice in the "options" array.
+   - "explanation" must provide concise, step-by-step logic under 30 words explaining why the answer is correct.
+
+Return a JSON object with:
+- topicName: string
+- questions: array of 5 objects:
+  - question: string
+  - options: string[] (exactly 4 options)
+  - correctIndex: number (0, 1, 2, or 3)
+  - explanation: string
+`;
 
   const res = await executeAICompletion({
     prompt,
     jsonMode: true,
-    temperature: 0.2,
-    maxTokens: 2048
+    temperature: 0.7, // Higher temperature guarantees dynamic variety between attempts
+    maxTokens: 2400,
+    operation: 'campus_aptitude_drill'
   });
 
   let rawQuestions: any[] = [];
@@ -1379,41 +1424,68 @@ export const generateAptitudeQuestions = async (topic: string) => {
   } else if (Array.isArray(res)) {
     rawQuestions = res;
   } else if (res && typeof res === 'object') {
-    rawQuestions = Object.values(res).find(v => Array.isArray(v)) as any[] || [];
+    for (const key of ['questions', 'items', 'quiz', 'problems', 'data']) {
+      if (Array.isArray((res as any)[key])) {
+        rawQuestions = (res as any)[key];
+        break;
+      }
+    }
+    if (rawQuestions.length === 0) {
+      rawQuestions = Object.values(res).find(v => Array.isArray(v)) as any[] || [];
+    }
+  }
+
+  const validQuestions: AptitudeQuestion[] = rawQuestions
+    .filter((q: any) => q && typeof q.question === 'string' && q.question.trim().length > 5)
+    .map((q: any, i: number) => {
+      let optionsList: string[] = [];
+      if (Array.isArray(q.options) && q.options.length > 0) {
+        optionsList = q.options.map((opt: any) => String(opt).trim()).filter(Boolean);
+      } else if (q.options && typeof q.options === 'object') {
+        optionsList = Object.values(q.options).map((opt: any) => String(opt).trim()).filter(Boolean);
+      }
+
+      // Ensure at least 4 options exist
+      if (optionsList.length < 4) {
+        const fallbacks = ["Option A", "Option B", "Option C", "Option D"];
+        while (optionsList.length < 4) {
+          optionsList.push(fallbacks[optionsList.length] || `Option ${optionsList.length + 1}`);
+        }
+      } else if (optionsList.length > 4) {
+        optionsList = optionsList.slice(0, 4);
+      }
+
+      let correctIdx = 0;
+      if (typeof q.correctIndex === 'number' && !isNaN(q.correctIndex)) {
+        correctIdx = Math.min(optionsList.length - 1, Math.max(0, Math.floor(q.correctIndex)));
+      } else if (typeof q.correctOption === 'number' && !isNaN(q.correctOption)) {
+        correctIdx = Math.min(optionsList.length - 1, Math.max(0, Math.floor(q.correctOption)));
+      } else if (typeof q.correct_option === 'string') {
+        const match = q.correct_option.trim().toUpperCase();
+        if (match === 'A' || match === '0' || match === 'OPTION A') correctIdx = 0;
+        else if (match === 'B' || match === '1' || match === 'OPTION B') correctIdx = 1;
+        else if (match === 'C' || match === '2' || match === 'OPTION C') correctIdx = 2;
+        else if (match === 'D' || match === '3' || match === 'OPTION D') correctIdx = 3;
+      } else if (typeof q.answer === 'string') {
+        const answerIdx = optionsList.findIndex(opt => opt.toLowerCase() === q.answer.toLowerCase());
+        if (answerIdx >= 0) correctIdx = answerIdx;
+      }
+
+      return {
+        question: q.question.trim(),
+        options: optionsList,
+        correctIndex: correctIdx,
+        explanation: q.explanation || "Review the step-by-step logic for this problem."
+      };
+    });
+
+  if (validQuestions.length === 0) {
+    throw new Error(`AI generated an invalid question set for "${topic}". Please try again.`);
   }
 
   return {
     topicName: res?.topicName || topic,
-    questions: rawQuestions.map((q: any, i: number) => {
-      let optionsList: string[] = [];
-      if (Array.isArray(q.options)) {
-        optionsList = q.options.map(String);
-      } else if (q.options && typeof q.options === 'object') {
-        optionsList = Object.values(q.options).map(String);
-      } else {
-        optionsList = ["Option A", "Option B", "Option C", "Option D"];
-      }
-
-      let correctIdx = 0;
-      if (typeof q.correctIndex === 'number') {
-        correctIdx = Math.min(optionsList.length - 1, Math.max(0, q.correctIndex));
-      } else if (typeof q.correctOption === 'number') {
-        correctIdx = Math.min(optionsList.length - 1, Math.max(0, q.correctOption));
-      } else if (typeof q.correct_option === 'string') {
-        const match = q.correct_option.trim().toUpperCase();
-        if (match === 'A') correctIdx = 0;
-        else if (match === 'B') correctIdx = 1;
-        else if (match === 'C') correctIdx = 2;
-        else if (match === 'D') correctIdx = 3;
-      }
-
-      return {
-        question: q.question || `Practice problem ${i + 1}`,
-        options: optionsList,
-        correctIndex: correctIdx,
-        explanation: q.explanation || "Review the step-by-step mathematical or logical solution for this problem."
-      };
-    })
+    questions: validQuestions
   };
 };
 

@@ -67,8 +67,8 @@ export default function OnboardingTour() {
       actionText: 'View Analysis Setup'
     },
     {
-      title: 'Step 3: Recommended Tasks Home Base',
-      description: 'Your Dashboard features a live Recommended Tasks card—use it as your daily home base to track actions and placement progress.',
+      title: 'Step 3: Dashboard Command Center',
+      description: 'Your Dashboard features a live progress checklist and career metrics—use it as your daily home base to track actions and placement progress.',
       path: '/dashboard',
       icon: CheckCircle,
       accent: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',

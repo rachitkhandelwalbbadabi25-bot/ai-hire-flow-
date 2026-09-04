@@ -20,7 +20,6 @@ import CreditsPage from './pages/Credits';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PlanProvider } from './context/PlanContext';
-import { LanguageProvider } from './context/LanguageContext';
 import { SystemOSProvider } from './context/SystemOSContext';
 import { A11yProvider } from './context/A11yContext';
 import { AIProviderProvider } from './context/AIProviderContext';
@@ -88,19 +87,17 @@ function AppRoutes() {
 export default function App() {
   return (
     <A11yProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <PlanProvider>
-            <AIProviderProvider>
-              <SystemOSProvider>
-                <ThemeProvider>
-                  <AppRoutes />
-                </ThemeProvider>
-              </SystemOSProvider>
-            </AIProviderProvider>
-          </PlanProvider>
-        </AuthProvider>
-      </LanguageProvider>
+      <AuthProvider>
+        <PlanProvider>
+          <AIProviderProvider>
+            <SystemOSProvider>
+              <ThemeProvider>
+                <AppRoutes />
+              </ThemeProvider>
+            </SystemOSProvider>
+          </AIProviderProvider>
+        </PlanProvider>
+      </AuthProvider>
     </A11yProvider>
   );
 }

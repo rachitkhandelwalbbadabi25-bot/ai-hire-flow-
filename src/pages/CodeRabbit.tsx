@@ -67,7 +67,7 @@ export default function CodeRabbit() {
     try {
       await deductCredit('portfolioReview');
       await new Promise(r => setTimeout(r, 800));
-      addLog("Analyzing syntax tree with Velona GLM 5.3 Flash...");
+      addLog("Analyzing syntax tree...");
       
       const response = await auditCode(code, { 
         platform: 'React',

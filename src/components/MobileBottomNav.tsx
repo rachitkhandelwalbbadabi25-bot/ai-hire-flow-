@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { useLanguage } from '../context/LanguageContext';
 
 interface MobileBottomNavProps {
   onOpenOverflowDrawer: () => void;
@@ -27,7 +26,6 @@ interface MobileBottomNavProps {
 export default function MobileBottomNav({ onOpenOverflowDrawer }: MobileBottomNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useLanguage();
   const [isPrepSheetOpen, setIsPrepSheetOpen] = useState(false);
 
   // Close prep sheet on location change

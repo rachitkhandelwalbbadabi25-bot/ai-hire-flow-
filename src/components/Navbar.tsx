@@ -5,10 +5,8 @@ import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import PlanBadge from './PlanBadge';
-import AIProviderSelector from './AIProviderSelector';
 import HeaderQuickSearch from './HeaderQuickSearch';
 import MobileBottomNav from './MobileBottomNav';
-import { useLanguage } from '../context/LanguageContext';
 import { PUBLIC_SEO_ROUTES } from './Layout';
 import { 
   BarChart3, 
@@ -27,7 +25,6 @@ import {
   Home,
   GraduationCap,
   Mic,
-  Globe,
   Award,
   MessageCircle,
   ArrowRight
@@ -40,7 +37,6 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user }: NavbarProps) {
-  const { language, setLanguage, t } = useLanguage();
   const { plan } = usePlan();
   const location = useLocation();
   const navigate = useNavigate();
@@ -62,17 +58,17 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   const navItems = [
-    { name: t('dashboard'), path: '/dashboard', icon: Home },
-    { name: t('jobFinder'), path: '/finder', icon: Search },
-    { name: t('campusPlacement'), path: '/campus', icon: Award },
-    { name: t('outreach'), path: '/outreach', icon: MessageCircle },
-    { name: t('analyzer'), path: '/analyzer', icon: BarChart3 },
-    { name: t('interviewLab'), path: '/interview', icon: Mic },
-    { name: t('learningPath'), path: '/learning', icon: GraduationCap },
-    { name: t('resumeEditor'), path: '/editor', icon: FileEdit },
-    { name: t('jobTracker'), path: '/jobs', icon: Briefcase },
+    { name: 'Dashboard', path: '/dashboard', icon: Home },
+    { name: 'Job Finder', path: '/finder', icon: Search },
+    { name: 'Campus Prep', path: '/campus', icon: Award },
+    { name: 'Outreach & Alerts', path: '/outreach', icon: MessageCircle },
+    { name: 'Analyzer', path: '/analyzer', icon: BarChart3 },
+    { name: 'Interview Lab', path: '/interview', icon: Mic },
+    { name: 'Learning Path', path: '/learning', icon: GraduationCap },
+    { name: 'Resume Editor', path: '/editor', icon: FileEdit },
+    { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
     { name: 'AI Credit Wallet', path: '/credits', icon: Sparkles },
-    { name: t('profile'), path: '/profile', icon: UserIcon },
+    { name: 'Profile', path: '/profile', icon: UserIcon },
   ];
 
   const getPlanLabel = (p: string) => {
@@ -125,7 +121,6 @@ export default function Navbar({ user }: NavbarProps) {
               {user && !isPublicRoute && <HeaderQuickSearch />}
               {user ? (
                 <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
-                   {!isPublicRoute && <AIProviderSelector />}
                    {!isPublicRoute && (
                      <div className="hidden sm:block">
                         <PlanBadge />
@@ -141,15 +136,6 @@ export default function Navbar({ user }: NavbarProps) {
                      </Link>
                    )}
                    <button
-                    onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-                    className="min-h-[44px] min-w-[44px] p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    aria-label={language === 'en' ? 'Switch interface to Hindi' : 'Switch interface to English'}
-                    title={language === 'en' ? 'हिन्दी में बदलें' : 'Switch to English'}
-                  >
-                    <Globe className="w-5 h-5" aria-hidden="true" />
-                    <span className="text-[10px] font-bold uppercase hidden md:inline">{language === 'en' ? 'EN' : 'HI'}</span>
-                  </button>
-                   <button
                     onClick={handleSignOut}
                     className="min-h-[44px] min-w-[44px] p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center justify-center cursor-pointer"
                     aria-label="Sign out of account"
@@ -164,7 +150,7 @@ export default function Navbar({ user }: NavbarProps) {
                   className="min-h-[44px] bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer flex items-center justify-center"
                   aria-label="Get Started with Google Sign In"
                 >
-                  {t('getStarted')}
+                  Get Started
                 </button>
               )}
             </div>

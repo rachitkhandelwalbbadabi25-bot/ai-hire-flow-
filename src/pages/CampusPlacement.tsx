@@ -6,7 +6,6 @@ import {
   Lightbulb, HelpCircle, ArrowRight, Star, GraduationCap, 
   Check, RefreshCw, Send, Terminal, Award, BookCheck, MessageSquare
 } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
 import { 
   generateCompanyPrep, 
   generateAptitudeQuestions, 
@@ -17,8 +16,6 @@ import AILoadingStepper from '../components/AILoadingStepper';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 
 export default function CampusPlacement() {
-  const { t } = useLanguage();
-
   // Company Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);

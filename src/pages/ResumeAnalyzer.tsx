@@ -254,8 +254,8 @@ export default function ResumeAnalyzer() {
       
       await deductCredit('resumeScans');
 
-      // Execute primary resume audit - powered by Velona GLM 5.3 Flash
-      setAnalysisStatus('Analyzing resume with GLM 5.3 Flash...');
+      // Execute primary resume audit
+      setAnalysisStatus('Analyzing resume...');
       const analysisResult = await analyzeResume(text, jobDesc, { fileType });
 
       // Execute optional cover letter sequentially to avoid Velona rate limits / connection choking

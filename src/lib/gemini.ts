@@ -143,7 +143,9 @@ export const parseSafeJson = <T = any>(raw: string, fallback?: T): T => {
   // If unclosed structure, fail cleanly without fabricating incomplete jobs or corrupt structures
   if (endIdx === -1 || depth !== 0) {
     if (fallback !== undefined) return fallback;
-    throw new Error(`Velona (GLM 5.3 Flash) response was truncated or incomplete (unclosed JSON ${targetType}, depth=${depth}). Please try again with a refined query.`);
+    const err: any = new Error("The AI response was too large. Please try a more specific search.");
+    err.code = "AI_RESPONSE_TRUNCATED";
+    throw err;
   }
 
   const candidate = cleaned.slice(startIdx, endIdx + 1);
@@ -206,7 +208,9 @@ async function executeAICompletion<T = any>({
   });
 
   if (detailed.isTruncated || detailed.finishReason === 'length') {
-    throw new Error(`AI response was truncated (token limit reached: ${detailed.usage?.completion_tokens || 'max'}). Please try again with a more specific search query.`);
+    const error: any = new Error("The AI response was too large. Please try a more specific search.");
+    error.code = "AI_RESPONSE_TRUNCATED";
+    throw error;
   }
 
   if (jsonMode) {
@@ -569,57 +573,140 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
   return normalized;
 }
 
-export const findJobs = async (queryStr: string, location: string = "", candidateProfileText: string = ""): Promise<JobOpportunity[]> => {
-  const isIndianContext = location.toLowerCase().includes('india') || 
-                          queryStr.toLowerCase().includes('india') ||
-                          queryStr.toLowerCase().includes('bangalore') ||
-                          queryStr.toLowerCase().includes('bengaluru') ||
-                          queryStr.toLowerCase().includes('tcs') ||
-                          queryStr.toLowerCase().includes('infosys') ||
-                          queryStr.toLowerCase().includes('hyderabad') ||
-                          queryStr.toLowerCase().includes('pune') ||
-                          queryStr.toLowerCase().includes('delhi') ||
-                          queryStr.toLowerCase().includes('gurugram') ||
-                          queryStr.toLowerCase().includes('noida');
+/**
+ * Executes a single controlled batch of job syntheses.
+ * Calculates maxTokens dynamically based on job count and reasoning overhead.
+ */
+async function fetchJobBatch({
+  queryStr,
+  location,
+  candidateSkills,
+  count,
+  batchIndex = 0
+}: {
+  queryStr: string;
+  location: string;
+  candidateSkills: string;
+  count: number;
+  batchIndex?: number;
+}): Promise<JobOpportunity[]> {
+  const cleanQuery = queryStr.trim();
+  const cleanLoc = location.trim() || 'Remote / Worldwide';
+  const isIndianContext = cleanLoc.toLowerCase().includes('india') || 
+                          cleanQuery.toLowerCase().includes('india') ||
+                          cleanLoc.toLowerCase().includes('bangalore') ||
+                          cleanLoc.toLowerCase().includes('bengaluru') ||
+                          cleanQuery.toLowerCase().includes('bengaluru') ||
+                          cleanLoc.toLowerCase().includes('hyderabad') ||
+                          cleanLoc.toLowerCase().includes('pune') ||
+                          cleanQuery.toLowerCase().includes('pune') ||
+                          cleanLoc.toLowerCase().includes('delhi') ||
+                          cleanQuery.toLowerCase().includes('delhi') ||
+                          cleanLoc.toLowerCase().includes('gurugram') ||
+                          cleanLoc.toLowerCase().includes('noida') ||
+                          cleanLoc.toLowerCase().includes('mumbai');
 
-  const cleanProfile = (candidateProfileText || '')
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
-    .replace(/[ \t]+/g, ' ')
-    .trim()
-    .slice(0, 400);
+  // Reasoned token calculation:
+  // Base reasoning overhead for GLM 5.3 Flash (~1200-2000 tokens) + ~250 tokens per concise job object
+  // Bounded between 2800 and 3800, providing generous non-truncating headroom.
+  const calculatedMaxTokens = Math.min(3800, Math.max(2800, 2000 + count * 350));
 
-  const prompt = `You are the AI Job Finder matching engine for AI HireFlow.
-Synthesize 4 active, realistic job opportunities for "${queryStr}" in "${location || 'Remote / Worldwide'}".
-
-${isIndianContext ? 'Context: Prioritize Indian tech ecosystems (top portals: Naukri, Instahyre, LinkedIn India; MNCs vs Startups).' : ''}
-${cleanProfile ? `Candidate Profile Context:\n${cleanProfile}` : ''}
-
-Output a single compact JSON array of exactly 4 job objects with these exact keys:
-- title: string (exact role title)
-- company: string (company name)
-- location: string (city or Remote)
-- link: string (realistic application URL)
-- description: string (concise core duty summary under 20 words)
-- datePosted: string (e.g. "Just now", "1d ago", "3d ago")
-- matchScore: number (integer 60-98 based on skills/domain fit)
-- roleTier: "safe" | "stretch" | "reach"
-- matchExplanation: string (single crisp sentence under 15 words explaining candidate fit)
-- isPoorFit: boolean (false)
-
-OUTPUT RULES:
-- Output ONLY the raw JSON array.
-- No markdown formatting, no code fences, no introductory or concluding text.`;
+  const prompt = [
+    `Synthesize ${count} realistic, active job opportunities for "${cleanQuery}" in "${cleanLoc}".`,
+    batchIndex > 0 ? `Target distinct companies and listings different from earlier batches.` : '',
+    isIndianContext ? 'Focus on verified employers, tech enterprises, and prominent startups operating in India.' : '',
+    candidateSkills ? `Candidate Core Skills: ${candidateSkills}` : '',
+    '',
+    `Output strictly a compact JSON array of exactly ${count} job objects with these exact keys:`,
+    `- title: string (exact role title)`,
+    `- company: string (exact company name)`,
+    `- location: string (city or Remote)`,
+    `- link: string (official careers page URL)`,
+    `- description: string (concise core duty summary under 15 words)`,
+    `- datePosted: string (e.g. "1d ago", "2d ago", "Just now")`,
+    `- matchScore: number (integer 65-98)`,
+    `- roleTier: "safe" | "stretch" | "reach"`,
+    `- matchExplanation: string (concise fit reason under 10 words)`,
+    `- isPoorFit: boolean (false)`,
+    '',
+    'CRITICAL RULES:',
+    '- Output strictly valid raw JSON array starting with [ and ending with ].',
+    '- No markdown formatting (no ```json or ```).',
+    '- No explanatory preamble, disclaimers, or apologies.',
+    '- Keep all descriptions strictly under 15 words and explanations under 10 words.'
+  ].filter(Boolean).join('\n');
 
   const results = await executeAICompletion<any>({
     prompt,
-    systemPrompt: "You are an AI talent search backend API for AI HireFlow. Output strictly valid, compact JSON arrays only.",
+    systemPrompt: "You are the AI Job Finder matching engine for AI HireFlow. Output strictly a valid, compact raw JSON array of job opportunities. Never output markdown fences, disclaimers, conversational text, or apologies.",
     jsonMode: true,
     temperature: 0.15,
-    maxTokens: 1600,
+    maxTokens: calculatedMaxTokens,
     operation: 'job_finder'
   });
 
   return validateAndNormalizeJobs(results);
+}
+
+export const findJobs = async (
+  queryStr: string,
+  location: string = "",
+  candidateProfileText: string = "",
+  desiredCount: number = 5
+): Promise<JobOpportunity[]> => {
+  const cleanProfile = (candidateProfileText || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+    .slice(0, 300);
+
+  // For standard result sets (<= 5 jobs), execute a single controlled request
+  if (desiredCount <= 5) {
+    return await fetchJobBatch({
+      queryStr,
+      location,
+      candidateSkills: cleanProfile,
+      count: desiredCount,
+      batchIndex: 0
+    });
+  }
+
+  // If a larger result set (e.g. 10 jobs) is requested, use controlled parallel batching (5 + 5)
+  const batch1Count = Math.ceil(desiredCount / 2);
+  const batch2Count = Math.floor(desiredCount / 2);
+
+  const [res1, res2] = await Promise.allSettled([
+    fetchJobBatch({ queryStr, location, candidateSkills: cleanProfile, count: batch1Count, batchIndex: 0 }),
+    fetchJobBatch({ queryStr, location, candidateSkills: cleanProfile, count: batch2Count, batchIndex: 1 })
+  ]);
+
+  const combined: JobOpportunity[] = [];
+  const seen = new Set<string>();
+
+  const addJobs = (list: JobOpportunity[]) => {
+    for (const job of list) {
+      const key = `${job.company.toLowerCase()}:${job.title.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(job);
+      }
+    }
+  };
+
+  if (res1.status === 'fulfilled' && Array.isArray(res1.value)) {
+    addJobs(res1.value);
+  }
+  if (res2.status === 'fulfilled' && Array.isArray(res2.value)) {
+    addJobs(res2.value);
+  }
+
+  if (combined.length === 0) {
+    if (res1.status === 'rejected') throw res1.reason;
+    if (res2.status === 'rejected') throw res2.reason;
+    throw new Error("No job opportunities could be retrieved. Please try again with a refined search.");
+  }
+
+  return combined;
 };
 
 export const matchJobsWithProfile = async (userProfileText: string, jobListings: any[]): Promise<JobOpportunity[]> => {
@@ -654,7 +741,7 @@ Return a JSON array of objects with:
     systemPrompt: "You are an AI job ranking engine for AI HireFlow. Output strictly valid, compact JSON arrays only.",
     jsonMode: true,
     temperature: 0.15,
-    maxTokens: 1600,
+    maxTokens: 2600,
     operation: 'job_matching'
   });
 

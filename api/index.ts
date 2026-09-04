@@ -96,7 +96,7 @@ export async function callVelonaChatCompletion({
   }
 
   // Safe bounded max_tokens for GLM-5.3-Flash (ensures sufficient floor for reasoning tokens)
-  const safeMaxTokens = maxTokens ? Math.min(Math.max(1600, maxTokens), 4096) : 3000;
+  const safeMaxTokens = maxTokens ? Math.min(Math.max(2000, maxTokens), 4096) : 3200;
   const safeTemperature = typeof temperature === 'number' ? Math.max(0.05, Math.min(0.9, temperature)) : 0.2;
 
   const velonaStart = Date.now();

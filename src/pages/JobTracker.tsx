@@ -309,7 +309,7 @@ export default function JobTracker() {
             <EmptyState
               icon={Briefcase}
               title="Launch your application pipeline"
-              targetRole={activeTargetRole || "Software Engineer"}
+              targetRole={activeTargetRole || "Tech Roles"}
               description="Track your active job applications in one place to stay organized across interview stages, recruiter follow-ups, and offer negotiations."
               benefitMetric="Candidates tracking 5+ applications get 3.2x more interview callbacks"
               primaryAction={{
@@ -318,8 +318,8 @@ export default function JobTracker() {
                 icon: Plus
               }}
               secondaryAction={{
-                label: "Browse matched job listings",
-                onClick: () => navigate('/jobs'),
+                label: "Browse live job listings",
+                onClick: () => navigate('/finder'),
                 icon: Search
               }}
             />

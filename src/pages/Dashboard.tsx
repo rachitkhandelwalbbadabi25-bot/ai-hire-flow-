@@ -53,42 +53,6 @@ interface RecommendedJob {
   tags: string[];
 }
 
-const DEFAULT_RECOMMENDED_JOBS: RecommendedJob[] = [
-  {
-    id: 'rec-1',
-    title: 'Senior Frontend Engineer',
-    company: 'Stripe',
-    location: 'Remote / San Francisco',
-    salary: '$160,000 - $190,000',
-    matchScore: 94,
-    type: 'Full-time',
-    posted: '2d ago',
-    tags: ['React', 'TypeScript', 'Tailwind']
-  },
-  {
-    id: 'rec-2',
-    title: 'Full Stack Engineer (AI Products)',
-    company: 'Linear',
-    location: 'Remote',
-    salary: '$150,000 - $185,000',
-    matchScore: 89,
-    type: 'Full-time',
-    posted: '1d ago',
-    tags: ['Next.js', 'Node.js', 'PostgreSQL']
-  },
-  {
-    id: 'rec-3',
-    title: 'Product Software Engineer',
-    company: 'Vercel',
-    location: 'Remote',
-    salary: '$155,000 - $180,000',
-    matchScore: 86,
-    type: 'Full-time',
-    posted: '3d ago',
-    tags: ['React', 'Edge Computing', 'GraphQL']
-  }
-];
-
 export default function Dashboard() {
   const { user, isAdmin, isPremium } = useAuth();
   const { plan, creditWallet } = usePlan();
@@ -111,7 +75,6 @@ export default function Dashboard() {
     upcomingEvents: [] as any[]
   });
   const [loading, setLoading] = useState(true);
-  const [addingJobId, setAddingJobId] = useState<string | null>(null);
   const [trackedJobsMap, setTrackedJobsMap] = useState<Record<string, boolean>>({});
   const [masterResumeData, setMasterResumeData] = useState<any>(null);
   const [rawJobsList, setRawJobsList] = useState<any[]>([]);
@@ -260,27 +223,6 @@ export default function Dashboard() {
     fetchData();
   }, [user]);
 
-  const handleTrackRecommendedJob = async (job: RecommendedJob) => {
-    if (!user) return;
-    setAddingJobId(job.id);
-    try {
-      const jobsRef = collection(db, 'users', user.uid, 'jobs');
-      await addDoc(jobsRef, {
-        company: job.company,
-        role: job.title,
-        status: 'Applied',
-        appliedDate: new Date().toISOString(),
-        notes: `Imported from Job Finder. Salary range: ${job.salary}. Match Score: ${job.matchScore}%.`
-      });
-      setTrackedJobsMap(prev => ({ ...prev, [job.company.toLowerCase()]: true }));
-      setStats(prev => ({ ...prev, totalJobs: prev.totalJobs + 1 }));
-    } catch (err) {
-      console.error("Failed to track job:", err);
-    } finally {
-      setAddingJobId(null);
-    }
-  };
-
   const handleAskCoach = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!coachQuestion.trim()) return;
@@ -292,16 +234,16 @@ export default function Dashboard() {
       const trackedCompanies = rawJobsList.map(j => j.company || j.role).filter(Boolean).slice(0, 8).join(', ');
       const currentRole = masterResumeData?.experience?.[0]?.role 
         ? `${masterResumeData.experience[0].role} at ${masterResumeData.experience[0].company || 'Current Company'}`
-        : 'Software Engineer';
-      const targetRole = masterResumeData?.targetRole || (stats.missingKeywords?.length ? 'Roles requiring ' + stats.missingKeywords.slice(0, 3).join(', ') : 'Software Engineering & Tech Roles');
-      const userSkills = masterResumeData?.skills?.join(', ') || 'React, TypeScript, Node.js, Python, System Design';
+        : 'Not specified';
+      const targetRole = masterResumeData?.targetRole || (stats.missingKeywords?.length ? 'Roles requiring ' + stats.missingKeywords.slice(0, 3).join(', ') : 'Not specified');
+      const userSkills = masterResumeData?.skills?.join(', ') || 'Not specified';
 
       const context = `
 - Candidate Name: ${user?.displayName || 'Candidate'}
 - Current Role: ${currentRole}
 - Target Role: ${targetRole}
 - Resume Skills & Data: ${userSkills}
-- Master Resume Summary: "${masterResumeData?.summary || 'Experienced software developer'}"
+- Master Resume Summary: "${masterResumeData?.summary || 'Candidate'}"
 - ATS Audit Status: Score ${stats.latestResumeScore || 0}/100. Resumes Audited: ${stats.resumesAnalyzed}. Missing Keywords: ${stats.missingKeywords?.length ? stats.missingKeywords.join(', ') : 'None identified'}.
 - Job Pipeline Status: Total Tracked Jobs: ${stats.totalJobs}. Tracked Companies: ${trackedCompanies || 'None (0 jobs tracked)'}. Active Interviews: ${stats.interviews}. Offers Received: ${stats.offers}.
 - Recent Interview Scores: Interview Readiness Index: ${stats.interviewReadiness}%. Total Simulations Completed: ${stats.simulationsRun}.
@@ -323,7 +265,7 @@ export default function Dashboard() {
 
   const hasResume = stats.resumesAnalyzed > 0 || !!masterResumeData;
   const hasJobs = stats.totalJobs > 0;
-  const hasTargetRole = Boolean(masterResumeData?.targetRole || latestResume?.targetRole || (activeTargetRole && activeTargetRole !== 'Software Engineer' && activeTargetRole !== 'Full Stack Engineer'));
+  const hasTargetRole = Boolean(masterResumeData?.targetRole || latestResume?.targetRole || activeTargetRole);
   const hasScanDone = stats.resumesAnalyzed > 0;
 
   if (!user) return null;
@@ -460,13 +402,13 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* STATE 2: HAS RESUME BUT NO JOB TRACKED -> SHOW INLINE RECOMMENDED JOBS */}
+      {/* STATE 2: HAS RESUME BUT NO JOB TRACKED -> SHOW DISCOVERY GUIDANCE */}
       {hasResume && !hasJobs && (
         <section className="mb-10 space-y-6">
           <div className="bg-surface border border-border rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-mono text-xl font-bold shrink-0">
-                {stats.latestResumeScore > 0 ? `${stats.latestResumeScore}%` : '85%'}
+                {stats.latestResumeScore > 0 ? `${stats.latestResumeScore}%` : '—'}
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -474,7 +416,7 @@ export default function Dashboard() {
                   <span className="text-xs text-ink-dim font-medium">ATS Match Score Baseline</span>
                 </div>
                 <h3 className="text-lg font-bold text-ink uppercase tracking-tight font-mono mt-0.5">
-                  Resume Analyzed — Next Step: Discover Opportunities
+                  Resume Active — Next Step: Discover Opportunities
                 </h3>
               </div>
             </div>
@@ -491,89 +433,36 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Zap className="w-4 h-4 text-accent" />
-                  <span className="text-[10px] font-bold text-accent uppercase tracking-widest font-mono">Matched Listings</span>
+                  <span className="text-[10px] font-bold text-accent uppercase tracking-widest font-mono">Job Discovery</span>
                 </div>
                 <h2 className="text-xl font-bold text-ink uppercase tracking-tight font-mono">
-                  Recommended Positions For You
+                  Explore Live Opportunities
                 </h2>
                 <p className="text-xs text-ink-dim mt-0.5">
-                  Curated based on your master resume skills and technical profile.
+                  Search live verified openings matched to your skills and track them into your pipeline.
                 </p>
               </div>
 
               <button 
                 onClick={() => navigate('/finder')}
-                className="text-xs font-bold font-mono text-accent hover:underline flex items-center gap-1.5 self-start sm:self-center"
+                className="bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-2 hover:bg-accent/90 transition-all self-start sm:self-center"
               >
                 Search All Listings in Job Finder <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {DEFAULT_RECOMMENDED_JOBS.map((job) => {
-                const isTracked = !!trackedJobsMap[job.company.toLowerCase()];
-                return (
-                  <div 
-                    key={job.id} 
-                    className="bg-background border border-border rounded-xl p-6 flex flex-col justify-between hover:border-accent/40 transition-all group"
-                  >
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div className="w-10 h-10 rounded-lg bg-surface border border-border flex items-center justify-center text-ink font-bold font-mono">
-                          {job.company.charAt(0)}
-                        </div>
-                        <span className="text-[10px] font-bold font-mono text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full">
-                          {job.matchScore}% Match
-                        </span>
-                      </div>
-
-                      <div>
-                        <h4 className="font-bold text-ink text-base group-hover:text-accent transition-colors">{job.title}</h4>
-                        <p className="text-xs text-ink-dim font-medium flex items-center gap-2 mt-1">
-                          <span className="text-ink font-semibold">{job.company}</span>
-                          <span>•</span>
-                          <span>{job.location}</span>
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {job.tags.map((tag, idx) => (
-                          <span key={idx} className="text-[9px] font-mono text-ink-dim bg-surface px-2 py-0.5 rounded border border-border">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      <p className="text-xs text-accent font-mono font-semibold pt-1">{job.salary}</p>
-                    </div>
-
-                    <div className="pt-6 border-t border-border/60 mt-6">
-                      <button 
-                        onClick={() => handleTrackRecommendedJob(job)}
-                        disabled={isTracked || addingJobId === job.id}
-                        className={cn(
-                          "w-full py-2.5 rounded-lg text-xs font-bold font-mono uppercase tracking-wider flex items-center justify-center gap-2 transition-all",
-                          isTracked
-                            ? "bg-surface border border-border text-success cursor-default"
-                            : "bg-accent text-black hover:bg-accent/90"
-                        )}
-                      >
-                        {addingJobId === job.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : isTracked ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" /> Opportunity Tracked
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-3.5 h-3.5" /> Track Opportunity
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="p-8 text-center border border-dashed border-border rounded-xl bg-background/50">
+              <Search className="w-8 h-8 text-accent mx-auto mb-2 opacity-70" />
+              <p className="text-sm font-bold text-ink font-sans">No target jobs tracked yet</p>
+              <p className="text-xs text-ink-dim max-w-md mx-auto mt-1 mb-4">
+                Use the Job Finder to search real-time openings across engineering, product, and design, and track them to manage your interview stages.
+              </p>
+              <button
+                onClick={() => navigate('/finder')}
+                className="bg-accent text-black px-6 py-2.5 rounded-xl text-xs font-bold font-mono uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer"
+              >
+                Search Live Jobs
+              </button>
             </div>
           </div>
         </section>

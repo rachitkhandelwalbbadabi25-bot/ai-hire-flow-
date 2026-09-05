@@ -18,9 +18,10 @@ import {
 } from 'lucide-react';
 import { generateLearningPath } from '../lib/gemini';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import AILoadingStepper from '../components/AILoadingStepper';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
+import { isDemoRole, isDemoSkills } from '../utils/demoDataSanitizer';
 
 interface Resource {
   name: string;
@@ -36,7 +37,7 @@ interface Section {
   resources: Resource[];
 }
 
-interface Roadmap {
+export interface Roadmap {
   roadmapTitle: string;
   sections: Section[];
 }
@@ -57,17 +58,8 @@ export default function LearningPath() {
   if (!user) return null;
   const { plan, checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const location = useLocation();
-  
-  const { activeTargetRole, allMissingSkills } = useSystemOS();
 
-  useEffect(() => {
-    if (!targetRole && activeTargetRole) {
-      setTargetRole(activeTargetRole);
-    }
-    if (!skillsStr && allMissingSkills.length > 0) {
-      setSkillsStr(allMissingSkills.join(', '));
-    }
-  }, [activeTargetRole, allMissingSkills]);
+  // Learning Path inputs MUST start completely empty for fresh users. No demo careers.
   const [targetRole, setTargetRole] = useState('');
   const [skillsStr, setSkillsStr] = useState('');
   const [roadmapType, setRoadmapType] = useState<'personalized' | 'general'>('personalized');
@@ -87,41 +79,91 @@ export default function LearningPath() {
     return firstLine;
   };
 
+  // Only populate from navigation state if explicitly provided and not demo data
   useEffect(() => {
-    if (location.state?.missingSkills) {
+    if (location.state?.missingSkills && !isDemoSkills(location.state.missingSkills)) {
       setSkillsStr(location.state.missingSkills.join(', '));
     }
-    if (location.state?.targetRole) {
+    if (location.state?.targetRole && !isDemoRole(location.state.targetRole)) {
       setTargetRole(location.state.targetRole);
     }
   }, [location.state]);
 
+  // Load any previously saved REAL user learning path from Firestore
   useEffect(() => {
-    const fetchRecentAnalysis = async () => {
-      const q = query(
-        collection(db, 'users', user.uid, 'resumes'),
-        orderBy('createdAt', 'desc'),
-        limit(1)
-      );
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const data = snapshot.docs[0].data();
-        if (data.analysis && data.analysis.missingKeywords) {
-          setRecentAnalysis(data.analysis);
-          if (!location.state?.missingSkills) {
-            setSkillsStr(data.analysis.missingKeywords.join(', '));
+    const fetchSavedLearningPath = async () => {
+      try {
+        const q = query(
+          collection(db, 'users', user.uid, 'learningPaths'),
+          orderBy('createdAt', 'desc'),
+          limit(1)
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const docItem = snapshot.docs[0];
+          const data = docItem.data();
+
+          // If legacy demo data ("AI Engineer at Glean", etc.), delete and ignore
+          if (isDemoRole(data.targetRole) || isDemoSkills(data.skillsStr)) {
+            try {
+              await deleteDoc(doc(db, 'users', user.uid, 'learningPaths', docItem.id));
+            } catch (err) {}
+            return;
           }
-          if (!location.state?.targetRole && data.jobDesc) {
-            setTargetRole(getJobTitle(data.jobDesc));
+
+          // Real user-created roadmap
+          if (data.roadmap) {
+            setRoadmap(data.roadmap);
+            if (!targetRole && data.targetRole) setTargetRole(data.targetRole);
+            if (!skillsStr && data.skillsStr) setSkillsStr(data.skillsStr);
           }
         }
+      } catch (err) {
+        console.warn('Error checking saved learning paths:', err);
+      }
+    };
+
+    fetchSavedLearningPath();
+  }, [user.uid]);
+
+  // Check recent analysis so user has the option to click "Load Analysis Gaps", without auto-filling
+  useEffect(() => {
+    const fetchRecentAnalysis = async () => {
+      try {
+        const q = query(
+          collection(db, 'users', user.uid, 'resumes'),
+          orderBy('createdAt', 'desc'),
+          limit(1)
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const docItem = snapshot.docs[0];
+          const data = docItem.data();
+
+          // If legacy demo resume, delete and ignore
+          if (isDemoRole(data.jobDesc) || isDemoRole(data.targetRole) || isDemoSkills(data.analysis?.missingKeywords)) {
+            try {
+              await deleteDoc(doc(db, 'users', user.uid, 'resumes', docItem.id));
+            } catch (err) {}
+            return;
+          }
+
+          if (data.analysis && data.analysis.missingKeywords && !isDemoSkills(data.analysis.missingKeywords)) {
+            setRecentAnalysis({
+              ...data.analysis,
+              detectedRole: data.jobDesc ? getJobTitle(data.jobDesc) : ''
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching recent analysis:', err);
       }
     };
     fetchRecentAnalysis();
-  }, [user.uid, location.state]);
+  }, [user.uid]);
 
   const generatePath = async () => {
-    if (!skillsStr || !targetRole) return;
+    if (!skillsStr.trim() || !targetRole.trim()) return;
     
     // Check credits for careerRoadmap
     const access = checkAccess('careerRoadmap');
@@ -136,6 +178,18 @@ export default function LearningPath() {
       const missingSkills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
       const result = await generateLearningPath(missingSkills, targetRole);
       setRoadmap(result);
+
+      // Persist real user learning path so legitimate work is saved
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'learningPaths'), {
+          targetRole: targetRole.trim(),
+          skillsStr: skillsStr.trim(),
+          roadmap: result,
+          createdAt: new Date().toISOString()
+        });
+      } catch (saveErr) {
+        console.warn('Error saving generated learning path:', saveErr);
+      }
     } catch (error) {
       console.error('Failed to generate learning path:', error);
     } finally {
@@ -188,7 +242,14 @@ export default function LearningPath() {
                   <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1">Target Skills</label>
                   {recentAnalysis && (
                     <button 
-                      onClick={() => setSkillsStr(recentAnalysis.missingKeywords.join(', '))}
+                      onClick={() => {
+                        if (recentAnalysis.missingKeywords) {
+                          setSkillsStr(recentAnalysis.missingKeywords.join(', '));
+                        }
+                        if (recentAnalysis.detectedRole && !targetRole) {
+                          setTargetRole(recentAnalysis.detectedRole);
+                        }
+                      }}
                       className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
                     >
                       Load Analysis Gaps
@@ -200,7 +261,7 @@ export default function LearningPath() {
                   disabled={isFree}
                   onChange={(e) => setSkillsStr(e.target.value)}
                   className="w-full h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed disabled:opacity-50"
-                  placeholder={!isFree ? "Enter skills separated by commas..." : "Upgrade plan to unlock customized roadmaps."}
+                  placeholder={!isFree ? "Enter skills separated by commas (e.g. React, TypeScript, GraphQL)..." : "Upgrade plan to unlock customized roadmaps."}
                 />
               </div>
 
@@ -218,7 +279,7 @@ export default function LearningPath() {
 
               <button 
                 onClick={generatePath}
-                disabled={loading || !targetRole || !skillsStr || isFree}
+                disabled={loading || !targetRole.trim() || !skillsStr.trim() || isFree}
                 className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -235,22 +296,22 @@ export default function LearningPath() {
               <EmptyState
                 icon={GraduationCap}
                 title="Create your personalized learning path"
-                targetRole={targetRole || "Full Stack Engineer"}
+                targetRole={targetRole || "Engineering & Tech"}
                 description="Generate a customized 30-day skill roadmap with key topics, project ideas, and documentation to prepare for your target role."
                 benefitMetric="Following a structured learning plan reduces interview prep time by 4 weeks"
                 primaryAction={{
-                  label: "Generate full stack roadmap",
+                  label: "Generate frontend roadmap",
                   onClick: () => {
-                    setTargetRole('Full Stack Engineer');
-                    setSkillsStr('React, Node.js, TypeScript, PostgreSQL');
+                    setTargetRole('Frontend Engineer');
+                    setSkillsStr('React, TypeScript, Next.js, Tailwind CSS');
                   },
                   icon: Sparkles
                 }}
                 secondaryAction={{
-                  label: "Generate AI engineer path",
+                  label: "Generate full stack roadmap",
                   onClick: () => {
-                    setTargetRole('AI Platform Engineer');
-                    setSkillsStr('Python, PyTorch, LangChain, Vector DBs');
+                    setTargetRole('Full Stack Engineer');
+                    setSkillsStr('Node.js, PostgreSQL, System Design, GraphQL');
                   },
                   icon: Map
                 }}

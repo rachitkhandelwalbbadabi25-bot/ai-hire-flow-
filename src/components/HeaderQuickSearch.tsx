@@ -85,7 +85,8 @@ export default function HeaderQuickSearch() {
 
   // Execute search navigation
   const executeSearch = (targetQuery: string) => {
-    const finalQuery = targetQuery.trim() || activeTargetRole || 'Software Engineer';
+    const finalQuery = targetQuery.trim() || activeTargetRole;
+    if (!finalQuery) return;
     saveSearchToHistory(finalQuery);
     setIsOpen(false);
     setIsMobileSearchOpen(false);

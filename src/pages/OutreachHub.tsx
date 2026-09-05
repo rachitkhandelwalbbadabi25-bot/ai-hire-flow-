@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Mail,
@@ -20,6 +20,8 @@ import {
   RefreshCw,
   Mic,
   Briefcase,
+  ArrowLeft,
+  AlertCircle,
 } from "lucide-react";
 import NextStepBridgeCard from "../components/NextStepBridgeCard";
 import { useAuth } from "../context/AuthContext";
@@ -39,6 +41,7 @@ import EmptyState from "../components/EmptyState";
 export default function OutreachHub() {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Gmail sync and persistence
   const [gmailAddress, setGmailAddress] = useState(() => {
@@ -47,9 +50,7 @@ export default function OutreachHub() {
   const [syncing, setSyncing] = useState(false);
 
   // Candidate Context & Bio
-  const [candidateContext, setCandidateContext] = useState(
-    "Candidate: Product-focused developer skilled in React, Node.js, and TypeScript. Experience building intuitive SaaS products and scalable microservices.",
-  );
+  const [candidateContext, setCandidateContext] = useState("");
   const [loadingContext, setLoadingContext] = useState(false);
 
   // Contacts & Referrals
@@ -76,8 +77,9 @@ export default function OutreachHub() {
     }
   }, [location.state]);
 
-  // Pitch generation modal
-  const [showGenModal, setShowGenModal] = useState(false);
+  // Pitch generation state
+  const [viewMode, setViewMode] = useState<"hub" | "pitch_result">("hub");
+  const [pitchError, setPitchError] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [generatingPitch, setGeneratingPitch] = useState(false);
   const [generatedSubject, setGeneratedSubject] = useState("");
@@ -233,10 +235,16 @@ export default function OutreachHub() {
     }
   };
 
+  const handleClosePitchResult = () => {
+    setViewMode("hub");
+    setPitchError(null);
+  };
+
   const handleGeneratePitch = async (contact: any, selectedTone: string = outreachTone) => {
     setSelectedContact(contact);
-    setShowGenModal(true);
+    setViewMode("pitch_result");
     setGeneratingPitch(true);
+    setPitchError(null);
     setGeneratedSubject("");
     setGeneratedBody("");
 
@@ -248,6 +256,9 @@ export default function OutreachHub() {
         selectedTone,
         contact.role || contact.title || "Team Leader"
       );
+      if (!pitch || (!pitch.subject && !pitch.body)) {
+        throw new Error("Unable to synthesize email pitch. Please click Retry.");
+      }
       setGeneratedSubject(
         pitch.subject || `${contact.company} tech initiatives / quick 15-min chat`,
       );
@@ -255,13 +266,10 @@ export default function OutreachHub() {
         pitch.body ||
           `Hi ${contact.name},\n\nLoved ${contact.company}'s recent technical scaling engineering milestones.\n\nWould love to learn about your team's workflow and share a quick bit about my background in full-stack architecture.\n\nDo you have 15 minutes for a quick virtual coffee next week?\n\nBest,\n[Your Name]`,
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed generating pitch draft:", error);
-      setGeneratedSubject(
-        `Quick question on ${contact.company}'s engineering focus`,
-      );
-      setGeneratedBody(
-        `Hi ${contact.name},\n\nImpressed by the product developments happening at ${contact.company}.\n\nI'm building scalable web platforms and would appreciate 15 minutes to learn about your engineering culture.\n\nWould a brief 15-min chat next week fit your calendar?\n\nBest,\n[Your Name]`,
+      setPitchError(
+        error?.message || "An unexpected error occurred while generating the outreach pitch. Please try again."
       );
     } finally {
       setGeneratingPitch(false);
@@ -270,263 +278,284 @@ export default function OutreachHub() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-      <div className="mb-12">
-        <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">
-          Outreach Hub
-        </h1>
-        <p className="text-ink-dim font-medium text-sm">
-          Draft professional cold Gmail pitches and coordinate warm corporate
-          connections dynamically.
-        </p>
-      </div>
-
-      {/* Add Connection Modal */}
-      <AnimatePresence>
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="glass-panel w-full max-w-md relative overflow-hidden"
+      {viewMode === "pitch_result" ? (
+        <div className="max-w-4xl mx-auto">
+          {/* Top Navigation: Back / Close */}
+          <div className="flex items-center justify-between mb-8">
+            <button
+              onClick={handleClosePitchResult}
+              className="inline-flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-wider text-ink-dim hover:text-accent transition-colors cursor-pointer py-2.5 px-4 rounded-xl hover:bg-surface border border-border"
             >
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="absolute top-6 right-6 p-2 hover:bg-accent/10 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-ink-dim" />
-              </button>
-
-              <h3 className="text-lg font-bold text-ink uppercase tracking-tight mb-6 flex items-center gap-2">
-                <Users className="w-5 h-5 text-accent" />
-                Add Referral Connection
-              </h3>
-
-              <form onSubmit={handleAddContact} className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                    Connection Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g. Priyesh Patel"
-                    className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                    Corporate Hub / Company
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newCompany}
-                    onChange={(e) => setNewCompany(e.target.value)}
-                    placeholder="e.g. Google India"
-                    className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                    Gmail / Email Identifier
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="e.g. contact@company.com"
-                    className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={addingContact}
-                  className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 mt-6 shadow-md shadow-accent/20"
-                >
-                  {addingContact ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                  Add Connection
-                </button>
-              </form>
-            </motion.div>
+              <ArrowLeft className="w-4 h-4" />
+              Back to Outreach Hub
+            </button>
+            <button
+              onClick={handleClosePitchResult}
+              className="p-2.5 text-ink-dim hover:text-ink hover:bg-surface rounded-xl border border-border transition-colors cursor-pointer"
+              title="Close Pitch Result"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        )}
-      </AnimatePresence>
 
-      {/* Generated Pitch Modal */}
-      <AnimatePresence>
-        {showGenModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-panel w-full max-w-xl relative overflow-hidden"
-            >
-              <button
-                onClick={() => setShowGenModal(false)}
-                className="absolute top-8 right-8 p-2 hover:bg-accent/10 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-ink-dim" />
-              </button>
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold font-mono px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-accent" />
+                Outreach Pitch Generated
+              </span>
+              {selectedContact && (
+                <span className="text-xs text-ink-dim font-medium">
+                  for <strong className="text-ink">{selectedContact.name}</strong> @ <strong className="text-ink">{selectedContact.company}</strong>
+                </span>
+              )}
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-ink tracking-tight uppercase">
+              Tailored Referral Pitch
+            </h1>
+            <p className="text-xs text-ink-dim mt-1 font-medium">
+              Review and copy your customized cold outreach email before contacting recruiters or hiring managers.
+            </p>
+          </div>
 
-              <div className="mb-6">
-                <h3 className="text-xl font-bold text-ink uppercase tracking-tight flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-accent animate-pulse" />
-                  Email Composer
-                </h3>
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest mt-1">
-                  Generating customized referral email for{" "}
-                  {selectedContact?.name} @ {selectedContact?.company}
-                </p>
+          {/* Body: Loading vs Error vs Result */}
+          {generatingPitch ? (
+            <div className="glass-panel p-10 sm:p-14 text-center rounded-3xl border border-border">
+              <Loader2 className="w-9 h-9 text-accent animate-spin mx-auto mb-4" />
+              <h3 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">
+                Synthesizing Personalized Pitch...
+              </h3>
+              <p className="text-xs text-ink-dim max-w-md mx-auto mb-6">
+                Generating custom referral pitch for {selectedContact?.name || "Recruiter"} at {selectedContact?.company || "Target Company"} aligned with your background.
+              </p>
+              <div className="max-w-md mx-auto">
+                <SkeletonLoader type="card" lines={4} />
+              </div>
+            </div>
+          ) : pitchError ? (
+            <div className="glass-panel p-8 sm:p-12 text-center rounded-3xl border border-rose-500/20 bg-rose-500/5 max-w-lg mx-auto">
+              <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">
+                Pitch Generation Issue
+              </h3>
+              <p className="text-xs text-ink-dim mb-6 leading-relaxed">
+                {pitchError}
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => handleGeneratePitch(selectedContact, outreachTone)}
+                  disabled={generatingPitch}
+                  className="bg-accent text-white py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-accent/20"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Retry
+                </button>
+                <button
+                  onClick={handleClosePitchResult}
+                  className="bg-surface border border-border text-ink py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-widest hover:border-accent/40 transition-all cursor-pointer"
+                >
+                  Back / Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-border space-y-6">
+              {/* Subject field */}
+              <div className="bg-background border border-border p-4 rounded-2xl">
+                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2 font-mono">
+                  Subject line
+                </label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={generatedSubject}
+                    onChange={(e) => setGeneratedSubject(e.target.value)}
+                    className="flex-1 bg-surface border border-border px-4 py-3 rounded-xl text-xs text-ink font-sans focus:outline-none focus:ring-1 focus:ring-accent font-medium"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedSubject);
+                      setCopiedSubject(true);
+                      setTimeout(() => setCopiedSubject(false), 2000);
+                    }}
+                    className="p-3 bg-surface border border-border text-ink-dim hover:text-accent rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                    title="Copy Subject"
+                  >
+                    {copiedSubject ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span className="text-[9px] font-bold uppercase tracking-wider font-mono">
+                      {copiedSubject ? "Copied" : "Copy"}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              {generatingPitch ? (
-                <div className="p-6 space-y-4">
-                  <p className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Synthesizing
-                    personalized outreach pitch...
-                  </p>
-                  <SkeletonLoader type="card" lines={4} />
+              {/* Body field */}
+              <div className="bg-background border border-border p-4 rounded-2xl">
+                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2 font-mono">
+                  Cold outreach body
+                </label>
+                <textarea
+                  value={generatedBody}
+                  onChange={(e) => setGeneratedBody(e.target.value)}
+                  rows={10}
+                  className="w-full bg-surface border border-border p-4 rounded-xl text-xs text-ink font-sans leading-relaxed focus:outline-none focus:ring-1 focus:ring-accent font-medium"
+                />
+                <div className="flex justify-end gap-2 mt-3">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedBody);
+                      setCopiedBody(true);
+                      setTimeout(() => setCopiedBody(false), 2000);
+                    }}
+                    className="p-2.5 bg-surface border border-border text-ink-dim hover:text-accent rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {copiedBody ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span className="text-[9px] font-bold uppercase tracking-widest font-mono">
+                      {copiedBody ? "Body Copied" : "Copy Body"}
+                    </span>
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Subject field */}
-                  <div className="bg-background border border-border p-4 rounded-2xl">
-                    <label className="text-[9px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                      Subject line
-                    </label>
-                    <div className="flex gap-2 items-center">
+              </div>
+
+              {/* Actions */}
+              <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => {
+                    const fullMail = `Subject: ${generatedSubject}\n\n${generatedBody}`;
+                    navigator.clipboard.writeText(fullMail);
+                    setCopiedAll(true);
+                    setTimeout(() => setCopiedAll(false), 2000);
+                  }}
+                  className="flex-1 bg-surface border border-border text-ink py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:border-accent transition-colors cursor-pointer"
+                >
+                  {copiedAll ? (
+                    <CheckCircle2 className="w-4 h-4 text-success" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                  {copiedAll ? "Entire Copy Complete" : "Copy Entire Pitch"}
+                </button>
+
+                <a
+                  href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedContact?.email || "")}&su=${encodeURIComponent(generatedSubject)}&body=${encodeURIComponent(generatedBody)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Send in Gmail
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="mb-12">
+            <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">
+              Outreach Hub
+            </h1>
+            <p className="text-ink-dim font-medium text-sm">
+              Draft professional cold Gmail pitches and coordinate warm corporate
+              connections dynamically.
+            </p>
+          </div>
+
+          {/* Add Connection Modal */}
+          <AnimatePresence>
+            {showAddModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  className="glass-panel w-full max-w-md relative overflow-hidden"
+                >
+                  <button
+                    onClick={() => setShowAddModal(false)}
+                    className="absolute top-6 right-6 p-2 hover:bg-accent/10 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-ink-dim" />
+                  </button>
+
+                  <h3 className="text-lg font-bold text-ink uppercase tracking-tight mb-6 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-accent" />
+                    Add Referral Connection
+                  </h3>
+
+                  <form onSubmit={handleAddContact} className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
+                        Connection Name
+                      </label>
                       <input
                         type="text"
-                        value={generatedSubject}
-                        onChange={(e) => setGeneratedSubject(e.target.value)}
-                        className="flex-1 bg-surface border border-border px-4 py-2.5 rounded-xl text-xs text-ink font-sans focus:outline-none focus:ring-1 focus:ring-accent font-medium"
+                        required
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder="e.g. Priyesh Patel"
+                        className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
                       />
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(generatedSubject);
-                          setCopiedSubject(true);
-                          setTimeout(() => setCopiedSubject(false), 2000);
-                        }}
-                        className="p-2.5 bg-surface border border-border text-ink-dim hover:text-accent rounded-xl text-xs transition-colors flex items-center gap-1.5"
-                        title="Copy Subject"
-                      >
-                        {copiedSubject ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                        <span className="text-[9px] font-bold uppercase tracking-wider">
-                          {copiedSubject ? "Copied" : "Copy"}
-                        </span>
-                      </button>
                     </div>
-                  </div>
 
-                  {/* Body field */}
-                  <div className="bg-background border border-border p-4 rounded-2xl">
-                    <label className="text-[9px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                      Cold outreach body
-                    </label>
-                    <textarea
-                      value={generatedBody}
-                      onChange={(e) => setGeneratedBody(e.target.value)}
-                      rows={8}
-                      className="w-full bg-surface border border-border p-4 rounded-xl text-xs text-ink font-sans leading-relaxed focus:outline-none focus:ring-1 focus:ring-accent font-medium"
-                    />
-                    <div className="flex justify-end gap-2 mt-3">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(generatedBody);
-                          setCopiedBody(true);
-                          setTimeout(() => setCopiedBody(false), 2000);
-                        }}
-                        className="p-2.5 bg-surface border border-border text-ink-dim hover:text-accent rounded-xl text-xs transition-colors flex items-center gap-1.5"
-                      >
-                        {copiedBody ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                        <span className="text-[9px] font-bold uppercase tracking-widest">
-                          {copiedBody ? "Body Copied" : "Copy Body"}
-                        </span>
-                      </button>
+                    <div>
+                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
+                        Corporate Hub / Company
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newCompany}
+                        onChange={(e) => setNewCompany(e.target.value)}
+                        placeholder="e.g. Google India"
+                        className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                      />
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
+                        Gmail / Email Identifier
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        placeholder="e.g. contact@company.com"
+                        className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                      />
+                    </div>
+
                     <button
-                      onClick={() => {
-                        const fullMail = `Subject: ${generatedSubject}\n\n${generatedBody}`;
-                        navigator.clipboard.writeText(fullMail);
-                        setCopiedAll(true);
-                        setTimeout(() => setCopiedAll(false), 2000);
-                      }}
-                      className="flex-1 bg-surface border border-border text-ink py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:border-accent transition-colors"
+                      type="submit"
+                      disabled={addingContact}
+                      className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 mt-6 shadow-md shadow-accent/20"
                     >
-                      {copiedAll ? (
-                        <CheckCircle2 className="w-4 h-4 text-success" />
+                      {addingContact ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Copy className="w-4 h-4" />
+                        <Plus className="w-4 h-4" />
                       )}
-                      {copiedAll ? "Entire Copy Complete" : "Copy Entire Pitch"}
+                      Add Connection
                     </button>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
-                    <a
-                      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedContact?.email || "")}&su=${encodeURIComponent(generatedSubject)}&body=${encodeURIComponent(generatedBody)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Send in Gmail
-                    </a>
-                  </div>
-
-                  <NextStepBridgeCard
-                    title="Outreach pitch generated"
-                    contextData={`Tailored referral pitch synthesized for ${selectedContact?.name || 'Recruiter'} at ${selectedContact?.company || 'Target Company'} (${outreachTone.toLowerCase()} tone).`}
-                    primaryStep={{
-                      label: "Simulate company interview",
-                      icon: Mic,
-                      to: "/interview",
-                      state: {
-                        company: selectedContact?.company || "Target Company",
-                        role: selectedContact?.role || "Software Engineer",
-                        jobDescription: `Position: ${selectedContact?.role || 'Software Engineer'}\nCompany: ${selectedContact?.company || 'Target Company'}\nFocus: Technical round, hiring manager pitch, and company-specific values.`
-                      }
-                    }}
-                    secondaryStep={{
-                      label: "Track in application pipeline",
-                      icon: Briefcase,
-                      to: "/jobs",
-                      state: {
-                        company: selectedContact?.company,
-                        role: selectedContact?.role || "Software Engineer"
-                      }
-                    }}
-                  />
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column - Alerts, Sync, and Elevator Pitch */}
         <div className="lg:col-span-12 xl:col-span-5 space-y-8">
           {/* Synced Settings */}
@@ -622,9 +651,7 @@ export default function OutreachHub() {
             </div>
 
             <p className="text-xs text-ink-dim mb-4 leading-relaxed font-medium">
-              We personalize cold referral requests based on this bio. It has
-              been preloaded with content from your latest analyzed resume. Feel
-              free to refine it below:
+              We personalize cold referral requests based on your technical background and experience. Sync from your analyzed resume or customize your background below:
             </p>
 
             <textarea
@@ -703,14 +730,9 @@ export default function OutreachHub() {
                   icon: Plus
                 }}
                 secondaryAction={{
-                  label: "Add sample Stripe recruiter",
-                  onClick: () => {
-                    setNewName("Sarah Lin");
-                    setNewCompany("Stripe");
-                    setNewEmail("sarah.lin@stripe.com");
-                    setShowAddModal(true);
-                  },
-                  icon: Sparkles
+                  label: "Explore companies in Job Finder",
+                  onClick: () => navigate('/finder'),
+                  icon: Briefcase
                 }}
               />
             ) : (
@@ -818,6 +840,40 @@ export default function OutreachHub() {
           </div>
         </div>
       </div>
-    </div>
-  );
+
+      {/* AI Journey Router / Recommendations */}
+      <NextStepBridgeCard
+        className="mt-12"
+        title="Accelerate your outreach momentum"
+        contextData={
+          contacts.length > 0
+            ? `Tracking ${contacts.length} referral contact${contacts.length > 1 ? "s" : ""} across ${Array.from(new Set(contacts.map((c: any) => c.company))).slice(0, 3).join(", ")}. Keep pitching hiring managers and simulate target company interviews.`
+            : "Expand your professional footprint by adding recruiter contacts from your target tech firms and simulating live interviews."
+        }
+        primaryStep={{
+          label:
+            contacts.length > 0 && contacts[0]?.company
+              ? `Simulate ${contacts[0].company} interview`
+              : "Simulate company interview",
+          icon: Mic,
+          to: "/interview",
+          state: {
+            company: contacts.length > 0 ? contacts[0]?.company : "Target Company",
+            role: contacts.length > 0 ? (contacts[0]?.role || "Software Engineer") : "Software Engineer",
+            jobDescription: `Target Company: ${contacts.length > 0 ? contacts[0]?.company : "Target Enterprise"}\nFocus: Technical architecture, team collaboration, and behavioral leadership.`
+          }
+        }}
+        secondaryStep={{
+          label: "Track in application pipeline",
+          icon: Briefcase,
+          to: "/jobs",
+          state: {
+            company: contacts.length > 0 ? contacts[0]?.company : undefined
+          }
+        }}
+      />
+    </>
+  )}
+</div>
+);
 }

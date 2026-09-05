@@ -22,18 +22,6 @@ export default function CampusPlacement() {
   const [companyPrep, setCompanyPrep] = useState<any>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Suggested companies for quick searching
-  const suggestedCompanies = [
-    "TCS Ninja / Digital",
-    "Infosys",
-    "Wipro Elite",
-    "Google India",
-    "Zoho",
-    "Zomato",
-    "Razorpay",
-    "Cisco"
-  ];
-
   // Interactive Aptitude Drill State
   const [activeDrillTopic, setActiveDrillTopic] = useState<string | null>(null);
   const [loadingDrill, setLoadingDrill] = useState(false);
@@ -214,7 +202,7 @@ export default function CampusPlacement() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <input 
                   type="text"
-                  placeholder="Type any company (e.g. Zoho, Google, TCS, Zomato, Razorpay...)"
+                  placeholder="Enter target company (e.g. your dream tech company or campus recruiter)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCompanySearch(searchQuery)}
@@ -237,25 +225,6 @@ export default function CampusPlacement() {
                     </>
                   )}
                 </button>
-              </div>
-            </div>
-
-            {/* Suggestions */}
-            <div className="mb-6">
-              <span className="text-[9px] font-bold text-ink-dim uppercase tracking-widest block mb-3">Popular Target Hubs:</span>
-              <div className="flex flex-wrap gap-2">
-                {suggestedCompanies.map((company, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setSearchQuery(company);
-                      handleCompanySearch(company);
-                    }}
-                    className="px-3 py-1.5 bg-surface hover:bg-accent/10 border border-border hover:border-accent/30 rounded-xl text-xs font-semibold text-ink-dim hover:text-accent transition-all uppercase"
-                  >
-                    {company}
-                  </button>
-                ))}
               </div>
             </div>
 

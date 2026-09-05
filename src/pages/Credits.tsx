@@ -361,16 +361,33 @@ export default function CreditsPage() {
     : 0;
   const strokeDashoffset = 440 - (440 * Math.min(100, percentageUsed)) / 100;
 
-  // Chart data
-  const chartData = [
-    { name: 'Day 1', spent: 40, earned: 15 },
-    { name: 'Day 3', spent: 85, earned: 100 },
-    { name: 'Day 5', spent: 150, earned: 50 },
-    { name: 'Day 7', spent: 220, earned: 125 },
-    { name: 'Day 10', spent: 310, earned: 80 },
-    { name: 'Day 12', spent: 390, earned: 150 },
-    { name: 'Day 15', spent: 480, earned: 200 },
-  ];
+  // Derive chart data from real user transactions
+  const chartData = React.useMemo(() => {
+    if (!transactions || transactions.length === 0) {
+      return [];
+    }
+    const dateMap: Record<string, { spent: number; earned: number }> = {};
+    const sorted = [...transactions].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
+    sorted.forEach((t) => {
+      const d = new Date(t.timestamp);
+      const key = `${d.getMonth() + 1}/${d.getDate()}`;
+      if (!dateMap[key]) {
+        dateMap[key] = { spent: 0, earned: 0 };
+      }
+      if (t.type === 'spend') {
+        dateMap[key].spent += Math.abs(t.amount);
+      } else {
+        dateMap[key].earned += Math.abs(t.amount);
+      }
+    });
+
+    return Object.entries(dateMap).map(([name, val]) => ({
+      name,
+      spent: val.spent,
+      earned: val.earned,
+    }));
+  }, [transactions]);
 
   return (
     <div className="min-h-screen bg-background text-ink pt-20 sm:pt-24 pb-24 px-4 sm:px-6 lg:px-8">
@@ -685,25 +702,35 @@ export default function CreditsPage() {
                     Credit Consumption & Earnings Trend
                   </h3>
                   <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData}>
-                        <defs>
-                          <linearGradient id="spentColor" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="earnedColor" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="name" stroke="#606060" fontSize={10} fontStyle="bold" />
-                        <YAxis stroke="#606060" fontSize={10} fontStyle="bold" />
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }} />
-                        <Area type="monotone" dataKey="spent" stroke="#f43f5e" fillOpacity={1} fill="url(#spentColor)" strokeWidth={2} name="Spent" />
-                        <Area type="monotone" dataKey="earned" stroke="#10b981" fillOpacity={1} fill="url(#earnedColor)" strokeWidth={2} name="Earned" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    {chartData.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center border border-dashed border-border rounded-2xl bg-surface-light/30 text-center p-6">
+                        <Activity className="w-8 h-8 text-accent opacity-60 mb-2" />
+                        <p className="text-xs font-mono font-bold text-ink">No Activity Recorded Yet</p>
+                        <p className="text-[11px] text-ink-dim mt-1 max-w-xs font-sans">
+                          Your daily credit consumption and rewards will be tracked and plotted here as you use AI features.
+                        </p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
+                          <defs>
+                            <linearGradient id="spentColor" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/>
+                              <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="earnedColor" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="name" stroke="#606060" fontSize={10} fontStyle="bold" />
+                          <YAxis stroke="#606060" fontSize={10} fontStyle="bold" />
+                          <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }} />
+                          <Area type="monotone" dataKey="spent" stroke="#f43f5e" fillOpacity={1} fill="url(#spentColor)" strokeWidth={2} name="Spent" />
+                          <Area type="monotone" dataKey="earned" stroke="#10b981" fillOpacity={1} fill="url(#earnedColor)" strokeWidth={2} name="Earned" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
               </div>

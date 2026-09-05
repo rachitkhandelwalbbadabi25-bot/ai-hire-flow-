@@ -51,40 +51,6 @@ interface ActiveAssistantTarget {
   companyContext?: string;
 }
 
-const DEMO_RESUME_DATA: ResumeData = {
-  summary: "Results-driven Full-Stack Engineer with 5+ years of experience designing, scaling, and maintaining high-traffic web applications in React, TypeScript, Node.js, and Cloud Infrastructure (AWS/GCP). Proven track record of reducing page load latency by 42% and architecting microservices handling 2M+ daily active API requests.",
-  experience: [
-    {
-      id: 'exp_1',
-      company: 'CloudScale Technologies',
-      role: 'Senior Software Engineer',
-      period: 'March 2022 – Present',
-      bullets: [
-        'Architected a real-time data dashboard using React, TypeScript, and WebSockets, reducing customer query latency by 42% for 50,000+ enterprise users.',
-        'Led the migration from a monolithic backend to Node.js / Docker microservices, increasing platform uptime to 99.98%.',
-        'Engineered an automated CI/CD pipeline using GitHub Actions and AWS EKS, cutting production release cycles from 2 days to under 25 minutes.'
-      ],
-      isExpanded: true
-    },
-    {
-      id: 'exp_2',
-      company: 'PixelFlow Digital',
-      role: 'Full-Stack Developer',
-      period: 'June 2019 – February 2022',
-      bullets: [
-        'Developed and shipped 12+ responsive web applications using React, Tailwind CSS, and RESTful APIs.',
-        'Integrated Stripe and Razorpay payment gateways with automated invoice generation, processing over $3.2M in annual revenue.',
-        'Optimized PostgreSQL database indexes and Redis cache layers, improving database throughput by 35%.'
-      ],
-      isExpanded: false
-    }
-  ],
-  skills: [
-    'TypeScript', 'React 18', 'Next.js', 'Node.js', 'Express', 'PostgreSQL', 
-    'Redis', 'Docker', 'AWS', 'Tailwind CSS', 'GraphQL', 'CI/CD'
-  ]
-};
-
 function generateUniqueId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -166,10 +132,6 @@ export default function ResumeEditor() {
     }
   };
 
-  const handleLoadDemo = () => {
-    setData(DEMO_RESUME_DATA);
-  };
-
   const handleClearAll = () => {
     setData({
       summary: '',
@@ -209,12 +171,8 @@ export default function ResumeEditor() {
     roleContext?: string, 
     companyContext?: string
   ) => {
-    let initialText = text;
-    if (!initialText || !initialText.trim()) {
-      initialText = type === 'summary' 
-        ? 'Experienced software engineer delivering scalable applications and cloud solutions.' 
-        : 'Engineered microservices and frontend user interfaces with React and TypeScript.';
-    }
+    const initialText = (text || '').trim();
+    if (!initialText) return;
 
     const target: ActiveAssistantTarget = {
       expId,
@@ -312,16 +270,6 @@ export default function ResumeEditor() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={handleLoadDemo}
-            className="bg-surface hover:bg-surface-light text-ink border border-border px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:border-accent/40"
-            title="Load demo data for Alex Morgan"
-          >
-            <UserCheck className="w-4 h-4 text-accent" />
-            <span>Load Demo Data</span>
-          </button>
-
-          <button
-            type="button"
             onClick={handleClearAll}
             className="bg-surface hover:bg-surface-light text-ink-dim hover:text-rose-400 border border-border px-3.5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-sm"
             title="Reset Editor"
@@ -401,7 +349,7 @@ export default function ResumeEditor() {
                 <div>
                   <h4 className="text-base font-bold text-ink">No experience entries added yet</h4>
                   <p className="text-xs text-ink-dim mt-1 max-w-md mx-auto">
-                    Add your previous roles or click &quot;Load Demo Data&quot; at the top to see how high-impact XYZ bullet points work.
+                    Add your previous roles to structure your accomplishments using Google's high-impact XYZ bullet formula.
                   </p>
                 </div>
                 <button

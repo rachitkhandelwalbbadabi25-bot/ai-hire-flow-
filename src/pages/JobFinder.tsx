@@ -15,6 +15,7 @@ import AILoadingStepper from '../components/AILoadingStepper';
 import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import { isDemoRole } from '../utils/demoDataSanitizer';
 
 interface Job {
   title: string;
@@ -33,8 +34,27 @@ export default function JobFinder() {
   const { user } = useAuth();
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const { hasAccess } = checkAccess('jobSearches');
-  const [query, setQuery] = useState('');
-  const [location, setLocation] = useState('');
+
+  // Job Title starts completely empty for fresh users. Only user-entered real queries are retained.
+  const [query, setQuery] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('job_finder_user_query');
+      if (stored && stored.trim() && !isDemoRole(stored)) {
+        return stored.trim();
+      }
+    } catch (e) {}
+    return '';
+  });
+
+  const [location, setLocation] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('job_finder_user_location');
+      return stored || '';
+    } catch (e) {
+      return '';
+    }
+  });
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,18 +67,44 @@ export default function JobFinder() {
   const { activeTargetRole } = useSystemOS();
   const hasAutoSearchedRef = useRef(false);
 
+  // Synchronize query when navigated with explicit route state, ignoring any legacy demo roles
   useEffect(() => {
     if (locationState.state?.role || locationState.state?.query) {
       const targetQuery = locationState.state.role || locationState.state.query;
-      setQuery(targetQuery);
-      if (locationState.state?.autoSearch && !hasAutoSearchedRef.current) {
-        hasAutoSearchedRef.current = true;
-        handleSearchWithQuery(targetQuery, location);
+      if (targetQuery && !isDemoRole(targetQuery)) {
+        setQuery(targetQuery);
+        try {
+          sessionStorage.setItem('job_finder_user_query', targetQuery);
+        } catch (e) {}
+        if (locationState.state?.autoSearch && !hasAutoSearchedRef.current) {
+          hasAutoSearchedRef.current = true;
+          handleSearchWithQuery(targetQuery, location);
+        }
       }
-    } else if (!query && activeTargetRole) {
-      setQuery(activeTargetRole);
     }
-  }, [locationState.state, activeTargetRole]);
+  }, [locationState.state]);
+
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    try {
+      if (!val || !val.trim() || isDemoRole(val)) {
+        sessionStorage.removeItem('job_finder_user_query');
+      } else {
+        sessionStorage.setItem('job_finder_user_query', val);
+      }
+    } catch (e) {}
+  };
+
+  const handleLocationChange = (val: string) => {
+    setLocation(val);
+    try {
+      if (!val || !val.trim()) {
+        sessionStorage.removeItem('job_finder_user_location');
+      } else {
+        sessionStorage.setItem('job_finder_user_location', val);
+      }
+    } catch (e) {}
+  };
 
   useEffect(() => {
     async function fetchCandidateProfile() {
@@ -91,13 +137,12 @@ export default function JobFinder() {
     'Backend Engineer',
     'DevOps Engineer',
     'Product Manager',
-    'Software Engineer',
   ];
 
   if (!user) return null;
 
   const handlePopularSearch = (searchQuery: string) => {
-    setQuery(searchQuery);
+    handleQueryChange(searchQuery);
     setTimeout(() => {
       const formEvent = { preventDefault: () => {} } as FormEvent;
       handleSearchWithQuery(searchQuery, location, formEvent);
@@ -205,7 +250,7 @@ export default function JobFinder() {
                 id="job-role-input"
                 required
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => handleQueryChange(e.target.value)}
                 className="w-full pl-12 pr-4 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
                 placeholder="e.g. Senior Frontend Engineer"
                 aria-label="Job Role or Title"
@@ -220,7 +265,7 @@ export default function JobFinder() {
               <input 
                 id="job-location-input"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) => handleLocationChange(e.target.value)}
                 className="w-full pl-12 pr-4 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
                 placeholder="e.g. San Francisco or Remote"
                 aria-label="Job Location or Remote"
@@ -291,7 +336,7 @@ export default function JobFinder() {
             </p>
             <button 
               id="retry-search-button"
-              onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Software Engineer", location)}
+              onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location)}
               className="px-6 py-2.5 bg-accent text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:opacity-90 transition-all cursor-pointer"
             >
               Retry Search
@@ -301,7 +346,7 @@ export default function JobFinder() {
           <EmptyState
             icon={Search}
             title="Expand your job search criteria"
-            targetRole={query || activeTargetRole || "Software Engineer"}
+            targetRole={query || activeTargetRole || "Tech Roles"}
             description="Try searching with broader location filters or related job titles to discover active, verified job openings."
             benefitMetric="Searching with related role titles yields 4.5x more relevant job matches"
             primaryAction={{
@@ -319,12 +364,12 @@ export default function JobFinder() {
           <EmptyState
             icon={Building2}
             title="Find matched job openings"
-            targetRole={activeTargetRole || "Software Engineer"}
+            targetRole={activeTargetRole || "Engineering & Tech"}
             description="Search verified listings and compare them directly against your target role profile to see match scores."
             benefitMetric="Candidates applying to high-match roles receive interviews 2.8x faster"
             primaryAction={{
-              label: "Search 'Software Engineer'",
-              onClick: () => handlePopularSearch("Software Engineer"),
+              label: "Search 'Full Stack Developer'",
+              onClick: () => handlePopularSearch("Full Stack Developer"),
               icon: Search
             }}
             secondaryAction={{

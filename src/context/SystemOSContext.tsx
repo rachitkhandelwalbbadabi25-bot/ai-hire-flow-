@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { isDemoRole, isDemoSkills, sanitizeBrowserStorage, sanitizeUserFirestoreData } from '../utils/demoDataSanitizer';
 
 export interface ResumeContext {
   id?: string;
@@ -73,7 +74,7 @@ const SystemOSContext = createContext<SystemOSContextType>({
   outreachContacts: [],
   latestRoadmap: null,
   simulations: [],
-  activeTargetRole: 'Software Engineer',
+  activeTargetRole: '',
   allMissingSkills: [],
   interviewingCompanies: [],
   smartSuggestions: [],
@@ -111,11 +112,16 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const resumeSnap = await getDocs(resumeQ);
       if (!resumeSnap.empty) {
         const d = resumeSnap.docs[0].data();
+        const rawRole = d.targetRole || d.title || (d.analysis?.targetRole) || '';
+        const targetRole = isDemoRole(rawRole) || isDemoRole(d.jobDesc) ? '' : rawRole;
+        const rawKeywords = d.missingKeywords || d.missingSkills || d.analysis?.missingKeywords || [];
+        const missingKeywords = isDemoSkills(rawKeywords) ? [] : rawKeywords;
+
         setLatestResume({
           id: resumeSnap.docs[0].id,
-          targetRole: d.targetRole || d.title || (d.analysis?.targetRole) || 'Software Engineer',
-          score: d.score || d.atsScore || d.analysis?.score || 78,
-          missingKeywords: d.missingKeywords || d.missingSkills || d.analysis?.missingKeywords || [],
+          targetRole: targetRole,
+          score: d.score || d.atsScore || d.analysis?.score || 0,
+          missingKeywords: missingKeywords,
           keywordsFound: d.keywordsFound || d.analysis?.keywordsFound || [],
           content: d.content || d.resumeText || '',
           createdAt: d.createdAt
@@ -131,14 +137,16 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         limit(20)
       );
       const jobsSnap = await getDocs(jobsQ);
-      const fetchedJobs: TrackedJobContext[] = jobsSnap.docs.map(doc => ({
-        id: doc.id,
-        company: doc.data().company || '',
-        role: doc.data().role || '',
-        status: doc.data().status || 'Applied',
-        matchScore: doc.data().matchScore,
-        notes: doc.data().notes
-      }));
+      const fetchedJobs: TrackedJobContext[] = jobsSnap.docs
+        .map(doc => ({
+          id: doc.id,
+          company: doc.data().company || '',
+          role: doc.data().role || '',
+          status: doc.data().status || 'Applied',
+          matchScore: doc.data().matchScore,
+          notes: doc.data().notes
+        }))
+        .filter(j => !isDemoRole(j.role));
       setTrackedJobs(fetchedJobs);
 
       // 3. Fetch Outreach Contacts
@@ -166,12 +174,17 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const roadmapSnap = await getDocs(roadmapQ);
       if (!roadmapSnap.empty) {
         const rd = roadmapSnap.docs[0].data();
-        setLatestRoadmap({
-          id: roadmapSnap.docs[0].id,
-          targetRole: rd.targetRole,
-          missingSkills: rd.skillsStr ? rd.skillsStr.split(',').map((s: string) => s.trim()) : (rd.missingSkills || []),
-          createdAt: rd.createdAt
-        });
+        const isDemo = isDemoRole(rd.targetRole) || isDemoSkills(rd.skillsStr);
+        if (!isDemo) {
+          setLatestRoadmap({
+            id: roadmapSnap.docs[0].id,
+            targetRole: rd.targetRole || '',
+            missingSkills: rd.skillsStr ? rd.skillsStr.split(',').map((s: string) => s.trim()) : (rd.missingSkills || []),
+            createdAt: rd.createdAt
+          });
+        } else {
+          setLatestRoadmap(null);
+        }
       } else {
         setLatestRoadmap(null);
       }
@@ -198,15 +211,24 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   useEffect(() => {
-    fetchSystemContext();
+    sanitizeBrowserStorage();
+    if (user?.uid) {
+      sanitizeUserFirestoreData(user.uid).then(() => {
+        fetchSystemContext();
+      }).catch(() => {
+        fetchSystemContext();
+      });
+    } else {
+      fetchSystemContext();
+    }
   }, [user]);
 
-  // Derived properties
+  // Derived properties - never fall back to fake role strings
   const activeTargetRole = 
-    latestResume?.targetRole || 
-    (trackedJobs.length > 0 ? trackedJobs[0].role : '') || 
-    latestRoadmap?.targetRole || 
-    'Full Stack Engineer';
+    (latestResume?.targetRole && !isDemoRole(latestResume.targetRole) ? latestResume.targetRole : '') || 
+    (trackedJobs.length > 0 && trackedJobs[0].role && !isDemoRole(trackedJobs[0].role) ? trackedJobs[0].role : '') || 
+    (latestRoadmap?.targetRole && !isDemoRole(latestRoadmap.targetRole) ? latestRoadmap.targetRole : '') || 
+    '';
 
   const allMissingSkills = Array.from(new Set([
     ...(latestResume?.missingKeywords || []),

@@ -39,6 +39,7 @@ import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { INTERVIEW_QUESTION_BANK, BankQuestion, getQuestionsForRoleAndSkills, RubricCriteria } from '../data/interviewQuestionBank';
 import { cn } from '../lib/utils';
+import { isDemoRole } from '../utils/demoDataSanitizer';
 
 interface Question {
   id: string;
@@ -104,13 +105,13 @@ export default function InterviewSimulator() {
   useEffect(() => {
     if (location.state?.jobDescription) {
       setJobDescription(location.state.jobDescription);
-    } else if (location.state?.role) {
+    } else if (location.state?.role && !isDemoRole(location.state.role)) {
       setJobDescription(`Position: ${location.state.role}${location.state.company ? ` at ${location.state.company}` : ''}\nFocus: Technical interview, system design, and role-specific architecture.`);
     } else if (!jobDescription) {
-      if (trackedJobs.length > 0) {
+      if (trackedJobs.length > 0 && !isDemoRole(trackedJobs[0].role)) {
         setJobDescription(`Position: ${trackedJobs[0].role}\nCompany: ${trackedJobs[0].company}\nNotes: ${trackedJobs[0].notes || 'Engineering interview preparation'}`);
-      } else if (activeTargetRole) {
-        setJobDescription(`Target Position: ${activeTargetRole}\nCompany: Top Tier Technology Organization\nFocus: Technical architecture, high-concurrency scale, and leadership.`);
+      } else if (activeTargetRole && !isDemoRole(activeTargetRole)) {
+        setJobDescription(`Target Position: ${activeTargetRole}\nCompany: Target Organization\nFocus: Technical architecture, high-concurrency scale, and leadership.`);
       }
     }
   }, [location.state, activeTargetRole, trackedJobs]);

@@ -26,7 +26,6 @@ import NextStepBridgeCard from '../components/NextStepBridgeCard';
 export default function JobTracker() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  if (!user) return null;
   const { checkAccess, openUpgradeModal } = usePlan();
   const { activeTargetRole } = useSystemOS();
   const [jobs, setJobs] = useState<any[]>([]);
@@ -45,10 +44,18 @@ export default function JobTracker() {
   });
 
   useEffect(() => {
-    if (user) fetchJobs();
-  }, [user]);
+    if (user?.uid) {
+      fetchJobs();
+    } else {
+      setLoading(false);
+    }
+  }, [user?.uid]);
 
   const fetchJobs = async () => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
     try {
       const q = query(collection(db, 'users', user.uid, 'jobs'), orderBy('appliedDate', 'desc'));
       const snap = await getDocs(q);
@@ -96,6 +103,17 @@ export default function JobTracker() {
     j.company.toLowerCase().includes(search.toLowerCase()) || 
     j.role.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (!user) {
+    return (
+      <div className="min-h-[400px] w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Initializing Job Pipeline...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

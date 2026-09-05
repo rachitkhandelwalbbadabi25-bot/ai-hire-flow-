@@ -3,7 +3,7 @@ import Navbar from './Navbar';
 import UpgradeModal from './UpgradeModal';
 import NeuralStatus from './NeuralStatus';
 import OnboardingTour from './OnboardingTour';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { useLocation, Link } from 'react-router-dom';
 import { ReactNode } from 'react';
 
@@ -33,17 +33,14 @@ export default function Layout({ user, children }: LayoutProps) {
       <NeuralStatus />
       {showAppSidebar && <OnboardingTour />}
       <main className={showAppSidebar ? "pt-20 sm:pt-24 pb-28 md:pb-12 lg:ml-64 transition-all" : ""}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+        >
+          {children}
+        </motion.div>
       </main>
       <footer className={`py-12 border-t border-border bg-surface mb-16 md:mb-0 ${showAppSidebar ? "lg:ml-64" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-6">

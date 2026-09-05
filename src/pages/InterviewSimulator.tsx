@@ -69,7 +69,6 @@ interface Evaluation {
 
 export default function InterviewSimulator() {
   const { user } = useAuth();
-  if (!user) return null;
   const location = useLocation();
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
@@ -118,6 +117,7 @@ export default function InterviewSimulator() {
 
   // Auto-load most recent resume for context if available
   useEffect(() => {
+    if (!user?.uid) return;
     const fetchResume = async () => {
       try {
         const q = query(
@@ -134,7 +134,7 @@ export default function InterviewSimulator() {
       }
     };
     fetchResume();
-  }, [user.uid]);
+  }, [user?.uid]);
 
   // Helper to initialize Static / Fallback questions bank
   const loadFallbackQuestions = () => {
@@ -339,6 +339,17 @@ export default function InterviewSimulator() {
   };
 
   const currentQ = questions[currentIdx];
+
+  if (!user) {
+    return (
+      <div className="min-h-[400px] w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Initializing Interview Simulator...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-20">

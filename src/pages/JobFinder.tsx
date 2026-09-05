@@ -139,8 +139,6 @@ export default function JobFinder() {
     'Product Manager',
   ];
 
-  if (!user) return null;
-
   const handlePopularSearch = (searchQuery: string) => {
     handleQueryChange(searchQuery);
     setTimeout(() => {
@@ -216,6 +214,17 @@ export default function JobFinder() {
     // For simplicity, we'll use state if supported, or just navigate
     navigate('/analyzer', { state: { jobDescription: `${job.title} at ${job.company}\n\n${job.description}` } });
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-[400px] w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Initializing Job Finder...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">

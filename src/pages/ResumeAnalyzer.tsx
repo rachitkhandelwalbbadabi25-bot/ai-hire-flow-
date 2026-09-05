@@ -89,7 +89,6 @@ function formatMasterResumeToText(resume: MasterResumeData): string {
 
 export default function ResumeAnalyzer() {
   const { user } = useAuth();
-  if (!user) return null;
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const location = useLocation();
   const navigate = useNavigate();
@@ -109,6 +108,10 @@ export default function ResumeAnalyzer() {
 
   // Check for saved Master Resume in Resume Editor
   useEffect(() => {
+    if (!user?.uid) {
+      setLoadingMaster(false);
+      return;
+    }
     const fetchMasterResume = async () => {
       try {
         const docRef = doc(db, 'users', user.uid, 'config', 'masterResume');
@@ -144,7 +147,7 @@ export default function ResumeAnalyzer() {
       }
     };
     fetchMasterResume();
-  }, [user.uid]);
+  }, [user?.uid]);
 
   useEffect(() => {
     if (location.state?.jobDescription) {
@@ -310,6 +313,17 @@ export default function ResumeAnalyzer() {
   const formattedLastUpdated = masterResume?.updatedAt 
     ? new Date(masterResume.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : 'Recently Saved';
+
+  if (!user) {
+    return (
+      <div className="min-h-[400px] w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Initializing Resume Analyzer...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">

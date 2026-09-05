@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { User as UserIcon, LogOut, Zap, Shield, Sparkles, Award, Flame, Star, Coins } from 'lucide-react';
+import { User as UserIcon, LogOut, Zap, Shield, Sparkles, Award, Flame, Star, Coins, Loader2 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,16 @@ export default function Profile() {
   const { user, plan, isAdmin, isPremium } = useAuth();
   const { creditWallet } = usePlan();
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-[400px] w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Loading Profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   const planDisplay = isAdmin ? 'System Administrator' : isPremium ? 'Premium Member' : 'Free Tier Member';
 

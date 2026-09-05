@@ -55,7 +55,6 @@ import EmptyState from '../components/EmptyState';
 
 export default function LearningPath() {
   const { user } = useAuth();
-  if (!user) return null;
   const { plan, checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const location = useLocation();
 
@@ -91,6 +90,7 @@ export default function LearningPath() {
 
   // Load any previously saved REAL user learning path from Firestore
   useEffect(() => {
+    if (!user?.uid) return;
     const fetchSavedLearningPath = async () => {
       try {
         const q = query(
@@ -124,10 +124,11 @@ export default function LearningPath() {
     };
 
     fetchSavedLearningPath();
-  }, [user.uid]);
+  }, [user?.uid]);
 
   // Check recent analysis so user has the option to click "Load Analysis Gaps", without auto-filling
   useEffect(() => {
+    if (!user?.uid) return;
     const fetchRecentAnalysis = async () => {
       try {
         const q = query(
@@ -160,7 +161,7 @@ export default function LearningPath() {
       }
     };
     fetchRecentAnalysis();
-  }, [user.uid]);
+  }, [user?.uid]);
 
   const generatePath = async () => {
     if (!skillsStr.trim() || !targetRole.trim()) return;
@@ -206,6 +207,17 @@ export default function LearningPath() {
       default: return <Globe className="w-4 h-4" />;
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-[400px] w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Initializing Learning Path...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-20">

@@ -68,6 +68,7 @@ function AppRoutes() {
           <Route path="/finder" element={user ? <JobFinder /> : <Navigate to="/" replace />} />
           <Route path="/interview" element={user ? <InterviewSimulator /> : <Navigate to="/" replace />} />
           <Route path="/learning" element={user ? <LearningPath /> : <Navigate to="/" replace />} />
+          <Route path="/roadmap" element={user ? <LearningPath /> : <Navigate to="/" replace />} />
           <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" replace />} />
           <Route path="/resume-editor" element={user ? <ResumeEditor /> : <Navigate to="/" replace />} />
           <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" replace />} />

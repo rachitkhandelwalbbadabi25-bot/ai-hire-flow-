@@ -268,9 +268,7 @@ export default function Dashboard() {
   const hasTargetRole = Boolean(masterResumeData?.targetRole || latestResume?.targetRole || activeTargetRole);
   const hasScanDone = stats.resumesAnalyzed > 0;
 
-  if (!user) return null;
-
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="h-96 w-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -627,7 +625,7 @@ export default function Dashboard() {
           </div>
           <div className="pt-6 border-t border-border mt-6">
             <button 
-              onClick={() => navigate('/roadmap')}
+              onClick={() => navigate('/learning')}
               className="w-full bg-surface-light border border-border hover:border-accent/40 text-ink py-2.5 rounded-xl text-xs font-bold font-mono uppercase tracking-wider flex items-center justify-center gap-2 transition-all"
             >
               View Learning Roadmap <ArrowRight className="w-3.5 h-3.5" />

@@ -22,7 +22,7 @@ export async function performOcr(
   onProgress?: (msg: string) => void
 ): Promise<string> {
   if (!images || images.length === 0) {
-    throw new Error('Could not read the text from this resume. Please try a clearer PDF or image.');
+    throw new Error('Could not extract readable text from this resume.');
   }
 
   onProgress?.(`Processing ${images.length} page(s) with OCR engine...`);
@@ -44,9 +44,12 @@ export async function performOcr(
 
     if (response.ok) {
       const data = await response.json();
-      if (data.success && typeof data.text === 'string' && data.text.trim().length >= 20) {
+      if (data.success && typeof data.text === 'string' && data.text.trim().length >= 25) {
         return data.text.trim();
       }
+    } else {
+      const errData = await response.json().catch(() => null);
+      console.warn('[AI HireFlow][Client OCR] /api/ocr responded with status:', response.status, errData);
     }
   } catch (err) {
     console.warn('[AI HireFlow][Client OCR] /api/ocr call error, checking browser fallback:', err);
@@ -69,12 +72,12 @@ export async function performOcr(
     await worker.terminate();
 
     const fullBrowserText = pageTexts.join('\n\n--- Page Break ---\n\n').trim();
-    if (fullBrowserText && fullBrowserText.length >= 20) {
+    if (fullBrowserText && fullBrowserText.length >= 25) {
       return fullBrowserText;
     }
   } catch (err: any) {
     console.warn('[AI HireFlow][Client OCR] Browser Tesseract fallback failed:', err);
   }
 
-  throw new Error('Could not read the text from this resume. Please try a clearer PDF or image.');
+  throw new Error('Could not extract readable text from this resume.');
 }

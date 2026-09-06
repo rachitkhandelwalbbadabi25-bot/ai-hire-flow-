@@ -32,7 +32,11 @@ async function getWorker() {
       const worker = await createWorker('eng');
       cachedWorker = worker;
       return worker;
-    })();
+    })().catch(err => {
+      workerInitPromise = null;
+      cachedWorker = null;
+      throw err;
+    });
   }
   return await workerInitPromise;
 }
@@ -241,11 +245,12 @@ export async function handleOcrRequest(req: Request, res: Response) {
       if (typeof imgData !== 'string' || !imgData.trim()) continue;
 
       let imageTarget: any = imgData;
-      // If base64 data URL, convert to buffer for fast Node.js processing
+      // If base64 data URL, convert to buffer safely without regex backtracking
       if (imgData.startsWith('data:')) {
-        const matches = imgData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        if (matches && matches[2]) {
-          imageTarget = Buffer.from(matches[2], 'base64');
+        const commaIdx = imgData.indexOf(',');
+        if (commaIdx !== -1) {
+          const rawBase64 = imgData.slice(commaIdx + 1).replace(/\s+/g, '');
+          imageTarget = Buffer.from(rawBase64, 'base64');
         }
       }
 
@@ -265,7 +270,7 @@ export async function handleOcrRequest(req: Request, res: Response) {
 
     if (!combinedText || finalCharCount < 20) {
       return res.status(422).json({
-        error: 'Could not read the text from this resume. Please try a clearer PDF or image.',
+        error: 'Could not extract readable text from this resume.',
         code: 'OCR_EMPTY_TEXT'
       });
     }
@@ -281,7 +286,7 @@ export async function handleOcrRequest(req: Request, res: Response) {
     const ocrDuration = Date.now() - startTime;
     console.error(`[AI HireFlow][OCR] Error during OCR processing (${ocrDuration}ms):`, err.message || err);
     return res.status(500).json({
-      error: 'Could not read the text from this resume. Please try a clearer PDF or image.',
+      error: 'Could not extract readable text from this resume.',
       code: 'OCR_EXECUTION_ERROR'
     });
   }

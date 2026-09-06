@@ -1,8 +1,9 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { performOcr } from './ocr.ts';
 
-// Setting the worker source is required for pdfjs-dist
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+// Configure local Vite-bundled worker to prevent cross-origin or CDN worker failures
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 /**
  * Validates whether the extracted text layer has sufficient quality and substance
@@ -11,29 +12,30 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLi
 export function isTextQualitySufficient(text: string): boolean {
   if (!text) return false;
   const trimmed = text.trim();
-  if (trimmed.length < 60) return false;
+  if (trimmed.length < 40) return false;
 
   // Count alphabetic characters
   const letters = (trimmed.match(/[a-zA-Z]/g) || []).length;
-  if (letters < 40) return false;
+  if (letters < 25) return false;
 
   // Count distinct words (length >= 2)
   const words = trimmed.match(/\b[a-zA-Z]{2,}\b/g) || [];
-  if (words.length < 10) return false;
-
-  // Ratio of letters to total characters should be reasonable (> 35%)
-  const letterRatio = letters / trimmed.length;
-  if (letterRatio < 0.35) return false;
+  if (words.length < 6) return false;
 
   return true;
 }
 
 /**
  * Converts a PDF page to a high-resolution base64 JPEG image using an offscreen canvas.
- * Scale 2.0 ensures crisp text rasterization for optimal OCR character recognition.
+ * Computes an adaptive scale targeting ~1400px width for optimal OCR character recognition
+ * without causing canvas memory overflows on ultra-high-resolution scans.
  */
-async function renderPageToImage(page: any, scale: number = 2.0): Promise<string> {
-  const viewport = page.getViewport({ scale });
+async function renderPageToImage(page: any): Promise<string> {
+  const unscaledViewport = page.getViewport({ scale: 1.0 });
+  const targetWidth = 1400;
+  const calculatedScale = Math.min(2.5, Math.max(1.0, targetWidth / (unscaledViewport.width || 600)));
+  const viewport = page.getViewport({ scale: calculatedScale });
+
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(viewport.width);
   canvas.height = Math.round(viewport.height);
@@ -43,16 +45,17 @@ async function renderPageToImage(page: any, scale: number = 2.0): Promise<string
     throw new Error('Could not create 2D canvas context for PDF rasterization');
   }
 
-  // Draw white background first to avoid transparent backgrounds breaking OCR
+  // Draw pure white background first to avoid transparent backgrounds breaking OCR
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   await page.render({
+    canvas,
     canvasContext: ctx,
     viewport
   }).promise;
 
-  return canvas.toDataURL('image/jpeg', 0.92);
+  return canvas.toDataURL('image/jpeg', 0.88);
 }
 
 /**
@@ -104,7 +107,7 @@ export const extractTextFromPDF = async (
     for (let i = 1; i <= pdf.numPages; i++) {
       onProgress?.(`Scanning page ${i} of ${pdf.numPages} with OCR...`);
       const page = await pdf.getPage(i);
-      const imgDataUrl = await renderPageToImage(page, 2.0);
+      const imgDataUrl = await renderPageToImage(page);
       pageImages.push(imgDataUrl);
     }
 
@@ -123,16 +126,13 @@ export const extractTextFromPDF = async (
     console.log(`[AI HireFlow][PDF] OCR extraction completed: pages=${pdf.numPages}, normalCharCount=${normalCharCount}, ocrTriggered=true, ocrDuration=${ocrDuration}ms, finalCharCount=${finalCharCount}`);
 
     if (!trimmedOcr || trimmedOcr.length < 25) {
-      throw new Error('Could not read the text from this resume. Please try a clearer PDF or image.');
+      throw new Error('Could not extract readable text from this resume.');
     }
 
     return trimmedOcr;
   } catch (err: any) {
     console.error('[AI HireFlow][PDF] Extraction error:', err.message || err);
-    if (err.message && err.message.includes('Could not read the text from this resume')) {
-      throw err;
-    }
-    throw new Error('Could not read the text from this resume. Please try a clearer PDF or image.');
+    throw new Error(err.message || 'Could not extract readable text from this resume.');
   }
 };
 
@@ -149,7 +149,7 @@ export const extractTextFromFile = async (
   if (fileName.endsWith('.txt') || file.type === 'text/plain') {
     onProgress?.('Reading text resume...');
     const text = await file.text();
-    if (!text.trim() || text.trim().length < 30) {
+    if (!text.trim() || text.trim().length < 25) {
       throw new Error('The uploaded text file is empty or too short to be a valid resume.');
     }
     return text.trim();
@@ -173,12 +173,12 @@ export const extractTextFromFile = async (
           const dataUrl = reader.result as string;
           const text = await performOcr([dataUrl], { fileType: 'image', fileName: file.name }, onProgress);
           if (!text || text.trim().length < 25) {
-            reject(new Error('Could not read the text from this resume. Please try a clearer PDF or image.'));
+            reject(new Error('Could not extract readable text from this resume.'));
           } else {
             resolve(text.trim());
           }
-        } catch (e) {
-          reject(new Error('Could not read the text from this resume. Please try a clearer PDF or image.'));
+        } catch (e: any) {
+          reject(new Error(e.message || 'Could not extract readable text from this resume.'));
         }
       };
       reader.onerror = () => reject(new Error('Failed to load resume image.'));

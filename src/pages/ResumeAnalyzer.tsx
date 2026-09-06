@@ -200,34 +200,77 @@ export default function ResumeAnalyzer() {
 
     try {
       const text = await extractTextFromFile(selected, (status) => setExtractionStatus(status));
+      if (!text || text.trim().length < 25) {
+        throw new Error('Could not extract readable text from this resume.');
+      }
       extractedFileCache.set(cacheKey, text);
       setExtractedDoc({
-        text,
+        text: text.trim(),
         fileName: selected.name,
         fileType: selected.name.split('.').pop() || 'pdf',
-        charCount: text.length
+        charCount: text.trim().length
       });
+      setError(null);
     } catch (err: any) {
       console.error('[ResumeAnalyzer] Text extraction failed:', err);
-      setError(err.message || 'Could not read text from this file.');
+      setExtractedDoc(null);
+      setError(err.message || 'Could not extract readable text from this resume.');
     } finally {
       setIsExtracting(false);
     }
   };
 
+  const handleRetryExtraction = async () => {
+    if (!file || isExtracting || isAnalyzing) return;
+    setError(null);
+    setIsExtracting(true);
+    setExtractionStatus('Retrying text extraction & OCR...');
+
+    const cacheKey = `${file.name}-${file.size}-${file.lastModified}`;
+    extractedFileCache.delete(cacheKey);
+
+    try {
+      const text = await extractTextFromFile(file, (status) => setExtractionStatus(status));
+      if (!text || text.trim().length < 25) {
+        throw new Error('Could not extract readable text from this resume.');
+      }
+      extractedFileCache.set(cacheKey, text);
+      setExtractedDoc({
+        text: text.trim(),
+        fileName: file.name,
+        fileType: file.name.split('.').pop() || 'pdf',
+        charCount: text.trim().length
+      });
+      setError(null);
+    } catch (err: any) {
+      console.error('[ResumeAnalyzer] Retry extraction failed:', err);
+      setExtractedDoc(null);
+      setError(err.message || 'Could not extract readable text from this resume.');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleRemoveUploadedFile = () => {
+    setFile(null);
+    setExtractedDoc(null);
+    setError(null);
+    setIsExtracting(false);
+  };
+
   const handleStartAnalysis = async () => {
     if (isAnalyzing) return; // Guard against concurrent submissions!
 
-    // Validation: Require either saved master resume OR uploaded PDF
+    // Validation: Require either saved master resume OR successfully extracted resume text
     const isUsingMaster = useSavedResume && !!masterResume && !isUploadMode;
     
-    if (!isUsingMaster && !extractedDoc && !file) {
-      setError("Please select your saved Master Resume or upload a PDF file first.");
+    if (isExtracting) {
+      setError("Document text extraction is in progress. Please wait a moment.");
       return;
     }
 
-    if (isExtracting) {
-      setError("Document text extraction is in progress. Please wait a moment.");
+    if (!isUsingMaster && (!extractedDoc || !extractedDoc.text || extractedDoc.text.trim().length < 25)) {
+      setError("Resume text could not be extracted yet. Please upload a resume or retry extraction.");
       return;
     }
 
@@ -248,22 +291,13 @@ export default function ResumeAnalyzer() {
         if (!text || text.length < 20) {
           throw new Error("Saved Master Resume is empty. Please add details in Resume Editor or upload a PDF/document.");
         }
-      } else if (extractedDoc) {
-        // REUSE ALREADY EXTRACTED RESUME TEXT — ZERO EXTRACTION / ZERO OCR OVERHEAD!
+      } else if (extractedDoc && extractedDoc.text) {
+        // STRICT: REUSE ALREADY EXTRACTED RESUME TEXT — ZERO RE-EXTRACTION / ZERO RE-OCR!
         text = extractedDoc.text;
         resumeTitle = extractedDoc.fileName;
         fileType = extractedDoc.fileType;
-      } else if (file) {
-        // Fallback only if not pre-extracted
-        text = await extractTextFromFile(file, (status) => setAnalysisStatus(status));
-        resumeTitle = file.name;
-        fileType = file.name.split('.').pop() || 'pdf';
-        setExtractedDoc({
-          text,
-          fileName: file.name,
-          fileType,
-          charCount: text.length
-        });
+      } else {
+        throw new Error("Resume text could not be extracted yet. Please upload a resume or retry extraction.");
       }
       
       const fileTypeForAnalysis = fileType;
@@ -577,20 +611,20 @@ export default function ResumeAnalyzer() {
                     </div>
                   </div>
                 ) : (
-                  /* Standard PDF Upload Dropzone */
+                  /* Standard PDF / Scanned / Image Upload Dropzone */
                   <div>
                     <label className={cn(
-                      "relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl h-56 cursor-pointer transition-all",
-                      (file || extractedDoc) ? "border-accent bg-accent/5" : "border-border hover:border-accent/40",
+                      "relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl min-h-[14rem] p-4 cursor-pointer transition-all",
+                      extractedDoc ? "border-accent bg-accent/5" : (file && error) ? "border-rose-500/50 bg-rose-500/5" : "border-border hover:border-accent/40",
                       (isAnalyzing || isExtracting) && "pointer-events-none opacity-80"
                     )}>
                       <input 
                         type="file" 
                         className="hidden" 
-                        accept=".pdf,.docx,.txt" 
+                        accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp" 
                         onChange={handleFileChange}
                         disabled={isAnalyzing || isExtracting}
-                        aria-label="Upload resume file (PDF, DOCX, TXT)" 
+                        aria-label="Upload resume file (PDF, DOCX, TXT, or Image)" 
                       />
                       {isExtracting ? (
                         <div className="text-center px-4">
@@ -602,18 +636,53 @@ export default function ResumeAnalyzer() {
                             {extractionStatus || 'Extracting Resume Text...'}
                           </p>
                         </div>
-                      ) : (file || extractedDoc) ? (
+                      ) : extractedDoc ? (
                         <div className="text-center px-4">
                           <div className="bg-accent p-3 rounded-full inline-block mb-2 shadow-md shadow-accent/20" aria-hidden="true">
                             <FileText className="w-6 h-6 text-black" />
                           </div>
-                          <p className="font-bold text-ink text-sm">{file?.name || extractedDoc?.fileName}</p>
+                          <p className="font-bold text-ink text-sm">{extractedDoc.fileName}</p>
                           <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">Document Ready to Analyze</p>
-                          {extractedDoc && (
-                            <span className="text-[10px] font-mono text-ink-dim block mt-0.5">
-                              {extractedDoc.charCount.toLocaleString()} characters extracted · Fast Cache Active
-                            </span>
-                          )}
+                          <span className="text-[10px] font-mono text-ink-dim block mt-0.5">
+                            {extractedDoc.charCount.toLocaleString()} characters extracted · Fast Cache Active
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveUploadedFile();
+                            }}
+                            className="mt-2 text-[11px] text-ink-dim hover:text-rose-400 font-mono underline transition-colors cursor-pointer"
+                          >
+                            Remove / Change File
+                          </button>
+                        </div>
+                      ) : file && error ? (
+                        <div className="text-center px-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="bg-rose-500/10 border border-rose-500/30 p-3 rounded-full inline-block mb-2" aria-hidden="true">
+                            <AlertCircle className="w-6 h-6 text-rose-400" />
+                          </div>
+                          <p className="font-bold text-ink text-sm">{file.name}</p>
+                          <p className="text-xs text-rose-400 mt-1 max-w-sm mx-auto font-medium">
+                            Could not extract readable text from this resume.
+                          </p>
+                          <div className="flex items-center justify-center gap-3 mt-3">
+                            <button
+                              type="button"
+                              onClick={handleRetryExtraction}
+                              className="px-3 py-1.5 bg-accent text-black text-xs font-bold rounded-lg hover:bg-accent/90 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              Retry Extraction
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRemoveUploadedFile}
+                              className="px-3 py-1.5 bg-surface border border-border text-ink hover:text-rose-400 text-xs font-bold rounded-lg transition-all cursor-pointer"
+                            >
+                              Remove Resume
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <div className="text-center px-4">
@@ -621,14 +690,14 @@ export default function ResumeAnalyzer() {
                             <FileUp className="w-6 h-6 text-ink-dim" />
                           </div>
                           <p className="font-bold text-ink text-sm">Select or Drop Resume</p>
-                          <p className="text-[10px] text-ink-dim mt-1 uppercase tracking-widest font-bold">PDF, DOCX, or TXT</p>
+                          <p className="text-[10px] text-ink-dim mt-1 uppercase tracking-widest font-bold">PDF, DOCX, TXT, or Images (JPG, PNG)</p>
                         </div>
                       )}
                     </label>
                   </div>
                 )}
 
-                {error && (
+                {error && !file && (
                   <div role="alert" className="mt-4 p-4 bg-rose-500/10 text-rose-400 text-sm rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-rose-500/20">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -724,27 +793,43 @@ export default function ResumeAnalyzer() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleStartAnalysis}
-                    disabled={isAnalyzing || isExtracting}
-                    className="w-full sm:w-auto px-8 py-4 bg-accent hover:bg-accent/90 text-black font-mono font-extrabold text-sm rounded-xl flex items-center justify-center gap-2.5 shadow-xl shadow-accent/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isExtracting ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Reading Document...</span>
-                      </>
-                    ) : (
-                      <>
-                        <BrainCircuit className="w-5 h-5" />
-                        <span>
-                          {isPrePopulated ? 'Use Saved Resume & Run Audit' : 'Analyze Uploaded Resume'}
-                        </span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
+                  {(() => {
+                    const isUsingMaster = useSavedResume && !!masterResume && !isUploadMode;
+                    const canAnalyze = isUsingMaster 
+                      ? Boolean(masterResume) 
+                      : Boolean(extractedDoc && extractedDoc.text && extractedDoc.text.trim().length >= 25);
+
+                    return (
+                      <div className="flex flex-col sm:items-end items-center gap-1.5 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={handleStartAnalysis}
+                          disabled={isAnalyzing || isExtracting || !canAnalyze}
+                          className="w-full sm:w-auto px-8 py-4 bg-accent hover:bg-accent/90 text-black font-mono font-extrabold text-sm rounded-xl flex items-center justify-center gap-2.5 shadow-xl shadow-accent/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isExtracting ? (
+                            <>
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span>Reading Document...</span>
+                            </>
+                          ) : (
+                            <>
+                              <BrainCircuit className="w-5 h-5" />
+                              <span>
+                                {isPrePopulated ? 'Use Saved Resume & Run Audit' : 'Analyze Uploaded Resume'}
+                              </span>
+                              <ArrowRight className="w-4 h-4" />
+                            </>
+                          )}
+                        </button>
+                        {!canAnalyze && file && !isExtracting && (
+                          <span className="text-[11px] text-rose-400 font-mono">
+                            Resume text could not be extracted yet.
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

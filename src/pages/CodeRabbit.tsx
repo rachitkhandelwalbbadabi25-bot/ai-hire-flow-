@@ -31,7 +31,6 @@ interface AuditResult {
 
 export default function CodeRabbit() {
   const { user } = useAuth();
-  if (!user) return null;
   const { checkAccess, deductCredit, openUpgradeModal } = usePlan();
   
   const [code, setCode] = useState('');
@@ -83,6 +82,17 @@ export default function CodeRabbit() {
       setIsAuditing(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-[400px] w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <p className="text-xs font-mono text-zinc-500 uppercase tracking-wider animate-pulse">Initializing Code Auditor...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#e0e0e0] font-sans selection:bg-accent selection:text-white pb-32">

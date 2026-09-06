@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target } from 'lucide-react';
+import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Loader2, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target } from 'lucide-react';
 import { findJobs } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { Link, useNavigate, useLocation } from 'react-router-dom';

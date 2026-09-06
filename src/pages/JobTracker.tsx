@@ -13,6 +13,7 @@ import {
   Briefcase,
   Sparkles,
   LoaderCircle as Spinner,
+  Loader2,
   Send,
   MessageSquare
 } from 'lucide-react';

@@ -137,7 +137,10 @@ export default function OutreachHub() {
 
   // Load contacts
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) {
+      setLoadingContacts(false);
+      return;
+    }
 
     const fetchContacts = async () => {
       try {

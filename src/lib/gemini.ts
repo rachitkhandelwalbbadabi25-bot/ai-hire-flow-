@@ -228,12 +228,18 @@ export const analyzeResume = async (
   options?: { fileType?: string }
 ) => {
   // 1. Sanitize and validate the candidate's actual extracted resume content
-  const cleanResume = (resumeText || '')
+  // Remove OCR artifacts, duplicate blank lines, and normalize whitespace
+  const rawClean = (resumeText || '')
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
     .replace(/[ \t]+/g, ' ')
-    .replace(/\n\s*\n\s*\n+/g, '\n\n')
-    .trim()
-    .slice(0, 25000); // Allow up to 25,000 characters to ensure full multi-page resume is audited
+    .split('\n')
+    .map(line => line.trim())
+    // Filter out consecutive duplicate lines (common in scanned PDF / OCR header artifacts)
+    .filter((line, idx, arr) => line.length > 0 && (idx === 0 || line !== arr[idx - 1]))
+    .join('\n');
+
+  const cleanResume = rawClean
+    .slice(0, 14000); // 14,000 characters (~3,000 words), providing comprehensive multi-page coverage while keeping token counts fast
 
   if (!cleanResume || cleanResume.length < 30) {
     throw new Error("The resume text is empty or too short to perform an ATS analysis. Please upload a valid resume with readable text.");
@@ -243,7 +249,7 @@ export const analyzeResume = async (
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
     .replace(/[ \t]+/g, ' ')
     .trim()
-    .slice(0, 4000);
+    .slice(0, 3500);
 
   const charCount = cleanResume.length;
   const wordCount = cleanResume.split(/\s+/).filter(Boolean).length;
@@ -389,8 +395,8 @@ CONCISENESS RULES:
     prompt,
     systemPrompt: "You are an expert, objective ATS Resume Auditor API for AI HireFlow powered by Velona GLM 5.3 Flash. Output strictly valid, concise raw JSON only.",
     jsonMode: true,
-    temperature: 0.15,
-    maxTokens: 3200,
+    temperature: 0.7,
+    maxTokens: 2400,
     operation: 'resume_analysis',
     meta: {
       fileType,

@@ -87,6 +87,15 @@ function formatMasterResumeToText(resume: MasterResumeData): string {
   return parts.join('\n\n').trim();
 }
 
+const extractedFileCache = new Map<string, string>();
+
+interface ExtractedDoc {
+  text: string;
+  fileName: string;
+  fileType: string;
+  charCount: number;
+}
+
 export default function ResumeAnalyzer() {
   const { user } = useAuth();
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
@@ -94,6 +103,9 @@ export default function ResumeAnalyzer() {
   const navigate = useNavigate();
 
   const [file, setFile] = useState<File | null>(null);
+  const [extractedDoc, setExtractedDoc] = useState<ExtractedDoc | null>(null);
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [extractionStatus, setExtractionStatus] = useState<string>('');
   const [jobDesc, setJobDesc] = useState('');
   const [masterResume, setMasterResume] = useState<MasterResumeData | null>(null);
   const [loadingMaster, setLoadingMaster] = useState(true);
@@ -162,44 +174,99 @@ export default function ResumeAnalyzer() {
   const [error, setError] = useState<string | null>(null);
   const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(null);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setFile(e.target.files[0]);
-      setUseSavedResume(false);
-      setError(null);
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+
+    setFile(selected);
+    setUseSavedResume(false);
+    setError(null);
+    setExtractedDoc(null);
+    setIsExtracting(true);
+    setExtractionStatus('Reading resume file...');
+
+    const cacheKey = `${selected.name}-${selected.size}-${selected.lastModified}`;
+    if (extractedFileCache.has(cacheKey)) {
+      const cachedText = extractedFileCache.get(cacheKey)!;
+      setExtractedDoc({
+        text: cachedText,
+        fileName: selected.name,
+        fileType: selected.name.split('.').pop() || 'pdf',
+        charCount: cachedText.length
+      });
+      setIsExtracting(false);
+      return;
+    }
+
+    try {
+      const text = await extractTextFromFile(selected, (status) => setExtractionStatus(status));
+      extractedFileCache.set(cacheKey, text);
+      setExtractedDoc({
+        text,
+        fileName: selected.name,
+        fileType: selected.name.split('.').pop() || 'pdf',
+        charCount: text.length
+      });
+    } catch (err: any) {
+      console.error('[ResumeAnalyzer] Text extraction failed:', err);
+      setError(err.message || 'Could not read text from this file.');
+    } finally {
+      setIsExtracting(false);
     }
   };
 
   const handleStartAnalysis = async () => {
+    if (isAnalyzing) return; // Guard against concurrent submissions!
+
     // Validation: Require either saved master resume OR uploaded PDF
     const isUsingMaster = useSavedResume && !!masterResume && !isUploadMode;
     
-    if (!isUsingMaster && !file) {
+    if (!isUsingMaster && !extractedDoc && !file) {
       setError("Please select your saved Master Resume or upload a PDF file first.");
+      return;
+    }
+
+    if (isExtracting) {
+      setError("Document text extraction is in progress. Please wait a moment.");
       return;
     }
 
     setIsAnalyzing(true);
     setError(null);
     setCacheSource(null);
-    setAnalysisStatus('Reading resume...');
+    setAnalysisStatus('Starting ATS analysis...');
 
     try {
       let text = '';
       let resumeTitle = '';
+      let fileType = 'pdf';
 
       if (isUsingMaster && masterResume) {
         text = formatMasterResumeToText(masterResume);
         resumeTitle = `Master Resume (${masterResume.experience?.[0]?.role || 'Saved Profile'})`;
+        fileType = 'master_resume';
         if (!text || text.length < 20) {
           throw new Error("Saved Master Resume is empty. Please add details in Resume Editor or upload a PDF/document.");
         }
+      } else if (extractedDoc) {
+        // REUSE ALREADY EXTRACTED RESUME TEXT — ZERO EXTRACTION / ZERO OCR OVERHEAD!
+        text = extractedDoc.text;
+        resumeTitle = extractedDoc.fileName;
+        fileType = extractedDoc.fileType;
       } else if (file) {
+        // Fallback only if not pre-extracted
         text = await extractTextFromFile(file, (status) => setAnalysisStatus(status));
         resumeTitle = file.name;
+        fileType = file.name.split('.').pop() || 'pdf';
+        setExtractedDoc({
+          text,
+          fileName: file.name,
+          fileType,
+          charCount: text.length
+        });
       }
       
-      const fileType = file ? (file.name.split('.').pop() || 'pdf') : 'master_resume';
+      const fileTypeForAnalysis = fileType;
 
       // STEP 1: Check In-Memory (Browser) Cache
       const inMemoryKey = cacheManager.generateResumeKey(text, jobDesc);
@@ -256,24 +323,30 @@ export default function ResumeAnalyzer() {
       await deductCredit('resumeScans');
 
       // Execute primary resume audit
-      setAnalysisStatus('Analyzing resume...');
-      const analysisResult = await analyzeResume(text, jobDesc, { fileType });
+      setAnalysisStatus('Analyzing resume against ATS criteria with Velona GLM 5.3 Flash...');
+      const analysisResult = await analyzeResume(text, jobDesc, { fileType: fileTypeForAnalysis });
 
-      // Execute optional cover letter sequentially to avoid Velona rate limits / connection choking
+      // Immediate display of primary ATS analysis
+      setAnalysis(analysisResult);
+
+      // Execute optional cover letter asynchronously without blocking primary audit
       let cl: string | null = null;
       if (jobDesc && canGenCL) {
-        try {
-          await deductCredit('coverLetters');
-          const clResult = await generateCoverLetter(text, jobDesc);
-          cl = clResult?.content || null;
-        } catch (e) {
-          console.warn("Cover letter generation secondary error:", e);
-        }
+        generateCoverLetter(text, jobDesc)
+          .then(async (clResult) => {
+            if (clResult?.content) {
+              setCoverLetter(clResult.content);
+              await deductCredit('coverLetters');
+            }
+          })
+          .catch((e) => {
+            console.warn("Cover letter generation secondary error:", e);
+          });
       }
 
       const resultsToStore = {
         analysis: analysisResult,
-        coverLetter: cl
+        coverLetter: null
       };
 
       try {
@@ -289,9 +362,6 @@ export default function ResumeAnalyzer() {
         console.warn("Firestore resume persistence warning:", dbErr);
       }
 
-      setAnalysis(analysisResult);
-      setCoverLetter(cl);
-      
       // Save to both caches
       cacheManager.set(inMemoryKey, resultsToStore, 24 * 60 * 60 * 1000);
       try {
@@ -301,7 +371,7 @@ export default function ResumeAnalyzer() {
       }
 
     } catch (err: any) {
-      console.error(err);
+      console.error('[ResumeAnalyzer] Analysis error:', err);
       setError(err.message || "Resume analysis failed. Please try again.");
     } finally {
       setIsAnalyzing(false);
@@ -511,22 +581,39 @@ export default function ResumeAnalyzer() {
                   <div>
                     <label className={cn(
                       "relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl h-56 cursor-pointer transition-all",
-                      file ? "border-accent bg-accent/5" : "border-border hover:border-accent/40"
+                      (file || extractedDoc) ? "border-accent bg-accent/5" : "border-border hover:border-accent/40",
+                      (isAnalyzing || isExtracting) && "pointer-events-none opacity-80"
                     )}>
                       <input 
                         type="file" 
                         className="hidden" 
                         accept=".pdf,.docx,.txt" 
                         onChange={handleFileChange}
+                        disabled={isAnalyzing || isExtracting}
                         aria-label="Upload resume file (PDF, DOCX, TXT)" 
                       />
-                      {file ? (
+                      {isExtracting ? (
+                        <div className="text-center px-4">
+                          <div className="bg-accent/10 border border-accent/30 p-3 rounded-full inline-block mb-2 animate-pulse" aria-hidden="true">
+                            <Loader2 className="w-6 h-6 text-accent animate-spin" />
+                          </div>
+                          <p className="font-bold text-ink text-sm">{file?.name || 'Resume Document'}</p>
+                          <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">
+                            {extractionStatus || 'Extracting Resume Text...'}
+                          </p>
+                        </div>
+                      ) : (file || extractedDoc) ? (
                         <div className="text-center px-4">
                           <div className="bg-accent p-3 rounded-full inline-block mb-2 shadow-md shadow-accent/20" aria-hidden="true">
                             <FileText className="w-6 h-6 text-black" />
                           </div>
-                          <p className="font-bold text-ink text-sm">{file.name}</p>
+                          <p className="font-bold text-ink text-sm">{file?.name || extractedDoc?.fileName}</p>
                           <p className="text-[10px] text-accent mt-1 uppercase tracking-widest font-bold">Document Ready to Analyze</p>
+                          {extractedDoc && (
+                            <span className="text-[10px] font-mono text-ink-dim block mt-0.5">
+                              {extractedDoc.charCount.toLocaleString()} characters extracted · Fast Cache Active
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center px-4">
@@ -640,14 +727,23 @@ export default function ResumeAnalyzer() {
                   <button
                     type="button"
                     onClick={handleStartAnalysis}
-                    disabled={isAnalyzing}
+                    disabled={isAnalyzing || isExtracting}
                     className="w-full sm:w-auto px-8 py-4 bg-accent hover:bg-accent/90 text-black font-mono font-extrabold text-sm rounded-xl flex items-center justify-center gap-2.5 shadow-xl shadow-accent/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <BrainCircuit className="w-5 h-5" />
-                    <span>
-                      {isPrePopulated ? 'Use Saved Resume & Run Audit' : 'Analyze Uploaded Resume'}
-                    </span>
-                    <ArrowRight className="w-4 h-4" />
+                    {isExtracting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Reading Document...</span>
+                      </>
+                    ) : (
+                      <>
+                        <BrainCircuit className="w-5 h-5" />
+                        <span>
+                          {isPrePopulated ? 'Use Saved Resume & Run Audit' : 'Analyze Uploaded Resume'}
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -1071,12 +1167,19 @@ export default function ResumeAnalyzer() {
             }}
           />
 
-          <div className="flex justify-center pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
             <button 
-              onClick={() => { setAnalysis(null); setCoverLetter(null); setFile(null); setJobDesc(''); }}
-              className="text-ink-dim hover:text-accent font-bold transition-all flex items-center gap-2 uppercase text-[10px] tracking-widest"
+              onClick={() => { setAnalysis(null); setCoverLetter(null); }}
+              className="px-4 py-2.5 bg-surface-light hover:bg-surface border border-border text-ink hover:text-accent font-bold rounded-xl transition-all flex items-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
             >
-              Reset Terminal
+              <RotateCcw className="w-3.5 h-3.5 text-accent" />
+              Modify Target Job & Re-Analyze
+            </button>
+            <button 
+              onClick={() => { setAnalysis(null); setCoverLetter(null); setFile(null); setExtractedDoc(null); setJobDesc(''); }}
+              className="px-4 py-2 text-ink-dim hover:text-rose-400 font-bold transition-all flex items-center gap-1.5 text-xs uppercase tracking-wider cursor-pointer"
+            >
+              Reset Terminal / New Resume
             </button>
           </div>
         </motion.div>

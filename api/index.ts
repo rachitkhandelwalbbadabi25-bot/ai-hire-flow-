@@ -103,7 +103,7 @@ export async function callVelonaChatCompletion({
   }
 
   // Safe bounded max_tokens for GLM-5.3-Flash (ensures sufficient floor for reasoning tokens)
-  const safeMaxTokens = maxTokens ? Math.min(Math.max(2000, maxTokens), 4096) : 3200;
+  const safeMaxTokens = maxTokens ? Math.min(Math.max(1200, maxTokens), 4096) : 3200;
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.1, Math.min(1.0, temperature))
     : 0.7;
@@ -112,15 +112,15 @@ export async function callVelonaChatCompletion({
   const approxPromptLength = formattedMessages.reduce((sum, m) => sum + m.content.length, 0);
   console.log(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Start: model=${VELONA_MODEL_ID}, promptSize=${approxPromptLength} chars, fileType=${meta?.fileType || 'N/A'}, textChars=${meta?.charCount ?? 'N/A'}, textWords=${meta?.wordCount ?? 'N/A'}, jsonMode=${jsonMode}, maxTokens=${safeMaxTokens}, temperature=${safeTemperature}`);
 
-  // Resilient execution with bounded total budget to stay safely within Vercel execution limits
-  const maxRetries = 2;
-  const maxTotalBudgetMs = 50000;
-  const perAttemptTimeoutMs = 28000;
+  // Resilient execution with bounded total budget to stay safely within Vercel's 60s limit
+  const maxRetries = 1;
+  const maxTotalBudgetMs = 52000;
+  const perAttemptTimeoutMs = 45000;
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0 && (Date.now() - velonaStart) > maxTotalBudgetMs) {
-      console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Exceeded retry budget (${Date.now() - velonaStart}ms). Stopping retries.`);
+    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 15000)) {
+      console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Insufficient time remaining in budget (${Date.now() - velonaStart}ms). Stopping retries to prevent Vercel 504 timeout.`);
       break;
     }
 
@@ -281,23 +281,23 @@ export async function callVelonaChatCompletion({
       const attemptElapsed = Date.now() - attemptStart;
       
       if (err.name === 'AbortError') {
-        console.error(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona request aborted after timeout (${attemptElapsed}ms) on attempt ${attempt + 1}.`);
-        lastError = new Error(`Velona API request timed out after ${Math.round(perAttemptTimeoutMs / 1000)}s.`);
+        console.error(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona request aborted after timeout (${attemptElapsed}ms). Stopping execution to prevent Vercel 504.`);
+        lastError = new Error(`Velona AI request timed out after ${Math.round(perAttemptTimeoutMs / 1000)}s.`);
         lastError.status = 504;
         lastError.code = 'TIMEOUT';
+        break; // Never retry a timed-out attempt — retrying will exceed Vercel's serverless ceiling
       } else {
         lastError = err;
       }
 
-      // Check if we should retry network errors
-      if (attempt < maxRetries && (Date.now() - velonaStart) < maxTotalBudgetMs && (err.name === 'FetchError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || err.name === 'AbortError')) {
-        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Retrying after network error: ${err.message}`);
+      // Only retry immediate network drops (ECONNRESET, FetchError) if ample time remains in budget
+      const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
+      if (attempt < maxRetries && timeRemaining > 20000 && (err.name === 'FetchError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT')) {
+        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Retrying after network error (${timeRemaining}ms remaining): ${err.message}`);
         continue;
       }
 
-      if (attempt >= maxRetries || (Date.now() - velonaStart) >= maxTotalBudgetMs) {
-        break;
-      }
+      break;
     }
   }
 

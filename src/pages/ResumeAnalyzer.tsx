@@ -34,7 +34,8 @@ import {
   Scale,
   Clock,
   RotateCcw,
-  BookOpen
+  BookOpen,
+  X
 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import AILoadingStepper from '../components/AILoadingStepper';
@@ -459,6 +460,40 @@ export default function ResumeAnalyzer() {
           </p>
           <SkeletonLoader type="card" lines={6} />
         </div>
+      )}
+
+      {error && !isAnalyzing && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="my-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-rose-400">Analysis Error</h4>
+              <p className="text-xs text-ink-dim mt-0.5">{error}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={handleStartAnalysis}
+              className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-mono text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Retry Analysis
+            </button>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="p-1.5 text-ink-dim hover:text-ink transition-colors cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </motion.div>
       )}
 
       {!analysis ? (

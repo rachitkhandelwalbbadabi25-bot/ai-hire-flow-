@@ -114,8 +114,8 @@ export async function callVelonaChatCompletion({
 
   // Resilient execution with bounded total budget to stay safely within Vercel's 60s limit
   const maxRetries = 1;
-  const maxTotalBudgetMs = 52000;
-  const perAttemptTimeoutMs = 45000;
+  const maxTotalBudgetMs = 58000;
+  const perAttemptTimeoutMs = 55000;
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -152,7 +152,8 @@ export async function callVelonaChatCompletion({
       messages: currentMessages,
       temperature: safeTemperature,
       stream: false,
-      max_tokens: safeMaxTokens
+      max_tokens: safeMaxTokens,
+      enable_thinking: false
     };
 
     try {

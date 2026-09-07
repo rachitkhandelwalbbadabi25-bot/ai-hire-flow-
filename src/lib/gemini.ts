@@ -64,6 +64,73 @@ function sanitizeControlCharsInStrings(jsonStr: string): string {
 }
 
 /**
+ * Resilient JSON repair helper for model responses slightly truncated by token boundary:
+ * Walks unbalanced braces/brackets, removes trailing fragments/commas, and closes open structures.
+ */
+function repairTruncatedJson(str: string): string | null {
+  if (!str || typeof str !== 'string') return null;
+  let trimmed = str.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return null;
+
+  let candidate = trimmed;
+  // If ended mid-string, close the string quote
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < candidate.length; i++) {
+    const char = candidate[i];
+    if (escaped) { escaped = false; continue; }
+    if (char === '\\') { escaped = true; continue; }
+    if (char === '"') { inString = !inString; }
+  }
+  if (inString) {
+    candidate += '"';
+  }
+
+  // Remove trailing comma or dangling colon/key
+  candidate = candidate
+    .replace(/,\s*$/, '')
+    .replace(/:\s*$/, ': null')
+    .replace(/,\s*([}\]])/g, '$1');
+
+  // Recalculate remaining needed closures
+  const remainingStack: string[] = [];
+  let inStr2 = false;
+  let esc2 = false;
+  for (let i = 0; i < candidate.length; i++) {
+    const char = candidate[i];
+    if (esc2) { esc2 = false; continue; }
+    if (char === '\\') { esc2 = true; continue; }
+    if (char === '"') { inStr2 = !inStr2; continue; }
+    if (!inStr2) {
+      if (char === '{') remainingStack.push('}');
+      else if (char === '[') remainingStack.push(']');
+      else if (char === '}' || char === ']') {
+        if (remainingStack.length > 0 && remainingStack[remainingStack.length - 1] === char) {
+          remainingStack.pop();
+        }
+      }
+    }
+  }
+
+  while (remainingStack.length > 0) {
+    candidate += remainingStack.pop();
+  }
+
+  try {
+    const sanitized = sanitizeControlCharsInStrings(candidate).replace(/,\s*([\]}])/g, '$1');
+    JSON.parse(sanitized);
+    return sanitized;
+  } catch {
+    // Try rolling back to the last comma before truncation
+    const lastComma = candidate.lastIndexOf(',');
+    if (lastComma > 20) {
+      return repairTruncatedJson(candidate.slice(0, lastComma));
+    }
+    return null;
+  }
+}
+
+/**
  * Robust, schema-safe JSON extractor:
  * 1. Handles markdown fences and extraneous text.
  * 2. Tracks balanced depth for brackets/braces to ensure complete structure.
@@ -140,10 +207,20 @@ export const parseSafeJson = <T = any>(raw: string, fallback?: T): T => {
     }
   }
 
-  // If unclosed structure, fail cleanly without fabricating incomplete jobs or corrupt structures
+  // If unclosed structure, attempt resilient auto-repair before failing
   if (endIdx === -1 || depth !== 0) {
+    const candidateUnclosed = cleaned.slice(startIdx);
+    const repaired = repairTruncatedJson(candidateUnclosed);
+    if (repaired) {
+      try {
+        return JSON.parse(repaired) as T;
+      } catch {
+        // Fall through to error/fallback
+      }
+    }
+
     if (fallback !== undefined) return fallback;
-    const err: any = new Error("The AI response was too large. Please try a more specific search.");
+    const err: any = new Error("The AI response was too large to complete. Please try a more concise resume or search.");
     err.code = "AI_RESPONSE_TRUNCATED";
     throw err;
   }
@@ -207,15 +284,26 @@ async function executeAICompletion<T = any>({
     meta
   });
 
+  if (jsonMode) {
+    try {
+      return parseSafeJson<T>(detailed.text);
+    } catch (parseErr: any) {
+      console.error("[executeAICompletion] JSON parse failed:", parseErr.message, "finishReason:", detailed.finishReason, "textLen:", detailed.text?.length, "previewEnd:", detailed.text?.slice(-200));
+      if (detailed.isTruncated || detailed.finishReason === 'length') {
+        const error: any = new Error("The AI response was too large to complete. Please try a more concise resume or search.");
+        error.code = "AI_RESPONSE_TRUNCATED";
+        throw error;
+      }
+      throw parseErr;
+    }
+  }
+
   if (detailed.isTruncated || detailed.finishReason === 'length') {
     const error: any = new Error("The AI response was too large. Please try a more specific search.");
     error.code = "AI_RESPONSE_TRUNCATED";
     throw error;
   }
 
-  if (jsonMode) {
-    return parseSafeJson<T>(detailed.text);
-  }
   return detailed.text as unknown as T;
 }
 
@@ -256,6 +344,9 @@ export const analyzeResume = async (
   const fileType = options?.fileType || 'resume_file';
 
   const prompt = `
+CRITICAL SPEED & CONCISENESS REQUIREMENT:
+Output concise raw JSON directly. Keep all explanations, evidence, and recommendations strictly under 15 words each.
+
 You are an Explainable AI ATS Resume Auditor & Senior Technical Recruiter for AI HireFlow.
 Perform a genuine, rigorous, evidence-based ATS audit of the CANDIDATE RESUME below${cleanJD ? ' against the TARGET JOB DESCRIPTION' : ' against industry benchmarks for the candidate\'s stated role and seniority'}.
 
@@ -269,51 +360,37 @@ CRITICAL AUDIT RULES:
      * Solid resumes with clear experience and relevant skills score 65-80.
      * High-impact resumes with strong metrics and deep keyword alignment score 80-95.
 
-2. FOUR REQUIRED WEIGHTED CATEGORIES (Weights must sum exactly to 100):
+2. FOUR REQUIRED WEIGHTED CATEGORIES (Weights must sum to 100):
    - Category 1: "Core Technical & Skill Match" (Weight: 40)
    - Category 2: "Measurable Impact & Hard Metrics" (Weight: 25)
    - Category 3: "Role & Domain Relevance" (Weight: 20)
    - Category 4: "Structure & ATS Parsability" (Weight: 15)
 
    For EACH of the 4 categories, provide:
-   - "category": string (Exact category title as listed above)
+   - "category": string (Exact title as above)
    - "weight": number (40, 25, 20, or 15)
-   - "score": number (0-100 score for this category based on candidate's actual resume)
-   - "earnedPoints": number (Calculated as (score / 100) * weight, rounded to 1 decimal)
-   - "mathExplanation": string (e.g. "(75/100) × 40% = 30.0 pts")
-   - "explanation": string (1-2 concise sentences explaining the score based on actual resume text)
-   - "evidence": string (Specific quote or excerpt directly from the candidate's resume demonstrating or lacking this requirement)
-   - "recommendations": array of strings (2-3 concrete, actionable improvements for this category)
+   - "score": number (0-100 score based on resume evidence)
+   - "explanation": string (1 concise sentence under 15 words)
+   - "evidence": string (Direct quote under 15 words)
+   - "recommendations": ["1 actionable improvement under 15 words"]
 
 3. SKILLS AUDIT:
-   - "skillsAnalysis": array of 4-6 key technical & domain skills found in the resume. Each object:
-     {
-       "skill": string,
-       "type": "explicit" | "inferred",
-       "confidence_level": "high" | "medium" | "low",
-       "evidence": string (Specific quote from resume where this skill appears)
-     }
+   - "skillsAnalysis": array of 4 key technical skills found:
+     { "skill": string, "type": "explicit" | "inferred", "confidence_level": "high" | "medium" | "low", "evidence": string (quote under 10 words) }
 
 4. KEYWORD & GAP ANALYSIS:
-   - "keywordsFound": array of 4-8 important technical keywords/tools identified in the resume.
-   - "missingKeywords": array of 3-6 critical keywords/skills missing or under-represented${cleanJD ? ' based on the Job Description' : ' for this role level'}.
-   - "missingKeywordAnalysis": array of 3-4 objects for the most critical missing keywords:
-     {
-       "keyword": string,
-       "whyItMatters": string (1 concise sentence explaining ATS impact),
-       "suggestedRewrite": string (1 high-impact bullet formatted with Google's XYZ formula: "Accomplished [X] as measured by [Y], by doing [Z]"),
-       "confidence_level": "high" | "medium" | "low",
-       "isInferred": boolean,
-       "inferredNote": string
-     }
+   - "keywordsFound": array of 4-6 technical keywords found.
+   - "missingKeywords": array of 3-4 critical keywords missing.
+   - "missingKeywordAnalysis": array of 2 most critical missing keywords:
+     { "keyword": string, "whyItMatters": string (under 15 words), "suggestedRewrite": string (under 20 words), "confidence_level": "high" | "medium" | "low", "isInferred": boolean, "inferredNote": string (under 10 words) }
 
 5. ACTIONABLE IMPROVEMENTS & SUMMARY:
-   - "formattingSuggestions": array of 2-3 specific formatting / ATS parsing suggestions.
-   - "impactSuggestions": array of 2-3 concrete suggestions to quantify accomplishments with metrics.
-   - "strengths": array of 2-3 standout strengths found in the candidate's resume.
-   - "weaknesses": array of 2-3 key vulnerabilities or missing elements.
-   - "summary": string (1-2 sentence overall assessment of candidate's profile).
-   - "human_explanation": string (A candid 30-50 word hiring manager / recruiter memo on candidate readiness).
+   - "formattingSuggestions": array of 2 crisp suggestions (under 15 words each).
+   - "impactSuggestions": array of 2 metric suggestions (under 15 words each).
+   - "strengths": array of 2 key strengths (under 15 words each).
+   - "weaknesses": array of 2 key gaps (under 15 words each).
+   - "summary": string (1 sentence under 25 words).
+   - "human_explanation": string (1 recruiter takeaway under 30 words).
 
 ${cleanJD ? `TARGET JOB DESCRIPTION:\n${cleanJD}\n` : 'TARGET ROLE CONTEXT:\nGeneral ATS Industry Benchmark for the candidate\'s stated field & experience level\n'}
 
@@ -384,18 +461,18 @@ Respond with a single raw JSON object matching these exact keys:
 }
 
 CONCISENESS RULES:
-1. In scoreBreakdown, keep explanation under 20 words, evidence under 15 words, and recommendations to exactly 1 bullet under 15 words.
-2. In skillsAnalysis, include at most 6 top technical skills.
-3. In missingKeywordAnalysis, include at most 3 items with 1-sentence whyItMatters.
+1. In scoreBreakdown, keep explanation under 15 words, evidence under 15 words, and recommendations to exactly 1 bullet under 15 words.
+2. In skillsAnalysis, include at most 4 key technical skills.
+3. In missingKeywordAnalysis, include at most 2 items with 1-sentence whyItMatters and 1 short suggestedRewrite.
 4. Keep formattingSuggestions, impactSuggestions, strengths, and weaknesses to exactly 2 crisp items each under 15 words.
-5. Keep summary and human_explanation under 30 words each.
+5. Keep summary and human_explanation under 25 words each.
 `;
 
   const rawData = await executeAICompletion({
     prompt,
     systemPrompt: "You are an expert, objective ATS Resume Auditor API for AI HireFlow powered by Velona GLM 5.3 Flash. Output strictly valid, concise raw JSON only.",
     jsonMode: true,
-    temperature: 0.7,
+    temperature: 0.3,
     maxTokens: 2400,
     operation: 'resume_analysis',
     meta: {

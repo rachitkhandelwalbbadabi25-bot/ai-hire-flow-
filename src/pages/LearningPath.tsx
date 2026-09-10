@@ -234,11 +234,11 @@ export default function LearningPath() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Sidebar Config */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-surface p-8 rounded-[2rem] border border-border shadow-2xl sticky top-24">
-            <div className="space-y-6">
+      {/* 2. Target Input Section (Full width, placed at the top) */}
+      <div className="bg-surface p-6 sm:p-8 rounded-[2rem] border border-border shadow-2xl mb-10 w-full">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
               <div>
                 <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Target Role</label>
                 <input 
@@ -246,34 +246,6 @@ export default function LearningPath() {
                   onChange={(e) => setTargetRole(e.target.value)}
                   className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
                   placeholder="e.g. Senior Software Engineer"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1">Target Skills</label>
-                  {recentAnalysis && (
-                    <button 
-                      onClick={() => {
-                        if (recentAnalysis.missingKeywords) {
-                          setSkillsStr(recentAnalysis.missingKeywords.join(', '));
-                        }
-                        if (recentAnalysis.detectedRole && !targetRole) {
-                          setTargetRole(recentAnalysis.detectedRole);
-                        }
-                      }}
-                      className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
-                    >
-                      Load Analysis Gaps
-                    </button>
-                  )}
-                </div>
-                <textarea 
-                  value={skillsStr}
-                  disabled={isFree}
-                  onChange={(e) => setSkillsStr(e.target.value)}
-                  className="w-full h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed disabled:opacity-50"
-                  placeholder={!isFree ? "Enter skills separated by commas (e.g. React, TypeScript, GraphQL)..." : "Upgrade plan to unlock customized roadmaps."}
                 />
               </div>
 
@@ -288,121 +260,138 @@ export default function LearningPath() {
                   </button>
                 </div>
               )}
+            </div>
 
-              <button 
-                onClick={generatePath}
-                disabled={loading || !targetRole.trim() || !skillsStr.trim() || isFree}
-                className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {loading ? 'Generating Learning Path...' : 'Generate Learning Path'}
-              </button>
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1">Target Skills</label>
+                {recentAnalysis && (
+                  <button 
+                    onClick={() => {
+                      if (recentAnalysis.missingKeywords) {
+                        setSkillsStr(recentAnalysis.missingKeywords.join(', '));
+                      }
+                      if (recentAnalysis.detectedRole && !targetRole) {
+                        setTargetRole(recentAnalysis.detectedRole);
+                      }
+                    }}
+                    className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
+                  >
+                    Load Analysis Gaps
+                  </button>
+                )}
+              </div>
+              <textarea 
+                value={skillsStr}
+                disabled={isFree}
+                onChange={(e) => setSkillsStr(e.target.value)}
+                className="w-full h-28 sm:h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed disabled:opacity-50"
+                placeholder={!isFree ? "Enter skills separated by commas (e.g. React, TypeScript, GraphQL)..." : "Upgrade plan to unlock customized roadmaps."}
+              />
             </div>
           </div>
+
+          <button 
+            onClick={generatePath}
+            disabled={loading || !targetRole.trim() || !skillsStr.trim() || isFree}
+            className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {loading ? 'Generating Learning Path...' : 'Generate Learning Path'}
+          </button>
         </div>
+      </div>
 
-        {/* Main Roadmap */}
-        <div className="lg:col-span-8">
-          <AnimatePresence mode="wait">
-            {!roadmap && !loading ? (
-              <EmptyState
-                icon={GraduationCap}
-                title="Create your personalized learning path"
-                targetRole={targetRole || "Engineering & Tech"}
-                description="Generate a customized 30-day skill roadmap with key topics, project ideas, and documentation to prepare for your target role."
-                benefitMetric="Following a structured learning plan reduces interview prep time by 4 weeks"
-                primaryAction={{
-                  label: "Generate frontend roadmap",
-                  onClick: () => {
-                    setTargetRole('Frontend Engineer');
-                    setSkillsStr('React, TypeScript, Next.js, Tailwind CSS');
-                  },
-                  icon: Sparkles
-                }}
-                secondaryAction={{
-                  label: "Generate full stack roadmap",
-                  onClick: () => {
-                    setTargetRole('Full Stack Engineer');
-                    setSkillsStr('Node.js, PostgreSQL, System Design, GraphQL');
-                  },
-                  icon: Map
-                }}
-              />
-            ) : loading ? (
-              <AILoadingStepper 
-                presetKey="learning_roadmap" 
-                title="Curriculum Dependency & Skill Graph Engine" 
-              />
-            ) : (
-              <motion.div 
-                key="roadmap"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-8"
-              >
-                <div className="bg-accent/10 border border-accent/20 p-8 rounded-[3rem] text-center mb-8">
-                   <h2 className="text-2xl font-black text-ink uppercase tracking-tight mb-2">{roadmap.roadmapTitle}</h2>
-                   <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent uppercase tracking-[0.2em]">
-                      <Zap className="w-3 h-3" /> Accelerated {roadmapType} Learning Protocol
-                   </div>
-                </div>
+      {/* 3. Complete Learning Roadmap (Full width) */}
+      <div className="w-full">
+        <AnimatePresence mode="wait">
+          {!roadmap && !loading ? (
+            <EmptyState
+              icon={GraduationCap}
+              title="Create your personalized learning path"
+              targetRole={targetRole || undefined}
+              description="Enter your target role and skills above, or load missing keywords from your resume analysis, then generate a customized skill roadmap."
+              benefitMetric="Following a structured learning plan reduces interview prep time by 4 weeks"
+            />
+          ) : loading ? (
+            <AILoadingStepper 
+              presetKey="learning_roadmap" 
+              title="Curriculum Dependency & Skill Graph Engine" 
+            />
+          ) : (
+            <motion.div 
+              key="roadmap"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-8"
+            >
+              {/* Roadmap Header */}
+              <div className="bg-accent/10 border border-accent/20 p-8 rounded-[3rem] text-center mb-8">
+                 <h2 className="text-2xl sm:text-3xl font-black text-ink uppercase tracking-tight mb-2">{roadmap.roadmapTitle}</h2>
+                 <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent uppercase tracking-[0.2em]">
+                    <Zap className="w-3 h-3" /> Accelerated {roadmapType} Learning Protocol
+                 </div>
+              </div>
 
-                {(roadmap?.sections || []).map((section, idx) => (
-                  <div key={idx} className="relative pl-12 group">
-                    {/* Vertical Line */}
-                    {idx !== roadmap.sections.length - 1 && (
-                      <div className="absolute left-[23px] top-12 bottom-0 w-0.5 bg-border group-hover:bg-accent/30 transition-colors" />
-                    )}
+              {/* Milestone Sequence */}
+              {(roadmap?.sections || []).map((section, idx) => (
+                <div key={idx} className="relative pl-14 sm:pl-16 group">
+                  {/* Vertical Line */}
+                  {idx !== roadmap.sections.length - 1 && (
+                    <div className="absolute left-[27px] top-14 bottom-0 w-0.5 bg-border group-hover:bg-accent/30 transition-colors" />
+                  )}
+                  
+                  {/* Circle Node */}
+                  <div className="absolute left-0 top-0 w-14 h-14 bg-surface border-2 border-accent rounded-full flex items-center justify-center font-bold text-accent text-base shadow-lg shadow-accent/10 z-10">
+                    {idx + 1}
+                  </div>
+
+                  <div className="bg-surface border border-border rounded-[2rem] p-6 sm:p-8 hover:border-accent/40 transition-all shadow-sm">
+                    <h3 className="text-xl sm:text-2xl font-bold text-ink mb-4">{section.title}</h3>
                     
-                    {/* Circle Node */}
-                    <div className="absolute left-0 top-0 w-12 h-12 bg-surface border-2 border-accent rounded-full flex items-center justify-center font-bold text-accent text-sm shadow-lg shadow-accent/10 relative z-10">
-                      {idx + 1}
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {section.skillsCovered.map((skill, i) => (
+                        <span key={i} className="px-3 py-1 bg-background border border-border rounded-lg text-[10px] font-bold text-ink-dim uppercase">
+                          {skill}
+                        </span>
+                      ))}
                     </div>
 
-                    <div className="bg-surface border border-border rounded-[2rem] p-8 hover:border-accent/40 transition-all shadow-sm">
-                      <h3 className="text-xl font-bold text-ink mb-4">{section.title}</h3>
-                      
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {section.skillsCovered.map((skill, i) => (
-                          <span key={i} className="px-3 py-1 bg-background border border-border rounded-lg text-[10px] font-bold text-ink-dim uppercase">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {section.resources.map((resource, i) => (
-                          <a 
-                            key={i} 
-                            href={resource.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="p-4 bg-background border border-border rounded-2xl hover:border-accent/40 transition-all group/res flex flex-col justify-between"
-                          >
-                            <div>
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="text-accent bg-accent/10 p-1.5 rounded-lg flex items-center justify-center">
-                                  {getIcon(resource.type)}
-                                </div>
-                                <span className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">{resource.platform}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {section.resources.map((resource, i) => (
+                        <a 
+                          key={i} 
+                          href={resource.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="p-5 bg-background border border-border rounded-2xl hover:border-accent/40 transition-all group/res flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="text-accent bg-accent/10 p-1.5 rounded-lg flex items-center justify-center">
+                                {getIcon(resource.type)}
                               </div>
-                              <h4 className="text-sm font-bold text-ink group-hover/res:text-accent transition-colors line-clamp-1 mb-1">{resource.name}</h4>
-                              <p className="text-[11px] text-ink-dim line-clamp-2 leading-relaxed italic">"{resource.description}"</p>
+                              <span className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">{resource.platform}</span>
                             </div>
-                            <div className="mt-4 flex items-center gap-1 text-[10px] font-bold text-accent uppercase tracking-tighter opacity-0 group-hover/res:opacity-100 transition-opacity">
-                              Initialize Module <ArrowRight className="w-3 h-3" />
-                            </div>
-                          </a>
-                        ))}
-                      </div>
+                            <h4 className="text-sm font-bold text-ink group-hover/res:text-accent transition-colors line-clamp-1 mb-1">{resource.name}</h4>
+                            <p className="text-[11px] text-ink-dim line-clamp-2 leading-relaxed italic">"{resource.description}"</p>
+                          </div>
+                          <div className="mt-4 flex items-center gap-1 text-[10px] font-bold text-accent uppercase tracking-tighter opacity-0 group-hover/res:opacity-100 transition-opacity">
+                            Initialize Module <ArrowRight className="w-3 h-3" />
+                          </div>
+                        </a>
+                      ))}
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
 
-                {roadmap && (
+              {/* 4. AI Journey Router (Rendered at bottom after all milestones) */}
+              {roadmap && (
+                <div className="pt-6">
                   <NextStepBridgeCard
                     title="Learning roadmap generated"
-                    contextData={`30-day curriculum tailored for "${targetRole || 'Full Stack Engineer'}". Mapped ${roadmap.sections.length} core milestone modules covering ${roadmap.sections.flatMap(s => s.skillsCovered).slice(0, 4).join(', ')}.`}
+                    contextData={`30-day curriculum tailored for "${targetRole || 'Target Role'}". Mapped ${roadmap.sections.length} core milestone modules covering ${roadmap.sections.flatMap(s => s.skillsCovered).slice(0, 4).join(', ')}.`}
                     primaryStep={{
                       label: "Practice in interview simulator",
                       icon: MessageSquare,
@@ -422,17 +411,18 @@ export default function LearningPath() {
                       }
                     }}
                   />
-                )}
-
-                <div className="text-center py-6">
-                   <div className="inline-flex items-center gap-2 px-6 py-3 bg-surface border border-border rounded-full text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                      <ShieldCheckIcon className="w-4 h-4 text-success" /> Skill Path Verified & Calibrated
-                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+              )}
+
+              {/* Verified & Calibrated Footer */}
+              <div className="text-center py-6">
+                 <div className="inline-flex items-center gap-2 px-6 py-3 bg-surface border border-border rounded-full text-[10px] font-bold text-ink-dim uppercase tracking-widest">
+                    <ShieldCheckIcon className="w-4 h-4 text-success" /> Skill Path Verified & Calibrated
+                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

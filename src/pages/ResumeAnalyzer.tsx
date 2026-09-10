@@ -43,7 +43,6 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { formatCreditAvailability } from '../utils/formatters';
-import SkeletonLoader from '../components/SkeletonLoader';
 
 interface MasterResumeData {
   summary?: string;
@@ -169,7 +168,7 @@ export default function ResumeAnalyzer() {
   }, [location.state]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisStatus, setAnalysisStatus] = useState<string>('Reading resume...');
+  const [analysisStatus, setAnalysisStatus] = useState<string>('Auditing resume against ATS benchmarks...');
   const [analysis, setAnalysis] = useState<any>(null);
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -278,7 +277,9 @@ export default function ResumeAnalyzer() {
     setIsAnalyzing(true);
     setError(null);
     setCacheSource(null);
-    setAnalysisStatus('Starting ATS analysis...');
+    setAnalysis(null);
+    setCoverLetter(null);
+    setAnalysisStatus('Auditing resume against ATS benchmarks...');
 
     try {
       let text = '';
@@ -453,16 +454,6 @@ export default function ResumeAnalyzer() {
         </div>
       </div>
 
-      {isAnalyzing && (
-        <div className="my-8 space-y-6">
-          <AILoadingStepper
-            presetKey="resume_audit"
-            title="Auditing Resume Against ATS Benchmarks"
-          />
-          <SkeletonLoader type="card" lines={4} />
-        </div>
-      )}
-
       {error && !isAnalyzing && (
         <motion.div
           initial={{ opacity: 0, y: -6 }}
@@ -497,7 +488,49 @@ export default function ResumeAnalyzer() {
         </motion.div>
       )}
 
-      {!analysis ? (
+      {/* Dedicated ANALYZING State (mutually exclusive with input and result) */}
+      {isAnalyzing && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+          id="ats-processing-section"
+        >
+          {/* 1. Generation / Active Operation Area */}
+          <div 
+            id="ats-active-operation"
+            className="bg-surface border border-accent/30 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-xl text-accent animate-pulse shrink-0">
+                <BrainCircuit className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-widest px-2 py-0.5 bg-accent/10 border border-accent/20 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" /> Active Operation
+                  </span>
+                  <span className="text-[10px] font-mono text-ink-dim uppercase tracking-wider">
+                    ATS Calibration Pipeline
+                  </span>
+                </div>
+                <p className="text-sm sm:text-base font-mono font-bold text-ink">
+                  {analysisStatus || "Auditing resume against ATS benchmarks..."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. AILoadingStepper / ATS Processing Steps */}
+          <AILoadingStepper 
+            presetKey="resume_audit" 
+            title="ATS Structural & Keyword Audit Pipeline" 
+          />
+        </motion.div>
+      )}
+
+      {/* Normal Input Setup Section (Hidden during active analysis and when results are shown) */}
+      {!analysis && !isAnalyzing ? (
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -802,15 +835,8 @@ export default function ResumeAnalyzer() {
 
             {/* Bottom Full-Width CTA & Credit Cost Preview */}
             <div className="md:col-span-2 space-y-3">
-              {isAnalyzing ? (
-                <AILoadingStepper 
-                  presetKey="resume_audit" 
-                  title="ATS Structural & Keyword Audit Pipeline" 
-                  className="mt-2"
-                />
-              ) : (
-                <div className="bg-surface border border-accent/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
-                  <div className="flex items-center gap-3 self-start sm:self-center">
+              <div className="bg-surface border border-accent/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+                <div className="flex items-center gap-3 self-start sm:self-center">
                     <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-xl text-accent">
                       <Zap className="w-5 h-5" />
                     </div>
@@ -867,11 +893,13 @@ export default function ResumeAnalyzer() {
                     );
                   })()}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
         </motion.div>
-      ) : analysis ? (
+      ) : null}
+
+      {/* Real ATS Analysis Result Area */}
+      {analysis && !isAnalyzing ? (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

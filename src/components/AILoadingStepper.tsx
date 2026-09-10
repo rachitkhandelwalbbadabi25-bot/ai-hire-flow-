@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { CheckCircle2, Cpu, Sparkles, ShieldCheck } from 'lucide-react';
 import aiLoadingPresets from '../data/aiLoadingSteps.json';
 
@@ -88,45 +88,6 @@ export default function AILoadingStepper({
         </div>
       </div>
 
-      {/* Progress Bar with ARIA */}
-      <div 
-        role="progressbar"
-        aria-valuenow={progressPercent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`${title} progress`}
-        className="w-full bg-background border border-border/80 h-2.5 rounded-full overflow-hidden p-0.5 relative z-10"
-      >
-        <motion.div
-          className="bg-accent h-full rounded-full transition-all duration-300"
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
-
-      {/* Active Step Description banner */}
-      <div className="bg-background/90 border border-accent/20 p-4 sm:p-5 rounded-2xl relative z-10">
-        <div className="flex items-start gap-3">
-          <div className="w-2 h-2 rounded-full bg-accent animate-ping mt-1.5 shrink-0" aria-hidden="true" />
-          <div className="space-y-1">
-            <p className="text-[10px] font-mono font-bold text-accent uppercase tracking-widest">
-              Active Operation
-            </p>
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={activeIndex}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-                className="text-xs sm:text-sm font-mono text-ink font-semibold leading-relaxed"
-              >
-                {activeStep?.description}
-              </motion.p>
-            </AnimatePresence>
-          </div>
-        </div>
-      </div>
-
       {/* Step Checklist Items */}
       <div className="space-y-2 pt-1 relative z-10">
         {steps.map((s, idx) => {
@@ -166,6 +127,21 @@ export default function AILoadingStepper({
             </div>
           );
         })}
+      </div>
+
+      {/* Progress Bar with ARIA */}
+      <div 
+        role="progressbar"
+        aria-valuenow={progressPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${title} progress`}
+        className="w-full bg-background border border-border/80 h-2.5 rounded-full overflow-hidden p-0.5 relative z-10"
+      >
+        <motion.div
+          className="bg-accent h-full rounded-full transition-all duration-300"
+          style={{ width: `${progressPercent}%` }}
+        />
       </div>
 
       <div className="flex items-center justify-between text-[10px] text-ink-dim font-mono border-t border-border/60 pt-3 relative z-10">

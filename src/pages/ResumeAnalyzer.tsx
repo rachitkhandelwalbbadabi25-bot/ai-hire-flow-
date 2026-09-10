@@ -454,11 +454,12 @@ export default function ResumeAnalyzer() {
       </div>
 
       {isAnalyzing && (
-        <div className="my-8">
-          <p className="text-xs font-bold text-accent uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" /> {analysisStatus}
-          </p>
-          <SkeletonLoader type="card" lines={6} />
+        <div className="my-8 space-y-6">
+          <AILoadingStepper
+            presetKey="resume_audit"
+            title="Auditing Resume Against ATS Benchmarks"
+          />
+          <SkeletonLoader type="card" lines={4} />
         </div>
       )}
 

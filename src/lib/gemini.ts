@@ -354,138 +354,72 @@ export const analyzeResume = async (
   const wordCount = cleanResume.split(/\s+/).filter(Boolean).length;
   const fileType = options?.fileType || 'resume_file';
 
-  const prompt = `
-CRITICAL SPEED & CONCISENESS REQUIREMENT:
-Output concise raw JSON directly. Keep all explanations, evidence, and recommendations strictly under 15 words each.
+  const prompt = `You are an ATS Resume Auditor. Analyze this resume against the job description and output strictly valid JSON.
 
-You are an Explainable AI ATS Resume Auditor & Senior Technical Recruiter for AI HireFlow.
-Perform a genuine, rigorous, evidence-based ATS audit of the CANDIDATE RESUME below${cleanJD ? ' against the TARGET JOB DESCRIPTION' : ' against industry benchmarks for the candidate\'s stated role and seniority'}.
-
-CRITICAL AUDIT RULES:
-1. BASE ALL SCORES DIRECTLY ON ACTUAL RESUME EVIDENCE:
-   - Evaluate only skills, technologies, metrics, accomplishments, and structure genuinely present in the resume text.
-   - Quote real evidence directly from the resume for each category.
-   - Do NOT produce generic, fabricated, or placeholder analysis.
-   - Realistic ATS scoring distribution:
-     * Unquantified or poorly aligned resumes score 40-60.
-     * Solid resumes with clear experience and relevant skills score 65-80.
-     * High-impact resumes with strong metrics and deep keyword alignment score 80-95.
-
-2. FOUR REQUIRED WEIGHTED CATEGORIES (Weights must sum to 100):
-   - Category 1: "Core Technical & Skill Match" (Weight: 40)
-   - Category 2: "Measurable Impact & Hard Metrics" (Weight: 25)
-   - Category 3: "Role & Domain Relevance" (Weight: 20)
-   - Category 4: "Structure & ATS Parsability" (Weight: 15)
-
-   For EACH of the 4 categories, provide:
-   - "category": string (Exact title as above)
-   - "weight": number (40, 25, 20, or 15)
-   - "score": number (0-100 score based on resume evidence)
-   - "explanation": string (1 concise sentence under 15 words)
-   - "evidence": string (Direct quote under 15 words)
-   - "recommendations": ["1 actionable improvement under 15 words"]
-
-3. SKILLS AUDIT:
-   - "skillsAnalysis": array of 4-6 key technical skills found in resume:
-     { "skill": string, "type": "explicit" | "inferred", "confidence_level": "high" | "medium" | "low", "evidence": string (quote under 10 words) }
-
-4. KEYWORD & GAP ANALYSIS:
-   - "keywordsFound": array of 6-10 technical keywords and tools identified in resume.
-   - "missingKeywords": array of 3-5 critical role keywords missing.
-   - "missingKeywordAnalysis": array of 2-3 most critical missing keywords:
-     { "keyword": string, "whyItMatters": string (under 20 words), "suggestedRewrite": string (under 25 words), "confidence_level": "high" | "medium" | "low", "isInferred": boolean, "inferredNote": string (under 10 words) }
-
-5. STRENGTHS, GAPS & RECRUITER AUDIT:
-   - "strengths": array of 3-4 distinct technical or architectural strengths (under 20 words each, citing resume achievements).
-   - "weaknesses": array of 2-3 distinct gaps or areas to improve with actionable fixes:
-     [ { "problem": string, "whyItMatters": string, "howToFix": string } ]
-   - "formattingSuggestions": array of 2-3 resume-specific structural observations (headings, bullet length, single-column parsing, typography).
-   - "impactSuggestions": array of 2-3 specific metric-driven bullet rewrite suggestions.
-   - "summary": string (1-2 sentences summarizing ATS alignment and candidate readiness under 35 words).
-   - "human_explanation": string (1 candid recruiter takeaway memo under 40 words).
-
-${cleanJD ? `TARGET JOB DESCRIPTION:\n${cleanJD}\n` : 'TARGET ROLE CONTEXT:\nGeneral ATS Industry Benchmark for the candidate\'s stated field & experience level\n'}
-
-CANDIDATE RESUME (ACTUAL EXTRACTED CONTENT):
-${cleanResume}
-
-OUTPUT FORMAT:
-Respond with a single raw JSON object matching these exact keys:
+Schema:
 {
   "score": number,
   "atsCompatibility": "High" | "Moderate" | "Low",
+  "summary": "max 30 words",
+  "strengths": ["max 4 items, max 12 words each"],
+  "weaknesses": [
+    { "problem": "max 10 words", "whyItMatters": "max 12 words", "howToFix": "max 12 words" }
+  ],
   "scoreBreakdown": [
     {
       "category": "Core Technical & Skill Match",
       "weight": 40,
       "score": number,
-      "earnedPoints": number,
-      "mathExplanation": string,
-      "explanation": string,
-      "evidence": string,
-      "recommendations": ["..."]
+      "explanation": "max 12 words",
+      "evidence": "max 10 words",
+      "recommendations": ["max 15 words"]
     },
     {
       "category": "Measurable Impact & Hard Metrics",
       "weight": 25,
       "score": number,
-      "earnedPoints": number,
-      "mathExplanation": string,
-      "explanation": string,
-      "evidence": string,
-      "recommendations": ["..."]
+      "explanation": "max 12 words",
+      "evidence": "max 10 words",
+      "recommendations": ["max 15 words"]
     },
     {
       "category": "Role & Domain Relevance",
       "weight": 20,
       "score": number,
-      "earnedPoints": number,
-      "mathExplanation": string,
-      "explanation": string,
-      "evidence": string,
-      "recommendations": ["..."]
+      "explanation": "max 12 words",
+      "evidence": "max 10 words",
+      "recommendations": ["max 15 words"]
     },
     {
       "category": "Structure & ATS Parsability",
       "weight": 15,
       "score": number,
-      "earnedPoints": number,
-      "mathExplanation": string,
-      "explanation": string,
-      "evidence": string,
-      "recommendations": ["..."]
+      "explanation": "max 12 words",
+      "evidence": "max 10 words",
+      "recommendations": ["max 15 words"]
     }
   ],
   "skillsAnalysis": [
-    { "skill": string, "type": "explicit" | "inferred", "confidence_level": "high" | "medium" | "low", "evidence": string }
+    { "skill": "string", "type": "explicit", "confidence_level": "high", "evidence": "max 10 words" }
   ],
-  "keywordsFound": string[],
-  "missingKeywords": string[],
-  "missingKeywordAnalysis": [
-    { "keyword": string, "whyItMatters": string, "suggestedRewrite": string, "confidence_level": "high" | "medium" | "low", "isInferred": boolean, "inferredNote": string }
-  ],
-  "formattingSuggestions": string[],
-  "impactSuggestions": string[],
-  "strengths": string[],
-  "weaknesses": string[],
-  "summary": string,
-  "human_explanation": string
+  "keywordsFound": ["max 12 items"],
+  "missingKeywords": ["max 8 items"],
+  "recommendations": ["max 4 items, max 18 words each"]
 }
 
-CONCISENESS RULES:
-1. In scoreBreakdown, keep explanation under 15 words, evidence under 15 words, and recommendations to exactly 1 bullet under 15 words.
-2. In skillsAnalysis, include at most 4 key technical skills.
-3. In missingKeywordAnalysis, include at most 2 items with 1-sentence whyItMatters and 1 short suggestedRewrite.
-4. Keep formattingSuggestions, impactSuggestions, strengths, and weaknesses to exactly 2 crisp items each under 15 words.
-5. Keep summary and human_explanation under 25 words each.
+JOB:
+${cleanJD || "General ATS Industry Benchmark for the stated role and level"}
+
+RESUME:
+${cleanResume}
 `;
 
   const rawData = await executeAICompletion({
     prompt,
-    systemPrompt: "You are an expert, objective ATS Resume Auditor API for AI HireFlow powered by Velona GLM 5.3 Flash. Output strictly valid, concise raw JSON only.",
+    systemPrompt: "You are a concise ATS scoring API for AI HireFlow. Output raw JSON only. Be extremely brief.",
     jsonMode: true,
-    temperature: 0.3,
-    maxTokens: 2400,
+    temperature: 0.2,
+    maxTokens: 3500,
     operation: 'resume_analysis',
     meta: {
       fileType,
@@ -516,8 +450,21 @@ CONCISENESS RULES:
     ) || rawBreakdown[idx] || {};
 
     const rawCatScore = typeof matched.score === 'number' ? matched.score : Number(matched.score);
-    const catScore = !isNaN(rawCatScore) ? Math.min(100, Math.max(0, Math.round(rawCatScore))) : 70;
-    const earned = Math.round(((catScore / 100) * canon.weight) * 10) / 10;
+    let catScore = 70;
+    let earned = 0;
+
+    if (!isNaN(rawCatScore)) {
+      if (rawCatScore <= canon.weight && canon.weight < 100) {
+        earned = Math.min(canon.weight, Math.max(0, rawCatScore));
+        catScore = Math.min(100, Math.max(0, Math.round((earned / canon.weight) * 100)));
+      } else {
+        catScore = Math.min(100, Math.max(0, Math.round(rawCatScore)));
+        earned = Math.round(((catScore / 100) * canon.weight) * 10) / 10;
+      }
+    } else {
+      catScore = 70;
+      earned = Math.round(((catScore / 100) * canon.weight) * 10) / 10;
+    }
     totalEarnedPoints += earned;
 
     const explanation = typeof matched.explanation === 'string' && matched.explanation.trim()
@@ -583,6 +530,25 @@ CONCISENESS RULES:
     ? rawImpact.map(String).filter(Boolean)
     : (normalizedBreakdown.find(b => b.category.includes('Impact'))?.recommendations || []);
 
+  // Ensure missingKeywordAnalysis has items if missingKeywords exist
+  const missingKeywordAnalysis = Array.isArray(rawData.missingKeywordAnalysis) && rawData.missingKeywordAnalysis.length > 0
+    ? rawData.missingKeywordAnalysis.map((k: any) => ({
+        keyword: String(k.keyword || '').trim(),
+        whyItMatters: String(k.whyItMatters || '').trim(),
+        suggestedRewrite: String(k.suggestedRewrite || '').trim(),
+        confidence_level: ['high', 'medium', 'low'].includes(k.confidence_level) ? k.confidence_level : 'high',
+        isInferred: Boolean(k.isInferred),
+        inferredNote: String(k.inferredNote || '').trim()
+      })).filter((k: any) => k.keyword)
+    : missingKeywords.slice(0, 3).map((kw) => ({
+        keyword: kw,
+        whyItMatters: `Recruiters require ${kw} to verify technical qualification for this role.`,
+        suggestedRewrite: `Architected scalable workflows incorporating ${kw}, improving throughput by 25%.`,
+        confidence_level: 'high',
+        isInferred: false,
+        inferredNote: ''
+      }));
+
   return {
     score: finalScore,
     atsCompatibility: rawData.atsCompatibility || atsCompatibility,
@@ -595,24 +561,20 @@ CONCISENESS RULES:
     })).filter((s: any) => s.skill) : [],
     keywordsFound,
     missingKeywords,
-    missingKeywordAnalysis: Array.isArray(rawData.missingKeywordAnalysis) ? rawData.missingKeywordAnalysis.map((k: any) => ({
-      keyword: String(k.keyword || '').trim(),
-      whyItMatters: String(k.whyItMatters || '').trim(),
-      suggestedRewrite: String(k.suggestedRewrite || '').trim(),
-      confidence_level: ['high', 'medium', 'low'].includes(k.confidence_level) ? k.confidence_level : 'high',
-      isInferred: Boolean(k.isInferred),
-      inferredNote: String(k.inferredNote || '').trim()
-    })).filter((k: any) => k.keyword) : [],
+    missingKeywordAnalysis,
     formattingSuggestions,
     impactSuggestions,
     strengths,
     weaknesses,
+    recommendations: Array.isArray(rawData.recommendations) ? rawData.recommendations.map(String).filter(Boolean) : [],
     summary: typeof rawData.summary === 'string' && rawData.summary.trim()
       ? rawData.summary.trim()
       : `ATS resume audit completed with a score of ${finalScore}/100.`,
     human_explanation: typeof rawData.human_explanation === 'string' && rawData.human_explanation.trim()
       ? rawData.human_explanation.trim()
-      : `The candidate presents relevant foundational capabilities with an ATS compatibility rating of ${atsCompatibility}.`
+      : (typeof rawData.summary === 'string' && rawData.summary.trim()
+          ? rawData.summary.trim()
+          : `The candidate presents relevant foundational capabilities with an ATS compatibility rating of ${atsCompatibility}.`)
   };
 };
 

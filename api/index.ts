@@ -251,7 +251,7 @@ export async function callVelonaChatCompletion({
       }
 
       // Safe diagnostics: strictly operational metrics without sensitive user prompt/resume content
-      console.log(`[AI HireFlow][Diagnostics] operation=${operation}, model=${VELONA_MODEL_ID}, status=${response.status}, duration=${totalElapsed}ms, prompt_tokens=${promptTokens}, completion_tokens=${completionTokens}, total_tokens=${totalTokens}, finish_reason=${finishReason}, response_length=${content.length}, json_parse=${jsonParseStatus}`);
+      console.log(`[AI HireFlow][Diagnostics] endpoint=${VELONA_BASE_URL}/chat/completions, model=${VELONA_MODEL_ID}, prompt_chars=${approxPromptLength}, prompt_tokens=${promptTokens}, max_tokens=${safeMaxTokens}, temperature=${safeTemperature}, enable_thinking=false, duration=${totalElapsed}ms, status=${response.status}, completion_chars=${content.length}, completion_tokens=${completionTokens}, finish_reason=${finishReason}, parser_result=${jsonParseStatus}`);
 
       if (finishReason === 'length') {
         console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] WARNING: Model response hit finish_reason=length (token limit reached, output truncated).`);

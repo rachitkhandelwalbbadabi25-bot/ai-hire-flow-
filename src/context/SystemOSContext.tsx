@@ -3,6 +3,7 @@ import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { isDemoRole, isDemoSkills, sanitizeBrowserStorage, sanitizeUserFirestoreData } from '../utils/demoDataSanitizer';
+import { ActiveJobContext, getStoredActiveJob, setStoredActiveJob, clearStoredActiveJob } from '../utils/jobContextManager';
 
 export interface ResumeContext {
   id?: string;
@@ -55,6 +56,9 @@ export interface SmartSuggestionChip {
 }
 
 interface SystemOSContextType {
+  currentActiveJob: ActiveJobContext | null;
+  setCurrentActiveJob: (job: ActiveJobContext | null) => void;
+  clearCurrentJobContext: () => void;
   latestResume: ResumeContext | null;
   trackedJobs: TrackedJobContext[];
   outreachContacts: ContactContext[];
@@ -69,6 +73,9 @@ interface SystemOSContextType {
 }
 
 const SystemOSContext = createContext<SystemOSContextType>({
+  currentActiveJob: null,
+  setCurrentActiveJob: () => {},
+  clearCurrentJobContext: () => {},
   latestResume: null,
   trackedJobs: [],
   outreachContacts: [],
@@ -84,6 +91,25 @@ const SystemOSContext = createContext<SystemOSContextType>({
 
 export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const [currentActiveJob, setCurrentActiveJobState] = useState<ActiveJobContext | null>(() => {
+    return getStoredActiveJob();
+  });
+
+  const setCurrentActiveJob = (job: ActiveJobContext | null) => {
+    if (job && (isDemoRole(job.title) || isDemoSkills(job.skills))) {
+      setStoredActiveJob(null);
+      setCurrentActiveJobState(null);
+      return;
+    }
+    setStoredActiveJob(job);
+    setCurrentActiveJobState(job);
+  };
+
+  const clearCurrentJobContext = () => {
+    clearStoredActiveJob();
+    setCurrentActiveJobState(null);
+  };
+
   const [latestResume, setLatestResume] = useState<ResumeContext | null>(null);
   const [trackedJobs, setTrackedJobs] = useState<TrackedJobContext[]>([]);
   const [outreachContacts, setOutreachContacts] = useState<ContactContext[]>([]);
@@ -223,17 +249,20 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [user]);
 
-  // Derived properties - never fall back to fake role strings
+  // Derived properties - currentActiveJob takes highest precedence as single source of truth for active job
   const activeTargetRole = 
+    (currentActiveJob?.title && !isDemoRole(currentActiveJob.title) ? currentActiveJob.title : '') ||
     (latestResume?.targetRole && !isDemoRole(latestResume.targetRole) ? latestResume.targetRole : '') || 
     (trackedJobs.length > 0 && trackedJobs[0].role && !isDemoRole(trackedJobs[0].role) ? trackedJobs[0].role : '') || 
     (latestRoadmap?.targetRole && !isDemoRole(latestRoadmap.targetRole) ? latestRoadmap.targetRole : '') || 
     '';
 
-  const allMissingSkills = Array.from(new Set([
-    ...(latestResume?.missingKeywords || []),
-    ...(latestRoadmap?.missingSkills || [])
-  ])).filter(Boolean);
+  const allMissingSkills = currentActiveJob?.skills && currentActiveJob.skills.length > 0
+    ? currentActiveJob.skills
+    : Array.from(new Set([
+        ...(latestResume?.missingKeywords || []),
+        ...(latestRoadmap?.missingSkills || [])
+      ])).filter(Boolean);
 
   const interviewingCompanies = Array.from(new Set(
     trackedJobs
@@ -247,7 +276,7 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   if (activeTargetRole) {
     smartSuggestions.push({
       id: 'target_role_chip',
-      sourceModule: latestResume ? 'Master Resume' : 'Tracked Application',
+      sourceModule: currentActiveJob ? 'Active Job Context' : (latestResume ? 'Master Resume' : 'Tracked Application'),
       label: `Role: ${activeTargetRole}`,
       value: activeTargetRole,
       type: 'role'
@@ -257,8 +286,8 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   allMissingSkills.slice(0, 4).forEach((skill, idx) => {
     smartSuggestions.push({
       id: `missing_skill_${idx}`,
-      sourceModule: 'Resume Gap Audit',
-      label: `Gap: ${skill}`,
+      sourceModule: currentActiveJob ? 'Active Job Skills' : 'Resume Gap Audit',
+      label: `Skill: ${skill}`,
       value: skill,
       type: 'skill'
     });
@@ -278,6 +307,9 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   return (
     <SystemOSContext.Provider
       value={{
+        currentActiveJob,
+        setCurrentActiveJob,
+        clearCurrentJobContext,
         latestResume,
         trackedJobs,
         outreachContacts,

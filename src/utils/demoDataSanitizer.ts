@@ -48,7 +48,7 @@ export function isDemoSkills(skills?: string | string[] | null): boolean {
 export function sanitizeBrowserStorage(): void {
   try {
     // Check localStorage
-    const localKeys = ['job_finder_user_query', 'recent_searches', 'last_search_role'];
+    const localKeys = ['job_finder_user_query', 'recent_searches', 'last_search_role', 'ai_hireflow_current_active_job'];
     for (const key of localKeys) {
       const val = localStorage.getItem(key);
       if (val) {
@@ -59,7 +59,7 @@ export function sanitizeBrowserStorage(): void {
     }
 
     // Check sessionStorage
-    const sessionKeys = ['job_finder_user_query', 'last_search_role'];
+    const sessionKeys = ['job_finder_user_query', 'last_search_role', 'ai_hireflow_current_active_job'];
     for (const key of sessionKeys) {
       const val = sessionStorage.getItem(key);
       if (val) {

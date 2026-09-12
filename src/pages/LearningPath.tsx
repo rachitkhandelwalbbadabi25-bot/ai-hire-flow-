@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -14,7 +14,9 @@ import {
   FileText,
   Map,
   Zap,
-  MessageSquare
+  MessageSquare,
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { generateLearningPath } from '../lib/gemini';
 import { db } from '../lib/firebase';
@@ -57,6 +59,7 @@ export default function LearningPath() {
   const { user } = useAuth();
   const { plan, checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const location = useLocation();
+  const { currentActiveJob, clearCurrentJobContext } = useSystemOS();
 
   // Learning Path inputs MUST start completely empty for fresh users. No demo careers.
   const [targetRole, setTargetRole] = useState('');
@@ -65,6 +68,12 @@ export default function LearningPath() {
   const [loading, setLoading] = useState(false);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [recentAnalysis, setRecentAnalysis] = useState<any>(null);
+
+  // Track if user explicitly typed custom values so we do not overwrite them involuntarily
+  const userEditedRoleRef = useRef(false);
+  const userEditedSkillsRef = useRef(false);
+  // Track current active job key to detect when active job changes between searches
+  const activeJobKeyRef = useRef<string | null>(null);
 
   const isFree = plan === 'free';
   const isPersonalized = roadmapType === 'personalized';
@@ -78,15 +87,57 @@ export default function LearningPath() {
     return firstLine;
   };
 
-  // Only populate from navigation state if explicitly provided and not demo data
+  // State synchronization & Stale-data clearing:
+  // When a user selects a new job, or clears search context, the previous search context must be replaced cleanly.
   useEffect(() => {
-    if (location.state?.missingSkills && !isDemoSkills(location.state.missingSkills)) {
-      setSkillsStr(location.state.missingSkills.join(', '));
-    }
+    // 1. Explicit navigation state takes first priority
     if (location.state?.targetRole && !isDemoRole(location.state.targetRole)) {
       setTargetRole(location.state.targetRole);
+      userEditedRoleRef.current = false;
+      if (location.state?.missingSkills && !isDemoSkills(location.state.missingSkills)) {
+        const skills = Array.isArray(location.state.missingSkills) 
+          ? location.state.missingSkills.join(', ') 
+          : String(location.state.missingSkills);
+        setSkillsStr(skills);
+        userEditedSkillsRef.current = false;
+      }
+      return;
     }
-  }, [location.state]);
+
+    // 2. Manage currentActiveJob lifecycle
+    const currentKey = currentActiveJob ? `${currentActiveJob.title}__${currentActiveJob.company}` : null;
+    
+    // If active job changed (e.g. from Job A to Job B, or from Job A to null upon new search)
+    if (activeJobKeyRef.current !== currentKey) {
+      activeJobKeyRef.current = currentKey;
+
+      if (currentActiveJob) {
+        // Job changed: replace target role with current active job
+        setTargetRole(currentActiveJob.title);
+        userEditedRoleRef.current = false;
+
+        // Replace target skills strictly with current job's skills
+        if (currentActiveJob.skills && currentActiveJob.skills.length > 0) {
+          setSkillsStr(currentActiveJob.skills.join(', '));
+        } else {
+          setSkillsStr('');
+        }
+        userEditedSkillsRef.current = false;
+
+        // Clear any old roadmap generated for a previous job
+        setRoadmap(null);
+      } else {
+        // Active job context was cleared (new search performed)
+        if (!userEditedRoleRef.current) {
+          setTargetRole('');
+        }
+        if (!userEditedSkillsRef.current) {
+          setSkillsStr('');
+        }
+        setRoadmap(null);
+      }
+    }
+  }, [location.state, currentActiveJob]);
 
   // Load any previously saved REAL user learning path from Firestore
   useEffect(() => {
@@ -111,11 +162,19 @@ export default function LearningPath() {
             return;
           }
 
-          // Real user-created roadmap
-          if (data.roadmap) {
-            setRoadmap(data.roadmap);
-            if (!targetRole && data.targetRole) setTargetRole(data.targetRole);
-            if (!skillsStr && data.skillsStr) setSkillsStr(data.skillsStr);
+          // Check if this saved roadmap matches current job/role!
+          const activeRole = currentActiveJob?.title || location.state?.targetRole;
+          if (activeRole) {
+            // An active job is selected. Only show saved roadmap if it matches this exact role!
+            if (data.targetRole && data.targetRole.toLowerCase().trim() === activeRole.toLowerCase().trim()) {
+              if (data.roadmap) setRoadmap(data.roadmap);
+              if (!userEditedSkillsRef.current && data.skillsStr) setSkillsStr(data.skillsStr);
+            }
+          } else if (!userEditedRoleRef.current && !targetRole) {
+            // No active job and empty input: can restore last user saved session
+            if (data.roadmap) setRoadmap(data.roadmap);
+            if (data.targetRole) setTargetRole(data.targetRole);
+            if (data.skillsStr) setSkillsStr(data.skillsStr);
           }
         }
       } catch (err) {
@@ -124,7 +183,7 @@ export default function LearningPath() {
     };
 
     fetchSavedLearningPath();
-  }, [user?.uid]);
+  }, [user?.uid, currentActiveJob]);
 
   // Check recent analysis so user has the option to click "Load Analysis Gaps", without auto-filling
   useEffect(() => {
@@ -150,10 +209,30 @@ export default function LearningPath() {
           }
 
           if (data.analysis && data.analysis.missingKeywords && !isDemoSkills(data.analysis.missingKeywords)) {
-            setRecentAnalysis({
-              ...data.analysis,
-              detectedRole: data.jobDesc ? getJobTitle(data.jobDesc) : ''
-            });
+            const detectedRole = data.jobDesc ? getJobTitle(data.jobDesc) : (data.targetRole || '');
+            
+            // Only suggest analysis if it matches the current active job (or if no active job exists)
+            const activeRole = currentActiveJob?.title || location.state?.targetRole;
+            if (activeRole) {
+              const matchesRole = 
+                detectedRole.toLowerCase().includes(activeRole.toLowerCase()) || 
+                activeRole.toLowerCase().includes(detectedRole.toLowerCase()) ||
+                (data.jobDesc && data.jobDesc.toLowerCase().includes(activeRole.toLowerCase()));
+
+              if (matchesRole) {
+                setRecentAnalysis({
+                  ...data.analysis,
+                  detectedRole
+                });
+              } else {
+                setRecentAnalysis(null);
+              }
+            } else {
+              setRecentAnalysis({
+                ...data.analysis,
+                detectedRole
+              });
+            }
           }
         }
       } catch (err) {
@@ -161,7 +240,7 @@ export default function LearningPath() {
       }
     };
     fetchRecentAnalysis();
-  }, [user?.uid]);
+  }, [user?.uid, currentActiveJob]);
 
   const generatePath = async () => {
     if (!skillsStr.trim() || !targetRole.trim()) return;
@@ -234,6 +313,41 @@ export default function LearningPath() {
         </p>
       </div>
 
+      {/* Active Job Context Banner */}
+      {currentActiveJob && (
+        <div className="mb-6 p-4 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+            <div>
+              <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Job Context Applied</p>
+              <p className="text-sm font-bold text-ink">
+                {currentActiveJob.title} <span className="text-ink-dim font-normal">at {currentActiveJob.company}</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {currentActiveJob.skills && currentActiveJob.skills.length > 0 && (
+              <span className="text-[10px] font-bold bg-surface px-2.5 py-1 rounded-full text-ink-dim border border-border">
+                {currentActiveJob.skills.length} skills from job
+              </span>
+            )}
+            <button
+              onClick={() => {
+                clearCurrentJobContext();
+                setTargetRole('');
+                setSkillsStr('');
+                setRoadmap(null);
+                userEditedRoleRef.current = false;
+                userEditedSkillsRef.current = false;
+              }}
+              className="text-[10px] font-bold text-ink-dim hover:text-rose-400 uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Clear Job Context
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 2. Target Input Section (Full width, placed at the top) */}
       <div className="bg-surface p-6 sm:p-8 rounded-[2rem] border border-border shadow-2xl mb-10 w-full">
         <div className="space-y-6">
@@ -243,7 +357,10 @@ export default function LearningPath() {
                 <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Target Role</label>
                 <input 
                   value={targetRole}
-                  onChange={(e) => setTargetRole(e.target.value)}
+                  onChange={(e) => {
+                    setTargetRole(e.target.value);
+                    userEditedRoleRef.current = true;
+                  }}
                   className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
                   placeholder="e.g. Senior Software Engineer"
                 />
@@ -265,26 +382,44 @@ export default function LearningPath() {
             <div>
               <div className="flex justify-between items-center mb-3">
                 <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1">Target Skills</label>
-                {recentAnalysis && (
-                  <button 
-                    onClick={() => {
-                      if (recentAnalysis.missingKeywords) {
-                        setSkillsStr(recentAnalysis.missingKeywords.join(', '));
-                      }
-                      if (recentAnalysis.detectedRole && !targetRole) {
-                        setTargetRole(recentAnalysis.detectedRole);
-                      }
-                    }}
-                    className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
-                  >
-                    Load Analysis Gaps
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {currentActiveJob?.skills && currentActiveJob.skills.length > 0 && (
+                    <button 
+                      onClick={() => {
+                        setSkillsStr(currentActiveJob.skills.join(', '));
+                        userEditedSkillsRef.current = false;
+                      }}
+                      className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
+                    >
+                      Reset to Job Skills
+                    </button>
+                  )}
+                  {recentAnalysis && (
+                    <button 
+                      onClick={() => {
+                        if (recentAnalysis.missingKeywords) {
+                          setSkillsStr(recentAnalysis.missingKeywords.join(', '));
+                          userEditedSkillsRef.current = true;
+                        }
+                        if (recentAnalysis.detectedRole && !targetRole) {
+                          setTargetRole(recentAnalysis.detectedRole);
+                          userEditedRoleRef.current = true;
+                        }
+                      }}
+                      className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
+                    >
+                      Load Analysis Gaps
+                    </button>
+                  )}
+                </div>
               </div>
               <textarea 
                 value={skillsStr}
                 disabled={isFree}
-                onChange={(e) => setSkillsStr(e.target.value)}
+                onChange={(e) => {
+                  setSkillsStr(e.target.value);
+                  userEditedSkillsRef.current = true;
+                }}
                 className="w-full h-28 sm:h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed disabled:opacity-50"
                 placeholder={!isFree ? "Enter skills separated by commas (e.g. React, TypeScript, GraphQL)..." : "Upgrade plan to unlock customized roadmaps."}
               />

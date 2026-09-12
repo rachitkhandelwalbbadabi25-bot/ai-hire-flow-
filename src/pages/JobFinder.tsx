@@ -16,6 +16,7 @@ import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 import { isDemoRole } from '../utils/demoDataSanitizer';
+import { ActiveJobContext, extractJobSkills } from '../utils/jobContextManager';
 
 interface Job {
   title: string;
@@ -64,7 +65,7 @@ export default function JobFinder() {
   const navigate = useNavigate();
   const locationState = useLocation();
 
-  const { activeTargetRole } = useSystemOS();
+  const { activeTargetRole, currentActiveJob, setCurrentActiveJob, clearCurrentJobContext } = useSystemOS();
   const hasAutoSearchedRef = useRef(false);
 
   // Synchronize query when navigated with explicit route state, ignoring any legacy demo roles
@@ -147,9 +148,34 @@ export default function JobFinder() {
     }, 0);
   };
 
+  const handleSelectJob = (targetJob: Job) => {
+    const skills = extractJobSkills(targetJob);
+    const activeJob: ActiveJobContext = {
+      title: targetJob.title,
+      company: targetJob.company,
+      location: targetJob.location,
+      description: targetJob.description,
+      skills,
+      datePosted: targetJob.datePosted,
+      matchScore: targetJob.matchScore,
+      roleTier: targetJob.roleTier,
+      link: targetJob.link,
+      source: 'search',
+      selectedAt: Date.now()
+    };
+    setCurrentActiveJob(activeJob);
+  };
+
   const handleSearchWithQuery = async (searchQuery: string, searchLoc: string, e?: FormEvent) => {
     if (e) e.preventDefault();
     if (loading || !searchQuery || !searchQuery.trim()) return;
+
+    // 1. Clear previous selected/current job context
+    // 2. Clear previous job-derived target skills
+    // 3. Clear previous job-derived description
+    // 4. Clear previous analysis gaps if they belong to the old job
+    // 5. Clear stale Learning Path input derived from the old job
+    clearCurrentJobContext();
 
     setLoading(true);
     setError(null);
@@ -195,8 +221,11 @@ export default function JobFinder() {
   const handleSearch = (e: FormEvent) => handleSearchWithQuery(query, location, e);
 
   const trackJob = async (job: Job) => {
+    if (!user) return;
+    handleSelectJob(job);
     try {
       await addDoc(collection(db, 'users', user.uid, 'jobs'), {
+        userId: user.uid,
         company: job.company,
         role: job.title,
         status: 'Applied',
@@ -210,8 +239,7 @@ export default function JobFinder() {
   };
 
   const alignResume = (job: Job) => {
-    // Navigate to analyzer and pass job description via state or search params
-    // For simplicity, we'll use state if supported, or just navigate
+    handleSelectJob(job);
     navigate('/analyzer', { state: { jobDescription: `${job.title} at ${job.company}\n\n${job.description}` } });
   };
 
@@ -389,15 +417,53 @@ export default function JobFinder() {
           />
         ) : (
           <>
+            {currentActiveJob && (
+              <div className="mb-6 p-4 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+                  <div>
+                    <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Selected Job Context</p>
+                    <p className="text-sm font-bold text-ink">
+                      {currentActiveJob.title} <span className="text-ink-dim font-normal">at {currentActiveJob.company}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate('/learning')}
+                    className="px-3 py-1.5 bg-accent text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    Open Learning Path
+                  </button>
+                  <button
+                    onClick={() => clearCurrentJobContext()}
+                    className="px-3 py-1.5 text-xs text-ink-dim hover:text-rose-400 font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence>
-                {(jobs || []).map((job, index) => (
+                {(jobs || []).map((job, index) => {
+                  const isSelected = Boolean(
+                    currentActiveJob &&
+                    currentActiveJob.title.toLowerCase() === job.title.toLowerCase() &&
+                    currentActiveJob.company.toLowerCase() === job.company.toLowerCase()
+                  );
+
+                  return (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="glass-card p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group"
+                    className={`glass-card p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group ${
+                      isSelected ? 'border-accent ring-1 ring-accent/30' : ''
+                    }`}
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="bg-background/80 p-3 rounded-2xl border border-border">
@@ -460,9 +526,42 @@ export default function JobFinder() {
                       </div>
                     )}
 
-                    <p className="text-sm text-ink-dim line-clamp-3 mb-6 flex-1 leading-relaxed">
+                    <p className="text-sm text-ink-dim line-clamp-3 mb-4 flex-1 leading-relaxed">
                       "{job.description}"
                     </p>
+
+                    <div className="flex gap-2 mb-3">
+                      <button 
+                        onClick={() => handleSelectJob(job)}
+                        className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isSelected 
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
+                            : 'bg-surface hover:bg-accent/10 text-ink-dim hover:text-accent border border-border'
+                        }`}
+                      >
+                        {isSelected ? (
+                          <>
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                            Active Selected Job
+                          </>
+                        ) : (
+                          <>
+                            <Target className="w-3.5 h-3.5" />
+                            Select As Active Job
+                          </>
+                        )}
+                      </button>
+                      {isSelected && (
+                        <button 
+                          onClick={() => navigate('/learning')}
+                          className="px-3 py-2.5 bg-accent/15 border border-accent/30 text-accent rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-accent/25 transition-all flex items-center gap-1 cursor-pointer"
+                          title="Open Learning Path for this job"
+                        >
+                          <Zap className="w-3 h-3" />
+                          Roadmap
+                        </button>
+                      )}
+                    </div>
 
                     <div className="flex gap-2">
                       <button 
@@ -480,20 +579,21 @@ export default function JobFinder() {
                       </button>
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </AnimatePresence>
             </div>
 
             <NextStepBridgeCard
               title="Job search complete"
-              contextData={`Extracted ${jobs.length} verified listings for "${query || activeTargetRole || 'Software Engineering'}". Top match: ${jobs[0]?.title || 'Engineer'} at ${jobs[0]?.company || 'Enterprise Company'} (${jobs[0]?.matchScore || 85}% match).`}
+              contextData={`Extracted ${jobs.length} verified listings for "${query || currentActiveJob?.title || activeTargetRole || 'Software Engineering'}". Top match: ${jobs[0]?.title || 'Engineer'} at ${jobs[0]?.company || 'Enterprise Company'} (${jobs[0]?.matchScore || 85}% match).`}
               primaryStep={{
                 label: "Draft recruiter pitch",
                 icon: Send,
                 to: "/outreach",
                 state: {
-                  company: jobs[0]?.company || "Target Company",
-                  role: jobs[0]?.title || query || "Software Engineer"
+                  company: currentActiveJob?.company || jobs[0]?.company || "Target Company",
+                  role: currentActiveJob?.title || jobs[0]?.title || query || "Software Engineer"
                 }
               }}
               secondaryStep={{
@@ -501,9 +601,9 @@ export default function JobFinder() {
                 icon: MessageSquare,
                 to: "/interview",
                 state: {
-                  company: jobs[0]?.company || "Target Company",
-                  role: jobs[0]?.title || query || "Software Engineer",
-                  jobDescription: jobs[0]?.description || `Position: ${jobs[0]?.title} at ${jobs[0]?.company}`
+                  company: currentActiveJob?.company || jobs[0]?.company || "Target Company",
+                  role: currentActiveJob?.title || jobs[0]?.title || query || "Software Engineer",
+                  jobDescription: currentActiveJob?.description || jobs[0]?.description || `Position: ${jobs[0]?.title} at ${jobs[0]?.company}`
                 }
               }}
             />

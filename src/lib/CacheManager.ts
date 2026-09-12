@@ -37,6 +37,22 @@ class CacheManager {
     }
   }
 
+  delete = (key: string): void => {
+    this.cache.delete(key);
+  }
+
+  clearJobs = (): void => {
+    for (const key of this.cache.keys()) {
+      if (key.startsWith('job_')) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  clearAll = (): void => {
+    this.cache.clear();
+  }
+
   generateResumeKey = (resumeText: string, jobDesc: string): string => {
     const rPart = (resumeText || '').slice(0, 100).replace(/\s+/g, '');
     const jPart = (jobDesc || '').slice(0, 50).replace(/\s+/g, '');

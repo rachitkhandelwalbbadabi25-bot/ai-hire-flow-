@@ -257,8 +257,8 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     (latestRoadmap?.targetRole && !isDemoRole(latestRoadmap.targetRole) ? latestRoadmap.targetRole : '') || 
     '';
 
-  const allMissingSkills = currentActiveJob?.skills && currentActiveJob.skills.length > 0
-    ? currentActiveJob.skills
+  const allMissingSkills = currentActiveJob
+    ? (currentActiveJob.skills || [])
     : Array.from(new Set([
         ...(latestResume?.missingKeywords || []),
         ...(latestRoadmap?.missingSkills || [])

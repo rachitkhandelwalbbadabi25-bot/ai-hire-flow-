@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, useEffect } from 'react';
+import { useState, ChangeEvent, useEffect, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
@@ -8,6 +8,7 @@ import { analyzeResume, generateCoverLetter } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { firestoreCache } from '../services/FirestoreCache';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSystemOS } from '../context/SystemOSContext';
 import { 
   FileUp, 
   CheckCircle2, 
@@ -167,12 +168,180 @@ export default function ResumeAnalyzer() {
     }
   }, [location.state]);
 
+  const { currentActiveJob, clearCurrentJobContext } = useSystemOS();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGeneratingCL, setIsGeneratingCL] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('Auditing resume against ATS benchmarks...');
   const [analysis, setAnalysis] = useState<any>(null);
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(null);
+
+  // Sync active job context from Job Search / SystemOS
+  useEffect(() => {
+    if (location.state?.jobDescription) {
+      setJobDesc(location.state.jobDescription);
+    } else if (!jobDesc && currentActiveJob) {
+      const activeDesc = currentActiveJob.description 
+        ? `${currentActiveJob.title} at ${currentActiveJob.company}\n\n${currentActiveJob.description}`
+        : `Role: ${currentActiveJob.title}\nCompany: ${currentActiveJob.company}`;
+      setJobDesc(activeDesc);
+    }
+  }, [location.state, currentActiveJob]);
+
+  // Normalized ATS Audit Object guaranteeing all 12 sections have recruiter-grade data
+  const normalizedAnalysis = useMemo(() => {
+    if (!analysis) return null;
+
+    const finalScore = analysis.score ?? 75;
+    const atsCompatibility = analysis.atsCompatibility || (finalScore >= 80 ? 'High' : finalScore >= 60 ? 'Moderate' : 'Low');
+
+    // Strengths: Ensure array of distinct items
+    const strengths: string[] = Array.isArray(analysis.strengths) && analysis.strengths.length > 0
+      ? analysis.strengths.map(String).filter(Boolean)
+      : (analysis.scoreBreakdown || [])
+          .filter((cat: any) => (cat.score ?? 0) >= 70)
+          .map((cat: any) => `${cat.category}: ${cat.explanation || 'Demonstrated foundational technical capabilities.'}`);
+
+    // Weaknesses: Normalized with problem, whyItMatters, and howToFix
+    const weaknesses = Array.isArray(analysis.weaknesses) && analysis.weaknesses.length > 0
+      ? analysis.weaknesses.map((w: any) => {
+          if (typeof w === 'object' && w !== null) {
+            return {
+              problem: String(w.problem || w.issue || w.gap || w.title || '').trim(),
+              whyItMatters: String(w.whyItMatters || w.why || w.impact || 'ATS parsers and technical screeners look for verified metrics to gauge candidate qualification.').trim(),
+              howToFix: String(w.howToFix || w.fix || w.recommendation || 'Quantify bullet points with specific metrics, percentages, and role-aligned tools.').trim()
+            };
+          }
+          const str = String(w || '').trim();
+          return {
+            problem: str,
+            whyItMatters: 'Recruiters and automated screeners downgrade resumes with unverified or unquantified claims.',
+            howToFix: 'Strengthen this section with measurable accomplishments, industry-standard keywords, and technical context.'
+          };
+        }).filter((w: any) => Boolean(w.problem))
+      : (analysis.scoreBreakdown || [])
+          .filter((cat: any) => (cat.score ?? 0) < 75)
+          .map((cat: any) => ({
+            problem: `${cat.category} score is calibrated below top-tier threshold (${cat.score ?? 0}/100).`,
+            whyItMatters: cat.explanation || 'Deficiencies in this category directly reduce recruiter screening pass-rates.',
+            howToFix: Array.isArray(cat.recommendations) && cat.recommendations[0]
+              ? cat.recommendations[0]
+              : 'Add concrete metrics, throughput improvements, and role-specific keywords.'
+          }));
+
+    // Formatting & Structural Strategy
+    const formattingSuggestions: string[] = Array.isArray(analysis.formattingSuggestions) && analysis.formattingSuggestions.length > 0
+      ? analysis.formattingSuggestions.map(String).filter(Boolean)
+      : (analysis.scoreBreakdown || []).find((b: any) => b.category?.includes('Structure'))?.recommendations || [
+          "Ensure standard section headers (Experience, Technical Skills, Education) for clean ATS column parsing.",
+          "Keep bullet lengths between 1-2 lines for optimal recruiter scanning velocity."
+        ];
+
+    // Specific Resume Improvements: concrete issue -> recommended change pairs
+    const specificImprovements: { issue: string; recommendedChange: string }[] = [];
+    if (Array.isArray(analysis.impactSuggestions) && analysis.impactSuggestions.length > 0) {
+      analysis.impactSuggestions.forEach((imp: string, idx: number) => {
+        specificImprovements.push({
+          issue: `Experience bullet #${idx + 1} lacks quantifiable metrics`,
+          recommendedChange: imp
+        });
+      });
+    } else {
+      const impactCat = (analysis.scoreBreakdown || []).find((b: any) => b.category?.includes('Impact'));
+      if (impactCat && Array.isArray(impactCat.recommendations)) {
+        impactCat.recommendations.forEach((rec: string, idx: number) => {
+          specificImprovements.push({
+            issue: `Impact opportunity #${idx + 1}`,
+            recommendedChange: rec
+          });
+        });
+      }
+    }
+
+    // Identified Target Keywords
+    const keywordsFound: string[] = Array.isArray(analysis.keywordsFound) && analysis.keywordsFound.length > 0
+      ? analysis.keywordsFound.map(String).filter(Boolean)
+      : (analysis.skillsAnalysis || []).filter((s: any) => s.type === 'explicit').map((s: any) => s.skill);
+
+    // Missing Keywords
+    const missingKeywords: string[] = Array.isArray(analysis.missingKeywords)
+      ? analysis.missingKeywords.map(String).filter(Boolean)
+      : [];
+
+    return {
+      ...analysis,
+      score: finalScore,
+      atsCompatibility,
+      strengths: strengths.length > 0 ? strengths : ['Strong foundational technical background aligned with industry baselines.'],
+      weaknesses: weaknesses.length > 0 ? weaknesses : [{
+        problem: 'Limited quantifiable scale metrics in project descriptions.',
+        whyItMatters: 'ATS algorithms favor bullet points with numbers and verifiable impact.',
+        howToFix: 'Add specific percentage increases, user counts, or latency reductions to your experience.'
+      }],
+      formattingSuggestions,
+      specificImprovements: specificImprovements.length > 0 ? specificImprovements : [{
+        issue: 'Bullet points list duties rather than business outcomes',
+        recommendedChange: 'Rewrite bullets using the [Action Verb] + [Context/Tool] + [Quantified Result] formula.'
+      }],
+      keywordsFound,
+      missingKeywords
+    };
+  }, [analysis]);
+
+  // Dedicated on-demand cover letter generator
+  const handleGenerateCoverLetter = async () => {
+    if (isGeneratingCL) return;
+    if (!canGenCL) {
+      setError(`Cover letter capacity reached: ${clLeft}/${clLimit} remaining.`);
+      return;
+    }
+    let text = '';
+    const isUsingMaster = useSavedResume && !!masterResume && !isUploadMode;
+    if (isUsingMaster && masterResume) {
+      text = formatMasterResumeToText(masterResume);
+    } else if (extractedDoc && extractedDoc.text) {
+      text = extractedDoc.text;
+    }
+    if (!text || text.trim().length < 25) {
+      setError('Please upload a resume or select a master profile first.');
+      return;
+    }
+    if (!jobDesc || jobDesc.trim().length < 10) {
+      setError('Please provide a target job description to generate a tailored cover letter.');
+      return;
+    }
+
+    setIsGeneratingCL(true);
+    setError(null);
+    try {
+      const res = await generateCoverLetter(text, jobDesc);
+      if (res?.content && res.content.trim().length >= 120) {
+        setCoverLetter(res.content.trim());
+        await deductCredit('coverLetters');
+
+        // Update caches and store
+        const inMemoryKey = cacheManager.generateResumeKey(text, jobDesc);
+        const updatedStore = {
+          analysis: analysis,
+          coverLetter: res.content.trim()
+        };
+        cacheManager.set(inMemoryKey, updatedStore, 24 * 60 * 60 * 1000);
+        try {
+          await firestoreCache.setCache(user.uid, text, jobDesc, updatedStore);
+        } catch (e) {
+          console.warn('Failed to update cache with cover letter:', e);
+        }
+      } else {
+        setError('Cover letter generation did not return a complete letter. Please retry.');
+      }
+    } catch (e: any) {
+      console.warn('Cover letter on-demand generation error:', e);
+      setError(e.message || 'Cover letter generation failed.');
+    } finally {
+      setIsGeneratingCL(false);
+    }
+  };
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -316,7 +485,9 @@ export default function ResumeAnalyzer() {
 
       if (inMemoryCached && typeof inMemoryCached === 'object' && 'analysis' in inMemoryCached) {
         setAnalysis(inMemoryCached.analysis);
-        setCoverLetter(inMemoryCached.coverLetter);
+        // Only restore valid, complete cover letters (>= 120 chars)
+        const validCL = inMemoryCached.coverLetter && inMemoryCached.coverLetter.trim().length >= 120 ? inMemoryCached.coverLetter.trim() : null;
+        setCoverLetter(validCL);
         setCacheSource('browser');
         setIsAnalyzing(false);
         return;
@@ -332,14 +503,15 @@ export default function ResumeAnalyzer() {
 
       if (persistentCached && typeof persistentCached === 'object' && 'analysis' in persistentCached) {
         setAnalysis(persistentCached.analysis);
-        setCoverLetter(persistentCached.coverLetter);
+        const validCL = persistentCached.coverLetter && persistentCached.coverLetter.trim().length >= 120 ? persistentCached.coverLetter.trim() : null;
+        setCoverLetter(validCL);
         setCacheSource('persistent');
         
         // Sync back to in-memory for even faster subsequent access
         try {
           cacheManager.set(inMemoryKey, { 
             analysis: persistentCached.analysis, 
-            coverLetter: persistentCached.coverLetter 
+            coverLetter: validCL 
           }, 24 * 60 * 60 * 1000);
         } catch (e) {
           console.warn('Failed to sync Firestore cache to runtime memory');
@@ -366,17 +538,32 @@ export default function ResumeAnalyzer() {
       setAnalysis(analysisResult);
 
       // Execute optional cover letter asynchronously without blocking primary audit
-      let cl: string | null = null;
       if (jobDesc && canGenCL) {
+        setIsGeneratingCL(true);
         generateCoverLetter(text, jobDesc)
           .then(async (clResult) => {
-            if (clResult?.content) {
-              setCoverLetter(clResult.content);
+            if (clResult?.content && clResult.content.trim().length >= 120) {
+              const fullCL = clResult.content.trim();
+              setCoverLetter(fullCL);
               await deductCredit('coverLetters');
+
+              const updatedStore = {
+                analysis: analysisResult,
+                coverLetter: fullCL
+              };
+              cacheManager.set(inMemoryKey, updatedStore, 24 * 60 * 60 * 1000);
+              try {
+                await firestoreCache.setCache(user.uid, text, jobDesc, updatedStore);
+              } catch (e) {
+                console.warn('Failed to update cache with cover letter:', e);
+              }
             }
           })
           .catch((e) => {
             console.warn("Cover letter generation secondary error:", e);
+          })
+          .finally(() => {
+            setIsGeneratingCL(false);
           });
       }
 
@@ -807,7 +994,7 @@ export default function ResumeAnalyzer() {
             {/* Right Card: Job Description Card */}
             <div className="bg-surface p-7 sm:p-8 rounded-3xl border border-border shadow-sm flex flex-col justify-between relative overflow-hidden">
               <div>
-                <div className="flex items-center justify-between gap-2 mb-5">
+                <div className="flex items-center justify-between gap-2 mb-4">
                   <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-widest">
                     <Target className="w-4 h-4 text-accent" aria-hidden="true" /> Target Job Description
                   </h3>
@@ -815,6 +1002,27 @@ export default function ResumeAnalyzer() {
                     Optional for ATS Match
                   </span>
                 </div>
+
+                {currentActiveJob && (
+                  <div className="mb-3 p-2.5 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Target className="w-3.5 h-3.5 text-accent shrink-0" />
+                      <span className="text-xs text-ink truncate font-sans">
+                        Linked Job: <strong>{currentActiveJob.title}</strong> at {currentActiveJob.company}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearCurrentJobContext();
+                        setJobDesc('');
+                      }}
+                      className="text-[10px] text-ink-dim hover:text-rose-400 underline font-mono shrink-0 cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
 
                 <textarea
                   value={jobDesc}
@@ -899,11 +1107,12 @@ export default function ResumeAnalyzer() {
       ) : null}
 
       {/* Real ATS Analysis Result Area */}
-      {analysis && !isAnalyzing ? (
+      {normalizedAnalysis && !isAnalyzing ? (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="space-y-8"
+          id="ats-complete-audit-results"
         >
           {cacheSource && (
             <div className="flex justify-center">
@@ -920,10 +1129,11 @@ export default function ResumeAnalyzer() {
               </div>
             </div>
           )}
-          {/* Explainable AI Engine - Analysis View */}
+
+          {/* Explainable AI Engine - Complete 12-Section Recruiter Audit */}
           <div className="space-y-8">
-            {/* Header Explainable Banner */}
-            <div className="bg-gradient-to-r from-accent/15 via-surface to-accent/5 p-6 md:p-8 rounded-3xl border border-accent/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            {/* 1. ATS COMPATIBILITY SCORE */}
+            <div id="section-ats-score" className="bg-gradient-to-r from-accent/15 via-surface to-accent/5 p-6 md:p-8 rounded-3xl border border-accent/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm">
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="px-2.5 py-0.5 bg-accent text-white text-[9px] font-extrabold uppercase tracking-widest rounded-full flex items-center gap-1">
@@ -932,11 +1142,11 @@ export default function ResumeAnalyzer() {
                   <span className="text-[10px] font-bold text-accent uppercase tracking-wider">
                     Transparent Recruiter Calibration
                   </span>
-                  {(analysis.score ?? 0) <= 65 ? (
+                  {(normalizedAnalysis.score ?? 0) <= 65 ? (
                     <span className="px-2.5 py-0.5 bg-amber-500/10 text-amber-500 text-[9px] font-bold uppercase tracking-widest rounded-full border border-amber-500/20">
                       Generic Baseline (40-65 Range)
                     </span>
-                  ) : (analysis.score ?? 0) <= 79 ? (
+                  ) : (normalizedAnalysis.score ?? 0) <= 79 ? (
                     <span className="px-2.5 py-0.5 bg-blue-500/10 text-blue-500 text-[9px] font-bold uppercase tracking-widest rounded-full border border-blue-500/20">
                       Competitive Alignment (66-79 Range)
                     </span>
@@ -948,7 +1158,7 @@ export default function ResumeAnalyzer() {
                 </div>
                 <h2 className="text-xl md:text-2xl font-bold text-ink tracking-tight">Full Math Breakdown & Recruiter Rationale</h2>
                 <p className="text-xs text-ink-dim mt-1 max-w-xl">
-                  {(analysis.score ?? 0) <= 65 
+                  {(normalizedAnalysis.score ?? 0) <= 65 
                     ? "Honest Scoring Rule: Generic resumes lacking hard quantified metrics or direct role alignment calibrate between 40-65. Follow the rewrites below to break into 80+."
                     : "Calibrated against specific role requirements and company benchmarks with transparent category weights."}
                 </p>
@@ -956,55 +1166,143 @@ export default function ResumeAnalyzer() {
               <div className="flex items-center gap-4 bg-background/80 px-6 py-4 rounded-2xl border border-border shrink-0">
                 <div className="text-right">
                   <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider block">ATS Match Score</span>
-                  <span className="text-3xl font-black text-accent">{analysis.score ?? 0} <span className="text-sm font-normal text-ink-dim">/ 100</span></span>
+                  <span className="text-3xl font-black text-accent">{normalizedAnalysis.score ?? 0} <span className="text-sm font-normal text-ink-dim">/ 100</span></span>
                 </div>
                 <span className={cn(
                   "status-pill text-xs font-bold",
-                  (analysis.score ?? 0) >= 80 ? "status-offer" : (analysis.score ?? 0) >= 65 ? "status-applied" : "status-interview"
+                  (normalizedAnalysis.score ?? 0) >= 80 ? "status-offer" : (normalizedAnalysis.score ?? 0) >= 65 ? "status-applied" : "status-interview"
                 )}>
-                  {analysis.atsCompatibility || 'Calibrated'}
+                  {normalizedAnalysis.atsCompatibility || 'Calibrated'}
                 </span>
               </div>
             </div>
 
-            {/* Recruiter Email Memo Card (human_explanation) */}
-            {analysis.human_explanation && (
-              <div className="bg-surface p-8 rounded-3xl border border-border shadow-md">
-                <div className="flex justify-between items-center mb-6 border-b border-border/60 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-2xl text-accent">
-                      <Mail className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-ink text-sm uppercase tracking-wider flex items-center gap-2">
-                        Lead Recruiter Audit Memo <span className="text-[10px] lowercase text-ink-dim font-mono">(human_explanation)</span>
-                      </h3>
-                      <p className="text-xs text-ink-dim">Candid, transparent feedback written in plain English from hiring perspective</p>
-                    </div>
+            {/* 2. OVERALL RECRUITER SUMMARY */}
+            <div id="section-recruiter-summary" className="bg-surface p-6 sm:p-8 rounded-3xl border border-border shadow-sm space-y-6">
+              <div className="flex justify-between items-start flex-wrap gap-3 border-b border-border/60 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-2xl text-accent">
+                    <Mail className="w-5 h-5" />
                   </div>
+                  <div>
+                    <h3 className="font-bold text-ink text-sm uppercase tracking-wider flex items-center gap-2">
+                      Overall Recruiter Summary & Audit Memo
+                    </h3>
+                    <p className="text-xs text-ink-dim">Comprehensive executive evaluation from hiring manager and ATS lens</p>
+                  </div>
+                </div>
+                {normalizedAnalysis.human_explanation && (
                   <button
-                    onClick={() => navigator.clipboard.writeText(analysis.human_explanation)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-light border border-border rounded-xl text-[10px] font-bold text-ink-dim hover:text-accent hover:border-accent/30 transition-all uppercase tracking-widest"
+                    onClick={() => navigator.clipboard.writeText(normalizedAnalysis.human_explanation)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-light border border-border rounded-xl text-[10px] font-bold text-ink-dim hover:text-accent hover:border-accent/30 transition-all uppercase tracking-widest cursor-pointer"
                   >
                     <Copy className="w-3.5 h-3.5" /> Copy Memo
                   </button>
-                </div>
+                )}
+              </div>
 
-                <div className="bg-background/80 p-6 rounded-2xl border border-border text-ink leading-relaxed font-sans text-sm whitespace-pre-wrap">
-                  {analysis.human_explanation}
+              {normalizedAnalysis.summary && (
+                <div className="p-4 bg-surface-light rounded-2xl border border-border/80">
+                  <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-wider block mb-1.5">
+                    Executive Recruiter Summary:
+                  </span>
+                  <p className="text-sm text-ink leading-relaxed font-sans">
+                    {normalizedAnalysis.summary}
+                  </p>
+                </div>
+              )}
+
+              {normalizedAnalysis.human_explanation && (
+                <div className="bg-background/80 p-5 rounded-2xl border border-border text-ink leading-relaxed font-sans text-sm whitespace-pre-wrap">
+                  <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider block mb-2">
+                    Candid Recruiter Notes:
+                  </span>
+                  {normalizedAnalysis.human_explanation}
+                </div>
+              )}
+            </div>
+
+            {/* 3. STRENGTHS (WHAT IS GOOD IN MY RESUME) */}
+            <div id="section-strengths" className="bg-surface p-6 sm:p-8 rounded-3xl border border-emerald-500/20 shadow-sm">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-ink text-sm uppercase tracking-widest flex items-center gap-2">
+                    Key Strengths & Competitive Advantages
+                  </h3>
+                  <p className="text-xs text-ink-dim">Demonstrated qualifications and verifiable accomplishments that pass ATS screens</p>
                 </div>
               </div>
-            )}
 
-            {/* 4 Weighted Categories & Scoring Math */}
-            <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm">
-              <div className="flex items-center justify-between mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {normalizedAnalysis.strengths.map((str: string, idx: number) => (
+                  <div key={idx} className="bg-background p-4 rounded-2xl border border-emerald-500/20 flex items-start gap-3">
+                    <div className="p-1 bg-emerald-500/10 rounded-md text-emerald-400 mt-0.5 shrink-0">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <p className="text-xs text-ink leading-relaxed font-sans">{str}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. WEAKNESSES / AREAS TO IMPROVE */}
+            <div id="section-weaknesses" className="bg-surface p-6 sm:p-8 rounded-3xl border border-rose-500/20 shadow-sm">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+                <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-400">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-ink text-sm uppercase tracking-widest flex items-center gap-2">
+                    Critical Gaps & Areas to Improve
+                  </h3>
+                  <p className="text-xs text-ink-dim">Recruiter-audited deficiencies with 3-part structured breakdown</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {normalizedAnalysis.weaknesses.map((w: any, idx: number) => (
+                  <div key={idx} className="bg-background p-5 rounded-2xl border border-border space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-rose-400 flex items-center gap-2">
+                        <AlertCircle className="w-3.5 h-3.5" /> Defect #{idx + 1}: {w.problem}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 bg-surface border border-border rounded-lg text-ink-dim uppercase">
+                        High Priority
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 text-xs">
+                      <div className="bg-surface/60 p-3 rounded-xl border border-border/70">
+                        <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider block mb-1">
+                          Why It Matters To Recruiters:
+                        </span>
+                        <p className="text-ink-dim leading-relaxed font-sans">{w.whyItMatters}</p>
+                      </div>
+
+                      <div className="bg-surface/60 p-3 rounded-xl border border-border/70">
+                        <span className="text-[10px] font-mono font-bold text-success uppercase tracking-wider block mb-1">
+                          How To Fix It:
+                        </span>
+                        <p className="text-ink leading-relaxed font-sans">{w.howToFix}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 5. SCORE BREAKDOWN (4-Category Weighted Math) */}
+            <div id="section-score-breakdown" className="bg-surface p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
+              <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
                 <div>
                   <h3 className="font-bold text-ink uppercase text-xs tracking-widest flex items-center gap-2">
                     <Calculator className="w-4 h-4 text-accent" /> 4-Category Weighted Math Breakdown
                   </h3>
                   <p className="text-xs text-ink-dim mt-1">
-                    Mathematical formula verifying how each category weight contributes to your final ATS score of {analysis?.score ?? 0}/100.
+                    Mathematical formula verifying how each category weight contributes to your final ATS score of {normalizedAnalysis?.score ?? 0}/100.
                   </p>
                 </div>
                 <div className="px-3 py-1 bg-accent/10 border border-accent/20 rounded-xl text-accent text-xs font-mono font-bold flex items-center gap-1.5">
@@ -1013,7 +1311,7 @@ export default function ResumeAnalyzer() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {(analysis.scoreBreakdown || []).map((cat: any, idx: number) => (
+                {(normalizedAnalysis.scoreBreakdown || []).map((cat: any, idx: number) => (
                   <div key={idx} className="bg-background p-6 rounded-2xl border border-border flex flex-col justify-between space-y-4">
                     <div className="space-y-3">
                       <div className="flex justify-between items-start">
@@ -1064,7 +1362,7 @@ export default function ResumeAnalyzer() {
                       <div className="flex justify-between items-center text-xs font-mono">
                         <span className="text-ink-dim">Category Score: <strong className="text-ink">{cat.score}/100</strong></span>
                         <span className="text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-md border border-accent/20">
-                          {cat.mathExplanation || `(${cat.score}/100) × ${cat.weight}% = ${cat.earnedPoints} pts`}
+                          {cat.mathExplanation || `(${cat.score}/100) × ${cat.weight}% = ${cat.earnedPoints ?? Math.round(((cat.score || 0) * (cat.weight || 0)) / 100)} pts`}
                         </span>
                       </div>
                     </div>
@@ -1078,26 +1376,26 @@ export default function ResumeAnalyzer() {
                   <Calculator className="w-3.5 h-3.5 text-accent" /> Total Mathematical Sum:
                 </span>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {(analysis.scoreBreakdown || []).map((cat: any, i: number) => (
+                  {(normalizedAnalysis.scoreBreakdown || []).map((cat: any, i: number) => (
                     <span key={i} className="text-ink font-bold">
-                      {cat.earnedPoints ?? Math.round(((cat.score || 0) * (cat.weight || 0)) / 100)}{i < (analysis.scoreBreakdown || []).length - 1 ? " + " : ""}
+                      {cat.earnedPoints ?? Math.round(((cat.score || 0) * (cat.weight || 0)) / 100)}{i < (normalizedAnalysis.scoreBreakdown || []).length - 1 ? " + " : ""}
                     </span>
                   ))}
-                  <span className="text-accent font-black text-sm">= {analysis?.score ?? 0} / 100</span>
+                  <span className="text-accent font-black text-sm">= {normalizedAnalysis?.score ?? 0} / 100</span>
                 </div>
               </div>
             </div>
 
-            {/* Explicit vs Inferred Skills Audit Matrix */}
-            {analysis.skillsAnalysis && analysis.skillsAnalysis.length > 0 && (
-              <div className="bg-surface p-8 rounded-3xl border border-border">
-                <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
+            {/* 6. TECHNICAL / SKILL MATCH ANALYSIS */}
+            {normalizedAnalysis.skillsAnalysis && normalizedAnalysis.skillsAnalysis.length > 0 && (
+              <div id="section-skills-matrix" className="bg-surface p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
+                <div className="flex items-center justify-between mb-6 border-b border-border pb-4 flex-wrap gap-4">
                   <div>
                     <h3 className="font-bold text-ink uppercase text-xs tracking-widest flex items-center gap-2">
                       <Layers className="w-4 h-4 text-accent" /> Audited Skills: Explicit vs. Inferred
                     </h3>
                     <p className="text-xs text-ink-dim mt-1">
-                      Inferred skills (implied from tooling or frameworks) are lowered in confidence to preserve audit integrity.
+                      Inferred skills (implied from tooling or frameworks) are calibrated with transparent confidence ratings.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1111,7 +1409,7 @@ export default function ResumeAnalyzer() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {analysis.skillsAnalysis.map((sk: any, i: number) => (
+                  {normalizedAnalysis.skillsAnalysis.map((sk: any, i: number) => (
                     <div key={i} className="bg-background p-4 rounded-2xl border border-border flex flex-col justify-between space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-ink">{sk.skill}</span>
@@ -1140,19 +1438,45 @@ export default function ResumeAnalyzer() {
               </div>
             )}
 
-            {/* Keyword Analysis & Specific Rewrites per Gap */}
-            <div className="bg-surface p-8 rounded-3xl border border-border">
+            {/* 7. IDENTIFIED TARGET KEYWORDS */}
+            <div id="section-identified-keywords" className="bg-surface p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-border flex-wrap gap-2">
+                <h3 className="font-bold text-ink flex items-center gap-2 text-xs uppercase tracking-widest">
+                  <CheckCircle2 className="w-4 h-4 text-success" /> Identified Target Keywords ({normalizedAnalysis.keywordsFound.length})
+                </h3>
+                <span className="text-[10px] font-mono text-ink-dim uppercase">
+                  Verified In Resume Text
+                </span>
+              </div>
+              {normalizedAnalysis.keywordsFound.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {normalizedAnalysis.keywordsFound.map((k: string, i: number) => (
+                    <span key={i} className="bg-background text-ink px-3 py-1.5 rounded-xl text-xs font-semibold border border-border flex items-center gap-1.5 shadow-sm">
+                      <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                      <span>{k}</span>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-ink-dim text-xs italic">
+                  No specific target technical keywords were identified in this document. Incorporate industry-standard keywords from the job description below.
+                </p>
+              )}
+            </div>
+
+            {/* 8. MISSING KEYWORDS / SKILL GAPS */}
+            <div id="section-missing-keywords" className="bg-surface p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-border pb-4">
                 <div>
                   <h3 className="font-bold text-ink uppercase text-xs tracking-widest flex items-center gap-2">
                     <Zap className="w-4 h-4 text-accent" /> Missing Keyword Rationale & Bullet Rewrites
                   </h3>
                   <p className="text-xs text-ink-dim mt-1">
-                    Recruiter explanation of WHY each gap matters for THIS role at THIS company + 1 specific metric rewrite per gap.
+                    Recruiter explanation of WHY each gap matters for this role + 1 concrete metric bullet rewrite per gap.
                   </p>
                 </div>
 
-                {(analysis.missingKeywords || []).length > 0 && (
+                {normalizedAnalysis.missingKeywords.length > 0 && (
                   <button 
                     onClick={() => {
                       const getJobTitle = (desc: string) => {
@@ -1162,21 +1486,22 @@ export default function ResumeAnalyzer() {
                       };
                       navigate('/learning', {
                         state: {
-                          missingSkills: analysis.missingKeywords,
+                          missingSkills: normalizedAnalysis.missingKeywords,
                           targetRole: getJobTitle(jobDesc)
                         }
                       });
                     }}
-                    className="text-[9px] font-bold text-accent px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-xl hover:bg-accent/20 transition-all uppercase tracking-widest shrink-0"
+                    className="text-[9px] font-bold text-accent px-3.5 py-2 bg-accent/10 border border-accent/20 rounded-xl hover:bg-accent/20 transition-all uppercase tracking-widest shrink-0 flex items-center gap-1.5 cursor-pointer"
                   >
+                    <GraduationCap className="w-3.5 h-3.5" />
                     Generate Skill Roadmap
                   </button>
                 )}
               </div>
 
-              {(analysis.missingKeywordAnalysis || []).length > 0 ? (
+              {(normalizedAnalysis.missingKeywordAnalysis || []).length > 0 ? (
                 <div className="space-y-6">
-                  {analysis.missingKeywordAnalysis.map((item: any, idx: number) => (
+                  {normalizedAnalysis.missingKeywordAnalysis.map((item: any, idx: number) => (
                     <div key={idx} className="bg-background p-6 rounded-2xl border border-border space-y-4">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1220,7 +1545,7 @@ export default function ResumeAnalyzer() {
                           </p>
                           <button
                             onClick={() => navigator.clipboard.writeText(item.suggestedRewrite)}
-                            className="text-[9px] font-bold text-ink-dim hover:text-ink flex items-center gap-1 uppercase tracking-wider"
+                            className="text-[9px] font-bold text-ink-dim hover:text-ink flex items-center gap-1 uppercase tracking-wider cursor-pointer"
                           >
                             <Copy className="w-3 h-3" /> Copy
                           </button>
@@ -1232,70 +1557,177 @@ export default function ResumeAnalyzer() {
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {(analysis.missingKeywords || []).map((k: string, i: number) => (
+                  {normalizedAnalysis.missingKeywords.map((k: string, i: number) => (
                     <span key={i} className="bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/20">
                       {k}
                     </span>
                   ))}
-                  {(analysis.missingKeywords || []).length === 0 && (
+                  {normalizedAnalysis.missingKeywords.length === 0 && (
                     <p className="text-ink-dim text-xs italic">Optimal keyword alignment achieved! No missing critical terms found.</p>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Found Keywords & Optimization Strategy */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-surface p-8 rounded-3xl border border-border">
-                <h3 className="font-bold text-ink mb-6 flex items-center gap-2 text-xs uppercase tracking-widest">
-                  <CheckCircle2 className="w-4 h-4 text-success" /> Identified Target Keywords
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {(analysis.keywordsFound || []).map((k: string, i: number) => (
-                    <span key={i} className="bg-background text-ink px-3 py-1.5 rounded-lg text-xs font-semibold border border-border">
-                      {k}
-                    </span>
-                  ))}
+            {/* 9. ATS STRUCTURE & FORMATTING ANALYSIS */}
+            <div id="section-formatting" className="bg-surface p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-border flex-wrap gap-2">
+                <div>
+                  <h3 className="font-bold text-ink uppercase text-xs tracking-widest flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-accent" /> ATS Structure & Formatting Strategy
+                  </h3>
+                  <p className="text-xs text-ink-dim mt-1">Single-column parsability, section header hygiene, and layout compatibility</p>
                 </div>
+                <span className="px-2.5 py-1 bg-accent/10 text-accent font-mono text-[10px] font-bold rounded-lg border border-accent/20 uppercase">
+                  ATS Parser Ready
+                </span>
               </div>
 
-              <div className="bg-surface p-8 rounded-3xl border border-border">
-                <h3 className="font-bold text-ink mb-6 uppercase text-xs tracking-widest">Formatting & Structural Strategy</h3>
-                <ul className="space-y-3">
-                  {(analysis.formattingSuggestions || []).map((s: string, i: number) => (
-                    <li key={i} className="text-xs text-ink-dim flex gap-3 leading-relaxed">
-                      <span className="text-accent font-mono text-[10px] bg-accent/10 px-1.5 py-0.5 rounded shrink-0">0{i+1}</span>
-                      <span>{s}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {normalizedAnalysis.formattingSuggestions.map((s: string, i: number) => (
+                  <div key={i} className="bg-background p-4 rounded-2xl border border-border flex items-start gap-3">
+                    <span className="text-accent font-mono text-[10px] font-bold bg-accent/10 px-2 py-0.5 rounded shrink-0 mt-0.5">
+                      0{i+1}
+                    </span>
+                    <p className="text-xs text-ink leading-relaxed font-sans">{s}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Cover Letter */}
-            {coverLetter && (
-              <div className="bg-surface-light p-8 rounded-3xl border border-border shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
+            {/* 10. SPECIFIC RESUME IMPROVEMENTS */}
+            <div id="section-improvements" className="bg-surface p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-border flex-wrap gap-2">
+                <div>
+                  <h3 className="font-bold text-ink uppercase text-xs tracking-widest flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-accent" /> Specific Resume Bullet Improvements
+                  </h3>
+                  <p className="text-xs text-ink-dim mt-1">Direct upgrades to elevate bullet points with quantifiable metrics and business impact</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {normalizedAnalysis.specificImprovements.map((imp: any, i: number) => (
+                  <div key={i} className="bg-background p-5 rounded-2xl border border-border flex flex-col gap-2.5">
+                    <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider">
+                      Target Area: {imp.issue}
+                    </span>
+                    <div className="bg-surface/70 p-3.5 rounded-xl border border-border/70 flex items-start justify-between gap-3">
+                      <p className="text-xs text-ink font-sans leading-relaxed">
+                        <strong className="text-success font-mono uppercase text-[10px] block mb-1">Recommended Upgrade:</strong>
+                        {imp.recommendedChange}
+                      </p>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(imp.recommendedChange)}
+                        className="text-[9px] font-bold text-ink-dim hover:text-accent flex items-center gap-1 uppercase tracking-wider shrink-0 mt-1 cursor-pointer"
+                      >
+                        <Copy className="w-3 h-3" /> Copy
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 11. ACTIONABLE RECOMMENDATIONS (NEXT STEPS) */}
+            <div id="section-recommendations" className="bg-surface p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
+              <h3 className="font-bold text-ink mb-6 uppercase text-xs tracking-widest flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-accent" /> Actionable Next Steps Before Applying
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-background p-4 rounded-2xl border border-border space-y-2">
+                  <span className="w-6 h-6 rounded-full bg-accent/10 border border-accent/20 text-accent font-mono text-xs font-bold flex items-center justify-center">1</span>
+                  <h4 className="text-xs font-bold text-ink">Update Master Resume</h4>
+                  <p className="text-[11px] text-ink-dim leading-relaxed">Incorporate the suggested metric rewrites into your Resume Editor profile.</p>
+                </div>
+                <div className="bg-background p-4 rounded-2xl border border-border space-y-2">
+                  <span className="w-6 h-6 rounded-full bg-accent/10 border border-accent/20 text-accent font-mono text-xs font-bold flex items-center justify-center">2</span>
+                  <h4 className="text-xs font-bold text-ink">Close Missing Gaps</h4>
+                  <p className="text-[11px] text-ink-dim leading-relaxed">Add highlighted technical keywords in the skills and experience sections.</p>
+                </div>
+                <div className="bg-background p-4 rounded-2xl border border-border space-y-2">
+                  <span className="w-6 h-6 rounded-full bg-accent/10 border border-accent/20 text-accent font-mono text-xs font-bold flex items-center justify-center">3</span>
+                  <h4 className="text-xs font-bold text-ink">Target Cover Letter</h4>
+                  <p className="text-[11px] text-ink-dim leading-relaxed">Submit the matched 3-paragraph cover letter alongside your updated CV.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 12. TAILORED COVER LETTER */}
+            <div id="section-cover-letter" className="bg-surface-light p-6 sm:p-8 rounded-3xl border border-border shadow-xl">
+              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <div>
                   <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-widest">
                     <Terminal className="w-4 h-4 text-accent" /> Tailored Cover Letter
                   </h3>
-                  <button 
-                    onClick={() => navigator.clipboard.writeText(coverLetter)}
-                    className="flex items-center gap-2 text-[10px] font-bold text-ink-dim hover:text-ink transition-colors uppercase tracking-widest"
-                  >
-                    <Copy className="w-3 h-3" /> Copy Cover Letter
-                  </button>
+                  <p className="text-xs text-ink-dim mt-1">Custom 3-paragraph letter aligning candidate background with target job requirements</p>
                 </div>
-                <div className="bg-background p-8 rounded-2xl border border-border text-ink-dim text-sm leading-relaxed font-sans whitespace-pre-wrap h-[350px] overflow-y-auto no-scrollbar">
-                  {coverLetter}
+
+                <div className="flex items-center gap-2">
+                  {coverLetter && (
+                    <button 
+                      onClick={() => navigator.clipboard.writeText(coverLetter)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border rounded-xl text-[10px] font-bold text-ink-dim hover:text-ink transition-colors uppercase tracking-widest cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> Copy Letter
+                    </button>
+                  )}
+                  {(!coverLetter || coverLetter.length < 120) && (
+                    <button
+                      onClick={handleGenerateCoverLetter}
+                      disabled={isGeneratingCL || !jobDesc.trim()}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-accent text-black font-mono font-bold rounded-xl text-xs hover:bg-accent/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      {isGeneratingCL ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Drafting Letter...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Generate Tailored Cover Letter</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
+
+              {isGeneratingCL ? (
+                <div className="bg-background p-8 rounded-2xl border border-border text-center space-y-3">
+                  <Loader2 className="w-8 h-8 text-accent animate-spin mx-auto" />
+                  <p className="font-mono text-xs font-bold text-ink">Drafting tailored 3-paragraph cover letter with Velona GLM 5.3 Flash...</p>
+                  <p className="text-[11px] text-ink-dim">Aligning your audited achievements with the specific requirements in the job description.</p>
+                </div>
+              ) : coverLetter && coverLetter.length >= 120 ? (
+                <div className="bg-background p-6 sm:p-8 rounded-2xl border border-border text-ink-dim text-sm leading-relaxed font-sans whitespace-pre-wrap max-h-[420px] overflow-y-auto no-scrollbar">
+                  {coverLetter}
+                </div>
+              ) : (
+                <div className="bg-background/60 p-6 rounded-2xl border border-border/80 text-center space-y-2">
+                  <p className="text-xs text-ink-dim font-sans">
+                    {jobDesc.trim() 
+                      ? "A tailored cover letter can be generated directly using this resume and target job." 
+                      : "Paste a job description to generate a tailored, ATS-aligned cover letter."}
+                  </p>
+                  {jobDesc.trim() && (
+                    <button
+                      onClick={handleGenerateCoverLetter}
+                      disabled={isGeneratingCL}
+                      className="mt-2 text-xs font-mono font-bold text-accent hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" /> Click to generate full cover letter (+15 Credits)
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <NextStepBridgeCard
             title="Resume evaluation complete"
-            contextData={`ATS match score: ${analysis?.score ?? 0}%. ${(analysis?.missingKeywords || []).length > 0 ? `Identified ${(analysis?.missingKeywords || []).length} missing skill keywords (${(analysis?.missingKeywords || []).slice(0, 3).join(', ')}).` : 'High keyword alignment with target role specifications.'}`}
+            contextData={`ATS match score: ${normalizedAnalysis?.score ?? 0}%. ${(normalizedAnalysis?.missingKeywords || []).length > 0 ? `Identified ${(normalizedAnalysis?.missingKeywords || []).length} missing skill keywords (${(normalizedAnalysis?.missingKeywords || []).slice(0, 3).join(', ')}).` : 'High keyword alignment with target role specifications.'}`}
             primaryStep={{
               label: "Search matched jobs",
               icon: Search,
@@ -1311,7 +1743,7 @@ export default function ResumeAnalyzer() {
               to: "/learning",
               state: {
                 targetRole: jobDesc ? jobDesc.split('\n')[0].slice(0, 50) : "Software Engineer",
-                missingSkills: analysis.missingKeywords || []
+                missingSkills: normalizedAnalysis.missingKeywords || []
               }
             }}
           />
@@ -1328,6 +1760,7 @@ export default function ResumeAnalyzer() {
               onClick={() => { setAnalysis(null); setCoverLetter(null); setFile(null); setExtractedDoc(null); setJobDesc(''); }}
               className="px-4 py-2 text-ink-dim hover:text-rose-400 font-bold transition-all flex items-center gap-1.5 text-xs uppercase tracking-wider cursor-pointer"
             >
+              <RotateCcw className="w-3.5 h-3.5" />
               Reset Terminal / New Resume
             </button>
           </div>

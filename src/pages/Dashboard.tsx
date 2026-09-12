@@ -29,7 +29,6 @@ import {
   Building2,
   MapPin,
   Clock,
-  Zap,
   Check
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -395,72 +394,6 @@ export default function Dashboard() {
                 <FileText className="w-4 h-4" /> Upload & Analyze Resume
               </button>
               <span className="text-[10px] text-ink-dim text-center md:text-right">Takes under 30 seconds • Supports PDF & DOCX</span>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* STATE 2: HAS RESUME BUT NO JOB TRACKED -> SHOW DISCOVERY GUIDANCE */}
-      {hasResume && !hasJobs && (
-        <section className="mb-10 space-y-6">
-          <div className="bg-surface border border-border rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-mono text-xl font-bold shrink-0">
-                {stats.latestResumeScore > 0 ? `${stats.latestResumeScore}%` : '—'}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-bold text-accent uppercase tracking-widest font-mono bg-accent/10 px-2 py-0.5 rounded-md">Resume Ready</span>
-                  <span className="text-xs text-ink-dim font-medium">ATS Match Score Baseline</span>
-                </div>
-                <h3 className="text-lg font-bold text-ink uppercase tracking-tight font-mono mt-0.5">
-                  Resume Active — Next Step: Discover Opportunities
-                </h3>
-              </div>
-            </div>
-            <button 
-              onClick={() => navigate('/editor')}
-              className="bg-surface-light border border-border hover:border-accent/40 text-ink text-xs font-bold uppercase font-mono px-5 py-2.5 rounded-xl transition-colors self-start sm:self-center shrink-0"
-            >
-              Refine Resume in Editor
-            </button>
-          </div>
-
-          <div className="bg-surface border border-border rounded-2xl p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-border">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Zap className="w-4 h-4 text-accent" />
-                  <span className="text-[10px] font-bold text-accent uppercase tracking-widest font-mono">Job Discovery</span>
-                </div>
-                <h2 className="text-xl font-bold text-ink uppercase tracking-tight font-mono">
-                  Explore Live Opportunities
-                </h2>
-                <p className="text-xs text-ink-dim mt-0.5">
-                  Search live verified openings matched to your skills and track them into your pipeline.
-                </p>
-              </div>
-
-              <button 
-                onClick={() => navigate('/finder')}
-                className="bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-2 hover:bg-accent/90 transition-all self-start sm:self-center"
-              >
-                Search All Listings in Job Finder <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="p-8 text-center border border-dashed border-border rounded-xl bg-background/50">
-              <Search className="w-8 h-8 text-accent mx-auto mb-2 opacity-70" />
-              <p className="text-sm font-bold text-ink font-sans">No target jobs tracked yet</p>
-              <p className="text-xs text-ink-dim max-w-md mx-auto mt-1 mb-4">
-                Use the Job Finder to search real-time openings across engineering, product, and design, and track them to manage your interview stages.
-              </p>
-              <button
-                onClick={() => navigate('/finder')}
-                className="bg-accent text-black px-6 py-2.5 rounded-xl text-xs font-bold font-mono uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer"
-              >
-                Search Live Jobs
-              </button>
             </div>
           </div>
         </section>

@@ -170,12 +170,23 @@ export default function JobFinder() {
     if (e) e.preventDefault();
     if (loading || !searchQuery || !searchQuery.trim()) return;
 
-    // 1. Clear previous selected/current job context
-    // 2. Clear previous job-derived target skills
-    // 3. Clear previous job-derived description
-    // 4. Clear previous analysis gaps if they belong to the old job
-    // 5. Clear stale Learning Path input derived from the old job
+    const trimmedQuery = searchQuery.trim();
+    const trimmedLoc = searchLoc ? searchLoc.trim() : '';
+
+    // 1. Fully clear previous active job context and stale search data
     clearCurrentJobContext();
+    setJobs([]);
+
+    // 2. Immediately establish pristine active job context for the new search
+    const initialActiveJob: ActiveJobContext = {
+      title: trimmedQuery,
+      company: trimmedLoc || 'Active Search',
+      location: trimmedLoc,
+      skills: extractJobSkills({ title: trimmedQuery }),
+      source: 'search',
+      selectedAt: Date.now()
+    };
+    setCurrentActiveJob(initialActiveJob);
 
     setLoading(true);
     setError(null);
@@ -183,7 +194,7 @@ export default function JobFinder() {
     setIsFromCache(false);
 
     try {
-      const cacheKey = cacheManager.generateJobKey(searchQuery, searchLoc);
+      const cacheKey = cacheManager.generateJobKey(trimmedQuery, trimmedLoc);
       
       let cached = null;
       try {
@@ -192,9 +203,10 @@ export default function JobFinder() {
         console.warn('Cache access failure:', err);
       }
 
-      if (cached && Array.isArray(cached)) {
+      if (cached && Array.isArray(cached) && cached.length > 0) {
         setJobs(cached);
         setIsFromCache(true);
+        handleSelectJob(cached[0]);
         setLoading(false);
         return;
       }
@@ -206,8 +218,11 @@ export default function JobFinder() {
       }
 
       await deductCredit('jobSearches');
-      const results = await findJobs(searchQuery, searchLoc, candidateProfile);
+      const results = await findJobs(trimmedQuery, trimmedLoc, candidateProfile);
       setJobs(results);
+      if (results && results.length > 0) {
+        handleSelectJob(results[0]);
+      }
       
       cacheManager.set(cacheKey, results, 30 * 60 * 1000);
     } catch (err: any) {

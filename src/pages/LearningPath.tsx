@@ -100,12 +100,19 @@ export default function LearningPath() {
           : String(location.state.missingSkills);
         setSkillsStr(skills);
         userEditedSkillsRef.current = false;
+      } else {
+        setSkillsStr('');
+        userEditedSkillsRef.current = false;
       }
+      setRoadmap(null);
+      setRecentAnalysis(null);
       return;
     }
 
     // 2. Manage currentActiveJob lifecycle
-    const currentKey = currentActiveJob ? `${currentActiveJob.title}__${currentActiveJob.company}` : null;
+    const currentKey = currentActiveJob 
+      ? `${currentActiveJob.title}__${currentActiveJob.company}__${currentActiveJob.selectedAt || 0}` 
+      : null;
     
     // If active job changed (e.g. from Job A to Job B, or from Job A to null upon new search)
     if (activeJobKeyRef.current !== currentKey) {
@@ -116,7 +123,7 @@ export default function LearningPath() {
         setTargetRole(currentActiveJob.title);
         userEditedRoleRef.current = false;
 
-        // Replace target skills strictly with current job's skills
+        // Replace target skills strictly with current job's skills - CLEAN REPLACE, NEVER MERGE
         if (currentActiveJob.skills && currentActiveJob.skills.length > 0) {
           setSkillsStr(currentActiveJob.skills.join(', '));
         } else {
@@ -126,22 +133,27 @@ export default function LearningPath() {
 
         // Clear any old roadmap generated for a previous job
         setRoadmap(null);
+        setRecentAnalysis(null);
       } else {
         // Active job context was cleared (new search performed)
-        if (!userEditedRoleRef.current) {
-          setTargetRole('');
-        }
-        if (!userEditedSkillsRef.current) {
-          setSkillsStr('');
-        }
+        setTargetRole('');
+        setSkillsStr('');
         setRoadmap(null);
+        setRecentAnalysis(null);
+        userEditedRoleRef.current = false;
+        userEditedSkillsRef.current = false;
       }
     }
   }, [location.state, currentActiveJob]);
 
-  // Load any previously saved REAL user learning path from Firestore
+  // Load any previously saved REAL user learning path from Firestore ONLY if no active job search is running
   useEffect(() => {
     if (!user?.uid) return;
+    // When an active job search is active, do NOT load old Firestore roadmap or stale skills!
+    if (currentActiveJob) {
+      return;
+    }
+
     const fetchSavedLearningPath = async () => {
       try {
         const q = query(
@@ -162,16 +174,8 @@ export default function LearningPath() {
             return;
           }
 
-          // Check if this saved roadmap matches current job/role!
-          const activeRole = currentActiveJob?.title || location.state?.targetRole;
-          if (activeRole) {
-            // An active job is selected. Only show saved roadmap if it matches this exact role!
-            if (data.targetRole && data.targetRole.toLowerCase().trim() === activeRole.toLowerCase().trim()) {
-              if (data.roadmap) setRoadmap(data.roadmap);
-              if (!userEditedSkillsRef.current && data.skillsStr) setSkillsStr(data.skillsStr);
-            }
-          } else if (!userEditedRoleRef.current && !targetRole) {
-            // No active job and empty input: can restore last user saved session
+          // Only restore if user has not typed anything and no active search context is present
+          if (!userEditedRoleRef.current && !userEditedSkillsRef.current && !targetRole) {
             if (data.roadmap) setRoadmap(data.roadmap);
             if (data.targetRole) setTargetRole(data.targetRole);
             if (data.skillsStr) setSkillsStr(data.skillsStr);
@@ -211,15 +215,19 @@ export default function LearningPath() {
           if (data.analysis && data.analysis.missingKeywords && !isDemoSkills(data.analysis.missingKeywords)) {
             const detectedRole = data.jobDesc ? getJobTitle(data.jobDesc) : (data.targetRole || '');
             
-            // Only suggest analysis if it matches the current active job (or if no active job exists)
-            const activeRole = currentActiveJob?.title || location.state?.targetRole;
-            if (activeRole) {
-              const matchesRole = 
-                detectedRole.toLowerCase().includes(activeRole.toLowerCase()) || 
-                activeRole.toLowerCase().includes(detectedRole.toLowerCase()) ||
-                (data.jobDesc && data.jobDesc.toLowerCase().includes(activeRole.toLowerCase()));
+            // Only suggest analysis if it matches the current active job strictly (by company or exact role)
+            if (currentActiveJob) {
+              const matchesCompany = Boolean(
+                currentActiveJob.company && 
+                data.company && 
+                data.company.toLowerCase().trim() === currentActiveJob.company.toLowerCase().trim()
+              );
+              const matchesExactRole = Boolean(
+                detectedRole && 
+                detectedRole.toLowerCase().trim() === currentActiveJob.title.toLowerCase().trim()
+              );
 
-              if (matchesRole) {
+              if (matchesCompany || matchesExactRole) {
                 setRecentAnalysis({
                   ...data.analysis,
                   detectedRole
@@ -228,10 +236,7 @@ export default function LearningPath() {
                 setRecentAnalysis(null);
               }
             } else {
-              setRecentAnalysis({
-                ...data.analysis,
-                detectedRole
-              });
+              setRecentAnalysis(null);
             }
           }
         }
@@ -337,8 +342,10 @@ export default function LearningPath() {
                 setTargetRole('');
                 setSkillsStr('');
                 setRoadmap(null);
+                setRecentAnalysis(null);
                 userEditedRoleRef.current = false;
                 userEditedSkillsRef.current = false;
+                activeJobKeyRef.current = null;
               }}
               className="text-[10px] font-bold text-ink-dim hover:text-rose-400 uppercase tracking-wider transition-colors cursor-pointer"
             >

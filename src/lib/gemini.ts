@@ -121,10 +121,21 @@ function repairTruncatedJson(str: string): string | null {
     JSON.parse(sanitized);
     return sanitized;
   } catch {
-    // Try rolling back to the last comma before truncation
-    const lastComma = candidate.lastIndexOf(',');
-    if (lastComma > 20) {
-      return repairTruncatedJson(candidate.slice(0, lastComma));
+    // Find last comma that is NOT inside a string literal and outside closures
+    let safeComma = -1;
+    let inS = false;
+    let esc = false;
+    for (let i = 0; i < candidate.length - 1; i++) {
+      const c = candidate[i];
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === '"') { inS = !inS; continue; }
+      if (!inS && c === ',') {
+        safeComma = i;
+      }
+    }
+    if (safeComma > 20) {
+      return repairTruncatedJson(candidate.slice(0, safeComma));
     }
     return null;
   }
@@ -375,22 +386,23 @@ CRITICAL AUDIT RULES:
    - "recommendations": ["1 actionable improvement under 15 words"]
 
 3. SKILLS AUDIT:
-   - "skillsAnalysis": array of 4 key technical skills found:
+   - "skillsAnalysis": array of 4-6 key technical skills found in resume:
      { "skill": string, "type": "explicit" | "inferred", "confidence_level": "high" | "medium" | "low", "evidence": string (quote under 10 words) }
 
 4. KEYWORD & GAP ANALYSIS:
-   - "keywordsFound": array of 4-6 technical keywords found.
-   - "missingKeywords": array of 3-4 critical keywords missing.
-   - "missingKeywordAnalysis": array of 2 most critical missing keywords:
-     { "keyword": string, "whyItMatters": string (under 15 words), "suggestedRewrite": string (under 20 words), "confidence_level": "high" | "medium" | "low", "isInferred": boolean, "inferredNote": string (under 10 words) }
+   - "keywordsFound": array of 6-10 technical keywords and tools identified in resume.
+   - "missingKeywords": array of 3-5 critical role keywords missing.
+   - "missingKeywordAnalysis": array of 2-3 most critical missing keywords:
+     { "keyword": string, "whyItMatters": string (under 20 words), "suggestedRewrite": string (under 25 words), "confidence_level": "high" | "medium" | "low", "isInferred": boolean, "inferredNote": string (under 10 words) }
 
-5. ACTIONABLE IMPROVEMENTS & SUMMARY:
-   - "formattingSuggestions": array of 2 crisp suggestions (under 15 words each).
-   - "impactSuggestions": array of 2 metric suggestions (under 15 words each).
-   - "strengths": array of 2 key strengths (under 15 words each).
-   - "weaknesses": array of 2 key gaps (under 15 words each).
-   - "summary": string (1 sentence under 25 words).
-   - "human_explanation": string (1 recruiter takeaway under 30 words).
+5. STRENGTHS, GAPS & RECRUITER AUDIT:
+   - "strengths": array of 3-4 distinct technical or architectural strengths (under 20 words each, citing resume achievements).
+   - "weaknesses": array of 2-3 distinct gaps or areas to improve with actionable fixes:
+     [ { "problem": string, "whyItMatters": string, "howToFix": string } ]
+   - "formattingSuggestions": array of 2-3 resume-specific structural observations (headings, bullet length, single-column parsing, typography).
+   - "impactSuggestions": array of 2-3 specific metric-driven bullet rewrite suggestions.
+   - "summary": string (1-2 sentences summarizing ATS alignment and candidate readiness under 35 words).
+   - "human_explanation": string (1 candid recruiter takeaway memo under 40 words).
 
 ${cleanJD ? `TARGET JOB DESCRIPTION:\n${cleanJD}\n` : 'TARGET ROLE CONTEXT:\nGeneral ATS Industry Benchmark for the candidate\'s stated field & experience level\n'}
 
@@ -535,6 +547,42 @@ CONCISENESS RULES:
   const finalScore = Math.min(100, Math.max(0, Math.round(totalEarnedPoints)));
   const atsCompatibility = finalScore >= 80 ? 'High' : (finalScore >= 60 ? 'Moderate' : 'Low');
 
+  const rawKeywords = rawData.keywordsFound || rawData.identifiedKeywords || rawData.targetKeywords || rawData.foundKeywords || rawData.keywords || [];
+  const keywordsFound = Array.isArray(rawKeywords) ? rawKeywords.map(String).filter(Boolean) : [];
+
+  const rawMissing = rawData.missingKeywords || rawData.missingSkills || rawData.skillGaps || [];
+  const missingKeywords = Array.isArray(rawMissing) ? rawMissing.map(String).filter(Boolean) : [];
+
+  const rawStrengths = rawData.strengths || rawData.keyStrengths || rawData.strongPoints || rawData.highlights || [];
+  const strengths = Array.isArray(rawStrengths) ? rawStrengths.map(String).filter(Boolean) : [];
+
+  const rawWeaknesses = rawData.weaknesses || rawData.areasToImprove || rawData.gaps || rawData.criticalGaps || [];
+  const weaknesses = Array.isArray(rawWeaknesses) ? rawWeaknesses.map((w: any) => {
+    if (typeof w === 'object' && w !== null) {
+      return {
+        problem: String(w.problem || w.issue || w.gap || w.title || '').trim(),
+        whyItMatters: String(w.whyItMatters || w.why || w.impact || w.rationale || 'ATS parsers and technical recruiters rely on specific indicators to verify role alignment.').trim(),
+        howToFix: String(w.howToFix || w.fix || w.recommendation || w.action || 'Revise bullet points with verifiable metrics and concrete role-aligned technologies.').trim()
+      };
+    }
+    const problemStr = String(w || '').trim();
+    return {
+      problem: problemStr,
+      whyItMatters: 'Recruiters and automated screeners downgrade resumes with unverified or unquantified claims.',
+      howToFix: 'Strengthen this section with measurable accomplishments, industry-standard keywords, and technical context.'
+    };
+  }).filter(w => w.problem) : [];
+
+  const rawFormatting = rawData.formattingSuggestions || rawData.structuralRecommendations || rawData.formattingStrategy || [];
+  const formattingSuggestions = Array.isArray(rawFormatting) && rawFormatting.length > 0
+    ? rawFormatting.map(String).filter(Boolean)
+    : (normalizedBreakdown.find(b => b.category.includes('Structure'))?.recommendations || []);
+
+  const rawImpact = rawData.impactSuggestions || rawData.metricSuggestions || rawData.impactImprovements || [];
+  const impactSuggestions = Array.isArray(rawImpact) && rawImpact.length > 0
+    ? rawImpact.map(String).filter(Boolean)
+    : (normalizedBreakdown.find(b => b.category.includes('Impact'))?.recommendations || []);
+
   return {
     score: finalScore,
     atsCompatibility: rawData.atsCompatibility || atsCompatibility,
@@ -545,8 +593,8 @@ CONCISENESS RULES:
       confidence_level: ['high', 'medium', 'low'].includes(s.confidence_level) ? s.confidence_level : 'high',
       evidence: String(s.evidence || '').trim()
     })).filter((s: any) => s.skill) : [],
-    keywordsFound: Array.isArray(rawData.keywordsFound) ? rawData.keywordsFound.map(String).filter(Boolean) : [],
-    missingKeywords: Array.isArray(rawData.missingKeywords) ? rawData.missingKeywords.map(String).filter(Boolean) : [],
+    keywordsFound,
+    missingKeywords,
     missingKeywordAnalysis: Array.isArray(rawData.missingKeywordAnalysis) ? rawData.missingKeywordAnalysis.map((k: any) => ({
       keyword: String(k.keyword || '').trim(),
       whyItMatters: String(k.whyItMatters || '').trim(),
@@ -555,14 +603,10 @@ CONCISENESS RULES:
       isInferred: Boolean(k.isInferred),
       inferredNote: String(k.inferredNote || '').trim()
     })).filter((k: any) => k.keyword) : [],
-    formattingSuggestions: Array.isArray(rawData.formattingSuggestions) && rawData.formattingSuggestions.length > 0
-      ? rawData.formattingSuggestions.map(String).filter(Boolean)
-      : ["Ensure consistent bullet point formatting and clear section headers throughout."],
-    impactSuggestions: Array.isArray(rawData.impactSuggestions) && rawData.impactSuggestions.length > 0
-      ? rawData.impactSuggestions.map(String).filter(Boolean)
-      : ["Incorporate quantifiable metrics and percentage growth numbers in experience bullets."],
-    strengths: Array.isArray(rawData.strengths) ? rawData.strengths.map(String).filter(Boolean) : [],
-    weaknesses: Array.isArray(rawData.weaknesses) ? rawData.weaknesses.map(String).filter(Boolean) : [],
+    formattingSuggestions,
+    impactSuggestions,
+    strengths,
+    weaknesses,
     summary: typeof rawData.summary === 'string' && rawData.summary.trim()
       ? rawData.summary.trim()
       : `ATS resume audit completed with a score of ${finalScore}/100.`,
@@ -1209,39 +1253,61 @@ export const generateCoverLetter = async (resumeText: string, jobDescription: st
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
     .replace(/[ \t]+/g, ' ')
     .trim()
-    .slice(0, 3000);
+    .slice(0, 3500);
 
   const cleanJD = (jobDescription || '')
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
     .replace(/[ \t]+/g, ' ')
     .trim()
-    .slice(0, 1500);
+    .slice(0, 2000);
 
   const prompt = `
-    Generate a personalized, persuasive cover letter based on the following resume and job description.
-    Keep it concise, high-impact, and under 200 words across 3 focused paragraphs.
-    
-    Resume: ${cleanResume}
-    Job Description: ${cleanJD}
-    
-    Return a JSON object with:
-    - content: string (the full 3-paragraph text of the cover letter)
-  `;
+You are a senior recruiter and executive career coach.
+Write a personalized, highly tailored, professional 3-paragraph cover letter for this candidate applying to the specified target position.
+
+CANDIDATE RESUME:
+${cleanResume}
+
+TARGET JOB DESCRIPTION:
+${cleanJD}
+
+REQUIREMENTS:
+1. Address the hiring team directly (e.g., "Dear Hiring Team,").
+2. Paragraph 1: State interest in the role and company, identifying why the candidate's background is an immediate fit.
+3. Paragraph 2: Showcase 1-2 specific projects or technical achievements from the actual candidate resume that directly address the job's key requirements.
+4. Paragraph 3: Reiterate value-add, convey enthusiasm, and invite an interview.
+5. Professional sign-off ("Sincerely,\n[Candidate Name]").
+6. Return ONLY the plain text of the cover letter. Do NOT use markdown code fences and do NOT output JSON.
+  `.trim();
 
   const res = await executeAICompletion({
     prompt,
-    jsonMode: true,
-    temperature: 0.2,
-    maxTokens: 1800
+    jsonMode: false,
+    temperature: 0.3,
+    maxTokens: 1500
   });
 
-  if (res && typeof res === 'object' && res.content) {
-    return { content: String(res.content).trim() };
-  }
+  let text = '';
   if (typeof res === 'string') {
-    return { content: res.trim() };
+    text = res;
+  } else if (res && typeof res === 'object') {
+    text = String(res.text || res.content || res.rawText || '');
   }
-  return { content: "Dear Hiring Team,\n\nI am eager to submit my application for this role. My technical background in building scalable, reliable applications aligns directly with the requirements outlined in the job description.\n\nThroughout my work, I have focused on delivering measurable impact, clean architecture, and rapid feature execution. I welcome the opportunity to discuss how my skill set can support your team's goals.\n\nSincerely,\nCandidate" };
+
+  // Clean fences and surrounding quotes
+  text = text
+    .replace(/^```(?:markdown|text)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .replace(/^"+|"+$/g, '')
+    .trim();
+
+  // Validate that the output is a complete cover letter, not an unfinished fragment
+  if (text.length >= 150 && !text.endsWith(',') && (text.includes('\n\n') || text.toLowerCase().includes('sincerely') || text.toLowerCase().includes('dear'))) {
+    return { content: text };
+  }
+
+  console.warn('[generateCoverLetter] Incomplete or invalid letter generated; suppressing broken output:', text);
+  return null;
 };
 
 // =========================================================================

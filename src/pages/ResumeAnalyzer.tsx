@@ -343,10 +343,7 @@ export default function ResumeAnalyzer() {
     }
   };
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (!selected) return;
-
+  const processSelectedFile = async (selected: File) => {
     setFile(selected);
     setUseSavedResume(false);
     setError(null);
@@ -386,6 +383,22 @@ export default function ResumeAnalyzer() {
       setError(err.message || 'Could not extract readable text from this resume.');
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    await processSelectedFile(selected);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isAnalyzing || isExtracting) return;
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      await processSelectedFile(droppedFile);
     }
   };
 
@@ -869,11 +882,18 @@ export default function ResumeAnalyzer() {
                 ) : (
                   /* Standard PDF / Scanned / Image Upload Dropzone */
                   <div>
-                    <label className={cn(
-                      "relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl min-h-[14rem] p-4 cursor-pointer transition-all",
-                      extractedDoc ? "border-accent bg-accent/5" : (file && error) ? "border-rose-500/50 bg-rose-500/5" : "border-border hover:border-accent/40",
-                      (isAnalyzing || isExtracting) && "pointer-events-none opacity-80"
-                    )}>
+                    <label 
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={handleDrop}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl min-h-[14rem] p-4 cursor-pointer transition-all",
+                        extractedDoc ? "border-accent bg-accent/5" : (file && error) ? "border-rose-500/50 bg-rose-500/5" : "border-border hover:border-accent/40",
+                        (isAnalyzing || isExtracting) && "pointer-events-none opacity-80"
+                      )}
+                    >
                       <input 
                         type="file" 
                         className="hidden" 

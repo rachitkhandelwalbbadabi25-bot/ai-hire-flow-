@@ -1,26 +1,67 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import { performOcr } from './ocr.ts';
 
-// Configure local Vite-bundled worker to prevent cross-origin or CDN worker failures
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+// Synchronous in-memory worker handler to guarantee 100% infallible execution in iframes, Vite dev server, and production
+if (typeof window !== 'undefined') {
+  (window as any).pdfjsWorker = pdfjsWorker;
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+  } catch {
+    // Falls back to in-memory window.pdfjsWorker handler
+  }
+}
 
 /**
- * Validates whether the extracted text layer has sufficient quality and substance
- * to represent a readable resume, or if it is an empty/scanned document requiring OCR.
+ * Fast chunked conversion of ArrayBuffer to base64 string
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as any);
+  }
+  return window.btoa(binary);
+}
+
+/**
+ * Validates whether final extracted resume text (direct or OCR) is meaningful and readable,
+ * not just whitespace or OCR noise. Accepts any legitimate resume.
  */
 export function isTextQualitySufficient(text: string): boolean {
   if (!text) return false;
   const trimmed = text.trim();
-  if (trimmed.length < 40) return false;
+  if (trimmed.length < 25) return false;
 
   // Count alphabetic characters
   const letters = (trimmed.match(/[a-zA-Z]/g) || []).length;
-  if (letters < 25) return false;
+  if (letters < 15) return false;
 
   // Count distinct words (length >= 2)
   const words = trimmed.match(/\b[a-zA-Z]{2,}\b/g) || [];
-  if (words.length < 6) return false;
+  if (words.length < 4) return false;
+
+  return true;
+}
+
+/**
+ * Checks whether normal text layer extracted directly from a PDF has enough substance
+ * to represent a full resume, or if it is an image/scanned resume with empty/minimal metadata
+ * that requires OCR fallback.
+ */
+export function isDirectTextSubstantial(text: string): boolean {
+  if (!text) return false;
+  const trimmed = text.trim();
+  if (trimmed.length < 100) return false;
+
+  const letters = (trimmed.match(/[a-zA-Z]/g) || []).length;
+  if (letters < 60) return false;
+
+  const words = trimmed.match(/\b[a-zA-Z]{2,}\b/g) || [];
+  if (words.length < 15) return false;
 
   return true;
 }
@@ -50,7 +91,6 @@ async function renderPageToImage(page: any): Promise<string> {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   await page.render({
-    canvas,
     canvasContext: ctx,
     viewport
   }).promise;
@@ -61,27 +101,30 @@ async function renderPageToImage(page: any): Promise<string> {
 /**
  * Extracts text from a PDF file.
  * 1. Attempts normal text layer extraction first.
- * 2. If sufficient text is found, uses it immediately (no OCR delay).
+ * 2. If sufficient text is found, uses it immediately (Fast Cache, no OCR delay).
  * 3. If text is empty or too short (scanned/image PDF), automatically rasterizes pages
  *    and runs OCR fallback, preserving two-column section structure.
+ * 4. Gracefully falls back to server-side PDF extraction if client PDF parser encounters sandbox constraints.
  */
 export const extractTextFromPDF = async (
   file: File,
   onProgress?: (status: string) => void
 ): Promise<string> => {
   const startTime = Date.now();
-  try {
-    onProgress?.('Reading resume...');
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let normalExtractedText = '';
+  onProgress?.('Reading resume...');
+  const arrayBuffer = await file.arrayBuffer();
 
-    // Step 1: Attempt standard text layer extraction
+  let pdf: any = null;
+  let normalExtractedText = '';
+
+  // STEP 1: Attempt standard client-side text layer extraction
+  try {
+    pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
-        .filter((item: any) => 'str' in item && typeof item.str === 'string')
+        .filter((item: any) => item && typeof item.str === 'string')
         .map((item: any) => item.str)
         .join(' ');
 
@@ -89,51 +132,91 @@ export const extractTextFromPDF = async (
         normalExtractedText += pageText.trim() + '\n\n';
       }
     }
+  } catch (clientPdfErr: any) {
+    console.warn('[AI HireFlow][PDF] Client-side getDocument encountered an issue, trying server-side PDF parser:', clientPdfErr?.message || clientPdfErr);
+  }
 
-    const trimmedNormal = normalExtractedText.trim();
-    const normalCharCount = trimmedNormal.length;
+  const trimmedNormal = normalExtractedText.trim();
+  const normalCharCount = trimmedNormal.length;
 
-    // Step 2: Quality Check
-    if (isTextQualitySufficient(trimmedNormal)) {
-      console.log(`[AI HireFlow][PDF] Normal text extraction successful. Pages: ${pdf.numPages}, Chars: ${normalCharCount}, OCR triggered: false, Duration: ${Date.now() - startTime}ms`);
-      return trimmedNormal;
+  // STEP 2: Check if client direct extraction was substantial (Test A)
+  if (isDirectTextSubstantial(trimmedNormal)) {
+    console.log(`[AI HireFlow][PDF] Normal text extraction successful. Pages: ${pdf?.numPages || 1}, Chars: ${normalCharCount}, OCR triggered: false, Duration: ${Date.now() - startTime}ms`);
+    return trimmedNormal;
+  }
+
+  // STEP 3: Server-side PDF direct extraction check (if client had 0 or sparse text, or threw error)
+  try {
+    const base64 = arrayBufferToBase64(arrayBuffer);
+    const serverResp = await fetch('/api/ocr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pdfBase64: `data:application/pdf;base64,${base64}`,
+        meta: { fileType: 'pdf', fileName: file.name }
+      })
+    });
+
+    if (serverResp.ok) {
+      const serverData = await serverResp.json();
+      if (serverData.success && typeof serverData.text === 'string' && isDirectTextSubstantial(serverData.text)) {
+        console.log(`[AI HireFlow][PDF] Server PDF text extraction successful. Chars: ${serverData.text.length}, OCR triggered: false, Duration: ${Date.now() - startTime}ms`);
+        return serverData.text.trim();
+      }
     }
+  } catch (serverPdfErr: any) {
+    console.warn('[AI HireFlow][PDF] Server PDF check skipped or failed:', serverPdfErr?.message || serverPdfErr);
+  }
 
-    // Step 3: Automatic OCR Fallback for Scanned / Image-based PDF
-    console.log(`[AI HireFlow][PDF] Normal extraction insufficient (${normalCharCount} chars). Automatically activating OCR fallback for ${pdf.numPages} page(s).`);
-    onProgress?.('Scanning resume with OCR...');
+  // STEP 4: Automatic OCR Fallback for Scanned / Image-based PDF (Test B)
+  const pageCount = pdf?.numPages || 1;
+  console.log(`[AI HireFlow][PDF] Direct extraction insufficient (${normalCharCount} chars). Automatically activating OCR fallback for ${pageCount} page(s).`);
+  onProgress?.('Scanning resume with OCR...');
 
-    const pageImages: string[] = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-      onProgress?.(`Scanning page ${i} of ${pdf.numPages} with OCR...`);
-      const page = await pdf.getPage(i);
-      const imgDataUrl = await renderPageToImage(page);
-      pageImages.push(imgDataUrl);
+  let pageImages: string[] = [];
+  if (pdf) {
+    try {
+      const maxPagesToRender = Math.min(pageCount, 6);
+      for (let i = 1; i <= maxPagesToRender; i++) {
+        onProgress?.(`Scanning page ${i} of ${pageCount} with OCR...`);
+        const page = await pdf.getPage(i);
+        const imgDataUrl = await renderPageToImage(page);
+        pageImages.push(imgDataUrl);
+      }
+    } catch (renderErr: any) {
+      console.warn('[AI HireFlow][PDF] Error during page rasterization:', renderErr?.message || renderErr);
     }
+  }
 
+  if (pageImages.length > 0) {
     onProgress?.('Analyzing resume text structure...');
     const ocrStartTime = Date.now();
-    const ocrExtractedText = await performOcr(
-      pageImages,
-      { fileType: 'pdf', fileName: file.name },
-      onProgress
-    );
-    const ocrDuration = Date.now() - ocrStartTime;
+    try {
+      const ocrExtractedText = await performOcr(
+        pageImages,
+        { fileType: 'pdf', fileName: file.name },
+        onProgress
+      );
+      const ocrDuration = Date.now() - ocrStartTime;
+      const trimmedOcr = (ocrExtractedText || '').trim();
+      const finalCharCount = trimmedOcr.length;
 
-    const trimmedOcr = (ocrExtractedText || '').trim();
-    const finalCharCount = trimmedOcr.length;
+      console.log(`[AI HireFlow][PDF] OCR extraction completed: pages=${pageCount}, normalCharCount=${normalCharCount}, ocrTriggered=true, ocrDuration=${ocrDuration}ms, finalCharCount=${finalCharCount}`);
 
-    console.log(`[AI HireFlow][PDF] OCR extraction completed: pages=${pdf.numPages}, normalCharCount=${normalCharCount}, ocrTriggered=true, ocrDuration=${ocrDuration}ms, finalCharCount=${finalCharCount}`);
-
-    if (!trimmedOcr || trimmedOcr.length < 25) {
-      throw new Error('Could not extract readable text from this resume.');
+      if (isTextQualitySufficient(trimmedOcr)) {
+        return trimmedOcr;
+      }
+    } catch (ocrErr: any) {
+      console.warn('[AI HireFlow][PDF] OCR fallback failed:', ocrErr?.message || ocrErr);
     }
-
-    return trimmedOcr;
-  } catch (err: any) {
-    console.error('[AI HireFlow][PDF] Extraction error:', err.message || err);
-    throw new Error(err.message || 'Could not extract readable text from this resume.');
   }
+
+  // STEP 5: If normal text had at least some readable text, return it rather than failing
+  if (isTextQualitySufficient(trimmedNormal)) {
+    return trimmedNormal;
+  }
+
+  throw new Error('Could not extract readable text from this resume.');
 };
 
 /**

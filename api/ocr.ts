@@ -50,11 +50,33 @@ async function getWorker() {
  */
 export function reconstructPageText(data: any): string {
   const rawText = typeof data.text === 'string' ? data.text : '';
-  const words: WordItem[] = Array.isArray(data.words) ? data.words : [];
+  let words: WordItem[] = Array.isArray(data.words) ? data.words : [];
 
-  // If word list is missing or tiny, fallback to raw text
+  // If data.words is not directly populated by Tesseract, extract words from blocks/paragraphs/lines
+  if (words.length === 0 && Array.isArray(data.blocks)) {
+    for (const block of data.blocks) {
+      if (!block || !Array.isArray(block.paragraphs)) continue;
+      for (const para of block.paragraphs) {
+        if (!para || !Array.isArray(para.lines)) continue;
+        for (const line of para.lines) {
+          if (!line || !Array.isArray(line.words)) continue;
+          for (const w of line.words) {
+            if (w && typeof w.text === 'string' && w.bbox) {
+              words.push({
+                text: w.text,
+                bbox: w.bbox,
+                confidence: w.confidence
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // If word list is missing or tiny, fallback to clean raw text
   if (words.length < 15) {
-    return rawText.trim();
+    return cleanOcrText(rawText);
   }
 
   // Derive page dimensions from bounding boxes or metadata
@@ -228,10 +250,56 @@ function cleanOcrText(text: string): string {
 export async function handleOcrRequest(req: Request, res: Response) {
   const startTime = Date.now();
   try {
-    const { images, meta } = req.body;
+    const { images, pdfBase64, meta } = req.body;
+
+    // DIRECT PDF EXTRACTION SUPPORT (Server-side fast path)
+    if (pdfBase64 && typeof pdfBase64 === 'string') {
+      try {
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const commaIdx = pdfBase64.indexOf(',');
+        const rawBase64 = commaIdx !== -1 ? pdfBase64.slice(commaIdx + 1) : pdfBase64;
+        const pdfBuffer = Buffer.from(rawBase64.replace(/\s+/g, ''), 'base64');
+        const loadingTask = pdfjs.getDocument({
+          data: new Uint8Array(pdfBuffer),
+          useSystemFonts: true,
+          disableFontFace: true
+        });
+        const pdf = await loadingTask.promise;
+        let extractedText = '';
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .filter((item: any) => item && typeof item.str === 'string')
+            .map((item: any) => item.str)
+            .join(' ');
+          if (pageText.trim()) {
+            extractedText += pageText.trim() + '\n\n';
+          }
+        }
+
+        const trimmed = extractedText.trim();
+        const durationMs = Date.now() - startTime;
+        console.log(`[AI HireFlow][Server PDF] Extracted text: pages=${pdf.numPages}, duration=${durationMs}ms, charCount=${trimmed.length}`);
+
+        if (trimmed.length >= 40) {
+          return res.json({
+            success: true,
+            text: trimmed,
+            pageCount: pdf.numPages,
+            durationMs,
+            charCount: trimmed.length,
+            method: 'server_pdf'
+          });
+        }
+      } catch (pdfErr: any) {
+        console.warn('[AI HireFlow][Server PDF] Server direct PDF extraction failed, proceeding to image OCR if available:', pdfErr.message || pdfErr);
+      }
+    }
 
     if (!images || !Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({ error: 'Missing or invalid "images" array in request body' });
+      return res.status(400).json({ error: 'Missing or invalid "images" or "pdfBase64" in request body' });
     }
 
     const fileType = meta?.fileType || 'pdf';

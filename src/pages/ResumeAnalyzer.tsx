@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, useEffect, useMemo } from 'react';
+import { useState, ChangeEvent, useEffect, useMemo, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
@@ -169,6 +169,7 @@ export default function ResumeAnalyzer() {
   }, [location.state]);
 
   const { currentActiveJob, clearCurrentJobContext } = useSystemOS();
+  const isAnalyzingRef = useRef(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingCL, setIsGeneratingCL] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('Auditing resume against ATS benchmarks...');
@@ -441,18 +442,21 @@ export default function ResumeAnalyzer() {
   };
 
   const handleStartAnalysis = async () => {
-    if (isAnalyzing) return; // Guard against concurrent submissions!
+    if (isAnalyzing || isAnalyzingRef.current) return; // Synchronous guard against concurrent submissions!
+    isAnalyzingRef.current = true;
 
     // Validation: Require either saved master resume OR successfully extracted resume text
     const isUsingMaster = useSavedResume && !!masterResume && !isUploadMode;
     
     if (isExtracting) {
       setError("Document text extraction is in progress. Please wait a moment.");
+      isAnalyzingRef.current = false;
       return;
     }
 
     if (!isUsingMaster && (!extractedDoc || !extractedDoc.text || extractedDoc.text.trim().length < 25)) {
       setError("Resume text could not be extracted yet. Please upload a resume or retry extraction.");
+      isAnalyzingRef.current = false;
       return;
     }
 
@@ -502,6 +506,7 @@ export default function ResumeAnalyzer() {
         const validCL = inMemoryCached.coverLetter && inMemoryCached.coverLetter.trim().length >= 120 ? inMemoryCached.coverLetter.trim() : null;
         setCoverLetter(validCL);
         setCacheSource('browser');
+        isAnalyzingRef.current = false;
         setIsAnalyzing(false);
         return;
       }
@@ -530,6 +535,7 @@ export default function ResumeAnalyzer() {
           console.warn('Failed to sync Firestore cache to runtime memory');
         }
         
+        isAnalyzingRef.current = false;
         setIsAnalyzing(false);
         return;
       }
@@ -537,6 +543,7 @@ export default function ResumeAnalyzer() {
       // STEP 3: Execute Fast Velona ATS Scan
       if (!canScan) {
         setError(`Analysis capacity reached: ${scansLeft}/${scanLimit} scans remaining. Upgrade for more bandwidth.`);
+        isAnalyzingRef.current = false;
         setIsAnalyzing(false);
         return;
       }
@@ -610,6 +617,7 @@ export default function ResumeAnalyzer() {
       console.error('[ResumeAnalyzer] Analysis error:', err);
       setError(err.message || "Resume analysis failed. Please try again.");
     } finally {
+      isAnalyzingRef.current = false;
       setIsAnalyzing(false);
     }
   };

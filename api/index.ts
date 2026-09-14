@@ -113,7 +113,8 @@ export async function callVelonaChatCompletion({
   console.log(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Start: model=${VELONA_MODEL_ID}, promptSize=${approxPromptLength} chars, fileType=${meta?.fileType || 'N/A'}, textChars=${meta?.charCount ?? 'N/A'}, textWords=${meta?.wordCount ?? 'N/A'}, jsonMode=${jsonMode}, maxTokens=${safeMaxTokens}, temperature=${safeTemperature}`);
 
   // Resilient execution with bounded total budget to stay safely within Vercel's 60s limit
-  const maxRetries = 1;
+  // Strictly ZERO retries for expensive operations like resume_analysis to guarantee exactly ONE request
+  const maxRetries = operation === 'resume_analysis' ? 0 : 1;
   const maxTotalBudgetMs = 58000;
   const perAttemptTimeoutMs = 55000;
   let lastError: any = null;

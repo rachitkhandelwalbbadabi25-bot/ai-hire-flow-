@@ -400,12 +400,13 @@ Schema:
     }
   ],
   "skillsAnalysis": [
-    { "skill": "string", "type": "explicit", "confidence_level": "high", "evidence": "max 10 words" }
+    { "skill": "string", "type": "explicit" | "inferred", "confidence_level": "high" | "medium", "evidence": "max 10 words" }
   ],
-  "keywordsFound": ["max 12 items"],
-  "missingKeywords": ["max 8 items"],
-  "recommendations": ["max 4 items, max 18 words each"]
+  "keywordsFound": ["max 10 items"],
+  "missingKeywords": ["max 6 items"],
+  "recommendations": ["max 3 items, max 15 words each"]
 }
+Strict Limits: Max 3 items in "weaknesses". Max 6 key skills in "skillsAnalysis".
 
 JOB:
 ${cleanJD || "General ATS Industry Benchmark for the stated role and level"}

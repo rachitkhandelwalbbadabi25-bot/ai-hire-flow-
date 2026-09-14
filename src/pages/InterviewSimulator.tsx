@@ -230,6 +230,9 @@ export default function InterviewSimulator() {
 
   const handleOpenRubricEvaluation = () => {
     if (!userAnswer.trim()) return;
+    setSelfScore(null);
+    setCheckedKeyPoints({});
+    setSelfNotes('');
     setShowRubricAssessment(true);
   };
 
@@ -273,6 +276,9 @@ export default function InterviewSimulator() {
     } catch (error) {
       console.warn('AI evaluation API unavailable, opening Rubric Self-Assessment:', error);
       setIsDegradedFallback(true);
+      setSelfScore(null);
+      setCheckedKeyPoints({});
+      setSelfNotes('');
       setShowRubricAssessment(true);
     } finally {
       setIsEvaluating(false);

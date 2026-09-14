@@ -107,7 +107,13 @@ export default function ResumeAnalyzer() {
   const [extractedDoc, setExtractedDoc] = useState<ExtractedDoc | null>(null);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [extractionStatus, setExtractionStatus] = useState<string>('');
-  const [jobDesc, setJobDesc] = useState('');
+  const [jobDesc, setJobDesc] = useState(() => {
+    try {
+      return sessionStorage.getItem('resume_analyzer_job_desc') || '';
+    } catch (e) {
+      return '';
+    }
+  });
   const [masterResume, setMasterResume] = useState<MasterResumeData | null>(null);
   const [loadingMaster, setLoadingMaster] = useState(true);
   const [useSavedResume, setUseSavedResume] = useState(false);
@@ -173,10 +179,87 @@ export default function ResumeAnalyzer() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingCL, setIsGeneratingCL] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('Auditing resume against ATS benchmarks...');
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [coverLetter, setCoverLetter] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<any>(() => {
+    try {
+      const stored = sessionStorage.getItem('resume_analyzer_result');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return null;
+  });
+  const [coverLetter, setCoverLetter] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem('resume_analyzer_cover_letter') || null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [error, setError] = useState<string | null>(null);
-  const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(null);
+  const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(() => {
+    try {
+      return (sessionStorage.getItem('resume_analyzer_cache_source') as any) || null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Sync state to sessionStorage to preserve across navigation (NAVIGATION != RESET)
+  useEffect(() => {
+    try {
+      if (analysis) {
+        sessionStorage.setItem('resume_analyzer_result', JSON.stringify(analysis));
+      } else {
+        sessionStorage.removeItem('resume_analyzer_result');
+      }
+    } catch (e) {}
+  }, [analysis]);
+
+  useEffect(() => {
+    try {
+      if (coverLetter) {
+        sessionStorage.setItem('resume_analyzer_cover_letter', coverLetter);
+      } else {
+        sessionStorage.removeItem('resume_analyzer_cover_letter');
+      }
+    } catch (e) {}
+  }, [coverLetter]);
+
+  useEffect(() => {
+    try {
+      if (cacheSource) {
+        sessionStorage.setItem('resume_analyzer_cache_source', cacheSource);
+      } else {
+        sessionStorage.removeItem('resume_analyzer_cache_source');
+      }
+    } catch (e) {}
+  }, [cacheSource]);
+
+  useEffect(() => {
+    try {
+      if (jobDesc) {
+        sessionStorage.setItem('resume_analyzer_job_desc', jobDesc);
+      } else {
+        sessionStorage.removeItem('resume_analyzer_job_desc');
+      }
+    } catch (e) {}
+  }, [jobDesc]);
+
+  // Complete fresh start for Resume Analyzer
+  const handleFullReset = () => {
+    setAnalysis(null);
+    setCoverLetter(null);
+    setFile(null);
+    setExtractedDoc(null);
+    setJobDesc('');
+    setError(null);
+    setCacheSource(null);
+    clearCurrentJobContext();
+    try {
+      sessionStorage.removeItem('resume_analyzer_result');
+      sessionStorage.removeItem('resume_analyzer_cover_letter');
+      sessionStorage.removeItem('resume_analyzer_cache_source');
+      sessionStorage.removeItem('resume_analyzer_job_desc');
+    } catch (e) {}
+  };
 
   // Sync active job context from Job Search / SystemOS
   useEffect(() => {
@@ -696,40 +779,13 @@ export default function ResumeAnalyzer() {
         </motion.div>
       )}
 
-      {/* Dedicated ANALYZING State (mutually exclusive with input and result) */}
+      {/* Dedicated ANALYZING State - Single unified processing view */}
       {isAnalyzing && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
           id="ats-processing-section"
         >
-          {/* 1. Generation / Active Operation Area */}
-          <div 
-            id="ats-active-operation"
-            className="bg-surface border border-accent/30 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-xl text-accent animate-pulse shrink-0">
-                <BrainCircuit className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-widest px-2 py-0.5 bg-accent/10 border border-accent/20 rounded-full flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" /> Active Operation
-                  </span>
-                  <span className="text-[10px] font-mono text-ink-dim uppercase tracking-wider">
-                    ATS Calibration Pipeline
-                  </span>
-                </div>
-                <p className="text-sm sm:text-base font-mono font-bold text-ink">
-                  {analysisStatus || "Auditing resume against ATS benchmarks..."}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. AILoadingStepper / ATS Processing Steps */}
           <AILoadingStepper 
             presetKey="resume_audit" 
             title="ATS Structural & Keyword Audit Pipeline" 
@@ -1778,14 +1834,21 @@ export default function ResumeAnalyzer() {
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
             <button 
-              onClick={() => { setAnalysis(null); setCoverLetter(null); }}
+              onClick={() => { 
+                setAnalysis(null); 
+                setCoverLetter(null); 
+                try {
+                  sessionStorage.removeItem('resume_analyzer_result');
+                  sessionStorage.removeItem('resume_analyzer_cover_letter');
+                } catch (e) {}
+              }}
               className="px-4 py-2.5 bg-surface-light hover:bg-surface border border-border text-ink hover:text-accent font-bold rounded-xl transition-all flex items-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5 text-accent" />
               Modify Target Job & Re-Analyze
             </button>
             <button 
-              onClick={() => { setAnalysis(null); setCoverLetter(null); setFile(null); setExtractedDoc(null); setJobDesc(''); }}
+              onClick={handleFullReset}
               className="px-4 py-2 text-ink-dim hover:text-rose-400 font-bold transition-all flex items-center gap-1.5 text-xs uppercase tracking-wider cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />

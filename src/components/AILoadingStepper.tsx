@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Cpu, Sparkles, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Cpu, Sparkles, ShieldCheck, Loader2 } from 'lucide-react';
 import aiLoadingPresets from '../data/aiLoadingSteps.json';
 
 export interface AIStep {
@@ -42,10 +42,6 @@ export default function AILoadingStepper({
   }, [currentStepIndex, steps, onComplete]);
 
   const activeIndex = Math.min(currentStepIndex, steps.length - 1);
-  const activeStep = steps[activeIndex];
-  const totalDuration = steps.reduce((acc, s) => acc + s.duration, 0);
-  const elapsedTime = steps.slice(0, activeIndex).reduce((acc, s) => acc + s.duration, 0);
-  const progressPercent = Math.min(100, Math.round(((elapsedTime + (activeStep?.duration || 2000) * 0.5) / totalDuration) * 100));
 
   return (
     <motion.div
@@ -82,10 +78,39 @@ export default function AILoadingStepper({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-mono font-bold text-accent bg-background border border-border px-3 py-1.5 rounded-xl">
-            {progressPercent}% Complete
+          <span className="text-xs font-mono font-bold text-accent bg-accent/10 border border-accent/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> In Progress
           </span>
         </div>
+      </div>
+
+      {/* Primary Honest Processing Notice */}
+      <div className="p-5 rounded-2xl bg-accent/5 border border-accent/20 text-center space-y-1.5 relative z-10">
+        <h4 className="text-sm sm:text-base font-mono font-bold text-ink uppercase tracking-wider flex items-center justify-center gap-2">
+          Processing Your Request
+        </h4>
+        <p className="text-xs sm:text-sm text-ink-dim font-sans leading-relaxed">
+          This may take 1–2 minutes. We're working on it — please wait.
+        </p>
+      </div>
+
+      {/* Single Indeterminate Loading Visual - Does NOT freeze at 90% */}
+      <div 
+        role="progressbar"
+        aria-label={`${title} processing`}
+        className="w-full bg-background border border-border/80 h-2 rounded-full overflow-hidden relative z-10"
+      >
+        <motion.div
+          className="bg-accent h-full rounded-full w-1/3"
+          animate={{
+            x: ['-100%', '300%']
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 1.8,
+            ease: "easeInOut"
+          }}
+        />
       </div>
 
       {/* Step Checklist Items */}
@@ -120,35 +145,16 @@ export default function AILoadingStepper({
               <span className={`flex-1 truncate ${isDone ? 'line-through text-ink-dim' : ''}`}>
                 {s.description}
               </span>
-
-              <span className="text-[10px] text-ink-dim uppercase tracking-wider shrink-0 font-mono">
-                {(s.duration / 1000).toFixed(1)}s
-              </span>
             </div>
           );
         })}
-      </div>
-
-      {/* Progress Bar with ARIA */}
-      <div 
-        role="progressbar"
-        aria-valuenow={progressPercent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`${title} progress`}
-        className="w-full bg-background border border-border/80 h-2.5 rounded-full overflow-hidden p-0.5 relative z-10"
-      >
-        <motion.div
-          className="bg-accent h-full rounded-full transition-all duration-300"
-          style={{ width: `${progressPercent}%` }}
-        />
       </div>
 
       <div className="flex items-center justify-between text-[10px] text-ink-dim font-mono border-t border-border/60 pt-3 relative z-10">
         <span className="flex items-center gap-1.5">
           <ShieldCheck className="w-3.5 h-3.5 text-accent" /> Verified Analysis Standard
         </span>
-        <span>Comprehensive Resume Audit</span>
+        <span>AI Calibration Pipeline</span>
       </div>
     </motion.div>
   );

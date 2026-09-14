@@ -64,11 +64,29 @@ export default function LearningPath() {
   const { currentActiveJob, clearCurrentJobContext } = useSystemOS();
 
   // Learning Path inputs MUST start completely empty for fresh users. No demo careers.
-  const [targetRole, setTargetRole] = useState('');
-  const [skillsStr, setSkillsStr] = useState('');
+  const [targetRole, setTargetRole] = useState(() => {
+    try {
+      return sessionStorage.getItem('learning_path_target_role') || '';
+    } catch (e) {
+      return '';
+    }
+  });
+  const [skillsStr, setSkillsStr] = useState(() => {
+    try {
+      return sessionStorage.getItem('learning_path_skills') || '';
+    } catch (e) {
+      return '';
+    }
+  });
   const [roadmapType, setRoadmapType] = useState<'personalized' | 'general'>('personalized');
   const [loading, setLoading] = useState(false);
-  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  const [roadmap, setRoadmap] = useState<Roadmap | null>(() => {
+    try {
+      const stored = sessionStorage.getItem('learning_path_roadmap');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return null;
+  });
   const [recentAnalysis, setRecentAnalysis] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,8 +94,60 @@ export default function LearningPath() {
   const userEditedRoleRef = useRef(false);
   const userEditedSkillsRef = useRef(false);
   // Track current active job key to detect when active job changes between searches
-  const activeJobKeyRef = useRef<string | null>(null);
+  const activeJobKeyRef = useRef<string | null>(
+    sessionStorage.getItem('learning_path_active_job_key') || null
+  );
   const handledLocationKeyRef = useRef<string | null>(null);
+
+  // Sync state to sessionStorage to preserve across navigation (NAVIGATION != RESET)
+  useEffect(() => {
+    try {
+      if (roadmap) {
+        sessionStorage.setItem('learning_path_roadmap', JSON.stringify(roadmap));
+      } else {
+        sessionStorage.removeItem('learning_path_roadmap');
+      }
+    } catch (e) {}
+  }, [roadmap]);
+
+  useEffect(() => {
+    try {
+      if (targetRole) {
+        sessionStorage.setItem('learning_path_target_role', targetRole);
+      } else {
+        sessionStorage.removeItem('learning_path_target_role');
+      }
+    } catch (e) {}
+  }, [targetRole]);
+
+  useEffect(() => {
+    try {
+      if (skillsStr) {
+        sessionStorage.setItem('learning_path_skills', skillsStr);
+      } else {
+        sessionStorage.removeItem('learning_path_skills');
+      }
+    } catch (e) {}
+  }, [skillsStr]);
+
+  // Complete fresh start reset for Learning Path
+  const handleResetLearningPath = () => {
+    setRoadmap(null);
+    setRecentAnalysis(null);
+    setError(null);
+    setTargetRole('');
+    setSkillsStr('');
+    userEditedRoleRef.current = false;
+    userEditedSkillsRef.current = false;
+    activeJobKeyRef.current = null;
+    clearCurrentJobContext();
+    try {
+      sessionStorage.removeItem('learning_path_roadmap');
+      sessionStorage.removeItem('learning_path_target_role');
+      sessionStorage.removeItem('learning_path_skills');
+      sessionStorage.removeItem('learning_path_active_job_key');
+    } catch (e) {}
+  };
 
   const isFree = plan === 'free';
   const isPersonalized = roadmapType === 'personalized';
@@ -125,25 +195,37 @@ export default function LearningPath() {
     
     // If active job changed (e.g. from Job A to Job B, or from Job A to null upon new search)
     if (activeJobKeyRef.current !== currentKey) {
+      const prevKey = activeJobKeyRef.current;
       activeJobKeyRef.current = currentKey;
+      try {
+        if (currentKey) {
+          sessionStorage.setItem('learning_path_active_job_key', currentKey);
+        } else {
+          sessionStorage.removeItem('learning_path_active_job_key');
+        }
+      } catch (e) {}
 
       if (currentActiveJob) {
-        // Job changed: replace target role with current active job
-        setTargetRole(currentActiveJob.title);
-        userEditedRoleRef.current = false;
+        // Only reset if this is truly a newly selected job, not a restoration of active job
+        const hasSavedRoadmap = !!sessionStorage.getItem('learning_path_roadmap');
+        if (!hasSavedRoadmap || prevKey !== null) {
+          // Job changed: replace target role with current active job
+          setTargetRole(currentActiveJob.title);
+          userEditedRoleRef.current = false;
 
-        // Replace target skills strictly with current job's skills - CLEAN REPLACE, NEVER MERGE
-        if (currentActiveJob.skills && currentActiveJob.skills.length > 0) {
-          setSkillsStr(currentActiveJob.skills.join(', '));
-        } else {
-          setSkillsStr('');
+          // Replace target skills strictly with current job's skills - CLEAN REPLACE, NEVER MERGE
+          if (currentActiveJob.skills && currentActiveJob.skills.length > 0) {
+            setSkillsStr(currentActiveJob.skills.join(', '));
+          } else {
+            setSkillsStr('');
+          }
+          userEditedSkillsRef.current = false;
+
+          // Clear any old roadmap generated for a previous job
+          setRoadmap(null);
+          setRecentAnalysis(null);
+          setError(null);
         }
-        userEditedSkillsRef.current = false;
-
-        // Clear any old roadmap generated for a previous job
-        setRoadmap(null);
-        setRecentAnalysis(null);
-        setError(null);
       } else {
         // Active job context was cleared (new search performed)
         setTargetRole('');
@@ -353,16 +435,7 @@ export default function LearningPath() {
               </span>
             )}
             <button
-              onClick={() => {
-                clearCurrentJobContext();
-                setTargetRole('');
-                setSkillsStr('');
-                setRoadmap(null);
-                setRecentAnalysis(null);
-                userEditedRoleRef.current = false;
-                userEditedSkillsRef.current = false;
-                activeJobKeyRef.current = null;
-              }}
+              onClick={handleResetLearningPath}
               className="text-[10px] font-bold text-ink-dim hover:text-rose-400 uppercase tracking-wider transition-colors cursor-pointer"
             >
               Clear Job Context
@@ -500,7 +573,16 @@ export default function LearningPath() {
               className="space-y-8"
             >
               {/* Roadmap Header */}
-              <div className="bg-accent/10 border border-accent/20 p-8 rounded-[3rem] text-center mb-8">
+              <div className="bg-accent/10 border border-accent/20 p-8 rounded-[3rem] text-center mb-8 relative">
+                 <div className="flex justify-end mb-2">
+                   <button
+                     onClick={handleResetLearningPath}
+                     className="px-3 py-1.5 text-xs text-ink-dim hover:text-rose-400 font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
+                   >
+                     <RotateCcw className="w-3.5 h-3.5" />
+                     Reset Learning Path
+                   </button>
+                 </div>
                  <h2 className="text-2xl sm:text-3xl font-black text-ink uppercase tracking-tight mb-2">{roadmap.roadmapTitle}</h2>
                  <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent uppercase tracking-[0.2em]">
                     <Zap className="w-3 h-3" /> Accelerated {roadmapType} Learning Protocol

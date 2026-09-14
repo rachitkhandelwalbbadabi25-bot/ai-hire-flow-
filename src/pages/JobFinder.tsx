@@ -56,10 +56,25 @@ export default function JobFinder() {
     }
   });
 
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<Job[]>(() => {
+    try {
+      const stored = sessionStorage.getItem('job_finder_search_results');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('job_finder_has_searched') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
   const [isFromCache, setIsFromCache] = useState(false);
   const [candidateProfile, setCandidateProfile] = useState('');
   const navigate = useNavigate();
@@ -193,6 +208,10 @@ export default function JobFinder() {
 
       if (cached && Array.isArray(cached) && cached.length > 0) {
         setJobs(cached);
+        try {
+          sessionStorage.setItem('job_finder_search_results', JSON.stringify(cached));
+          sessionStorage.setItem('job_finder_has_searched', 'true');
+        } catch (e) {}
         setIsFromCache(true);
         // Do NOT auto-select cached results. Selection must be explicit.
         setLoading(false);
@@ -208,6 +227,10 @@ export default function JobFinder() {
       await deductCredit('jobSearches');
       const results = await findJobs(trimmedQuery, trimmedLoc, candidateProfile);
       setJobs(results);
+      try {
+        sessionStorage.setItem('job_finder_search_results', JSON.stringify(results));
+        sessionStorage.setItem('job_finder_has_searched', 'true');
+      } catch (e) {}
       // Do NOT auto-select first result. Selection must be explicit.
       
       cacheManager.set(cacheKey, results, 30 * 60 * 1000);
@@ -431,13 +454,6 @@ export default function JobFinder() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => navigate('/learning')}
-                    className="px-3 py-1.5 bg-accent text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    Open Learning Path
-                  </button>
-                  <button
                     onClick={() => clearCurrentJobContext()}
                     className="px-3 py-1.5 text-xs text-ink-dim hover:text-rose-400 font-bold uppercase tracking-wider transition-colors cursor-pointer"
                   >
@@ -534,7 +550,7 @@ export default function JobFinder() {
                     <div className="flex gap-2 mb-3">
                       <button 
                         onClick={() => handleSelectJob(job)}
-                        className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        className={`w-full py-2.5 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                           isSelected 
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
                             : 'bg-surface hover:bg-accent/10 text-ink-dim hover:text-accent border border-border'
@@ -552,16 +568,6 @@ export default function JobFinder() {
                           </>
                         )}
                       </button>
-                      {isSelected && (
-                        <button 
-                          onClick={() => navigate('/learning')}
-                          className="px-3 py-2.5 bg-accent/15 border border-accent/30 text-accent rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-accent/25 transition-all flex items-center gap-1 cursor-pointer"
-                          title="Open Learning Path for this job"
-                        >
-                          <Zap className="w-3 h-3" />
-                          Roadmap
-                        </button>
-                      )}
                     </div>
 
                     {isSelected && (

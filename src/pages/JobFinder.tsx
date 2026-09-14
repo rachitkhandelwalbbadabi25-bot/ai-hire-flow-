@@ -173,20 +173,8 @@ export default function JobFinder() {
     const trimmedQuery = searchQuery.trim();
     const trimmedLoc = searchLoc ? searchLoc.trim() : '';
 
-    // 1. Fully clear previous active job context and stale search data
-    clearCurrentJobContext();
+    // Search results are for pure discovery - do NOT mutate or clear active job context
     setJobs([]);
-
-    // 2. Immediately establish pristine active job context for the new search
-    const initialActiveJob: ActiveJobContext = {
-      title: trimmedQuery,
-      company: trimmedLoc || 'Active Search',
-      location: trimmedLoc,
-      skills: extractJobSkills({ title: trimmedQuery }),
-      source: 'search',
-      selectedAt: Date.now()
-    };
-    setCurrentActiveJob(initialActiveJob);
 
     setLoading(true);
     setError(null);
@@ -206,7 +194,7 @@ export default function JobFinder() {
       if (cached && Array.isArray(cached) && cached.length > 0) {
         setJobs(cached);
         setIsFromCache(true);
-        handleSelectJob(cached[0]);
+        // Do NOT auto-select cached results. Selection must be explicit.
         setLoading(false);
         return;
       }
@@ -220,9 +208,7 @@ export default function JobFinder() {
       await deductCredit('jobSearches');
       const results = await findJobs(trimmedQuery, trimmedLoc, candidateProfile);
       setJobs(results);
-      if (results && results.length > 0) {
-        handleSelectJob(results[0]);
-      }
+      // Do NOT auto-select first result. Selection must be explicit.
       
       cacheManager.set(cacheKey, results, 30 * 60 * 1000);
     } catch (err: any) {
@@ -578,50 +564,54 @@ export default function JobFinder() {
                       )}
                     </div>
 
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => alignResume(job)}
-                        className="flex-1 bg-accent/10 border border-accent/20 text-accent font-bold text-[10px] uppercase tracking-widest py-3 rounded-xl hover:bg-accent/20 transition-all flex items-center justify-center gap-2"
-                      >
-                        Analyze Compatibility <ChevronRight className="w-3 h-3" />
-                      </button>
-                      <button 
-                        onClick={() => trackJob(job)}
-                        className="px-4 bg-surface border border-border text-ink-dim hover:border-ink hover:text-ink py-3 rounded-xl transition-all"
-                        title="Add to Pipeline"
-                      >
-                        <Briefcase className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {isSelected && (
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => alignResume(job)}
+                          className="flex-1 bg-accent/10 border border-accent/20 text-accent font-bold text-[10px] uppercase tracking-widest py-3 rounded-xl hover:bg-accent/20 transition-all flex items-center justify-center gap-2"
+                        >
+                          Analyze Compatibility <ChevronRight className="w-3 h-3" />
+                        </button>
+                        <button 
+                          onClick={() => trackJob(job)}
+                          className="px-4 bg-surface border border-border text-ink-dim hover:border-ink hover:text-ink py-3 rounded-xl transition-all"
+                          title="Add to Pipeline"
+                        >
+                          <Briefcase className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </motion.div>
                   );
                 })}
               </AnimatePresence>
             </div>
 
-            <NextStepBridgeCard
-              title="Job search complete"
-              contextData={`Extracted ${jobs.length} verified listings for "${query || currentActiveJob?.title || activeTargetRole || 'Software Engineering'}". Top match: ${jobs[0]?.title || 'Engineer'} at ${jobs[0]?.company || 'Enterprise Company'} (${jobs[0]?.matchScore || 85}% match).`}
-              primaryStep={{
-                label: "Draft recruiter pitch",
-                icon: Send,
-                to: "/outreach",
-                state: {
-                  company: currentActiveJob?.company || jobs[0]?.company || "Target Company",
-                  role: currentActiveJob?.title || jobs[0]?.title || query || "Software Engineer"
-                }
-              }}
-              secondaryStep={{
-                label: "Simulate role interview",
-                icon: MessageSquare,
-                to: "/interview",
-                state: {
-                  company: currentActiveJob?.company || jobs[0]?.company || "Target Company",
-                  role: currentActiveJob?.title || jobs[0]?.title || query || "Software Engineer",
-                  jobDescription: currentActiveJob?.description || jobs[0]?.description || `Position: ${jobs[0]?.title} at ${jobs[0]?.company}`
-                }
-              }}
-            />
+            {currentActiveJob && (
+              <NextStepBridgeCard
+                title="Active job selected"
+                contextData={`Targeting ${currentActiveJob.title} at ${currentActiveJob.company}${currentActiveJob.matchScore ? ` (${currentActiveJob.matchScore}% fit)` : ''}. Accelerate your preparation with targeted outreach and mock interviews.`}
+                primaryStep={{
+                  label: "Draft recruiter pitch",
+                  icon: Send,
+                  to: "/outreach",
+                  state: {
+                    company: currentActiveJob.company,
+                    role: currentActiveJob.title
+                  }
+                }}
+                secondaryStep={{
+                  label: "Simulate role interview",
+                  icon: MessageSquare,
+                  to: "/interview",
+                  state: {
+                    company: currentActiveJob.company,
+                    role: currentActiveJob.title,
+                    jobDescription: currentActiveJob.description || `Position: ${currentActiveJob.title} at ${currentActiveJob.company}`
+                  }
+                }}
+              />
+            )}
           </>
         )}
       </div>

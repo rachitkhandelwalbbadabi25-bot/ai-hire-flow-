@@ -186,7 +186,7 @@ export function getStoredActiveJob(): ActiveJobContext | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === 'object' && parsed.title && !isDemoRole(parsed.title)) {
-      if (isDemoSkills(parsed.skills)) {
+      if (parsed.company === 'Active Search' || isDemoSkills(parsed.skills)) {
         sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
         return null;
       }

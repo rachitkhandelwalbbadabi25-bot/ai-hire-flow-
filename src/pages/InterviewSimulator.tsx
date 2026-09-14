@@ -91,7 +91,7 @@ export default function InterviewSimulator() {
 
   // Rubric Self-Assessment States (for Text Practice / Degraded Mode)
   const [showRubricAssessment, setShowRubricAssessment] = useState(false);
-  const [selfScore, setSelfScore] = useState<number>(7);
+  const [selfScore, setSelfScore] = useState<number | null>(null);
   const [checkedKeyPoints, setCheckedKeyPoints] = useState<Record<string, boolean>>({});
   const [selfNotes, setSelfNotes] = useState('');
   const [selectedWeakSkills, setSelectedWeakSkills] = useState<string[]>([
@@ -155,6 +155,8 @@ export default function InterviewSimulator() {
     setUserAnswer('');
     setShowRubricAssessment(false);
     setCheckedKeyPoints({});
+    setSelfScore(null);
+    setSelfNotes('');
   };
 
   const startInterview = async () => {
@@ -237,6 +239,7 @@ export default function InterviewSimulator() {
 
     // If in Degraded or Text Practice mode with Rubric Assessment
     if (isDegradedFallback || mode === 'text_practice' || !hasAccess) {
+      if (selfScore === null) return;
       const activeRubric = currentQ.rubric;
       const checkedList = activeRubric ? activeRubric.keyPoints.filter(kp => checkedKeyPoints[kp]) : [];
       const missingList = activeRubric ? activeRubric.keyPoints.filter(kp => !checkedKeyPoints[kp]) : [];
@@ -289,7 +292,7 @@ export default function InterviewSimulator() {
       setActiveQuestionEvaluation(null);
       setShowRubricAssessment(false);
       setCheckedKeyPoints({});
-      setSelfScore(7);
+      setSelfScore(null);
       setSelfNotes('');
     } else {
       // Completed all questions
@@ -327,6 +330,8 @@ export default function InterviewSimulator() {
     setShowRubricAssessment(false);
     setIsDegradedFallback(false);
     setCheckedKeyPoints({});
+    setSelfScore(null);
+    setSelfNotes('');
   };
 
   const calculateTotalScore = () => {
@@ -945,7 +950,8 @@ export default function InterviewSimulator() {
                         <button
                           type="button"
                           onClick={submitAnswer}
-                          className="min-h-[44px] bg-accent text-black px-6 py-2.5 rounded-xl font-mono font-bold text-xs uppercase tracking-wider hover:bg-accent/90 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                          disabled={selfScore === null}
+                          className="min-h-[44px] bg-accent text-black px-6 py-2.5 rounded-xl font-mono font-bold text-xs uppercase tracking-wider hover:bg-accent/90 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span>Confirm Score & Next</span>
                           <ArrowRight className="w-4 h-4" />

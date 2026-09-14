@@ -16,7 +16,9 @@ import {
   Zap,
   MessageSquare,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 import { generateLearningPath } from '../lib/gemini';
 import { db } from '../lib/firebase';
@@ -68,12 +70,14 @@ export default function LearningPath() {
   const [loading, setLoading] = useState(false);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [recentAnalysis, setRecentAnalysis] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Track if user explicitly typed custom values so we do not overwrite them involuntarily
   const userEditedRoleRef = useRef(false);
   const userEditedSkillsRef = useRef(false);
   // Track current active job key to detect when active job changes between searches
   const activeJobKeyRef = useRef<string | null>(null);
+  const handledLocationKeyRef = useRef<string | null>(null);
 
   const isFree = plan === 'free';
   const isPersonalized = roadmapType === 'personalized';
@@ -92,20 +96,25 @@ export default function LearningPath() {
   useEffect(() => {
     // 1. Explicit navigation state takes first priority
     if (location.state?.targetRole && !isDemoRole(location.state.targetRole)) {
-      setTargetRole(location.state.targetRole);
-      userEditedRoleRef.current = false;
-      if (location.state?.missingSkills && !isDemoSkills(location.state.missingSkills)) {
-        const skills = Array.isArray(location.state.missingSkills) 
-          ? location.state.missingSkills.join(', ') 
-          : String(location.state.missingSkills);
-        setSkillsStr(skills);
-        userEditedSkillsRef.current = false;
-      } else {
-        setSkillsStr('');
-        userEditedSkillsRef.current = false;
+      const locKey = location.key || `${location.state.targetRole}__${Date.now()}`;
+      if (handledLocationKeyRef.current !== locKey) {
+        handledLocationKeyRef.current = locKey;
+        setTargetRole(location.state.targetRole);
+        userEditedRoleRef.current = false;
+        if (location.state?.missingSkills && !isDemoSkills(location.state.missingSkills)) {
+          const skills = Array.isArray(location.state.missingSkills) 
+            ? location.state.missingSkills.join(', ') 
+            : String(location.state.missingSkills);
+          setSkillsStr(skills);
+          userEditedSkillsRef.current = false;
+        } else {
+          setSkillsStr('');
+          userEditedSkillsRef.current = false;
+        }
+        setRoadmap(null);
+        setRecentAnalysis(null);
+        setError(null);
       }
-      setRoadmap(null);
-      setRecentAnalysis(null);
       return;
     }
 
@@ -134,17 +143,19 @@ export default function LearningPath() {
         // Clear any old roadmap generated for a previous job
         setRoadmap(null);
         setRecentAnalysis(null);
+        setError(null);
       } else {
         // Active job context was cleared (new search performed)
         setTargetRole('');
         setSkillsStr('');
         setRoadmap(null);
         setRecentAnalysis(null);
+        setError(null);
         userEditedRoleRef.current = false;
         userEditedSkillsRef.current = false;
       }
     }
-  }, [location.state, currentActiveJob]);
+  }, [location.key, location.state, currentActiveJob]);
 
   // Load any previously saved REAL user learning path from Firestore ONLY if no active job search is running
   useEffect(() => {
@@ -248,6 +259,7 @@ export default function LearningPath() {
   }, [user?.uid, currentActiveJob]);
 
   const generatePath = async () => {
+    if (loading) return;
     if (!skillsStr.trim() || !targetRole.trim()) return;
     
     // Check credits for careerRoadmap
@@ -258,25 +270,29 @@ export default function LearningPath() {
     }
 
     setLoading(true);
+    setError(null);
     try {
       await deductCredit('careerRoadmap');
       const missingSkills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
-      const result = await generateLearningPath(missingSkills, targetRole);
+      const result = await generateLearningPath(missingSkills, targetRole.trim());
       setRoadmap(result);
 
       // Persist real user learning path so legitimate work is saved
-      try {
-        await addDoc(collection(db, 'users', user.uid, 'learningPaths'), {
-          targetRole: targetRole.trim(),
-          skillsStr: skillsStr.trim(),
-          roadmap: result,
-          createdAt: new Date().toISOString()
-        });
-      } catch (saveErr) {
-        console.warn('Error saving generated learning path:', saveErr);
+      if (user?.uid) {
+        try {
+          await addDoc(collection(db, 'users', user.uid, 'learningPaths'), {
+            targetRole: targetRole.trim(),
+            skillsStr: skillsStr.trim(),
+            roadmap: result,
+            createdAt: new Date().toISOString()
+          });
+        } catch (saveErr) {
+          console.warn('Error saving generated learning path:', saveErr);
+        }
       }
-    } catch (error) {
-      console.error('Failed to generate learning path:', error);
+    } catch (err: any) {
+      console.error('Failed to generate learning path:', err);
+      setError(err?.message || 'Failed to generate 30-day learning roadmap. Please check your connection and retry.');
     } finally {
       setLoading(false);
     }
@@ -446,6 +462,22 @@ export default function LearningPath() {
 
       {/* 3. Complete Learning Roadmap (Full width) */}
       <div className="w-full">
+        {error && !loading && (
+          <div className="p-4 mb-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={generatePath}
+              className="px-3 py-1.5 bg-rose-500 text-white text-xs font-bold rounded-xl hover:bg-rose-600 transition-colors uppercase tracking-wider shrink-0 cursor-pointer flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Retry
+            </button>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {!roadmap && !loading ? (
             <EmptyState

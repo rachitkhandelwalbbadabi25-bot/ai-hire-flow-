@@ -954,74 +954,87 @@ export const evaluateInterviewAnswer = async (question: string, answer: string, 
 // 4. LEARNING PATH & SKILL GAP ROADMAP
 // =========================================================================
 export const generateLearningPath = async (missingSkills: string[], targetRole: string) => {
-  const prompt = `
-    Generate a curated, professional learning roadmap for a candidate who is missing the following skills: ${missingSkills.join(', ')}.
-    The target role is "${targetRole}".
-    
-    Provide curated, industry-standard learning resources from platforms like Coursera, Udemy, edX, YouTube, Official Documentation, and freeCodeCamp.
-    Limit roadmap to at most 3 focused sections. For each section, provide at most 2 high-quality resources with descriptions under 15 words.
-    
-    Return a JSON object with:
-    - roadmapTitle: string
-    - sections: array of objects {
-        title: string,
-        skillsCovered: string[],
-        resources: array of objects {
-          name: string,
-          platform: string,
-          link: string,
-          description: string,
-          type: "video" | "course" | "book" | "documentation"
+  const skillsList = missingSkills.length > 0 ? missingSkills.join(', ') : 'Core Engineering & Domain Competencies';
+  const prompt = `Generate a curated, professional 30-day learning roadmap for a candidate preparing for the target role "${targetRole}".
+The candidate needs to master these specific target skills: ${skillsList}.
+
+Provide curated, industry-standard learning resources from platforms like Coursera, Udemy, edX, YouTube, Official Documentation, and freeCodeCamp.
+Provide 3 focused sequential milestone modules. For each milestone, provide 2 high-quality resources with concise descriptions (under 20 words).
+
+Return a JSON object with:
+{
+  "roadmapTitle": "30-Day Accelerated Learning Path: ${targetRole}",
+  "sections": [
+    {
+      "title": "Milestone phase title",
+      "skillsCovered": ["skill1", "skill2"],
+      "resources": [
+        {
+          "name": "Resource or Course Name",
+          "platform": "Platform Name (Coursera, Udemy, YouTube, Official Documentation, etc.)",
+          "link": "https://...",
+          "description": "Concise high-impact description",
+          "type": "video" | "course" | "book" | "documentation"
         }
-      }
-  `;
+      ]
+    }
+  ]
+}`;
 
   const res = await executeAICompletion({
     prompt,
     jsonMode: true,
     temperature: 0.2,
-    maxTokens: 2048
+    maxTokens: 4096,
+    operation: 'learning_path'
   });
 
-  const roadmapTitle = res?.roadmapTitle || res?.title || `Accelerated Learning Path: ${targetRole}`;
-  let rawSections = Array.isArray(res?.sections) ? res.sections : (Array.isArray(res?.modules) ? res.modules : (Array.isArray(res) ? res : []));
+  const roadmapTitle = 
+    res?.roadmapTitle || 
+    res?.title || 
+    res?.roadmap?.roadmapTitle || 
+    res?.roadmap?.title || 
+    res?.learningPath?.roadmapTitle || 
+    res?.learningPath?.title || 
+    `30-Day Accelerated Learning Path: ${targetRole}`;
+
+  const rawSections = 
+    (Array.isArray(res?.sections) && res.sections.length > 0 ? res.sections : null) ||
+    (Array.isArray(res?.milestones) && res.milestones.length > 0 ? res.milestones : null) ||
+    (Array.isArray(res?.modules) && res.modules.length > 0 ? res.modules : null) ||
+    (Array.isArray(res?.roadmap?.sections) && res.roadmap.sections.length > 0 ? res.roadmap.sections : null) ||
+    (Array.isArray(res?.roadmap?.milestones) && res.roadmap.milestones.length > 0 ? res.roadmap.milestones : null) ||
+    (Array.isArray(res?.roadmap?.modules) && res.roadmap.modules.length > 0 ? res.roadmap.modules : null) ||
+    (Array.isArray(res?.learningPath?.sections) && res.learningPath.sections.length > 0 ? res.learningPath.sections : null) ||
+    (Array.isArray(res?.learningPath?.milestones) && res.learningPath.milestones.length > 0 ? res.learningPath.milestones : null) ||
+    (Array.isArray(res?.data?.sections) && res.data.sections.length > 0 ? res.data.sections : null) ||
+    (Array.isArray(res) && res.length > 0 ? res : null);
 
   if (!rawSections || rawSections.length === 0) {
-    rawSections = (missingSkills && missingSkills.length > 0 ? missingSkills : ['Full Stack Development']).map(skill => ({
-      title: `Mastering ${skill}`,
-      skillsCovered: [skill],
-      resources: [
-        {
-          name: `${skill} Official Docs & Guides`,
-          platform: 'Documentation',
-          link: `https://google.com/search?q=${encodeURIComponent(skill + ' official documentation tutorial')}`,
-          description: `Core conceptual foundation and production best practices for ${skill}.`,
-          type: 'documentation'
-        },
-        {
-          name: `${skill} Deep Dive Crash Course`,
-          platform: 'YouTube / Tech Guides',
-          link: `https://www.youtube.com/results?search_query=${encodeURIComponent(skill + ' full tutorial crash course')}`,
-          description: `Interactive project-based tutorials covering ${skill}.`,
-          type: 'video'
-        }
-      ]
-    }));
+    throw new Error('AI generation did not return valid learning roadmap milestones. Please retry.');
   }
 
   return {
     roadmapTitle,
-    sections: rawSections.map((sec: any) => ({
-      title: sec.title || 'Technical Module',
-      skillsCovered: Array.isArray(sec.skillsCovered) ? sec.skillsCovered : [],
-      resources: Array.isArray(sec.resources) ? sec.resources.map((r: any) => ({
-        name: r.name || 'Learning Resource',
-        platform: r.platform || 'Online',
-        link: r.link || 'https://google.com',
-        description: r.description || 'Recommended educational resource.',
-        type: r.type || 'course'
-      })) : []
-    }))
+    sections: rawSections.map((sec: any, idx: number) => {
+      const rawResources = Array.isArray(sec.resources) 
+        ? sec.resources 
+        : (Array.isArray(sec.courses) ? sec.courses : (Array.isArray(sec.materials) ? sec.materials : (Array.isArray(sec.items) ? sec.items : [])));
+
+      return {
+        title: sec.title || sec.name || sec.milestone || `Milestone Phase ${idx + 1}`,
+        skillsCovered: Array.isArray(sec.skillsCovered) 
+          ? sec.skillsCovered 
+          : (Array.isArray(sec.skills) ? sec.skills : (sec.skill ? [sec.skill] : [])),
+        resources: rawResources.map((r: any) => ({
+          name: r.name || r.title || 'Learning Resource',
+          platform: r.platform || r.source || 'Online',
+          link: r.link || r.url || 'https://google.com',
+          description: r.description || r.summary || 'Recommended educational resource.',
+          type: r.type || 'course'
+        }))
+      };
+    })
   };
 };
 

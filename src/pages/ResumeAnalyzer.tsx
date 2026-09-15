@@ -7,6 +7,7 @@ import { extractTextFromFile } from '../lib/pdf';
 import { analyzeResume, generateCoverLetter } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { firestoreCache } from '../services/FirestoreCache';
+import { analysisJobService } from '../services/AnalysisJobService';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSystemOS } from '../context/SystemOSContext';
 import { 
@@ -243,8 +244,85 @@ export default function ResumeAnalyzer() {
     } catch (e) {}
   }, [jobDesc]);
 
+  // Reconnect to active background job if navigating back or refreshing
+  useEffect(() => {
+    const activeJobId = analysisJobService.getActiveJobId();
+    if (activeJobId && !analysis) {
+      let isMounted = true;
+      setIsAnalyzing(true);
+      isAnalyzingRef.current = true;
+      setAnalysisStatus('Auditing resume against ATS benchmarks with Velona GLM 5.3 Flash...');
+
+      const checkActiveJob = async () => {
+        try {
+          const statusData = await analysisJobService.getJobStatus(activeJobId);
+          if (!isMounted) return;
+
+          if (statusData.status === 'completed' && statusData.result) {
+            setAnalysis(statusData.result);
+            analysisJobService.clearActiveJobId();
+            setIsAnalyzing(false);
+            isAnalyzingRef.current = false;
+          } else if (statusData.status === 'failed') {
+            analysisJobService.clearActiveJobId();
+            setIsAnalyzing(false);
+            isAnalyzingRef.current = false;
+            setError(statusData.error || 'Analysis is taking longer than expected. Please retry in a moment.');
+          } else {
+            // Poll until completion
+            const interval = setInterval(async () => {
+              try {
+                const s = await analysisJobService.getJobStatus(activeJobId);
+                if (!isMounted) {
+                  clearInterval(interval);
+                  return;
+                }
+                if (s.status === 'completed' && s.result) {
+                  clearInterval(interval);
+                  setAnalysis(s.result);
+                  analysisJobService.clearActiveJobId();
+                  setIsAnalyzing(false);
+                  isAnalyzingRef.current = false;
+                } else if (s.status === 'failed') {
+                  clearInterval(interval);
+                  analysisJobService.clearActiveJobId();
+                  setIsAnalyzing(false);
+                  isAnalyzingRef.current = false;
+                  setError(s.error || 'Analysis is taking longer than expected. Please retry in a moment.');
+                }
+              } catch (e) {
+                // Keep polling
+              }
+            }, 2500);
+
+            return () => clearInterval(interval);
+          }
+        } catch (e) {
+          if (isMounted) {
+            analysisJobService.clearActiveJobId();
+            setIsAnalyzing(false);
+            isAnalyzingRef.current = false;
+          }
+        }
+      };
+
+      checkActiveJob();
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, []);
+
   // Complete fresh start for Resume Analyzer
   const handleFullReset = () => {
+    const activeId = analysisJobService.getActiveJobId();
+    if (activeId) {
+      analysisJobService.cancelJob(activeId, user?.uid);
+    }
+    analysisJobService.clearActiveJobId();
+    isAnalyzingRef.current = false;
+    setIsAnalyzing(false);
     setAnalysis(null);
     setCoverLetter(null);
     setFile(null);
@@ -631,11 +709,18 @@ export default function ResumeAnalyzer() {
         return;
       }
       
-      await deductCredit('resumeScans');
+      // Execute primary resume audit via Asynchronous Job Architecture
+      setAnalysisStatus('Auditing resume against ATS benchmarks with Velona GLM 5.3 Flash...');
+      const analysisResult = await analysisJobService.runAsyncAnalysis({
+        userId: user.uid,
+        resumeText: text,
+        jobDesc,
+        fileType: fileTypeForAnalysis,
+        onProgress: (statusText) => setAnalysisStatus(statusText)
+      });
 
-      // Execute primary resume audit
-      setAnalysisStatus('Analyzing resume against ATS criteria with Velona GLM 5.3 Flash...');
-      const analysisResult = await analyzeResume(text, jobDesc, { fileType: fileTypeForAnalysis });
+      // Deduct credit strictly ONCE upon successful completion of the analysis
+      await deductCredit('resumeScans');
 
       // Immediate display of primary ATS analysis
       setAnalysis(analysisResult);

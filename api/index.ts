@@ -113,15 +113,16 @@ export async function callVelonaChatCompletion({
   console.log(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Start: model=${VELONA_MODEL_ID}, promptSize=${approxPromptLength} chars, fileType=${meta?.fileType || 'N/A'}, textChars=${meta?.charCount ?? 'N/A'}, textWords=${meta?.wordCount ?? 'N/A'}, jsonMode=${jsonMode}, maxTokens=${safeMaxTokens}, temperature=${safeTemperature}`);
 
   // Resilient execution with bounded total budget to stay safely within Vercel's 60s limit
-  // Strictly ZERO retries for expensive operations like resume_analysis to guarantee exactly ONE request
-  const maxRetries = operation === 'resume_analysis' ? 0 : 1;
-  const maxTotalBudgetMs = 58000;
-  const perAttemptTimeoutMs = 55000;
+  // For background async jobs, use a generous provider timeout (110s) so Node background tasks aren't prematurely killed
+  const isJob = operation.includes('job');
+  const maxRetries = 1;
+  const maxTotalBudgetMs = isJob ? 180000 : 58000;
+  const perAttemptTimeoutMs = isJob ? 110000 : 52000;
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 15000)) {
-      console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Insufficient time remaining in budget (${Date.now() - velonaStart}ms). Stopping retries to prevent Vercel 504 timeout.`);
+      console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Insufficient time remaining in budget (${Date.now() - velonaStart}ms). Stopping retries.`);
       break;
     }
 
@@ -283,11 +284,11 @@ export async function callVelonaChatCompletion({
       const attemptElapsed = Date.now() - attemptStart;
       
       if (err.name === 'AbortError') {
-        console.error(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona request aborted after timeout (${attemptElapsed}ms). Stopping execution to prevent Vercel 504.`);
-        lastError = new Error(`Velona AI request timed out after ${Math.round(perAttemptTimeoutMs / 1000)}s.`);
+        console.error(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona request aborted after timeout (${attemptElapsed}ms).`);
+        lastError = new Error(isJob ? 'Analysis is taking longer than expected. Please retry in a moment.' : 'AI request took longer than expected. Please try again.');
         lastError.status = 504;
         lastError.code = 'TIMEOUT';
-        break; // Never retry a timed-out attempt — retrying will exceed Vercel's serverless ceiling
+        break; // Never retry a timed-out attempt
       } else {
         lastError = err;
       }
@@ -435,6 +436,562 @@ app.post(['/api/velona/test', '/velona/test'], async (req, res) => {
       endpoint: `${VELONA_BASE_URL}/chat/completions`
     });
   }
+});
+
+// =========================================================================
+// ASYNCHRONOUS RESUME ANALYZER JOB ARCHITECTURE (VELONA GLM 5.3 FLASH)
+// Decouples browser from long HTTP connections; completely immune to 55s timeouts
+// =========================================================================
+
+interface ResumeAnalysisJob {
+  analysisId: string;
+  userId?: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  createdAt: number;
+  updatedAt: number;
+  resumeHash?: string;
+  jobDescHash?: string;
+  result?: any;
+  error?: string;
+  diagnostics?: {
+    prepDurationMs?: number;
+    velonaDurationMs?: number;
+    totalDurationMs?: number;
+    model?: string;
+    tokens?: any;
+    finishReason?: string;
+    parseResult?: string;
+    httpStatus?: number;
+    sample?: string;
+  };
+}
+
+const analysisJobs = new Map<string, ResumeAnalysisJob>();
+
+// Auto-prune stale jobs older than 2 hours every 15 minutes
+setInterval(() => {
+  const cutoff = Date.now() - 2 * 60 * 60 * 1000;
+  for (const [id, job] of analysisJobs.entries()) {
+    if (job.updatedAt < cutoff) {
+      analysisJobs.delete(id);
+    }
+  }
+}, 15 * 60 * 1000);
+
+function normalizeAtsAuditResult(rawData: any) {
+  const canonicalCategories = [
+    { name: 'Core Technical & Skill Match', weight: 40 },
+    { name: 'Measurable Impact & Hard Metrics', weight: 25 },
+    { name: 'Role & Domain Relevance', weight: 20 },
+    { name: 'Structure & ATS Parsability', weight: 15 }
+  ];
+
+  const rawBreakdown = Array.isArray(rawData?.scoreBreakdown) ? rawData.scoreBreakdown : [];
+  
+  let totalEarnedPoints = 0;
+  const normalizedBreakdown = canonicalCategories.map((canon, idx) => {
+    const matched = rawBreakdown.find((item: any) => 
+      item?.category && item.category.toLowerCase().includes(canon.name.toLowerCase().split('&')[0].trim().toLowerCase())
+    ) || rawBreakdown[idx] || {};
+
+    const rawCatScore = typeof matched.score === 'number' ? matched.score : Number(matched.score);
+    let catScore = 70;
+    let earned = 0;
+
+    if (!isNaN(rawCatScore)) {
+      if (rawCatScore <= canon.weight && canon.weight < 100) {
+        earned = Math.min(canon.weight, Math.max(0, rawCatScore));
+        catScore = Math.min(100, Math.max(0, Math.round((earned / canon.weight) * 100)));
+      } else {
+        catScore = Math.min(100, Math.max(0, Math.round(rawCatScore)));
+        earned = Math.round(((catScore / 100) * canon.weight) * 10) / 10;
+      }
+    } else {
+      catScore = 70;
+      earned = Math.round(((catScore / 100) * canon.weight) * 10) / 10;
+    }
+    totalEarnedPoints += earned;
+
+    const explanation = typeof matched.explanation === 'string' && matched.explanation.trim()
+      ? matched.explanation.trim()
+      : `Evaluation of ${canon.name} based on candidate experience and technical criteria.`;
+
+    const evidence = typeof matched.evidence === 'string' && matched.evidence.trim()
+      ? matched.evidence.trim()
+      : 'Identified relevant experience in resume.';
+
+    const recommendations = Array.isArray(matched.recommendations) && matched.recommendations.length > 0
+      ? matched.recommendations.map((r: any) => String(r).trim()).filter(Boolean)
+      : [`Enhance ${canon.name.toLowerCase()} with further specific achievements.`];
+
+    return {
+      category: canon.name,
+      weight: canon.weight,
+      score: catScore,
+      earnedPoints: earned,
+      mathExplanation: `(${catScore}/100) × ${canon.weight}% = ${earned.toFixed(1)} pts`,
+      explanation,
+      evidence,
+      recommendations
+    };
+  });
+
+  const finalScore = Math.min(100, Math.max(0, Math.round(totalEarnedPoints)));
+  const atsCompatibility = finalScore >= 80 ? 'High' : (finalScore >= 60 ? 'Moderate' : 'Low');
+
+  const rawKeywords = rawData?.keywordsFound || rawData?.identifiedKeywords || rawData?.keywords || [];
+  const keywordsFound = Array.isArray(rawKeywords) ? rawKeywords.map(String).filter(Boolean).slice(0, 10) : [];
+
+  const rawMissing = rawData?.missingKeywords || rawData?.missingSkills || rawData?.skillGaps || [];
+  const missingKeywords = Array.isArray(rawMissing) ? rawMissing.map(String).filter(Boolean).slice(0, 6) : [];
+
+  const rawStrengths = rawData?.strengths || rawData?.keyStrengths || rawData?.highlights || [];
+  const strengths = Array.isArray(rawStrengths) ? rawStrengths.map(String).filter(Boolean).slice(0, 4) : [];
+
+  const rawWeaknesses = rawData?.weaknesses || rawData?.areasToImprove || rawData?.gaps || [];
+  const weaknesses = Array.isArray(rawWeaknesses) ? rawWeaknesses.slice(0, 4).map((w: any) => {
+    if (typeof w === 'object' && w !== null) {
+      return {
+        problem: String(w.problem || w.issue || w.title || '').trim(),
+        whyItMatters: String(w.whyItMatters || w.why || w.impact || 'ATS screeners verify concrete alignment with target role expectations.').trim(),
+        howToFix: String(w.howToFix || w.fix || w.action || 'Strengthen bullet points with measurable outcomes and standard technologies.').trim()
+      };
+    }
+    const problemStr = String(w || '').trim();
+    return {
+      problem: problemStr,
+      whyItMatters: 'Recruiters downgrade resumes with unverified or vague claims.',
+      howToFix: 'Strengthen this section with measurable accomplishments and technical context.'
+    };
+  }).filter(w => w.problem) : [];
+
+  const rawFormatting = rawData?.formattingSuggestions || rawData?.structuralRecommendations || [];
+  const formattingSuggestions = Array.isArray(rawFormatting) && rawFormatting.length > 0
+    ? rawFormatting.map(String).filter(Boolean).slice(0, 4)
+    : (normalizedBreakdown.find(b => b.category.includes('Structure'))?.recommendations || []);
+
+  const rawImpact = rawData?.impactSuggestions || rawData?.metricSuggestions || [];
+  const impactSuggestions = Array.isArray(rawImpact) && rawImpact.length > 0
+    ? rawImpact.map(String).filter(Boolean).slice(0, 4)
+    : (normalizedBreakdown.find(b => b.category.includes('Impact'))?.recommendations || []);
+
+  const missingKeywordAnalysis = Array.isArray(rawData?.missingKeywordAnalysis) && rawData.missingKeywordAnalysis.length > 0
+    ? rawData.missingKeywordAnalysis.slice(0, 4).map((k: any) => ({
+        keyword: String(k.keyword || '').trim(),
+        whyItMatters: String(k.whyItMatters || '').trim(),
+        suggestedRewrite: String(k.suggestedRewrite || '').trim(),
+        confidence_level: ['high', 'medium', 'low'].includes(k.confidence_level) ? k.confidence_level : 'high',
+        isInferred: Boolean(k.isInferred),
+        inferredNote: String(k.inferredNote || '').trim()
+      })).filter((k: any) => k.keyword)
+    : missingKeywords.slice(0, 3).map((kw) => ({
+        keyword: kw,
+        whyItMatters: `Recruiters require ${kw} to verify qualification for this role.`,
+        suggestedRewrite: `Implemented key technical workflows utilizing ${kw}, improving throughput by 20%.`,
+        confidence_level: 'high',
+        isInferred: false,
+        inferredNote: ''
+      }));
+
+  const skillsAnalysis = Array.isArray(rawData?.skillsAnalysis) && rawData.skillsAnalysis.length > 0
+    ? rawData.skillsAnalysis.slice(0, 6).map((s: any) => ({
+        skill: String(s.skill || '').trim(),
+        type: (s.type === 'explicit' || s.type === 'inferred') ? s.type : 'explicit',
+        confidence_level: (s.confidence_level === 'high' || s.confidence_level === 'medium') ? s.confidence_level : 'high',
+        evidence: String(s.evidence || 'Demonstrated in work experience').trim()
+      })).filter((s: any) => s.skill)
+    : keywordsFound.slice(0, 5).map((kw) => ({
+        skill: kw,
+        type: 'explicit' as const,
+        confidence_level: 'high' as const,
+        evidence: 'Identified directly in candidate resume'
+      }));
+
+  const rawRecs = rawData?.recommendations || rawData?.actionPlan || [];
+  const recommendations = Array.isArray(rawRecs) && rawRecs.length > 0
+    ? rawRecs.map(String).filter(Boolean).slice(0, 4)
+    : [
+        'Include measurable metrics and concrete outcomes in work experience.',
+        'Align keywords directly with target job description requirements.',
+        'Ensure standard section headers for optimal ATS parsing.'
+      ];
+
+  const summary = typeof rawData?.summary === 'string' && rawData.summary.trim()
+    ? rawData.summary.trim().split(/\s+/).slice(0, 35).join(' ')
+    : `Candidate demonstrates ${atsCompatibility.toLowerCase()} alignment with target benchmarks based on automated ATS audit.`;
+
+  return {
+    score: finalScore,
+    atsCompatibility,
+    summary,
+    strengths,
+    weaknesses,
+    scoreBreakdown: normalizedBreakdown,
+    skillsAnalysis,
+    keywordsFound,
+    missingKeywords,
+    missingKeywordAnalysis,
+    recommendations,
+    formattingSuggestions,
+    impactSuggestions
+  };
+}
+
+function extractAndParseJson(raw: string): any {
+  if (!raw || typeof raw !== 'string') {
+    throw new Error('Empty model response received.');
+  }
+
+  // 1. Direct parse attempt
+  const trimmed = raw.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // Continue to extractor
+  }
+
+  // 2. Strip code fences if present
+  const fenceRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
+  const match = fenceRegex.exec(trimmed);
+  const text = (match && match[1]) ? match[1].trim() : trimmed;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Continue
+  }
+
+  // 3. Balanced extraction from first '{' to matching '}'
+  const startIdx = text.indexOf('{');
+  if (startIdx === -1) {
+    throw new Error('No JSON object found in response');
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let endIdx = -1;
+
+  for (let i = startIdx; i < text.length; i++) {
+    const char = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+    }
+  }
+
+  if (endIdx !== -1) {
+    const candidate = text.substring(startIdx, endIdx + 1);
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      const sanitized = candidate
+        .replace(/[\x00-\x1F\x7F-\x9F]/g, (c) => (c === '\n' || c === '\r' || c === '\t' ? c : ' '))
+        .replace(/,\s*([\]}])/g, '$1');
+      return JSON.parse(sanitized);
+    }
+  }
+
+  // 4. Auto-repair unclosed structure
+  const candidate = text.substring(startIdx)
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, (c) => (c === '\n' || c === '\r' || c === '\t' ? c : ' '))
+    .replace(/,\s*([\]}])/g, '$1');
+  let repaired = candidate;
+  if (inString) repaired += '"';
+  while (depth > 0) {
+    repaired += '}';
+    depth--;
+  }
+  return JSON.parse(repaired);
+}
+
+async function processResumeAnalysisJob(
+  job: ResumeAnalysisJob,
+  resumeText: string,
+  jobDescription?: string,
+  fileType?: string
+) {
+  const jobStart = Date.now();
+  console.log(`[AI HireFlow][ResumeJob:${job.analysisId}] Starting background analysis for user ${job.userId || 'anonymous'}`);
+
+  try {
+    const prepStart = Date.now();
+    // 1. Sanitize and compact resume text (bound to 7500 chars, ~1500 words)
+    const cleanResume = (resumeText || '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .split('\n')
+      .map(line => line.trim())
+      .filter((line, idx, arr) => line.length > 0 && (idx === 0 || line !== arr[idx - 1]))
+      .join('\n')
+      .slice(0, 7500);
+
+    if (!cleanResume || cleanResume.length < 25) {
+      throw new Error('Resume text is too short or empty for ATS analysis.');
+    }
+
+    // 2. Sanitize and compact job description (bound to 2000 chars)
+    const cleanJD = (jobDescription || '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .trim()
+      .slice(0, 2000);
+
+    const prepDurationMs = Date.now() - prepStart;
+
+    // 3. Compact ATS schema prompt with strict limits
+    const prompt = `You are an ATS Resume Auditor. Analyze this resume against the target job and output strictly valid JSON.
+
+Schema:
+{
+  "score": number (0-100),
+  "atsCompatibility": "High" | "Moderate" | "Low",
+  "summary": "max 30 words",
+  "strengths": ["max 4 items, max 12 words each"],
+  "weaknesses": [
+    { "problem": "max 10 words", "whyItMatters": "max 12 words", "howToFix": "max 12 words" }
+  ],
+  "scoreBreakdown": [
+    {
+      "category": "Core Technical & Skill Match",
+      "weight": 40,
+      "score": number,
+      "explanation": "max 12 words",
+      "evidence": "max 10 words",
+      "recommendations": ["max 15 words"]
+    },
+    {
+      "category": "Measurable Impact & Hard Metrics",
+      "weight": 25,
+      "score": number,
+      "explanation": "max 12 words",
+      "evidence": "max 10 words",
+      "recommendations": ["max 15 words"]
+    },
+    {
+      "category": "Role & Domain Relevance",
+      "weight": 20,
+      "score": number,
+      "explanation": "max 12 words",
+      "evidence": "max 10 words",
+      "recommendations": ["max 15 words"]
+    },
+    {
+      "category": "Structure & ATS Parsability",
+      "weight": 15,
+      "score": number,
+      "explanation": "max 12 words",
+      "evidence": "max 10 words",
+      "recommendations": ["max 15 words"]
+    }
+  ],
+  "skillsAnalysis": [
+    { "skill": "string", "type": "explicit" | "inferred", "confidence_level": "high" | "medium", "evidence": "max 10 words" }
+  ],
+  "keywordsFound": ["max 10 items"],
+  "missingKeywords": ["max 6 items"],
+  "recommendations": ["max 4 items, max 15 words each"]
+}
+Strict Limits: Max 4 items in "weaknesses". Max 6 key skills in "skillsAnalysis". Max 10 keywordsFound, max 6 missingKeywords, max 4 recommendations.
+
+TARGET JOB:
+${cleanJD || 'General ATS Industry Benchmark for the stated role and level'}
+
+CANDIDATE RESUME:
+${cleanResume}
+`;
+
+    // 4. Call Velona with optimized parameters
+    const velonaResult = await callVelonaChatCompletion({
+      messages: [
+        { role: 'system', content: 'You are an ATS scoring API for AI HireFlow. Output raw valid JSON only. Keep explanations concise and adhere to schema limits.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.2,
+      jsonMode: true,
+      maxTokens: 2200,
+      requestId: job.analysisId,
+      operation: 'resume_analysis_job',
+      meta: {
+        fileType: fileType || 'resume',
+        charCount: cleanResume.length,
+        wordCount: cleanResume.split(/\s+/).filter(Boolean).length
+      }
+    });
+
+    // 5. Parse JSON using resilient extractor
+    let parsed: any;
+    try {
+      parsed = extractAndParseJson(velonaResult.text);
+    } catch (parseErr: any) {
+      console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] JSON parse error:`, parseErr.message, 'Raw text sample:', velonaResult.text?.slice(0, 300));
+      const parseError: any = new Error('Analysis completed with malformed response. Please retry in a moment.');
+      parseError.rawSample = velonaResult.text?.slice(0, 500);
+      throw parseError;
+    }
+
+    // 6. Normalize structure
+    const normalized = normalizeAtsAuditResult(parsed);
+
+    job.status = 'completed';
+    job.result = normalized;
+    job.updatedAt = Date.now();
+    job.diagnostics = {
+      prepDurationMs,
+      totalDurationMs: Date.now() - jobStart,
+      velonaDurationMs: velonaResult.timing?.velonaDurationMs,
+      model: velonaResult.model,
+      tokens: velonaResult.usage,
+      finishReason: velonaResult.finishReason,
+      parseResult: 'SUCCESS',
+      httpStatus: 200
+    };
+
+    // Safe operational diagnostics (no private user resume or keys)
+    console.log(`[AI HireFlow][Diagnostics] analysisId=${job.analysisId}, model=${velonaResult.model}, prompt_chars=${cleanResume.length}, prep_ms=${prepDurationMs}, velona_ms=${velonaResult.timing?.velonaDurationMs}ms, total_ms=${job.diagnostics.totalDurationMs}ms, status=completed, finishReason=${velonaResult.finishReason}, parseResult=SUCCESS`);
+  } catch (err: any) {
+    console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Background analysis failed:`, err.message);
+    job.status = 'failed';
+    job.updatedAt = Date.now();
+
+    const isTimeout = err.code === 'TIMEOUT' || err.status === 504 || (err.message && err.message.toLowerCase().includes('time'));
+    job.error = isTimeout 
+      ? 'Analysis is taking longer than expected. Please retry in a moment.' 
+      : (err.message || 'Resume analysis failed. Please try again.');
+    job.diagnostics = {
+      totalDurationMs: Date.now() - jobStart,
+      parseResult: 'ERROR',
+      sample: err.rawSample
+    };
+  }
+}
+
+// 1. Initiate or reconnect to an asynchronous analysis job
+app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) => {
+  try {
+    const body = req.body || {};
+    const { 
+      analysisId: incomingId, 
+      userId, 
+      resumeText, 
+      jobDescription, 
+      fileType = 'pdf' 
+    } = body;
+
+    if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 25) {
+      return res.status(400).json({
+        error: 'Valid readable resume text is required to start an ATS analysis.',
+        code: 'INVALID_RESUME_TEXT'
+      });
+    }
+
+    const analysisId = incomingId || `ats_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    // Deduplication check: if job already exists and is active, return current status
+    const existing = analysisJobs.get(analysisId);
+    if (existing) {
+      if (existing.status === 'processing' || existing.status === 'queued') {
+        return res.status(200).json({
+          analysisId: existing.analysisId,
+          status: existing.status,
+          message: 'Analysis job is already in progress'
+        });
+      }
+      if (existing.status === 'completed') {
+        return res.status(200).json({
+          analysisId: existing.analysisId,
+          status: 'completed',
+          result: existing.result
+        });
+      }
+    }
+
+    const job: ResumeAnalysisJob = {
+      analysisId,
+      userId,
+      status: 'processing',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    analysisJobs.set(analysisId, job);
+
+    // Immediate acknowledgment: browser does not hang waiting on the AI completion
+    res.status(202).json({
+      analysisId,
+      status: 'processing',
+      message: 'Analysis job started successfully'
+    });
+
+    // Launch background asynchronous execution
+    processResumeAnalysisJob(job, resumeText, jobDescription, fileType).catch((err) => {
+      console.error(`[AI HireFlow][ResumeJob:${analysisId}] Unhandled async worker error:`, err);
+    });
+  } catch (err: any) {
+    console.error('Failed to create resume analysis job:', err);
+    res.status(500).json({
+      error: err.message || 'Failed to initialize analysis job',
+      code: 'JOB_INIT_FAILED'
+    });
+  }
+});
+
+// 2. Poll status of an analysis job (Pure read, never restarts or duplicates AI work)
+app.get(['/api/resume/analyze-job/:analysisId', '/resume/analyze-job/:analysisId'], (req, res) => {
+  const { analysisId } = req.params;
+  const job = analysisJobs.get(analysisId);
+
+  if (!job) {
+    return res.status(404).json({
+      error: 'Analysis job not found or session has expired.',
+      code: 'JOB_NOT_FOUND',
+      status: 'failed'
+    });
+  }
+
+  res.json({
+    analysisId: job.analysisId,
+    status: job.status,
+    result: job.result || null,
+    error: job.error || null,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+    timing: job.diagnostics
+  });
+});
+
+// 3. Cancel an analysis job
+app.post(['/api/resume/analyze-job/:analysisId/cancel', '/resume/analyze-job/:analysisId/cancel'], (req, res) => {
+  const { analysisId } = req.params;
+  const job = analysisJobs.get(analysisId);
+
+  if (job && (job.status === 'processing' || job.status === 'queued')) {
+    job.status = 'failed';
+    job.error = 'Analysis cancelled by user';
+    job.updatedAt = Date.now();
+  }
+
+  res.json({ success: true, analysisId });
 });
 
 // =========================================================================

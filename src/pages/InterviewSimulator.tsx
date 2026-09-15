@@ -931,8 +931,13 @@ export default function InterviewSimulator() {
                       {/* Self-Score Selector */}
                       <div className="pt-3 border-t border-border/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                          <label htmlFor="self-score-range" className="text-xs font-mono font-bold text-ink uppercase tracking-wider">
-                            Your Self-Score:
+                          <label htmlFor="self-score-range" className="text-xs font-mono font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+                            <span>Your Self-Score:</span>
+                            {selfScore !== null ? (
+                              <span className="text-accent font-mono font-bold">{selfScore}/10</span>
+                            ) : (
+                              <span className="text-ink-dim font-normal normal-case italic text-[11px]">(Select 1-10)</span>
+                            )}
                           </label>
                           <div className="flex items-center gap-1">
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (

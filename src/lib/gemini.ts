@@ -415,6 +415,43 @@ RESUME:
 ${cleanResume}
 `;
 
+  // Prefer asynchronous job architecture to decouple browser from long HTTP connections
+  try {
+    const analysisId = `ats_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const startRes = await fetch('/api/resume/analyze-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        analysisId,
+        resumeText: cleanResume,
+        jobDescription: cleanJD,
+        fileType
+      })
+    });
+
+    if (startRes.ok) {
+      const maxPolls = 60;
+      for (let i = 0; i < maxPolls; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const checkRes = await fetch(`/api/resume/analyze-job/${analysisId}`);
+        if (checkRes.ok) {
+          const job = await checkRes.json();
+          if (job.status === 'completed' && job.result) {
+            return job.result;
+          }
+          if (job.status === 'failed') {
+            throw new Error(job.error || 'Analysis is taking longer than expected. Please retry in a moment.');
+          }
+        }
+      }
+      throw new Error('Analysis is taking longer than expected. Please retry in a moment.');
+    }
+  } catch (asyncErr: any) {
+    if (asyncErr.message && (asyncErr.message.includes('longer') || asyncErr.message.includes('Analysis') || asyncErr.message.includes('timed out'))) {
+      throw asyncErr;
+    }
+  }
+
   const rawData = await executeAICompletion({
     prompt,
     systemPrompt: "You are a concise ATS scoring API for AI HireFlow. Output raw JSON only. Be extremely brief.",

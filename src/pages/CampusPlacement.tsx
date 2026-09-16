@@ -14,6 +14,7 @@ import {
 } from '../lib/gemini';
 import AILoadingStepper from '../components/AILoadingStepper';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
+import { isDemoRole } from '../utils/demoDataSanitizer';
 
 const CAMPUS_STORAGE_KEYS = {
   SEARCH_QUERY: 'campus_prep_search_query',
@@ -34,10 +35,14 @@ const CAMPUS_STORAGE_KEYS = {
 };
 
 export default function CampusPlacement() {
-  // Company Search State
+  // Company Search State - starts cleanly empty on fresh start
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
-      return sessionStorage.getItem(CAMPUS_STORAGE_KEYS.SEARCH_QUERY) || '';
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.SEARCH_QUERY);
+      if (saved && !isDemoRole(saved) && !saved.toLowerCase().includes('sarvam') && !saved.toLowerCase().includes('target organization')) {
+        return saved;
+      }
+      return '';
     } catch {
       return '';
     }
@@ -46,7 +51,13 @@ export default function CampusPlacement() {
   const [companyPrep, setCompanyPrep] = useState<any>(() => {
     try {
       const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.COMPANY_PREP);
-      return saved ? JSON.parse(saved) : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && !isDemoRole(parsed.companyName) && !parsed.companyName?.toLowerCase().includes('sarvam') && !parsed.companyName?.toLowerCase().includes('target organization')) {
+          return parsed;
+        }
+      }
+      return null;
     } catch {
       return null;
     }

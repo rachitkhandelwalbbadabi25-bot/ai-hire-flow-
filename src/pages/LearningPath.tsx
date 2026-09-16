@@ -63,27 +63,36 @@ export default function LearningPath() {
   const location = useLocation();
   const { currentActiveJob, clearCurrentJobContext } = useSystemOS();
 
-  // Learning Path inputs MUST start completely empty for fresh users. No demo careers.
+  // Learning Path inputs MUST start completely empty for fresh starts with proper placeholders
   const [targetRole, setTargetRole] = useState(() => {
     try {
-      return sessionStorage.getItem('learning_path_target_role') || '';
-    } catch (e) {
-      return '';
-    }
+      const saved = sessionStorage.getItem('learning_path_target_role');
+      if (saved && !isDemoRole(saved) && !saved.toLowerCase().includes('sarvam') && !saved.toLowerCase().includes('target organization')) {
+        return saved;
+      }
+    } catch (e) {}
+    return '';
   });
   const [skillsStr, setSkillsStr] = useState(() => {
     try {
-      return sessionStorage.getItem('learning_path_skills') || '';
-    } catch (e) {
-      return '';
-    }
+      const saved = sessionStorage.getItem('learning_path_skills');
+      if (saved && !isDemoSkills(saved) && !saved.toLowerCase().includes('indic') && !saved.toLowerCase().includes('copilot')) {
+        return saved;
+      }
+    } catch (e) {}
+    return '';
   });
   const [roadmapType, setRoadmapType] = useState<'personalized' | 'general'>('personalized');
   const [loading, setLoading] = useState(false);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(() => {
     try {
       const stored = sessionStorage.getItem('learning_path_roadmap');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && !isDemoRole(parsed.role) && !isDemoSkills(parsed.skillsGained) && !parsed.role?.toLowerCase().includes('sarvam')) {
+          return parsed;
+        }
+      }
     } catch (e) {}
     return null;
   });
@@ -205,7 +214,7 @@ export default function LearningPath() {
         }
       } catch (e) {}
 
-      if (currentActiveJob) {
+      if (currentActiveJob && !isDemoRole(currentActiveJob.title) && !isDemoSkills(currentActiveJob.skills) && !currentActiveJob.title?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('sarvam')) {
         // Only reset if this is truly a newly selected job, not a restoration of active job
         const hasSavedRoadmap = !!sessionStorage.getItem('learning_path_roadmap');
         if (!hasSavedRoadmap || prevKey !== null) {
@@ -227,7 +236,7 @@ export default function LearningPath() {
           setError(null);
         }
       } else {
-        // Active job context was cleared (new search performed)
+        // Active job context was cleared or invalid
         setTargetRole('');
         setSkillsStr('');
         setRoadmap(null);
@@ -239,48 +248,40 @@ export default function LearningPath() {
     }
   }, [location.key, location.state, currentActiveJob]);
 
-  // Load any previously saved REAL user learning path from Firestore ONLY if no active job search is running
+  // Clean up legacy demo records from Firestore. On fresh start, do NOT auto-fill stale demo data.
   useEffect(() => {
     if (!user?.uid) return;
-    // When an active job search is active, do NOT load old Firestore roadmap or stale skills!
-    if (currentActiveJob) {
-      return;
-    }
 
-    const fetchSavedLearningPath = async () => {
+    const cleanupAndCheckSaved = async () => {
       try {
         const q = query(
           collection(db, 'users', user.uid, 'learningPaths'),
           orderBy('createdAt', 'desc'),
-          limit(1)
+          limit(5)
         );
         const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-          const docItem = snapshot.docs[0];
+        for (const docItem of snapshot.docs) {
           const data = docItem.data();
 
-          // If legacy demo data ("AI Engineer at Glean", etc.), delete and ignore
-          if (isDemoRole(data.targetRole) || isDemoSkills(data.skillsStr)) {
+          // If legacy demo/sample data, permanently purge from Firestore
+          if (
+            isDemoRole(data.targetRole) || 
+            isDemoSkills(data.skillsStr) ||
+            (typeof data.targetRole === 'string' && (data.targetRole.toLowerCase().includes('sarvam') || data.targetRole.toLowerCase().includes('glean') || data.targetRole.toLowerCase().includes('target organization'))) ||
+            (typeof data.skillsStr === 'string' && (data.skillsStr.toLowerCase().includes('indic') || data.skillsStr.toLowerCase().includes('copilot')))
+          ) {
             try {
               await deleteDoc(doc(db, 'users', user.uid, 'learningPaths', docItem.id));
             } catch (err) {}
-            return;
-          }
-
-          // Only restore if user has not typed anything and no active search context is present
-          if (!userEditedRoleRef.current && !userEditedSkillsRef.current && !targetRole) {
-            if (data.roadmap) setRoadmap(data.roadmap);
-            if (data.targetRole) setTargetRole(data.targetRole);
-            if (data.skillsStr) setSkillsStr(data.skillsStr);
           }
         }
       } catch (err) {
-        console.warn('Error checking saved learning paths:', err);
+        console.warn('Error verifying saved learning paths:', err);
       }
     };
 
-    fetchSavedLearningPath();
-  }, [user?.uid, currentActiveJob]);
+    cleanupAndCheckSaved();
+  }, [user?.uid]);
 
   // Check recent analysis so user has the option to click "Load Analysis Gaps", without auto-filling
   useEffect(() => {
@@ -403,21 +404,33 @@ export default function LearningPath() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-20">
-      <div className="mb-12">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
-            <Map className="w-5 h-5 text-accent" />
+      <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
+              <Map className="w-5 h-5 text-accent" />
+            </div>
+            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Learning Roadmap</span>
           </div>
-          <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Learning Roadmap</span>
+          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Learning Path</h1>
+          <p className="text-ink-dim font-medium text-lg max-w-2xl">
+            Convert alignment gaps into strategic growth trajectories using validated career requirements.
+          </p>
         </div>
-        <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Learning Path</h1>
-        <p className="text-ink-dim font-medium text-lg max-w-2xl">
-          Convert alignment gaps into strategic growth trajectories using validated career requirements.
-        </p>
+        {(targetRole || skillsStr || roadmap) && (
+          <button
+            onClick={handleResetLearningPath}
+            className="px-3.5 py-2.5 bg-surface hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-ink-dim hover:text-rose-400 rounded-2xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 transition-all self-start md:self-auto shrink-0 cursor-pointer shadow-sm"
+            title="Explicitly reset learning path state"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Path</span>
+          </button>
+        )}
       </div>
 
       {/* Active Job Context Banner */}
-      {currentActiveJob && (
+      {currentActiveJob && !isDemoRole(currentActiveJob.title) && !currentActiveJob.title?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('sarvam') && (
         <div className="mb-6 p-4 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />

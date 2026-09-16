@@ -172,7 +172,7 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           matchScore: doc.data().matchScore,
           notes: doc.data().notes
         }))
-        .filter(j => !isDemoRole(j.role));
+        .filter(j => !isDemoRole(j.role) && !isDemoRole(j.company));
       setTrackedJobs(fetchedJobs);
 
       // 3. Fetch Outreach Contacts

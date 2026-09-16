@@ -67,6 +67,19 @@ interface Evaluation {
   weaknesses?: string[];
 }
 
+const INTERVIEW_STORAGE_KEYS = {
+  JOB_DESC: 'interview_sim_job_desc',
+  MODE: 'interview_sim_mode',
+  STEP: 'interview_sim_step',
+  QUESTIONS: 'interview_sim_questions',
+  CURRENT_IDX: 'interview_sim_current_idx',
+  USER_ANSWER: 'interview_sim_user_answer',
+  EVALUATIONS: 'interview_sim_evaluations',
+  SELECTED_SKILLS: 'interview_sim_selected_skills',
+  IS_DEGRADED: 'interview_sim_is_degraded',
+  IS_FROM_CACHE: 'interview_sim_is_from_cache'
+};
+
 export default function InterviewSimulator() {
   const { user } = useAuth();
   const location = useLocation();
@@ -74,15 +87,73 @@ export default function InterviewSimulator() {
   const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
   const { activeTargetRole, trackedJobs } = useSystemOS();
 
-  const [mode, setMode] = useState<'ai' | 'text_practice'>('ai');
-  const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
-  const [jobDescription, setJobDescription] = useState('');
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [userAnswer, setUserAnswer] = useState('');
+  const [mode, setMode] = useState<'ai' | 'text_practice'>(() => {
+    try {
+      const saved = sessionStorage.getItem(INTERVIEW_STORAGE_KEYS.MODE);
+      return (saved === 'ai' || saved === 'text_practice') ? saved : 'ai';
+    } catch {
+      return 'ai';
+    }
+  });
+
+  const [step, setStep] = useState<'setup' | 'interview' | 'results'>(() => {
+    try {
+      const saved = sessionStorage.getItem(INTERVIEW_STORAGE_KEYS.STEP);
+      return (saved === 'setup' || saved === 'interview' || saved === 'results') ? saved : 'setup';
+    } catch {
+      return 'setup';
+    }
+  });
+
+  const [jobDescription, setJobDescription] = useState<string>(() => {
+    try {
+      const saved = sessionStorage.getItem(INTERVIEW_STORAGE_KEYS.JOB_DESC);
+      if (saved && !isDemoRole(saved) && !saved.toLowerCase().includes('target organization') && !saved.toLowerCase().includes('sarvam')) {
+        return saved;
+      }
+    } catch {}
+    return '';
+  });
+
+  const [questions, setQuestions] = useState<Question[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(INTERVIEW_STORAGE_KEYS.QUESTIONS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  const [currentIdx, setCurrentIdx] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem(INTERVIEW_STORAGE_KEYS.CURRENT_IDX);
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const [userAnswer, setUserAnswer] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem(INTERVIEW_STORAGE_KEYS.USER_ANSWER) || '';
+    } catch {
+      return '';
+    }
+  });
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [evaluations, setEvaluations] = useState<Record<string, Evaluation>>({});
+  const [evaluations, setEvaluations] = useState<Record<string, Evaluation>>(() => {
+    try {
+      const saved = sessionStorage.getItem(INTERVIEW_STORAGE_KEYS.EVALUATIONS);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const [activeQuestionEvaluation, setActiveQuestionEvaluation] = useState<Evaluation | null>(null);
   const [recentResumeText, setRecentResumeText] = useState('');
   const [isFromCache, setIsFromCache] = useState(false);
@@ -94,26 +165,71 @@ export default function InterviewSimulator() {
   const [selfScore, setSelfScore] = useState<number | null>(null);
   const [checkedKeyPoints, setCheckedKeyPoints] = useState<Record<string, boolean>>({});
   const [selfNotes, setSelfNotes] = useState('');
-  const [selectedWeakSkills, setSelectedWeakSkills] = useState<string[]>([
-    'System Design',
-    'Concurrency & Performance',
-    'React Performance',
-    'SQL Optimization'
-  ]);
+  const [selectedWeakSkills, setSelectedWeakSkills] = useState<string[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(INTERVIEW_STORAGE_KEYS.SELECTED_SKILLS);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Preserve user's actual current work across navigation
+  useEffect(() => {
+    try {
+      if (jobDescription && !isDemoRole(jobDescription) && !jobDescription.toLowerCase().includes('target organization') && !jobDescription.toLowerCase().includes('sarvam')) {
+        sessionStorage.setItem(INTERVIEW_STORAGE_KEYS.JOB_DESC, jobDescription);
+      } else {
+        sessionStorage.removeItem(INTERVIEW_STORAGE_KEYS.JOB_DESC);
+      }
+    } catch {}
+  }, [jobDescription]);
 
   useEffect(() => {
-    if (location.state?.jobDescription) {
+    try {
+      sessionStorage.setItem(INTERVIEW_STORAGE_KEYS.MODE, mode);
+      sessionStorage.setItem(INTERVIEW_STORAGE_KEYS.STEP, step);
+      sessionStorage.setItem(INTERVIEW_STORAGE_KEYS.CURRENT_IDX, currentIdx.toString());
+      sessionStorage.setItem(INTERVIEW_STORAGE_KEYS.USER_ANSWER, userAnswer);
+      sessionStorage.setItem(INTERVIEW_STORAGE_KEYS.QUESTIONS, JSON.stringify(questions));
+      sessionStorage.setItem(INTERVIEW_STORAGE_KEYS.EVALUATIONS, JSON.stringify(evaluations));
+      sessionStorage.setItem(INTERVIEW_STORAGE_KEYS.SELECTED_SKILLS, JSON.stringify(selectedWeakSkills));
+    } catch {}
+  }, [mode, step, currentIdx, userAnswer, questions, evaluations, selectedWeakSkills]);
+
+  // Handle explicit route navigation with parameters (e.g. from a real job card or analysis)
+  useEffect(() => {
+    if (location.state?.jobDescription && !isDemoRole(location.state.jobDescription) && !location.state.jobDescription.toLowerCase().includes('target organization') && !location.state.jobDescription.toLowerCase().includes('sarvam')) {
       setJobDescription(location.state.jobDescription);
-    } else if (location.state?.role && !isDemoRole(location.state.role)) {
+    } else if (location.state?.role && !isDemoRole(location.state.role) && !location.state.role.toLowerCase().includes('sarvam')) {
       setJobDescription(`Position: ${location.state.role}${location.state.company ? ` at ${location.state.company}` : ''}\nFocus: Technical interview, system design, and role-specific architecture.`);
-    } else if (!jobDescription) {
-      if (trackedJobs.length > 0 && !isDemoRole(trackedJobs[0].role)) {
-        setJobDescription(`Position: ${trackedJobs[0].role}\nCompany: ${trackedJobs[0].company}\nNotes: ${trackedJobs[0].notes || 'Engineering interview preparation'}`);
-      } else if (activeTargetRole && !isDemoRole(activeTargetRole)) {
-        setJobDescription(`Target Position: ${activeTargetRole}\nCompany: Target Organization\nFocus: Technical architecture, high-concurrency scale, and leadership.`);
-      }
     }
-  }, [location.state, activeTargetRole, trackedJobs]);
+    // Note: On clean/fresh app start, fields must remain cleanly empty without prefilling demo roles or "Target Organization"
+  }, [location.state]);
+
+  // Explicit Reset/Clear Handler
+  const handleResetInterview = () => {
+    setStep('setup');
+    setJobDescription('');
+    setQuestions([]);
+    setCurrentIdx(0);
+    setUserAnswer('');
+    setEvaluations({});
+    setActiveQuestionEvaluation(null);
+    setIsGenerating(false);
+    setIsEvaluating(false);
+    setError(null);
+    setShowRubricAssessment(false);
+    setCheckedKeyPoints({});
+    setSelfScore(null);
+    setSelfNotes('');
+    setSelectedWeakSkills([]);
+    try {
+      Object.values(INTERVIEW_STORAGE_KEYS).forEach(k => sessionStorage.removeItem(k));
+    } catch {}
+  };
+
+  const hasActiveSession = Boolean(jobDescription || step !== 'setup' || questions.length > 0);
 
   // Auto-load most recent resume for context if available
   useEffect(() => {
@@ -327,17 +443,7 @@ export default function InterviewSimulator() {
   };
 
   const resetSimulator = () => {
-    setStep('setup');
-    setQuestions([]);
-    setEvaluations({});
-    setActiveQuestionEvaluation(null);
-    setCurrentIdx(0);
-    setUserAnswer('');
-    setShowRubricAssessment(false);
-    setIsDegradedFallback(false);
-    setCheckedKeyPoints({});
-    setSelfScore(null);
-    setSelfNotes('');
+    handleResetInterview();
   };
 
   const calculateTotalScore = () => {
@@ -383,14 +489,26 @@ export default function InterviewSimulator() {
           </p>
         </div>
 
-        {/* Status Pill */}
-        <div className="px-4 py-2.5 bg-surface border border-border rounded-2xl flex items-center gap-3 shadow-sm self-start md:self-auto shrink-0">
-          <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-ink uppercase tracking-wider font-mono">Sessions Available</span>
-            <span className="text-[10px] font-bold text-ink-dim uppercase font-mono">
-              {formatCreditAvailability(creditWallet?.balance, creditCosts?.interviewSession ?? 25, 'sessions')}
-            </span>
+        {/* Status Pill & Reset Action */}
+        <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
+          {hasActiveSession && (
+            <button
+              onClick={handleResetInterview}
+              className="px-3.5 py-2.5 bg-surface hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-ink-dim hover:text-rose-400 rounded-2xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+              title="Explicitly clear all interview lab state"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Lab</span>
+            </button>
+          )}
+          <div className="px-4 py-2.5 bg-surface border border-border rounded-2xl flex items-center gap-3 shadow-sm">
+            <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-ink uppercase tracking-wider font-mono">Sessions Available</span>
+              <span className="text-[10px] font-bold text-ink-dim uppercase font-mono">
+                {formatCreditAvailability(creditWallet?.balance, creditCosts?.interviewSession ?? 25, 'sessions')}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -517,9 +635,20 @@ export default function InterviewSimulator() {
 
             {/* Job Description / Interview Prompt */}
             <div>
-              <label htmlFor="interview-job-desc" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2 block px-1 font-mono">
-                Target Role / Job Description Focus
-              </label>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <label htmlFor="interview-job-desc" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block font-mono">
+                  Target Role / Job Description Focus
+                </label>
+                {jobDescription && (
+                  <button
+                    type="button"
+                    onClick={() => setJobDescription('')}
+                    className="text-[10px] font-mono text-ink-dim hover:text-rose-400 uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               <textarea
                 id="interview-job-desc"
                 value={jobDescription}

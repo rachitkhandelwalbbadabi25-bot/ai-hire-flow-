@@ -461,8 +461,10 @@ interface ResumeAnalysisJob {
     tokens?: any;
     finishReason?: string;
     parseResult?: string;
+    schemaValidation?: string;
     httpStatus?: number;
     sample?: string;
+    retried?: boolean;
   };
 }
 
@@ -642,37 +644,41 @@ function extractAndParseJson(raw: string): any {
     throw new Error('Empty model response received.');
   }
 
-  // 1. Direct parse attempt
-  const trimmed = raw.trim();
+  // 1. Strip reasoning/think tags if present (e.g. <think>...</think>)
+  let cleanText = raw.replace(/<think[\s\S]*?<\/think>/gi, '').trim();
+
+  // 2. Direct parse attempt
   try {
-    return JSON.parse(trimmed);
+    return JSON.parse(cleanText);
   } catch {
-    // Continue to extractor
+    // Continue to next step
   }
 
-  // 2. Strip code fences if present
+  // 3. Strip code fences if present (```json ... ``` or ``` ... ```)
   const fenceRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
-  const match = fenceRegex.exec(trimmed);
-  const text = (match && match[1]) ? match[1].trim() : trimmed;
+  const match = fenceRegex.exec(cleanText);
+  const textWithoutFences = (match && match[1]) ? match[1].trim() : cleanText;
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(textWithoutFences);
   } catch {
-    // Continue
+    // Continue to next step
   }
 
-  // 3. Balanced extraction from first '{' to matching '}'
-  const startIdx = text.indexOf('{');
+  // 4. Find outermost '{'
+  const startIdx = textWithoutFences.indexOf('{');
   if (startIdx === -1) {
     throw new Error('No JSON object found in response');
   }
 
-  let depth = 0;
+  // 5. Balanced bracket scan with stack tracking
+  const text = textWithoutFences.substring(startIdx);
   let inString = false;
   let escaped = false;
+  const bracketStack: string[] = [];
   let endIdx = -1;
 
-  for (let i = startIdx; i < text.length; i++) {
+  for (let i = 0; i < text.length; i++) {
     const char = text[i];
     if (escaped) {
       escaped = false;
@@ -689,10 +695,15 @@ function extractAndParseJson(raw: string): any {
 
     if (!inString) {
       if (char === '{') {
-        depth++;
-      } else if (char === '}') {
-        depth--;
-        if (depth === 0) {
+        bracketStack.push('}');
+      } else if (char === '[') {
+        bracketStack.push(']');
+      } else if (char === '}' || char === ']') {
+        const expected = bracketStack[bracketStack.length - 1];
+        if (expected === char) {
+          bracketStack.pop();
+        }
+        if (bracketStack.length === 0) {
           endIdx = i;
           break;
         }
@@ -700,29 +711,52 @@ function extractAndParseJson(raw: string): any {
     }
   }
 
+  // If balanced end found, try parsing candidate
   if (endIdx !== -1) {
-    const candidate = text.substring(startIdx, endIdx + 1);
+    const candidate = text.substring(0, endIdx + 1);
     try {
       return JSON.parse(candidate);
     } catch {
-      const sanitized = candidate
-        .replace(/[\x00-\x1F\x7F-\x9F]/g, (c) => (c === '\n' || c === '\r' || c === '\t' ? c : ' '))
-        .replace(/,\s*([\]}])/g, '$1');
-      return JSON.parse(sanitized);
+      try {
+        const sanitized = candidate
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
+          .replace(/,\s*([\]}])/g, '$1');
+        return JSON.parse(sanitized);
+      } catch {
+        // Fall through to stack auto-repair
+      }
     }
   }
 
-  // 4. Auto-repair unclosed structure
-  const candidate = text.substring(startIdx)
-    .replace(/[\x00-\x1F\x7F-\x9F]/g, (c) => (c === '\n' || c === '\r' || c === '\t' ? c : ' '))
-    .replace(/,\s*([\]}])/g, '$1');
-  let repaired = candidate;
-  if (inString) repaired += '"';
-  while (depth > 0) {
-    repaired += '}';
-    depth--;
+  // 6. Intelligent auto-repair for truncated JSON (matching bracket stack)
+  let repairText = text;
+  if (inString) {
+    repairText += '"';
   }
-  return JSON.parse(repaired);
+
+  // Remove any trailing dangling comma or incomplete property assignment like `,"key":` or `,"key"` or `,`
+  repairText = repairText
+    .replace(/,\s*"[^"]*"\s*:\s*"?$/g, '')
+    .replace(/,\s*"[^"]*"$/g, '')
+    .replace(/,\s*$/g, '')
+    .replace(/:\s*$/g, ': null')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
+    .replace(/,\s*([\]}])/g, '$1');
+
+  // Close remaining open brackets in reverse order
+  while (bracketStack.length > 0) {
+    const closingChar = bracketStack.pop()!;
+    repairText += closingChar;
+  }
+
+  // Final sanitization of repaired string
+  repairText = repairText.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(repairText);
+  } catch (err: any) {
+    throw new Error(`JSON parse failed after stack repair: ${err.message}`);
+  }
 }
 
 async function processResumeAnalysisJob(
@@ -733,6 +767,11 @@ async function processResumeAnalysisJob(
 ) {
   const jobStart = Date.now();
   console.log(`[AI HireFlow][ResumeJob:${job.analysisId}] Starting background analysis for user ${job.userId || 'anonymous'}`);
+
+  let lastFinishReason = 'unknown';
+  let lastModel = VELONA_MODEL_ID;
+  let lastHttpStatus = 200;
+  let lastRawSample = '';
 
   try {
     const prepStart = Date.now();
@@ -778,7 +817,7 @@ Schema:
       "score": number,
       "explanation": "max 12 words",
       "evidence": "max 10 words",
-      "recommendations": ["max 15 words"]
+      "recommendations": ["max 12 words"]
     },
     {
       "category": "Measurable Impact & Hard Metrics",
@@ -786,7 +825,7 @@ Schema:
       "score": number,
       "explanation": "max 12 words",
       "evidence": "max 10 words",
-      "recommendations": ["max 15 words"]
+      "recommendations": ["max 12 words"]
     },
     {
       "category": "Role & Domain Relevance",
@@ -794,7 +833,7 @@ Schema:
       "score": number,
       "explanation": "max 12 words",
       "evidence": "max 10 words",
-      "recommendations": ["max 15 words"]
+      "recommendations": ["max 12 words"]
     },
     {
       "category": "Structure & ATS Parsability",
@@ -802,17 +841,17 @@ Schema:
       "score": number,
       "explanation": "max 12 words",
       "evidence": "max 10 words",
-      "recommendations": ["max 15 words"]
+      "recommendations": ["max 12 words"]
     }
   ],
   "skillsAnalysis": [
     { "skill": "string", "type": "explicit" | "inferred", "confidence_level": "high" | "medium", "evidence": "max 10 words" }
   ],
-  "keywordsFound": ["max 10 items"],
-  "missingKeywords": ["max 6 items"],
-  "recommendations": ["max 4 items, max 15 words each"]
+  "keywordsFound": ["max 8 items"],
+  "missingKeywords": ["max 5 items"],
+  "recommendations": ["max 3 items, max 12 words each"]
 }
-Strict Limits: Max 4 items in "weaknesses". Max 6 key skills in "skillsAnalysis". Max 10 keywordsFound, max 6 missingKeywords, max 4 recommendations.
+Strict Limits: Max 3 items in "weaknesses". Max 5 key skills in "skillsAnalysis". Max 8 keywordsFound, max 5 missingKeywords, max 3 recommendations. Keep all descriptions strictly concise. All JSON brackets must be properly closed.
 
 TARGET JOB:
 ${cleanJD || 'General ATS Industry Benchmark for the stated role and level'}
@@ -821,15 +860,15 @@ CANDIDATE RESUME:
 ${cleanResume}
 `;
 
-    // 4. Call Velona with optimized parameters
-    const velonaResult = await callVelonaChatCompletion({
+    // 4. Call Velona with optimized parameters (safe maxTokens: 3800 prevents premature length truncation)
+    let velonaResult = await callVelonaChatCompletion({
       messages: [
         { role: 'system', content: 'You are an ATS scoring API for AI HireFlow. Output raw valid JSON only. Keep explanations concise and adhere to schema limits.' },
         { role: 'user', content: prompt }
       ],
       temperature: 0.2,
       jsonMode: true,
-      maxTokens: 2200,
+      maxTokens: 3800,
       requestId: job.analysisId,
       operation: 'resume_analysis_job',
       meta: {
@@ -839,19 +878,64 @@ ${cleanResume}
       }
     });
 
+    lastFinishReason = velonaResult.finishReason || 'stop';
+    lastModel = velonaResult.model || VELONA_MODEL_ID;
+    lastRawSample = velonaResult.text?.slice(0, 500) || '';
+
     // 5. Parse JSON using resilient extractor
-    let parsed: any;
+    let parsed: any = null;
+    let didRetry = false;
+
     try {
       parsed = extractAndParseJson(velonaResult.text);
-    } catch (parseErr: any) {
-      console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] JSON parse error:`, parseErr.message, 'Raw text sample:', velonaResult.text?.slice(0, 300));
-      const parseError: any = new Error('Analysis completed with malformed response. Please retry in a moment.');
-      parseError.rawSample = velonaResult.text?.slice(0, 500);
-      throw parseError;
+    } catch (firstParseErr: any) {
+      console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] First JSON parse attempt failed (${firstParseErr.message}), finish_reason=${velonaResult.finishReason}.`);
     }
 
-    // 6. Normalize structure
+    // Requirement 12: Controlled Single Response Recovery if first response is malformed/truncated
+    if (!parsed) {
+      console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] Executing ONE controlled internal retry for malformed response...`);
+      didRetry = true;
+      const recoveryResult = await callVelonaChatCompletion({
+        messages: [
+          { role: 'system', content: 'You are an ATS scoring API for AI HireFlow. Output raw valid JSON only. Keep explanations concise and adhere to schema limits.' },
+          { role: 'user', content: prompt },
+          { role: 'assistant', content: velonaResult.text ? velonaResult.text.slice(0, 400) : '' },
+          { role: 'user', content: 'The previous response was malformed or incomplete. Return ONLY valid JSON. No markdown. No code fences. No commentary. Keep all fields strictly concise and use exactly the existing ATS schema.' }
+        ],
+        temperature: 0.1,
+        jsonMode: true,
+        maxTokens: 3800,
+        requestId: `${job.analysisId}_retry`,
+        operation: 'resume_analysis_job_recovery'
+      });
+
+      lastFinishReason = recoveryResult.finishReason || 'stop';
+      lastModel = recoveryResult.model || VELONA_MODEL_ID;
+      lastRawSample = recoveryResult.text?.slice(0, 500) || '';
+      velonaResult = recoveryResult;
+
+      try {
+        parsed = extractAndParseJson(recoveryResult.text);
+      } catch (retryParseErr: any) {
+        console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Recovery retry JSON parse failed:`, retryParseErr.message, 'Sample:', recoveryResult.text?.slice(0, 300));
+        const parseError: any = new Error(
+          recoveryResult.finishReason === 'length'
+            ? 'Resume analysis output was truncated by token limits. Please retry.'
+            : 'Analysis completed with malformed response. Please retry in a moment.'
+        );
+        parseError.rawSample = recoveryResult.text?.slice(0, 500);
+        throw parseError;
+      }
+    }
+
+    // 6. Normalize and validate ATS schema
     const normalized = normalizeAtsAuditResult(parsed);
+
+    // Schema sanity check: ensure required core ATS fields exist
+    if (typeof normalized.score !== 'number' || !Array.isArray(normalized.scoreBreakdown) || normalized.scoreBreakdown.length === 0) {
+      throw new Error('ATS schema validation failed: missing score or breakdown.');
+    }
 
     job.status = 'completed';
     job.result = normalized;
@@ -864,11 +948,13 @@ ${cleanResume}
       tokens: velonaResult.usage,
       finishReason: velonaResult.finishReason,
       parseResult: 'SUCCESS',
-      httpStatus: 200
+      schemaValidation: 'SUCCESS',
+      httpStatus: 200,
+      retried: didRetry
     };
 
     // Safe operational diagnostics (no private user resume or keys)
-    console.log(`[AI HireFlow][Diagnostics] analysisId=${job.analysisId}, model=${velonaResult.model}, prompt_chars=${cleanResume.length}, prep_ms=${prepDurationMs}, velona_ms=${velonaResult.timing?.velonaDurationMs}ms, total_ms=${job.diagnostics.totalDurationMs}ms, status=completed, finishReason=${velonaResult.finishReason}, parseResult=SUCCESS`);
+    console.log(`[AI HireFlow][Diagnostics] analysisId=${job.analysisId}, model=${velonaResult.model}, prompt_chars=${cleanResume.length}, prep_ms=${prepDurationMs}, velona_ms=${velonaResult.timing?.velonaDurationMs}ms, total_ms=${job.diagnostics.totalDurationMs}ms, status=completed, finishReason=${velonaResult.finishReason}, parseResult=SUCCESS, retried=${didRetry}`);
   } catch (err: any) {
     console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Background analysis failed:`, err.message);
     job.status = 'failed';
@@ -881,7 +967,10 @@ ${cleanResume}
     job.diagnostics = {
       totalDurationMs: Date.now() - jobStart,
       parseResult: 'ERROR',
-      sample: err.rawSample
+      finishReason: lastFinishReason,
+      model: lastModel,
+      httpStatus: lastHttpStatus,
+      sample: err.rawSample || lastRawSample
     };
   }
 }

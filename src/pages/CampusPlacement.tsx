@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, BookOpen, Search, Sparkles, Building2, ChevronRight, Zap, 
   Code, Play, AlertCircle, ArrowLeft, CheckCircle2, XCircle, Loader2, 
   Lightbulb, HelpCircle, ArrowRight, Star, GraduationCap, 
-  Check, RefreshCw, Send, Terminal, Award, BookCheck, MessageSquare
+  Check, RefreshCw, Send, Terminal, Award, BookCheck, MessageSquare, RotateCcw
 } from 'lucide-react';
 import { 
   generateCompanyPrep, 
@@ -15,33 +15,316 @@ import {
 import AILoadingStepper from '../components/AILoadingStepper';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 
+const CAMPUS_STORAGE_KEYS = {
+  SEARCH_QUERY: 'campus_prep_search_query',
+  COMPANY_PREP: 'campus_prep_company_prep',
+  ACTIVE_DRILL_TOPIC: 'campus_prep_active_drill_topic',
+  DRILL_QUESTIONS: 'campus_prep_drill_questions',
+  CURRENT_Q_INDEX: 'campus_prep_current_q_index',
+  SELECTED_OPT_INDEX: 'campus_prep_selected_opt_index',
+  IS_ANSWERED: 'campus_prep_is_answered',
+  DRILL_SCORE: 'campus_prep_drill_score',
+  DRILL_COMPLETE: 'campus_prep_drill_complete',
+  DRILL_ATTEMPT_MAP: 'campus_prep_drill_attempt_map',
+  PREV_QUESTIONS_MAP: 'campus_prep_prev_questions_map',
+  ACTIVE_STARTUP_TRACK: 'campus_prep_active_startup_track',
+  STARTUP_CHALLENGE: 'campus_prep_startup_challenge',
+  PROPOSED_SOLUTION: 'campus_prep_proposed_solution',
+  SOLUTION_FEEDBACK: 'campus_prep_solution_feedback'
+};
+
 export default function CampusPlacement() {
   // Company Search State
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    try {
+      return sessionStorage.getItem(CAMPUS_STORAGE_KEYS.SEARCH_QUERY) || '';
+    } catch {
+      return '';
+    }
+  });
   const [searching, setSearching] = useState(false);
-  const [companyPrep, setCompanyPrep] = useState<any>(null);
+  const [companyPrep, setCompanyPrep] = useState<any>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.COMPANY_PREP);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [searchError, setSearchError] = useState<string | null>(null);
 
   // Interactive Aptitude Drill State
-  const [activeDrillTopic, setActiveDrillTopic] = useState<string | null>(null);
+  const [activeDrillTopic, setActiveDrillTopic] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(CAMPUS_STORAGE_KEYS.ACTIVE_DRILL_TOPIC) || null;
+    } catch {
+      return null;
+    }
+  });
   const [loadingDrill, setLoadingDrill] = useState(false);
-  const [drillQuestions, setDrillQuestions] = useState<any[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
-  const [isAnswered, setIsAnswered] = useState(false);
-  const [drillScore, setDrillScore] = useState(0);
-  const [drillComplete, setDrillComplete] = useState(false);
+  const [drillQuestions, setDrillQuestions] = useState<any[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.DRILL_QUESTIONS);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.CURRENT_Q_INDEX);
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.SELECTED_OPT_INDEX);
+      return saved !== null ? parseInt(saved, 10) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isAnswered, setIsAnswered] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(CAMPUS_STORAGE_KEYS.IS_ANSWERED) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [drillScore, setDrillScore] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.DRILL_SCORE);
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [drillComplete, setDrillComplete] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(CAMPUS_STORAGE_KEYS.DRILL_COMPLETE) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [drillError, setDrillError] = useState<string | null>(null);
-  const [drillAttemptMap, setDrillAttemptMap] = useState<Record<string, number>>({});
-  const [previousQuestionsMap, setPreviousQuestionsMap] = useState<Record<string, string[]>>({});
+  const [drillAttemptMap, setDrillAttemptMap] = useState<Record<string, number>>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.DRILL_ATTEMPT_MAP);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [previousQuestionsMap, setPreviousQuestionsMap] = useState<Record<string, string[]>>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.PREV_QUESTIONS_MAP);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   // Startup Elite Program State
-  const [activeStartupTrack, setActiveStartupTrack] = useState<string | null>(null);
+  const [activeStartupTrack, setActiveStartupTrack] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(CAMPUS_STORAGE_KEYS.ACTIVE_STARTUP_TRACK) || null;
+    } catch {
+      return null;
+    }
+  });
   const [loadingStartup, setLoadingStartup] = useState(false);
-  const [startupChallenge, setStartupChallenge] = useState<any>(null);
-  const [proposedSolution, setProposedSolution] = useState('');
+  const [startupChallenge, setStartupChallenge] = useState<any>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.STARTUP_CHALLENGE);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [proposedSolution, setProposedSolution] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem(CAMPUS_STORAGE_KEYS.PROPOSED_SOLUTION) || '';
+    } catch {
+      return '';
+    }
+  });
   const [submittingSolution, setSubmittingSolution] = useState(false);
-  const [solutionFeedback, setSolutionFeedback] = useState<any>(null);
+  const [solutionFeedback, setSolutionFeedback] = useState<any>(() => {
+    try {
+      const saved = sessionStorage.getItem(CAMPUS_STORAGE_KEYS.SOLUTION_FEEDBACK);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Sync state to sessionStorage to preserve across navigation (NAVIGATION != RESET)
+  useEffect(() => {
+    try {
+      if (searchQuery) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.SEARCH_QUERY, searchQuery);
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.SEARCH_QUERY);
+      }
+    } catch {}
+  }, [searchQuery]);
+
+  useEffect(() => {
+    try {
+      if (companyPrep) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.COMPANY_PREP, JSON.stringify(companyPrep));
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.COMPANY_PREP);
+      }
+    } catch {}
+  }, [companyPrep]);
+
+  useEffect(() => {
+    try {
+      if (activeDrillTopic) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.ACTIVE_DRILL_TOPIC, activeDrillTopic);
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.ACTIVE_DRILL_TOPIC);
+      }
+    } catch {}
+  }, [activeDrillTopic]);
+
+  useEffect(() => {
+    try {
+      if (drillQuestions.length > 0) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.DRILL_QUESTIONS, JSON.stringify(drillQuestions));
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.DRILL_QUESTIONS);
+      }
+    } catch {}
+  }, [drillQuestions]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CAMPUS_STORAGE_KEYS.CURRENT_Q_INDEX, currentQuestionIndex.toString());
+      if (selectedOptionIndex !== null) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.SELECTED_OPT_INDEX, selectedOptionIndex.toString());
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.SELECTED_OPT_INDEX);
+      }
+      sessionStorage.setItem(CAMPUS_STORAGE_KEYS.IS_ANSWERED, isAnswered ? 'true' : 'false');
+      sessionStorage.setItem(CAMPUS_STORAGE_KEYS.DRILL_SCORE, drillScore.toString());
+      sessionStorage.setItem(CAMPUS_STORAGE_KEYS.DRILL_COMPLETE, drillComplete ? 'true' : 'false');
+    } catch {}
+  }, [currentQuestionIndex, selectedOptionIndex, isAnswered, drillScore, drillComplete]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CAMPUS_STORAGE_KEYS.DRILL_ATTEMPT_MAP, JSON.stringify(drillAttemptMap));
+    } catch {}
+  }, [drillAttemptMap]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CAMPUS_STORAGE_KEYS.PREV_QUESTIONS_MAP, JSON.stringify(previousQuestionsMap));
+    } catch {}
+  }, [previousQuestionsMap]);
+
+  useEffect(() => {
+    try {
+      if (activeStartupTrack) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.ACTIVE_STARTUP_TRACK, activeStartupTrack);
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.ACTIVE_STARTUP_TRACK);
+      }
+    } catch {}
+  }, [activeStartupTrack]);
+
+  useEffect(() => {
+    try {
+      if (startupChallenge) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.STARTUP_CHALLENGE, JSON.stringify(startupChallenge));
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.STARTUP_CHALLENGE);
+      }
+    } catch {}
+  }, [startupChallenge]);
+
+  useEffect(() => {
+    try {
+      if (proposedSolution) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.PROPOSED_SOLUTION, proposedSolution);
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.PROPOSED_SOLUTION);
+      }
+    } catch {}
+  }, [proposedSolution]);
+
+  useEffect(() => {
+    try {
+      if (solutionFeedback) {
+        sessionStorage.setItem(CAMPUS_STORAGE_KEYS.SOLUTION_FEEDBACK, JSON.stringify(solutionFeedback));
+      } else {
+        sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.SOLUTION_FEEDBACK);
+      }
+    } catch {}
+  }, [solutionFeedback]);
+
+  // ----------------------------------------------------
+  // Explicit Reset & Clear Handlers (Only explicit reset removes state)
+  // ----------------------------------------------------
+  const handleClearCompanyPrep = () => {
+    setCompanyPrep(null);
+    setSearchQuery('');
+    setSearchError(null);
+    try {
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.COMPANY_PREP);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.SEARCH_QUERY);
+    } catch {}
+  };
+
+  const handleQuitDrill = () => {
+    setActiveDrillTopic(null);
+    setDrillQuestions([]);
+    setCurrentQuestionIndex(0);
+    setSelectedOptionIndex(null);
+    setIsAnswered(false);
+    setDrillScore(0);
+    setDrillComplete(false);
+    setDrillError(null);
+    try {
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.ACTIVE_DRILL_TOPIC);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.DRILL_QUESTIONS);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.CURRENT_Q_INDEX);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.SELECTED_OPT_INDEX);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.IS_ANSWERED);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.DRILL_SCORE);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.DRILL_COMPLETE);
+    } catch {}
+  };
+
+  const handleClearStartupTrack = () => {
+    setActiveStartupTrack(null);
+    setStartupChallenge(null);
+    setProposedSolution('');
+    setSolutionFeedback(null);
+    try {
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.ACTIVE_STARTUP_TRACK);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.STARTUP_CHALLENGE);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.PROPOSED_SOLUTION);
+      sessionStorage.removeItem(CAMPUS_STORAGE_KEYS.SOLUTION_FEEDBACK);
+    } catch {}
+  };
+
+  const handleResetAllCampusPrep = () => {
+    handleClearCompanyPrep();
+    handleQuitDrill();
+    handleClearStartupTrack();
+    setDrillAttemptMap({});
+    setPreviousQuestionsMap({});
+    try {
+      Object.values(CAMPUS_STORAGE_KEYS).forEach(k => sessionStorage.removeItem(k));
+    } catch {}
+  };
+
+  const hasAnySavedData = Boolean(companyPrep || activeDrillTopic || activeStartupTrack);
 
   // ----------------------------------------------------
   // API Core Callers
@@ -168,17 +451,29 @@ export default function CampusPlacement() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
       {/* Top Heading */}
-      <div className="mb-12">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
-            <Trophy className="w-5 h-5 text-accent" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-12">
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
+              <Trophy className="w-5 h-5 text-accent" />
+            </div>
+            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Placement War-Room</span>
           </div>
-          <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Placement War-Room</span>
+          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">India Campus Prep Hub</h1>
+          <p className="text-ink-dim font-medium text-lg max-w-2xl">
+            Search specific tech companies for customized prep guidelines, practice interactive drills, and test yourself with startup architecture boards.
+          </p>
         </div>
-        <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">India Campus Prep Hub</h1>
-        <p className="text-ink-dim font-medium text-lg max-w-2xl">
-          Search specific tech companies for customized prep guidelines, practice interactive drills, and test yourself with startup architecture boards.
-        </p>
+        {hasAnySavedData && (
+          <button
+            onClick={handleResetAllCampusPrep}
+            className="self-start sm:self-auto px-4 py-2.5 bg-surface hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-ink-dim hover:text-rose-400 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shrink-0 cursor-pointer shadow-sm"
+            title="Explicitly clear all cached prep, drills, and challenges"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Reset All Prep
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -263,7 +558,7 @@ export default function CampusPlacement() {
                         {companyPrep.companyName}
                       </h3>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <div className="px-3 py-1.5 bg-background border border-border rounded-xl text-center">
                         <span className="text-[8px] font-bold text-ink-dim uppercase block">Difficulty</span>
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${
@@ -275,6 +570,14 @@ export default function CampusPlacement() {
                         <span className="text-[8px] font-bold text-ink-dim uppercase block">Prep Time</span>
                         <span className="text-[10px] font-bold text-ink uppercase tracking-wide">{companyPrep.estimatedPrepTime}</span>
                       </div>
+                      <button
+                        onClick={handleClearCompanyPrep}
+                        className="px-3 py-1.5 bg-background hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-ink-dim hover:text-rose-400 rounded-xl text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
+                        title="Clear cached company prep plan"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Clear Plan
+                      </button>
                     </div>
                   </div>
 
@@ -418,8 +721,8 @@ export default function CampusPlacement() {
                     <h4 className="text-sm font-bold text-ink uppercase tracking-tight mt-1">{activeDrillTopic}</h4>
                   </div>
                   <button
-                    onClick={() => setActiveDrillTopic(null)}
-                    className="text-[9px] font-bold text-ink-dim hover:text-rose-400 border border-border hover:border-rose-500/20 px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                    onClick={handleQuitDrill}
+                    className="text-[9px] font-bold text-ink-dim hover:text-rose-400 border border-border hover:border-rose-500/20 px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     Quit Session
                   </button>
@@ -456,10 +759,7 @@ export default function CampusPlacement() {
                         Try Again
                       </button>
                       <button
-                        onClick={() => {
-                          setDrillError(null);
-                          setActiveDrillTopic(null);
-                        }}
+                        onClick={handleQuitDrill}
                         className="flex-1 bg-surface border border-border text-ink py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:border-accent/40 transition-all cursor-pointer"
                       >
                         Choose Topic
@@ -497,11 +797,7 @@ export default function CampusPlacement() {
                         Try Again
                       </button>
                       <button
-                        onClick={() => {
-                          setActiveDrillTopic(null);
-                          setDrillQuestions([]);
-                          setDrillComplete(false);
-                        }}
+                        onClick={handleQuitDrill}
                         disabled={loadingDrill}
                         className="flex-1 bg-surface border border-border text-ink py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:border-accent/40 transition-all cursor-pointer"
                       >
@@ -662,12 +958,8 @@ export default function CampusPlacement() {
                 <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
                   <span className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Bootcamp</span>
                   <button 
-                    onClick={() => {
-                      setActiveStartupTrack(null);
-                      setStartupChallenge(null);
-                      setSolutionFeedback(null);
-                    }}
-                    className="text-[9px] font-bold text-white/50 hover:text-rose-400 uppercase transition-colors"
+                    onClick={handleClearStartupTrack}
+                    className="text-[9px] font-bold text-white/50 hover:text-rose-400 uppercase transition-colors cursor-pointer"
                   >
                     Change Track
                   </button>

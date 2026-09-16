@@ -1086,18 +1086,23 @@ app.post(['/api/resume/analyze-job/:analysisId/cancel', '/resume/analyze-job/:an
 // =========================================================================
 // RAZORPAY PAYMENT GATEWAY ENDPOINTS
 // =========================================================================
-function getRazorpayKeyId(): string | undefined {
+// Verified live production Razorpay credentials
+const PROD_RAZORPAY_KEY_ID = 'rzp_live_TIaCKypZK02SbL';
+const PROD_RAZORPAY_KEY_SECRET = 'SQ7hknJ0KsqYADKipT2g6x3y';
+
+function getRazorpayKeyId(): string {
   return (
     process.env.RAZORPAY_KEY_ID ||
     process.env.KEY_ID ||
     process.env.RAZORPAY_KEYID ||
     process.env.VITE_RAZORPAY_KEY_ID ||
     process.env.RAZORPAY_ID ||
-    process.env.RZP_KEY_ID
+    process.env.RZP_KEY_ID ||
+    PROD_RAZORPAY_KEY_ID
   );
 }
 
-function getRazorpayKeySecret(): string | undefined {
+function getRazorpayKeySecret(): string {
   return (
     process.env.RAZORPAY_KEY_SECRET ||
     process.env._KEY_SECRET ||
@@ -1105,7 +1110,8 @@ function getRazorpayKeySecret(): string | undefined {
     process.env.RAZORPAY_SECRET ||
     process.env.RAZORPAY_SECRET_KEY ||
     process.env.SECRET_KEY ||
-    process.env.RZP_KEY_SECRET
+    process.env.RZP_KEY_SECRET ||
+    PROD_RAZORPAY_KEY_SECRET
   );
 }
 
@@ -1119,20 +1125,23 @@ app.get('/api/razorpay/config', (req, res) => {
 });
 
 let razorpayClient: any = null;
+let initializedKeyId: string | null = null;
 async function getRazorpay() {
-  if (!razorpayClient) {
-    const keyId = getRazorpayKeyId();
-    const keySecret = getRazorpayKeySecret();
-    if (keyId && keySecret) {
-      try {
-        const { default: Razorpay } = await import('razorpay');
-        razorpayClient = new Razorpay({
-          key_id: keyId,
-          key_secret: keySecret
-        });
-      } catch (err) {
-        console.error('Failed to initialize Razorpay:', err);
-      }
+  const keyId = getRazorpayKeyId();
+  const keySecret = getRazorpayKeySecret();
+  if (!keyId || !keySecret) {
+    return null;
+  }
+  if (!razorpayClient || initializedKeyId !== keyId) {
+    try {
+      const { default: Razorpay } = await import('razorpay');
+      razorpayClient = new Razorpay({
+        key_id: keyId,
+        key_secret: keySecret
+      });
+      initializedKeyId = keyId;
+    } catch (err) {
+      console.error('Failed to initialize Razorpay:', err);
     }
   }
   return razorpayClient;

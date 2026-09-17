@@ -1086,23 +1086,18 @@ app.post(['/api/resume/analyze-job/:analysisId/cancel', '/resume/analyze-job/:an
 // =========================================================================
 // RAZORPAY PAYMENT GATEWAY ENDPOINTS
 // =========================================================================
-// Verified live production Razorpay credentials
-const PROD_RAZORPAY_KEY_ID = 'rzp_live_TIaCKypZK02SbL';
-const PROD_RAZORPAY_KEY_SECRET = 'SQ7hknJ0KsqYADKipT2g6x3y';
-
-function getRazorpayKeyId(): string {
+function getRazorpayKeyId(): string | undefined {
   return (
     process.env.RAZORPAY_KEY_ID ||
     process.env.KEY_ID ||
     process.env.RAZORPAY_KEYID ||
     process.env.VITE_RAZORPAY_KEY_ID ||
     process.env.RAZORPAY_ID ||
-    process.env.RZP_KEY_ID ||
-    PROD_RAZORPAY_KEY_ID
+    process.env.RZP_KEY_ID
   );
 }
 
-function getRazorpayKeySecret(): string {
+function getRazorpayKeySecret(): string | undefined {
   return (
     process.env.RAZORPAY_KEY_SECRET ||
     process.env._KEY_SECRET ||
@@ -1110,8 +1105,7 @@ function getRazorpayKeySecret(): string {
     process.env.RAZORPAY_SECRET ||
     process.env.RAZORPAY_SECRET_KEY ||
     process.env.SECRET_KEY ||
-    process.env.RZP_KEY_SECRET ||
-    PROD_RAZORPAY_KEY_SECRET
+    process.env.RZP_KEY_SECRET
   );
 }
 
@@ -1154,14 +1148,8 @@ app.post(['/api/razorpay/create-order', '/api/create-order'], async (req, res) =
     const keySecret = getRazorpayKeySecret();
 
     if (!keyId || !keySecret) {
-      const fallbackOrderId = `order_demo_${Date.now().toString().slice(-8)}`;
-      return res.json({ 
-        success: true,
-        isSandbox: true,
-        orderId: fallbackOrderId,
-        amount: (price ? Math.round(Number(price) * 100) : (Number(amount) || 100)),
-        currency: currency || 'INR',
-        keyId: 'rzp_test_hireflow_demo'
+      return res.status(500).json({ 
+        error: 'Razorpay payment gateway is not configured. Server environment variables RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be configured.' 
       });
     }
 
@@ -1228,13 +1216,8 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
 
     const keySecret = getRazorpayKeySecret();
     if (!keySecret) {
-      return res.json({ 
-        success: true, 
-        isSandbox: true,
-        type: type || 'custom', 
-        item: item || 'custom_item', 
-        credits: parseInt(credits || '0'), 
-        price: parseFloat(price || '0') 
+      return res.status(500).json({ 
+        error: 'Razorpay secret key is not configured on server.' 
       });
     }
 
@@ -1246,16 +1229,6 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
       .digest('hex');
 
     if (generated_signature !== razorpay_signature) {
-      if (razorpay_signature === 'sig_verified_mock_256') {
-        return res.json({
-          success: true,
-          isSandbox: true,
-          type: type || 'custom',
-          item: item || 'custom_item',
-          credits: parseInt(credits || '0'),
-          price: parseFloat(price || '0')
-        });
-      }
       return res.status(400).json({ error: 'Cryptographic signature verification failed' });
     }
 
@@ -1268,7 +1241,7 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
     });
   } catch (err: any) {
     console.error('Razorpay signature verification error:', err);
-    res.status(500).json({ error: err.message || 'Failed to verify payment signature' });
+    res.status(500).json({ error: 'Internal payment verification error' });
   }
 });
 

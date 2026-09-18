@@ -61,7 +61,7 @@ export default function LearningPath() {
   const { user } = useAuth();
   const { plan, checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const location = useLocation();
-  const { currentActiveJob, clearCurrentJobContext } = useSystemOS();
+  const { currentActiveJob, setCurrentActiveJob, clearCurrentJobContext } = useSystemOS();
 
   // Learning Path inputs MUST start completely empty for fresh starts with proper placeholders
   const [targetRole, setTargetRole] = useState(() => {
@@ -173,26 +173,74 @@ export default function LearningPath() {
   // State synchronization & Stale-data clearing:
   // When a user selects a new job, or clears search context, the previous search context must be replaced cleanly.
   useEffect(() => {
-    // 1. Explicit navigation state takes first priority
-    if (location.state?.targetRole && !isDemoRole(location.state.targetRole)) {
-      const locKey = location.key || `${location.state.targetRole}__${Date.now()}`;
+    // 1. Explicit navigation state takes first priority (e.g. from Resume Analyzer)
+    const incomingRole = location.state?.targetRole || location.state?.role || location.state?.jobContext?.title;
+    const isFromAnalyzer = location.state?.from === 'analyzer';
+
+    const isKnownFakeDemo = typeof incomingRole === 'string' && (
+      incomingRole.toLowerCase().includes('sarvam') ||
+      incomingRole.toLowerCase().includes('glean') ||
+      incomingRole.toLowerCase().includes('target organization') ||
+      incomingRole.toLowerCase().includes('sample role') ||
+      incomingRole.toLowerCase().includes('demo role')
+    );
+
+    const isValidIncomingRole = incomingRole && 
+      typeof incomingRole === 'string' && 
+      incomingRole.trim().length > 0 && 
+      !isKnownFakeDemo && 
+      (isFromAnalyzer || !isDemoRole(incomingRole));
+
+    if (isValidIncomingRole) {
+      const locKey = location.key || `${incomingRole}__${Date.now()}`;
       if (handledLocationKeyRef.current !== locKey) {
         handledLocationKeyRef.current = locKey;
-        setTargetRole(location.state.targetRole);
+        const cleanRole = incomingRole.trim();
+        setTargetRole(cleanRole);
         userEditedRoleRef.current = false;
-        if (location.state?.missingSkills && !isDemoSkills(location.state.missingSkills)) {
-          const skills = Array.isArray(location.state.missingSkills) 
-            ? location.state.missingSkills.join(', ') 
-            : String(location.state.missingSkills);
-          setSkillsStr(skills);
-          userEditedSkillsRef.current = false;
-        } else {
-          setSkillsStr('');
-          userEditedSkillsRef.current = false;
+
+        const rawSkills = location.state?.missingSkills || location.state?.targetSkills || location.state?.skills || location.state?.jobContext?.skills;
+        let skillsText = '';
+        if (rawSkills) {
+          const skillsArr = Array.isArray(rawSkills) 
+            ? rawSkills.filter((s: any) => typeof s === 'string' && s.trim().length > 0 && !isDemoSkills(s))
+            : String(rawSkills).split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0 && !isDemoSkills(s));
+          skillsText = skillsArr.join(', ');
         }
+        setSkillsStr(skillsText);
+        userEditedSkillsRef.current = false;
         setRoadmap(null);
         setRecentAnalysis(null);
         setError(null);
+
+        // Sync or establish current active job context so the Active Job Context banner displays properly
+        const incomingJob = location.state?.jobContext;
+        const jobTitle = incomingJob?.title || cleanRole;
+        const jobCompany = incomingJob?.company || (isFromAnalyzer ? 'Target Opportunity' : '');
+        const jobSkills = incomingJob?.skills && incomingJob.skills.length > 0 
+          ? incomingJob.skills 
+          : (skillsText ? skillsText.split(', ') : []);
+        const jobDesc = incomingJob?.description || '';
+
+        const activeJobPayload = {
+          title: jobTitle,
+          company: jobCompany,
+          skills: jobSkills,
+          description: jobDesc,
+          source: (isFromAnalyzer ? 'analyzer' : 'manual') as 'analyzer' | 'manual',
+          selectedAt: Date.now()
+        };
+
+        setCurrentActiveJob(activeJobPayload);
+        const newKey = `${jobTitle}__${jobCompany}__${activeJobPayload.selectedAt}`;
+        activeJobKeyRef.current = newKey;
+        try {
+          sessionStorage.setItem('learning_path_active_job_key', newKey);
+          sessionStorage.setItem('learning_path_target_role', cleanRole);
+          if (skillsText) {
+            sessionStorage.setItem('learning_path_skills', skillsText);
+          }
+        } catch (e) {}
       }
       return;
     }
@@ -214,7 +262,15 @@ export default function LearningPath() {
         }
       } catch (e) {}
 
-      if (currentActiveJob && !isDemoRole(currentActiveJob.title) && !isDemoSkills(currentActiveJob.skills) && !currentActiveJob.title?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('sarvam')) {
+      const isCurrentJobDemo = currentActiveJob && (
+        currentActiveJob.title?.toLowerCase().includes('sarvam') ||
+        currentActiveJob.company?.toLowerCase().includes('sarvam') ||
+        currentActiveJob.title?.toLowerCase().includes('glean') ||
+        currentActiveJob.company?.toLowerCase().includes('target organization') ||
+        (!currentActiveJob.source && isDemoRole(currentActiveJob.title))
+      );
+
+      if (currentActiveJob && !isCurrentJobDemo) {
         // Only reset if this is truly a newly selected job, not a restoration of active job
         const hasSavedRoadmap = !!sessionStorage.getItem('learning_path_roadmap');
         if (!hasSavedRoadmap || prevKey !== null) {
@@ -224,7 +280,8 @@ export default function LearningPath() {
 
           // Replace target skills strictly with current job's skills - CLEAN REPLACE, NEVER MERGE
           if (currentActiveJob.skills && currentActiveJob.skills.length > 0) {
-            setSkillsStr(currentActiveJob.skills.join(', '));
+            const cleanSkills = currentActiveJob.skills.filter(s => typeof s === 'string' && !isDemoSkills(s));
+            setSkillsStr(cleanSkills.join(', '));
           } else {
             setSkillsStr('');
           }
@@ -235,8 +292,8 @@ export default function LearningPath() {
           setRecentAnalysis(null);
           setError(null);
         }
-      } else {
-        // Active job context was cleared or invalid
+      } else if (!currentActiveJob && prevKey !== null) {
+        // Active job context was explicitly cleared by user action
         setTargetRole('');
         setSkillsStr('');
         setRoadmap(null);
@@ -430,7 +487,7 @@ export default function LearningPath() {
       </div>
 
       {/* Active Job Context Banner */}
-      {currentActiveJob && !isDemoRole(currentActiveJob.title) && !currentActiveJob.title?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('sarvam') && (
+      {currentActiveJob && (currentActiveJob.source || !isDemoRole(currentActiveJob.title)) && !currentActiveJob.title?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('target organization') && (
         <div className="mb-6 p-4 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />

@@ -27,8 +27,7 @@ import {
   Mic,
   Award,
   MessageCircle,
-  ArrowRight,
-  Terminal
+  ArrowRight
 } from 'lucide-react';
 
 import { usePlan } from '../context/PlanContext';
@@ -65,7 +64,6 @@ export default function Navbar({ user }: NavbarProps) {
     { name: 'Outreach & Alerts', path: '/outreach', icon: MessageCircle },
     { name: 'Analyzer', path: '/analyzer', icon: BarChart3 },
     { name: 'Interview Lab', path: '/interview', icon: Mic },
-    { name: 'Code Sandbox', path: '/coderabbit', icon: Terminal },
     { name: 'Learning Path', path: '/learning', icon: GraduationCap },
     { name: 'Resume Editor', path: '/editor', icon: FileEdit },
     { name: 'Job Tracker', path: '/jobs', icon: Briefcase },

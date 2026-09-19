@@ -1,7 +1,6 @@
 import { User } from 'firebase/auth';
 import Navbar from './Navbar';
 import UpgradeModal from './UpgradeModal';
-import NeuralStatus from './NeuralStatus';
 import OnboardingTour from './OnboardingTour';
 import { motion } from 'motion/react';
 import { useLocation, Link } from 'react-router-dom';
@@ -30,7 +29,6 @@ export default function Layout({ user, children }: LayoutProps) {
     <div className="min-h-screen bg-background selection:bg-accent selection:text-white text-ink">
       <Navbar user={user} />
       <UpgradeModal />
-      <NeuralStatus />
       {showAppSidebar && <OnboardingTour />}
       <main className={showAppSidebar ? "pt-20 sm:pt-24 pb-28 md:pb-12 lg:ml-64 transition-all" : ""}>
         <motion.div

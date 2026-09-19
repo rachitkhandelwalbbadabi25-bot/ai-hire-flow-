@@ -83,7 +83,7 @@ const INTERVIEW_STORAGE_KEYS = {
 export default function InterviewSimulator() {
   const { user } = useAuth();
   const location = useLocation();
-  const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
+  const { checkAccess, deductCredit, creditWallet, creditCosts, triggerAction } = usePlan();
   const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
   const { activeTargetRole, trackedJobs } = useSystemOS();
 
@@ -420,21 +420,47 @@ export default function InterviewSimulator() {
       // Completed all questions
       let scoreSum = 0;
       Object.values(evaluations).forEach((e: any) => {
-        scoreSum += e.score;
+        scoreSum += (e?.score || 0);
       });
       const aggregateScore = questions.length > 0 ? Math.round((scoreSum / questions.length) * 10) : 0;
 
+      // Persist locally for instant availability and fallback
       try {
-        await addDoc(collection(db, 'users', user.uid, 'simulations'), {
+        const simRecord = {
           jobDescription,
-          questions,
-          evaluations,
           score: aggregateScore,
-          isDegradedFallback,
+          evaluations,
+          questionsCount: questions.length,
           createdAt: new Date().toISOString()
-        });
-      } catch (dbErr) {
-        console.error('Failed to persist simulation record:', dbErr);
+        };
+        localStorage.setItem('interview_sim_evaluations', JSON.stringify(evaluations));
+        localStorage.setItem('interview_last_completed_sim', JSON.stringify(simRecord));
+        if (user?.uid) {
+          localStorage.setItem(`interview_last_completed_sim_${user.uid}`, JSON.stringify(simRecord));
+        }
+      } catch (storageErr) {
+        console.warn('Local storage mirror notice:', storageErr);
+      }
+
+      if (user?.uid) {
+        try {
+          await addDoc(collection(db, 'users', user.uid, 'simulations'), {
+            jobDescription,
+            questions,
+            evaluations,
+            score: aggregateScore,
+            isDegradedFallback,
+            createdAt: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.error('Failed to persist simulation record:', dbErr);
+        }
+
+        try {
+          await triggerAction('practice_interview');
+        } catch (actionErr) {
+          console.warn('Action trigger notice:', actionErr);
+        }
       }
 
       setActiveQuestionEvaluation(null);

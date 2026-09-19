@@ -222,12 +222,16 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         limit(10)
       );
       const simSnap = await getDocs(simQ);
-      const fetchedSims: SimulationContext[] = simSnap.docs.map(doc => ({
-        id: doc.id,
-        score: doc.data().score || doc.data().overallScore,
-        role: doc.data().role || doc.data().targetRole,
-        createdAt: doc.data().createdAt
-      }));
+      const fetchedSims: SimulationContext[] = simSnap.docs.map(doc => {
+        const data = doc.data();
+        const rawScore = data.score !== undefined ? data.score : data.overallScore;
+        return {
+          id: doc.id,
+          score: rawScore !== undefined ? rawScore : 75,
+          role: data.role || data.targetRole,
+          createdAt: data.createdAt
+        };
+      });
       setSimulations(fetchedSims);
     } catch (err) {
       console.warn("SystemOSContext fetch error:", err);

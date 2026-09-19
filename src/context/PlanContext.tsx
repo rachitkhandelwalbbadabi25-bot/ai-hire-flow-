@@ -116,6 +116,22 @@ export interface NotificationAlert {
   creditsAwarded?: number;
 }
 
+export interface ReferralRecord {
+  id: string;
+  referredEmail: string;
+  referredName?: string;
+  referredUid?: string;
+  referrerUid?: string;
+  referralCode: string;
+  status: 'completed' | 'pending';
+  rewardCredits: number;
+  rewardClaimed: boolean;
+  conditionMet: boolean;
+  createdAt: string;
+  completedAt?: string | null;
+  notes?: string;
+}
+
 // Backward compatible feature structure
 interface UserCredits {
   jobSearches: number;
@@ -136,6 +152,7 @@ interface PlanContextType {
   notifications: NotificationAlert[];
   isUpgradeModalOpen: boolean;
   leaderboard: any[];
+  referrals: ReferralRecord[];
   
   // Backward compatible old props
   credits: UserCredits | null;
@@ -150,7 +167,8 @@ interface PlanContextType {
   triggerAction: (actionType: 'run_analysis' | 'practice_interview' | 'track_job' | 'apply_job' | 'complete_lesson' | 'profile_complete' | 'ats_90_plus') => Promise<void>;
   buyCredits: (creditsAmount: number, price: number, promoCode?: string) => Promise<void>;
   applyPromoCode: (code: string) => { valid: boolean; discountPercent: number; description: string };
-  claimReferralReward: (referredUserEmail: string) => Promise<void>;
+  claimReferralReward: (referredUserEmailOrCode: string) => Promise<{ success: boolean; message: string }>;
+  refreshReferralStatus: () => Promise<void>;
   
   // Admin Methods
   adminUpdateCosts: (newCosts: Partial<CreditCosts>) => Promise<void>;
@@ -176,6 +194,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<NotificationAlert[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
 
   // Statically defined gamified metadata compiled with user progress
   const staticAchievements = [
@@ -350,6 +369,12 @@ export function PlanProvider({ children }: { children: ReactNode }) {
             triggerNotification(`Leveled Up to Lvl ${correctLevel}!`, `You unlocked the "${badgeTitle}" rank and profile badge!`, 'achievement');
           }
 
+          if (!wallet.referralCode) {
+            const genCode = 'HF-' + (user.uid.slice(0, 4) + Math.random().toString(36).substring(2, 5)).toUpperCase();
+            wallet.referralCode = genCode;
+            updateDoc(userRef, { 'creditWallet.referralCode': genCode }).catch(() => {});
+          }
+
           setCreditWallet(wallet);
         }
       },
@@ -378,9 +403,27 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       }
     );
 
+    // Load Real Referrals tracking ledger
+    const referralsQuery = collection(db, 'users', user.uid, 'referrals');
+    const unsubReferrals = onSnapshot(
+      referralsQuery,
+      (snap) => {
+        const records: ReferralRecord[] = [];
+        snap.forEach((d) => {
+          records.push({ id: d.id, ...d.data() } as ReferralRecord);
+        });
+        records.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setReferrals(records);
+      },
+      (error) => {
+        console.warn("Referrals tracking sync warning:", error.message);
+      }
+    );
+
     return () => {
       unsubUser();
       unsubTransactions();
+      unsubReferrals();
     };
   }, [user, plan]);
 
@@ -698,6 +741,58 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         await updateMissionProgress('daily_analyze', 1, false);
         await updateMissionProgress('weekly_analyze_5', 1, true);
         await updateAchievementProgress('ai_explorer', 1); // tracks variety of tool usage
+
+        // Fulfill referral reward condition upon first completed scan
+        if (creditWallet && creditWallet.referredBy && !creditWallet.hasCompletedAnalysis) {
+          try {
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, { 'creditWallet.hasCompletedAnalysis': true });
+
+            // Reward current user with welcome referral credits
+            await earnCredits(100, `Referral Welcome Bonus (First Scan Complete)`, 'referral');
+
+            // Find referrer by referral code
+            const refQuery = query(collection(db, 'users'), where('creditWallet.referralCode', '==', creditWallet.referredBy));
+            const refSnap = await getDocs(refQuery);
+            if (!refSnap.empty) {
+              const referrerDoc = refSnap.docs[0];
+              const referrerUid = referrerDoc.id;
+              const referrerData = referrerDoc.data();
+              const rWallet = referrerData.creditWallet;
+
+              if (rWallet) {
+                await updateDoc(doc(db, 'users', referrerUid), {
+                  'creditWallet.balance': (rWallet.balance || 0) + 100,
+                  'creditWallet.totalEarned': (rWallet.totalEarned || 0) + 100
+                });
+                await addDoc(collection(db, 'users', referrerUid, 'transactions'), {
+                  amount: 100,
+                  type: 'referral',
+                  label: `Referral Reward: ${user.email || 'Candidate'} completed first scan`,
+                  timestamp: new Date().toISOString()
+                });
+
+                // Update referral record in referrer's subcollection
+                await setDoc(doc(db, 'users', referrerUid, 'referrals', user.uid), {
+                  id: user.uid,
+                  referredUid: user.uid,
+                  referredEmail: user.email || 'Candidate',
+                  referredName: user.displayName || user.email?.split('@')[0] || 'Peer Candidate',
+                  referralCode: creditWallet.referredBy,
+                  status: 'completed',
+                  conditionMet: true,
+                  rewardCredits: 100,
+                  rewardClaimed: true,
+                  createdAt: new Date().toISOString(),
+                  completedAt: new Date().toISOString(),
+                  notes: 'Completed first ATS Resume Scan'
+                }, { merge: true });
+              }
+            }
+          } catch (e) {
+            console.warn("Auto-fulfill referral condition warning:", e);
+          }
+        }
         break;
       case 'practice_interview':
         await updateAchievementProgress('interview_champion', 1);
@@ -778,59 +873,334 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     return { valid: false, discountPercent: 0, description: 'Invalid promo code' };
   };
 
-  // Referral system tracking
-  const claimReferralReward = async (referredUserEmail: string) => {
-    if (!user || !creditWallet) return;
+  // Referral system tracking & claiming with strict fraud protection & condition enforcement
+  const claimReferralReward = async (identifierOrEmail: string): Promise<{ success: boolean; message: string }> => {
+    if (!user || !creditWallet) {
+      return { success: false, message: 'You must be logged in to redeem referrals.' };
+    }
     if (creditWallet.banReferrals) {
       triggerNotification('Access Denied', 'Your referral program privileges have been suspended.', 'info');
-      return;
+      return { success: false, message: 'Your referral program privileges have been suspended.' };
     }
 
-    // Secure Referral Engine validation
-    const emailToSearch = referredUserEmail.trim().toLowerCase();
-    
-    // Self referral check
-    if (user.email?.toLowerCase() === emailToSearch) {
-      triggerNotification('Referral Failed', 'You cannot refer yourself. Anti-abuse systems triggered.', 'info');
-      return;
+    const cleanInput = identifierOrEmail.trim();
+    if (!cleanInput) {
+      return { success: false, message: 'Please enter a valid referral code or email.' };
     }
 
-    // Find if user already referred this person or if they exist in DB
-    const querySnapshot = await getDocs(
-      query(collection(db, 'users'), where('email', '==', emailToSearch))
+    // Anti-abuse: Self referral check
+    const isSelfEmail = user.email && user.email.toLowerCase() === cleanInput.toLowerCase();
+    const isSelfCode = creditWallet.referralCode && creditWallet.referralCode.toUpperCase() === cleanInput.toUpperCase();
+    if (isSelfEmail || isSelfCode) {
+      triggerNotification('Self Referral Blocked', 'You cannot refer yourself. Anti-abuse systems triggered.', 'info');
+      return { success: false, message: 'You cannot refer yourself.' };
+    }
+
+    // Anti-abuse: Prevent duplicate claim of already completed referral
+    const existingRef = referrals.find(
+      r => r.referredEmail?.toLowerCase() === cleanInput.toLowerCase() ||
+           r.referralCode?.toUpperCase() === cleanInput.toUpperCase() ||
+           r.id === cleanInput
     );
-
-    if (querySnapshot.empty) {
-      triggerNotification('User Not Found', 'A user with that verified email has not registered yet.', 'info');
-      return;
+    if (existingRef && existingRef.status === 'completed') {
+      triggerNotification('Duplicate Claim', 'This referral has already been completed and rewarded.', 'info');
+      return { success: false, message: 'This referral has already been completed and rewarded.' };
     }
 
-    // Add +100 Credits to inviter
-    await earnCredits(100, `Successful Referral of ${emailToSearch}`, 'referral');
-    
-    // Add +100 Credits to referred user
-    const referredUserDoc = querySnapshot.docs[0];
-    const referredUserRef = doc(db, 'users', referredUserDoc.id);
-    const refData = referredUserDoc.data();
-    const refWallet = refData.creditWallet;
+    // Lookup candidate / target by code or email
+    const usersRef = collection(db, 'users');
+    let targetDocSnap: any = null;
+    let isCodeInput = false;
 
-    if (refWallet) {
-      const updatedRefWallet = {
-        ...refWallet,
-        balance: (refWallet.balance || 0) + 100,
-        totalEarned: (refWallet.totalEarned || 0) + 100
-      };
-      await updateDoc(referredUserRef, { creditWallet: updatedRefWallet });
-      
-      await addDoc(collection(db, 'users', referredUserDoc.id, 'transactions'), {
-        amount: 100,
-        type: 'referral',
-        label: `Referred by ${user.displayName || user.email}`,
-        timestamp: new Date().toISOString()
+    // First try by code
+    const codeQuery = query(usersRef, where('creditWallet.referralCode', '==', cleanInput.toUpperCase()));
+    const codeSnap = await getDocs(codeQuery);
+
+    if (!codeSnap.empty) {
+      targetDocSnap = codeSnap.docs[0];
+      isCodeInput = true;
+    } else {
+      // Try by email
+      const emailQuery = query(usersRef, where('email', '==', cleanInput.toLowerCase()));
+      const emailSnap = await getDocs(emailQuery);
+      if (!emailSnap.empty) {
+        targetDocSnap = emailSnap.docs[0];
+      }
+    }
+
+    // CASE 1: Current user is entering their referrer's code/email ("I was referred by X")
+    if (isCodeInput || (targetDocSnap && !creditWallet.referredBy)) {
+      const referrerDoc = targetDocSnap;
+      const referrerUid = referrerDoc.id;
+      const referrerData = referrerDoc.data();
+      const referrerCode = referrerData.creditWallet?.referralCode || cleanInput.toUpperCase();
+
+      if (referrerUid === user.uid) {
+        triggerNotification('Self Referral Blocked', 'You cannot refer yourself.', 'info');
+        return { success: false, message: 'You cannot refer yourself.' };
+      }
+
+      if (creditWallet.referredBy) {
+        triggerNotification('Already Referred', `You have already redeemed a referral (${creditWallet.referredBy}).`, 'info');
+        return { success: false, message: `You have already redeemed a referral (${creditWallet.referredBy}).` };
+      }
+
+      // Check condition: Has the current user completed their first ATS resume scan?
+      const resumesSnap = await getDocs(collection(db, 'users', user.uid, 'resumes'));
+      const hasCompletedScan = !resumesSnap.empty || creditWallet.hasCompletedAnalysis;
+
+      const userRef = doc(db, 'users', user.uid);
+      const referrerUserRef = doc(db, 'users', referrerUid);
+
+      if (hasCompletedScan) {
+        // Condition MET!
+        await earnCredits(100, `Referral Welcome Bonus (Referred by ${referrerData.email || referrerCode})`, 'referral');
+
+        const rWallet = referrerData.creditWallet;
+        if (rWallet) {
+          await updateDoc(referrerUserRef, {
+            'creditWallet.balance': (rWallet.balance || 0) + 100,
+            'creditWallet.totalEarned': (rWallet.totalEarned || 0) + 100
+          });
+          await addDoc(collection(db, 'users', referrerUid, 'transactions'), {
+            amount: 100,
+            type: 'referral',
+            label: `Referral Reward: ${user.email || 'Candidate'} completed first ATS scan`,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        await updateDoc(userRef, {
+          'creditWallet.referredBy': referrerCode,
+          'creditWallet.hasCompletedAnalysis': true
+        });
+
+        await setDoc(doc(db, 'users', referrerUid, 'referrals', user.uid), {
+          id: user.uid,
+          referredUid: user.uid,
+          referredEmail: user.email || 'Candidate',
+          referredName: user.displayName || user.email?.split('@')[0] || 'Peer Candidate',
+          referralCode: referrerCode,
+          status: 'completed',
+          conditionMet: true,
+          rewardCredits: 100,
+          rewardClaimed: true,
+          createdAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          notes: 'Completed first ATS Resume Scan'
+        });
+
+        await setDoc(doc(db, 'users', user.uid, 'referrals', `ref_from_${referrerUid}`), {
+          id: `ref_from_${referrerUid}`,
+          referrerUid: referrerUid,
+          referredEmail: referrerData.email || 'Referrer',
+          referralCode: referrerCode,
+          status: 'completed',
+          conditionMet: true,
+          rewardCredits: 100,
+          rewardClaimed: true,
+          createdAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          notes: 'Welcome referral bonus credited'
+        });
+
+        triggerNotification('Referral Unlocked!', `Success! Both you and your referrer received +100 credits!`, 'referral', 100);
+        return { success: true, message: 'Referral verified! +100 Credits added to your wallet.' };
+      } else {
+        // Condition NOT YET MET! Mark pending
+        await updateDoc(userRef, {
+          'creditWallet.referredBy': referrerCode
+        });
+
+        await setDoc(doc(db, 'users', referrerUid, 'referrals', user.uid), {
+          id: user.uid,
+          referredUid: user.uid,
+          referredEmail: user.email || 'Candidate',
+          referredName: user.displayName || user.email?.split('@')[0] || 'Peer Candidate',
+          referralCode: referrerCode,
+          status: 'pending',
+          conditionMet: false,
+          rewardCredits: 100,
+          rewardClaimed: false,
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          notes: 'Awaiting first ATS Resume Scan'
+        });
+
+        await setDoc(doc(db, 'users', user.uid, 'referrals', `ref_from_${referrerUid}`), {
+          id: `ref_from_${referrerUid}`,
+          referrerUid: referrerUid,
+          referredEmail: referrerData.email || 'Referrer',
+          referralCode: referrerCode,
+          status: 'pending',
+          conditionMet: false,
+          rewardCredits: 100,
+          rewardClaimed: false,
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          notes: 'Complete your first ATS resume scan to unlock +100 credits'
+        });
+
+        triggerNotification('Referral Linked!', 'Referral code registered! Complete your first ATS resume scan to unlock +100 credits.', 'info');
+        return { success: true, message: 'Referral code linked! Complete your first ATS resume scan to unlock +100 credits for both of you.' };
+      }
+    }
+
+    // CASE 2: Current user is entering friend's email to record or verify
+    const friendEmail = cleanInput.toLowerCase();
+
+    if (targetDocSnap) {
+      const friendUid = targetDocSnap.id;
+      const friendData = targetDocSnap.data();
+
+      if (friendData.creditWallet?.referredBy && friendData.creditWallet.referredBy !== creditWallet.referralCode) {
+        triggerNotification('Already Referred', `${friendEmail} was already referred by another invite code.`, 'info');
+        return { success: false, message: `${friendEmail} was already referred by another invite code.` };
+      }
+
+      const friendResumesSnap = await getDocs(collection(db, 'users', friendUid, 'resumes'));
+      const friendHasScanned = !friendResumesSnap.empty || friendData.creditWallet?.hasCompletedAnalysis;
+
+      if (friendHasScanned) {
+        await earnCredits(100, `Referral Reward: ${friendEmail}`, 'referral');
+
+        const fWallet = friendData.creditWallet;
+        if (fWallet && (!fWallet.referredBy || fWallet.referredBy === creditWallet.referralCode)) {
+          await updateDoc(doc(db, 'users', friendUid), {
+            'creditWallet.balance': (fWallet.balance || 0) + 100,
+            'creditWallet.totalEarned': (fWallet.totalEarned || 0) + 100,
+            'creditWallet.referredBy': creditWallet.referralCode,
+            'creditWallet.hasCompletedAnalysis': true
+          });
+          await addDoc(collection(db, 'users', friendUid, 'transactions'), {
+            amount: 100,
+            type: 'referral',
+            label: `Referred by ${user.displayName || user.email}`,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        await setDoc(doc(db, 'users', user.uid, 'referrals', friendUid), {
+          id: friendUid,
+          referredUid: friendUid,
+          referredEmail: friendEmail,
+          referredName: friendData.displayName || friendEmail.split('@')[0],
+          referralCode: creditWallet.referralCode,
+          status: 'completed',
+          conditionMet: true,
+          rewardCredits: 100,
+          rewardClaimed: true,
+          createdAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          notes: 'First ATS scan verified'
+        });
+
+        triggerNotification('Referral Verified!', `Success! ${friendEmail} completed their first scan. +100 credits awarded!`, 'referral', 100);
+        return { success: true, message: `Referral verified! +100 credits added to your wallet.` };
+      } else {
+        await setDoc(doc(db, 'users', user.uid, 'referrals', friendUid), {
+          id: friendUid,
+          referredUid: friendUid,
+          referredEmail: friendEmail,
+          referredName: friendData.displayName || friendEmail.split('@')[0],
+          referralCode: creditWallet.referralCode,
+          status: 'pending',
+          conditionMet: false,
+          rewardCredits: 100,
+          rewardClaimed: false,
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          notes: 'Awaiting friend to complete their first ATS resume scan'
+        });
+
+        triggerNotification('Referral Logged!', `Referral recorded! +100 credits will unlock as soon as ${friendEmail} completes their first scan.`, 'info');
+        return { success: true, message: `Referral recorded! Awaiting ${friendEmail} to complete their first ATS scan.` };
+      }
+    } else {
+      // Friend not registered yet
+      const inviteId = `invite_${friendEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      await setDoc(doc(db, 'users', user.uid, 'referrals', inviteId), {
+        id: inviteId,
+        referredEmail: friendEmail,
+        referredName: friendEmail.split('@')[0],
+        referralCode: creditWallet.referralCode,
+        status: 'pending',
+        conditionMet: false,
+        rewardCredits: 100,
+        rewardClaimed: false,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+        notes: 'Invite sent - pending registration & first ATS scan'
       });
+
+      triggerNotification('Invite Recorded!', `Invite logged for ${friendEmail}! Share your referral link with them.`, 'info');
+      return { success: true, message: `Invite logged! Once ${friendEmail} registers and scans their resume, you'll both receive +100 credits.` };
+    }
+  };
+
+  // Re-check pending referrals condition
+  const refreshReferralStatus = async () => {
+    if (!user || !creditWallet) return;
+    const pending = referrals.filter(r => r.status === 'pending');
+    if (pending.length === 0) return;
+
+    let unlockedCount = 0;
+    for (const item of pending) {
+      try {
+        let friendDoc: any = null;
+        if (item.referredUid) {
+          const snap = await getDoc(doc(db, 'users', item.referredUid));
+          if (snap.exists()) friendDoc = snap;
+        } else if (item.referredEmail) {
+          const q = query(collection(db, 'users'), where('email', '==', item.referredEmail.toLowerCase()));
+          const snap = await getDocs(q);
+          if (!snap.empty) friendDoc = snap.docs[0];
+        }
+
+        if (friendDoc) {
+          const friendUid = friendDoc.id;
+          const friendData = friendDoc.data();
+          const friendResumesSnap = await getDocs(collection(db, 'users', friendUid, 'resumes'));
+          const friendHasScanned = !friendResumesSnap.empty || friendData.creditWallet?.hasCompletedAnalysis;
+
+          if (friendHasScanned && !item.rewardClaimed) {
+            unlockedCount++;
+            await earnCredits(100, `Referral Reward: ${item.referredEmail}`, 'referral');
+
+            const fWallet = friendData.creditWallet;
+            if (fWallet && (!fWallet.referredBy || fWallet.referredBy === creditWallet.referralCode)) {
+              await updateDoc(doc(db, 'users', friendUid), {
+                'creditWallet.balance': (fWallet.balance || 0) + 100,
+                'creditWallet.totalEarned': (fWallet.totalEarned || 0) + 100,
+                'creditWallet.referredBy': creditWallet.referralCode,
+                'creditWallet.hasCompletedAnalysis': true
+              });
+              await addDoc(collection(db, 'users', friendUid, 'transactions'), {
+                amount: 100,
+                type: 'referral',
+                label: `Referred by ${user.displayName || user.email}`,
+                timestamp: new Date().toISOString()
+              });
+            }
+
+            await updateDoc(doc(db, 'users', user.uid, 'referrals', item.id), {
+              status: 'completed',
+              conditionMet: true,
+              rewardClaimed: true,
+              completedAt: new Date().toISOString(),
+              referredUid: friendUid,
+              notes: 'First ATS scan verified'
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Refresh referral check warning:", err);
+      }
     }
 
-    triggerNotification('Referral Unlocked!', `Success! Both you and ${emailToSearch} received +100 credits!`, 'referral', 100);
+    if (unlockedCount > 0) {
+      triggerNotification('Referrals Updated!', `+${unlockedCount * 100} Credits unlocked from completed referrals!`, 'referral', unlockedCount * 100);
+    }
   };
 
   // Administrative actions
@@ -1037,6 +1407,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     notifications,
     isUpgradeModalOpen,
     leaderboard,
+    referrals,
     credits,
     checkAccess,
     deductCredit,
@@ -1048,6 +1419,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     buyCredits,
     applyPromoCode,
     claimReferralReward,
+    refreshReferralStatus,
     adminUpdateCosts,
     adminRewardCredits,
     adminDeductCredits,

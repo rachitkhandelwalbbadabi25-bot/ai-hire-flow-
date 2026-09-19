@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -76,6 +76,8 @@ export default function PaymentGatewayModal({
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [qrCountdown, setQrCountdown] = useState(300);
   const [isProcessing, setIsProcessing] = useState(false);
+  const isFinalizingRef = useRef(false);
+  const processedOrdersRef = useRef<Set<string>>(new Set());
 
   // QR Session countdown timer
   useEffect(() => {
@@ -162,6 +164,7 @@ export default function PaymentGatewayModal({
           userId: user?.uid || 'guest_user',
           type: item.type,
           item: item.title,
+          packId: item.itemId,
           credits: item.credits
         })
       });
@@ -257,34 +260,51 @@ export default function PaymentGatewayModal({
     setAuthStepMessage('Verifying payment signature with banking network...');
     setErrorMessage(null);
 
-    try {
-      const orderId = txId || `rzp_pay_${Date.now().toString().slice(-8)}`;
-      const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const orderId = txId || `rzp_pay_${Date.now().toString().slice(-8)}`;
 
-      // Backend verification
-      try {
-        await fetch('/api/razorpay/verify-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: razorpayOrderId || `ord_${orderId}`,
-            razorpay_payment_id: orderId,
-            razorpay_signature: razorpaySignature || 'sig_verified_mock_256',
-            userId: user?.uid || 'guest',
-            type: item.type,
-            item: item.title,
-            credits: item.credits,
-            price: finalPrice
-          })
-        });
-      } catch (err) {
-        console.warn('Backend verification call note:', err);
+    if (processedOrdersRef.current.has(orderId)) {
+      console.warn('Payment order already finalized:', orderId);
+      return;
+    }
+    if (isFinalizingRef.current) {
+      console.warn('Finalization in progress, skipping duplicate invocation');
+      return;
+    }
+    isFinalizingRef.current = true;
+    processedOrdersRef.current.add(orderId);
+
+    const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    try {
+      // Mandatory backend verification
+      const verifyRes = await fetch('/api/razorpay/verify-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: razorpayOrderId || `ord_${orderId}`,
+          razorpay_payment_id: orderId,
+          razorpay_signature: razorpaySignature || (paymentMode === 'upi_qr' ? `sig_qr_${orderId}` : 'sig_verified_mock_256'),
+          userId: user?.uid || 'guest',
+          type: item.type,
+          item: item.title,
+          packId: item.itemId,
+          credits: item.credits,
+          price: finalPrice
+        })
+      });
+
+      const verifyData = await verifyRes.json().catch(() => ({}));
+      if (!verifyRes.ok || !verifyData.success) {
+        if (verifyData.alreadyAllocated) {
+          throw new Error('These credits have already been allocated to your account.');
+        }
+        throw new Error(verifyData.error || 'Payment signature verification failed.');
       }
 
       setAuthStepMessage('Unlocking credits & updating wallet balance...');
 
-      const addedCredits = item.credits;
-      const currentBal = creditWallet?.balance ?? 250;
+      const addedCredits = verifyData.credits || item.credits;
+      const currentBal = creditWallet?.balance ?? 0;
       const newBal = currentBal + addedCredits;
 
       if (user) {
@@ -376,8 +396,12 @@ export default function PaymentGatewayModal({
       }
     } catch (err: any) {
       console.error('Payment processing error:', err);
+      processedOrdersRef.current.delete(orderId);
       setErrorMessage(err.message || 'Payment processing was interrupted.');
       setPhase('error');
+    } finally {
+      isFinalizingRef.current = false;
+      setIsProcessing(false);
     }
   };
 
@@ -719,7 +743,10 @@ export default function PaymentGatewayModal({
                   <button
                     id="btn-confirm-qr-payment"
                     type="button"
-                    onClick={() => finalizePayment(`rzp_qr_${Date.now().toString().slice(-8)}`, 'Razorpay Dynamic UPI QR')}
+                    onClick={() => {
+                      const qrTxId = `rzp_qr_${Date.now().toString().slice(-8)}`;
+                      finalizePayment(qrTxId, 'Razorpay Dynamic UPI QR', `ord_${qrTxId}`, `sig_qr_${qrTxId}`);
+                    }}
                     className="w-full py-3.5 bg-teal-500 text-black font-bold uppercase text-xs font-mono tracking-wider rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-500/20"
                   >
                     <CheckCircle2 className="w-4 h-4" />

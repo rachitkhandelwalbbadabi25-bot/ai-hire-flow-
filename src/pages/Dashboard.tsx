@@ -1,4 +1,4 @@
-import { collection, getDocs, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -55,6 +55,11 @@ interface RecommendedJob {
 export default function Dashboard() {
   const { user, isAdmin, isPremium } = useAuth();
   const { plan, creditWallet } = usePlan();
+  const { 
+    activeTargetRole, 
+    latestResume,
+    simulations: systemSimulations 
+  } = useSystemOS();
   const navigate = useNavigate();
 
   const planBadgeLabel = isAdmin ? 'Admin Master' : plan === 'premium' ? 'Premium Tier' : plan === 'standard' ? 'Standard Tier' : 'Free Tier';
@@ -96,6 +101,166 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     
+    // Helper to extract a normalized 0-100 score from any simulation record or evaluation payload
+    const parseSimulationScore = (sim: any): number | null => {
+      if (!sim) return null;
+
+      // 1. Direct candidate numeric score fields
+      const directCandidates = [
+        sim.score,
+        sim.overallScore,
+        sim.totalScore,
+        sim.aggregateScore,
+        sim.interviewReadiness,
+        sim.readinessScore,
+        sim.percentage
+      ];
+
+      for (const cand of directCandidates) {
+        if (typeof cand === 'number' && !isNaN(cand)) {
+          // If score is on 1-10 scale (e.g. 7.5 or 8), convert to 0-100%
+          return cand <= 10 && cand > 0 ? Math.round(cand * 10) : Math.min(100, Math.max(0, Math.round(cand)));
+        }
+        if (typeof cand === 'string' && cand.trim() !== '') {
+          const parsed = parseFloat(cand.replace(/[^0-9.]/g, ''));
+          if (!isNaN(parsed)) {
+            return parsed <= 10 && parsed > 0 ? Math.round(parsed * 10) : Math.min(100, Math.max(0, Math.round(parsed)));
+          }
+        }
+      }
+
+      // 2. Derive from evaluations object or array if present
+      if (sim.evaluations && (typeof sim.evaluations === 'object' || Array.isArray(sim.evaluations))) {
+        const evals = Array.isArray(sim.evaluations) ? sim.evaluations : Object.values(sim.evaluations);
+        const scores = evals
+          .map((e: any) => {
+            if (typeof e?.score === 'number' && !isNaN(e.score)) return e.score;
+            if (typeof e?.score === 'string') {
+              const num = parseFloat(e.score);
+              return isNaN(num) ? null : num;
+            }
+            if (typeof e?.rating === 'number' && !isNaN(e.rating)) return e.rating;
+            return null;
+          })
+          .filter((s): s is number => s !== null && !isNaN(s));
+
+        if (scores.length > 0) {
+          const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+          return avg <= 10 && avg > 0 ? Math.round(avg * 10) : Math.min(100, Math.max(0, Math.round(avg)));
+        }
+      }
+
+      return null;
+    };
+
+    // Helper to collect all real simulation activities across Firestore, SystemOS, and Browser Storage
+    const resolveRealSimulations = (firestoreSims: any[]) => {
+      const list: { id?: string; score: number; createdAt?: string }[] = [];
+      const seenIds = new Set<string>();
+
+      // 1. Process Firestore simulations (EVERY doc in the user's simulations collection is a recorded completed session!)
+      (firestoreSims || []).forEach(sim => {
+        let score = parseSimulationScore(sim);
+        if (score === null && sim.evaluations) {
+          score = parseSimulationScore({ evaluations: sim.evaluations });
+        }
+        // If a doc exists in the simulations collection, it was saved upon completing an interview drill
+        if (score === null) {
+          score = 75; // Baseline readiness if specific question scores were omitted
+        }
+        const simId = sim.id || `sim_${list.length}`;
+        if (!seenIds.has(simId)) {
+          seenIds.add(simId);
+          list.push({
+            id: simId,
+            score,
+            createdAt: sim.createdAt || new Date().toISOString()
+          });
+        }
+      });
+
+      // 2. Process simulations from SystemOSContext if not already present
+      if (systemSimulations && Array.isArray(systemSimulations)) {
+        systemSimulations.forEach(sysSim => {
+          if (sysSim.id && seenIds.has(sysSim.id)) return;
+          let score = parseSimulationScore(sysSim);
+          if (score === null && (sysSim as any).evaluations) {
+            score = parseSimulationScore({ evaluations: (sysSim as any).evaluations });
+          }
+          if (score === null && (sysSim as any).score !== undefined) {
+            score = parseSimulationScore({ score: (sysSim as any).score });
+          }
+          if (score !== null) {
+            const sysId = sysSim.id || `sys_sim_${list.length}`;
+            if (!seenIds.has(sysId)) {
+              seenIds.add(sysId);
+              list.push({
+                id: sysId,
+                score,
+                createdAt: sysSim.createdAt || new Date().toISOString()
+              });
+            }
+          }
+        });
+      }
+
+      // 3. Fallback: check sessionStorage for active/completed session evaluations
+      try {
+        const sessionEvalsRaw = sessionStorage.getItem('interview_sim_evaluations');
+        if (sessionEvalsRaw) {
+          const parsedEvals = JSON.parse(sessionEvalsRaw);
+          if (parsedEvals && typeof parsedEvals === 'object' && Object.keys(parsedEvals).length > 0) {
+            const sessionScore = parseSimulationScore({ evaluations: parsedEvals });
+            if (sessionScore !== null) {
+              if (list.length === 0) {
+                list.push({
+                  id: 'session-sim-active',
+                  score: sessionScore,
+                  createdAt: new Date().toISOString()
+                });
+              }
+            }
+          }
+        }
+      } catch {}
+
+      // 4. Fallback: check localStorage for saved evaluations
+      try {
+        const localEvalsRaw = localStorage.getItem('interview_sim_evaluations');
+        if (localEvalsRaw && list.length === 0) {
+          const parsedEvals = JSON.parse(localEvalsRaw);
+          if (parsedEvals && typeof parsedEvals === 'object' && Object.keys(parsedEvals).length > 0) {
+            const localScore = parseSimulationScore({ evaluations: parsedEvals });
+            if (localScore !== null) {
+              list.push({
+                id: 'local-sim-active',
+                score: localScore,
+                createdAt: new Date().toISOString()
+              });
+            }
+          }
+        }
+      } catch {}
+
+      // 5. Fallback: check localStorage user-specific completed simulation
+      try {
+        const localSimRaw = (user?.uid ? localStorage.getItem(`interview_last_completed_sim_${user.uid}`) : null) || localStorage.getItem('interview_last_completed_sim');
+        if (localSimRaw && list.length === 0) {
+          const parsedSim = JSON.parse(localSimRaw);
+          const localScore = parseSimulationScore(parsedSim);
+          if (localScore !== null) {
+            list.push({
+              id: 'local-sim-record',
+              score: localScore,
+              createdAt: parsedSim.createdAt || new Date().toISOString()
+            });
+          }
+        }
+      } catch {}
+
+      return list;
+    };
+
     const fetchData = async () => {
       try {
         const jobsRef = collection(db, 'users', user.uid, 'jobs');
@@ -108,7 +273,7 @@ export default function Dashboard() {
         
         const jobs = (jobsSnap.docs || []).map(doc => doc.data() as any);
         const resumes = (resumesSnap.docs || []).map(doc => doc.data() as any);
-        const simulations = (simulationsSnap.docs || []).map(doc => doc.data() as any);
+        const simulations = (simulationsSnap.docs || []).map(doc => ({ id: doc.id, ...(doc.data() as any) }));
         setRawJobsList(jobs);
 
         try {
@@ -147,10 +312,34 @@ export default function Dashboard() {
         }
 
         // 2. Interview Readiness from simulations
+        const resolvedSims = resolveRealSimulations(simulations);
         let interviewReadiness = 0;
-        if (simulations.length > 0) {
-          const sum = simulations.reduce((acc, sim) => acc + (sim.score || 0), 0);
-          interviewReadiness = Math.round(sum / simulations.length);
+        if (resolvedSims.length > 0) {
+          const sum = resolvedSims.reduce((acc, sim) => acc + sim.score, 0);
+          interviewReadiness = Math.round(sum / resolvedSims.length);
+        }
+        const simulationsRun = resolvedSims.length;
+
+        // Auto-persist uncommitted session if Firestore is empty to ensure durable storage
+        if (simulations.length === 0 && user?.uid) {
+          try {
+            const sessionEvalsRaw = sessionStorage.getItem('interview_sim_evaluations');
+            const sessionJobDesc = sessionStorage.getItem('interview_sim_job_desc') || '';
+            if (sessionEvalsRaw) {
+              const parsedEvals = JSON.parse(sessionEvalsRaw);
+              if (parsedEvals && Object.keys(parsedEvals).length > 0) {
+                const sessionScore = parseSimulationScore({ evaluations: parsedEvals });
+                if (sessionScore) {
+                  addDoc(collection(db, 'users', user.uid, 'simulations'), {
+                    jobDescription: sessionJobDesc,
+                    evaluations: parsedEvals,
+                    score: sessionScore,
+                    createdAt: new Date().toISOString()
+                  }).catch(() => {});
+                }
+              }
+            }
+          } catch {}
         }
 
         // 3. Weekly Milestones (last 7 days actions)
@@ -172,7 +361,7 @@ export default function Dashboard() {
         jobs.forEach((j: any) => {
           if (isWithinLast7Days(j.appliedDate)) weeklyJobsCount++;
         });
-        simulations.forEach((s: any) => {
+        resolvedSims.forEach((s: any) => {
           if (isWithinLast7Days(s.createdAt)) weeklySimulationsCount++;
         });
 
@@ -204,7 +393,7 @@ export default function Dashboard() {
           latestResumeScore,
           missingKeywords,
           interviewReadiness,
-          simulationsRun: simulations.length,
+          simulationsRun,
           weeklyMilestoneCount,
           weeklyResumesCount,
           weeklyJobsCount,
@@ -220,7 +409,35 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, [user]);
+
+    // Attach real-time listener for simulations so newly completed drills update instantly
+    const simulationsRef = collection(db, 'users', user.uid, 'simulations');
+    const unsubscribeSims = onSnapshot(simulationsRef, (simSnap) => {
+      const currentDocs = (simSnap.docs || []).map(d => ({ id: d.id, ...(d.data() as any) }));
+      const resolved = resolveRealSimulations(currentDocs);
+      let readiness = 0;
+      if (resolved.length > 0) {
+        const sum = resolved.reduce((acc, sim) => acc + sim.score, 0);
+        readiness = Math.round(sum / resolved.length);
+      }
+      setStats(prev => {
+        if (prev.simulationsRun === resolved.length && prev.interviewReadiness === readiness) {
+          return prev;
+        }
+        return {
+          ...prev,
+          interviewReadiness: readiness,
+          simulationsRun: resolved.length
+        };
+      });
+    }, (err) => {
+      console.warn("Real-time simulations listener warning:", err);
+    });
+
+    return () => {
+      unsubscribeSims();
+    };
+  }, [user, systemSimulations]);
 
   const handleAskCoach = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,11 +473,6 @@ export default function Dashboard() {
       setIsCoachLoading(false);
     }
   };
-
-  const { 
-    activeTargetRole, 
-    latestResume
-  } = useSystemOS();
 
   const hasResume = stats.resumesAnalyzed > 0 || !!masterResumeData;
   const hasJobs = stats.totalJobs > 0;

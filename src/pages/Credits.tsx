@@ -36,12 +36,15 @@ import {
   FileText,
   ChevronDown,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  Clock,
+  Link2
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { cn } from '../lib/utils';
 
 import PaymentGatewayModal, { CheckoutItem } from '../components/PaymentGatewayModal';
+import { CREDIT_PACKS } from '../constants/creditPacks.ts';
 
 export default function CreditsPage() {
   const { user } = useAuth();
@@ -54,11 +57,13 @@ export default function CreditsPage() {
     dailyMissions,
     weeklyChallenges,
     leaderboard,
+    referrals,
     spendCredits,
     earnCredits,
     buyCredits,
     applyPromoCode,
     claimReferralReward,
+    refreshReferralStatus,
     adminUpdateCosts,
     adminRewardCredits,
     adminDeductCredits,
@@ -79,50 +84,16 @@ export default function CreditsPage() {
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState<{ success: boolean; text: string } | null>(null);
   const [copyCodeSuccess, setCopyCodeSuccess] = useState(false);
+  const [copyLinkSuccess, setCopyLinkSuccess] = useState(false);
 
   // Referral states
   const [referralEmailInput, setReferralEmailInput] = useState('');
+  const [isSubmittingReferral, setIsSubmittingReferral] = useState(false);
+  const [isRefreshingReferrals, setIsRefreshingReferrals] = useState(false);
+  const [referralStatusMessage, setReferralStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
-  // Store packages (Real pricing in INR & USD)
-  const storePackages = [
-    { 
-      id: 'pack_250', 
-      credits: 250, 
-      price: { INR: 299, USD: 4 }, 
-      priceFormatted: { INR: '₹299', USD: '$4' },
-      discount: 'Quick Boost', 
-      badge: 'Starter Top-Up',
-      idealFor: '10 ATS Scans or 5 Voice Mock Interviews'
-    },
-    { 
-      id: 'pack_750', 
-      credits: 750, 
-      price: { INR: 699, USD: 9 }, 
-      priceFormatted: { INR: '₹699', USD: '$9' },
-      discount: 'Best Value', 
-      badge: 'Recruitment Sprint',
-      recommended: true,
-      idealFor: 'Full interview campaign with outreach pitches'
-    },
-    { 
-      id: 'pack_2000', 
-      credits: 2000, 
-      price: { INR: 1499, USD: 19 }, 
-      priceFormatted: { INR: '₹1,499', USD: '$19' },
-      discount: '25% Savings', 
-      badge: 'Mastery Bundle',
-      idealFor: 'Multi-role interviewing & career transitions'
-    },
-    { 
-      id: 'pack_5000', 
-      credits: 5000, 
-      price: { INR: 2999, USD: 39 }, 
-      priceFormatted: { INR: '₹2,999', USD: '$39' },
-      discount: '40% Savings', 
-      badge: 'Enterprise Powerhouse',
-      idealFor: 'Continuous autonomous hiring prep'
-    }
-  ];
+  // Store packages (Finalized AI Credit Top-Up Pricing: MINI ₹49, BOOST ₹99, JOB HUNT ₹199, CAREER PACK ₹399)
+  const storePackages = CREDIT_PACKS;
 
   // Membership Plans for Pricing Tab
   const membershipPlans = [
@@ -249,11 +220,60 @@ export default function CreditsPage() {
     }
   };
 
+  const fallbackCopy = (text: string) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      textArea.remove();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleCopyCode = () => {
-    if (!creditWallet?.referralCode) return;
-    navigator.clipboard.writeText(creditWallet.referralCode);
-    setCopyCodeSuccess(true);
-    setTimeout(() => setCopyCodeSuccess(false), 2000);
+    const code = creditWallet?.referralCode;
+    if (!code) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(() => {
+        setCopyCodeSuccess(true);
+        setTimeout(() => setCopyCodeSuccess(false), 2000);
+      }).catch(() => {
+        fallbackCopy(code);
+        setCopyCodeSuccess(true);
+        setTimeout(() => setCopyCodeSuccess(false), 2000);
+      });
+    } else {
+      fallbackCopy(code);
+      setCopyCodeSuccess(true);
+      setTimeout(() => setCopyCodeSuccess(false), 2000);
+    }
+  };
+
+  const handleCopyLink = () => {
+    const code = creditWallet?.referralCode || '';
+    const link = `${window.location.origin}/?ref=${code}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(() => {
+        setCopyLinkSuccess(true);
+        setTimeout(() => setCopyLinkSuccess(false), 2000);
+      }).catch(() => {
+        fallbackCopy(link);
+        setCopyLinkSuccess(true);
+        setTimeout(() => setCopyLinkSuccess(false), 2000);
+      });
+    } else {
+      fallbackCopy(link);
+      setCopyLinkSuccess(true);
+      setTimeout(() => setCopyLinkSuccess(false), 2000);
+    }
   };
 
   const handleApplyPromo = () => {
@@ -268,9 +288,36 @@ export default function CreditsPage() {
 
   const handleReferralSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!referralEmailInput) return;
-    await claimReferralReward(referralEmailInput);
-    setReferralEmailInput('');
+    const input = referralEmailInput.trim();
+    if (!input) return;
+    setIsSubmittingReferral(true);
+    setReferralStatusMessage(null);
+    try {
+      const res = await claimReferralReward(input);
+      setReferralStatusMessage({
+        type: res.success ? 'success' : 'error',
+        text: res.message
+      });
+      if (res.success) {
+        setReferralEmailInput('');
+      }
+    } catch (err: any) {
+      setReferralStatusMessage({
+        type: 'error',
+        text: err?.message || 'Failed to submit referral. Please try again.'
+      });
+    } finally {
+      setIsSubmittingReferral(false);
+    }
+  };
+
+  const handleRefreshReferrals = async () => {
+    setIsRefreshingReferrals(true);
+    try {
+      await refreshReferralStatus();
+    } finally {
+      setIsRefreshingReferrals(false);
+    }
   };
 
   // Admin action submitters
@@ -479,48 +526,50 @@ export default function CreditsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        {/* Trust Signals Banner */}
-        <div className="mb-8 p-4 sm:p-5 bg-surface border border-border/80 rounded-2xl grid grid-cols-2 md:grid-cols-4 gap-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-accent/10 text-accent">
-              <ShieldCheck className="w-5 h-5" />
+        {/* Feature Info Strip - appears ONLY on Credit Wallet & Top-Ups and Membership Plans */}
+        {(activeTab === 'wallet' || activeTab === 'pricing') && (
+          <div className="mb-8 p-4 sm:p-5 bg-surface border border-border/80 rounded-2xl grid grid-cols-2 md:grid-cols-4 gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-accent/10 text-accent">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-ink">Secure Payment</p>
+                <p className="text-[10px] text-ink-dim font-mono">256-Bit SSL Encrypted</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-ink">Secure Payment</p>
-              <p className="text-[10px] text-ink-dim font-mono">256-Bit SSL Encrypted</p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-400/10 text-amber-400">
-              <Zap className="w-5 h-5" />
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-400/10 text-amber-400">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-ink">Instant Credit Top-Up</p>
+                <p className="text-[10px] text-ink-dim font-mono">Zero Waiting Period</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-ink">Instant Credit Top-Up</p>
-              <p className="text-[10px] text-ink-dim font-mono">Zero Waiting Period</p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-400/10 text-emerald-400">
-              <RotateCcw className="w-5 h-5" />
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-400/10 text-emerald-400">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-ink">Cancel Anytime</p>
+                <p className="text-[10px] text-ink-dim font-mono">No Lock-In Contracts</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-ink">Cancel Anytime</p>
-              <p className="text-[10px] text-ink-dim font-mono">No Lock-In Contracts</p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-400/10 text-blue-400">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-ink">Automated Tax Invoice</p>
-              <p className="text-[10px] text-ink-dim font-mono">Emailed Instantly</p>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-blue-400/10 text-blue-400">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-ink">Automated Tax Invoice</p>
+                <p className="text-[10px] text-ink-dim font-mono">Emailed Instantly</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <AnimatePresence mode="wait">
           {/* TAB 1: WALLET & STORE */}
@@ -643,6 +692,7 @@ export default function CreditsPage() {
                       return (
                         <div 
                           key={pack.id} 
+                          id={`credit-pack-${pack.id}`}
                           className={cn(
                             "bg-surface-light/60 border p-5 rounded-2xl flex flex-col justify-between transition-all relative",
                             pack.recommended ? "border-accent ring-1 ring-accent/30 shadow-md" : "border-border"
@@ -656,14 +706,14 @@ export default function CreditsPage() {
                           <div>
                             <div className="flex justify-between items-start mb-2">
                               <span className="text-[10px] bg-surface border border-border text-ink px-2 py-0.5 rounded-lg font-mono font-bold">
-                                {pack.badge}
+                                {pack.name}
                               </span>
                               <span className="text-[10px] text-accent font-mono font-bold">{pack.discount}</span>
                             </div>
                             <h4 className="text-2xl font-black font-mono text-ink mt-2 flex items-baseline gap-1">
                               +{pack.credits.toLocaleString()} <span className="text-[10px] font-bold uppercase text-ink-dim">CR</span>
                             </h4>
-                            <p className="text-[11px] text-ink-dim mt-1 font-sans leading-tight">{pack.idealFor}</p>
+                            <p className="text-xs text-ink-dim mt-1.5 font-sans leading-snug font-medium italic">"{pack.description}"</p>
                           </div>
 
                           <div className="mt-5 pt-3 border-t border-border/40">
@@ -676,10 +726,11 @@ export default function CreditsPage() {
 
                             <button 
                               type="button"
+                              id={`btn-topup-${pack.id}`}
                               onClick={() => handlePaymentInitiation({
                                 type: 'credits',
                                 item: pack.id,
-                                itemName: `${pack.credits} Credits Pack`,
+                                itemName: `${pack.name} (${pack.credits} Credits)`,
                                 price: finalPrice,
                                 currencySymbol: currency === 'INR' ? '₹' : '$',
                                 credits: pack.credits
@@ -687,7 +738,7 @@ export default function CreditsPage() {
                               className="min-h-[44px] w-full bg-accent text-black hover:bg-accent/90 transition-all py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                             >
                               <Lock className="w-3 h-3" />
-                              <span>Instant Top-Up</span>
+                              <span>Top-Up {pack.name}</span>
                             </button>
                           </div>
                         </div>
@@ -1099,73 +1150,281 @@ export default function CreditsPage() {
               className="grid grid-cols-1 lg:grid-cols-3 gap-8"
             >
               <div className="lg:col-span-2 space-y-8">
-                <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
-                  <h3 className="text-base font-bold text-ink font-sans mb-1">Referral Rewards Program</h3>
-                  <p className="text-xs text-ink-dim font-sans mb-6">Invite fellow job seekers and earn +100 Credits each upon first scan</p>
-
-                  <div className="bg-surface-light border border-border p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div>
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-ink-dim">Your Unique Invite Code</p>
-                      <span className="text-2xl font-black font-mono text-ink block mt-0.5">
-                        {creditWallet?.referralCode ?? '---'}
+                {/* Main Referral Card */}
+                <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-bold text-ink font-sans">Referral Rewards Program</h3>
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">
+                        +100 CR Each
                       </span>
                     </div>
-                    <button 
-                      onClick={handleCopyCode}
-                      className="min-h-[44px] bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider hover:bg-accent/90 flex items-center gap-2 cursor-pointer"
-                    >
-                      {copyCodeSuccess ? <Check className="w-4 h-4 text-emerald-950" /> : <Copy className="w-4 h-4" />}
-                      <span>{copyCodeSuccess ? 'Copied' : 'Copy Code'}</span>
-                    </button>
+                    <p className="text-xs text-ink-dim font-sans mt-1">
+                      Share your personal code with fellow candidates. Both of you receive +100 Credits when they complete their first ATS resume scan.
+                    </p>
+                  </div>
+
+                  {/* Metrics Summary Row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-surface-light/60 border border-border/60 p-3.5 rounded-2xl">
+                      <p className="text-[10px] font-mono text-ink-dim uppercase tracking-wider">Total Invites</p>
+                      <p className="text-xl font-black font-mono text-ink mt-0.5">{referrals.length}</p>
+                    </div>
+                    <div className="bg-surface-light/60 border border-border/60 p-3.5 rounded-2xl">
+                      <p className="text-[10px] font-mono text-ink-dim uppercase tracking-wider">Rewarded</p>
+                      <p className="text-xl font-black font-mono text-emerald-400 mt-0.5">
+                        {referrals.filter(r => r.status === 'completed').length}
+                      </p>
+                    </div>
+                    <div className="bg-surface-light/60 border border-border/60 p-3.5 rounded-2xl">
+                      <p className="text-[10px] font-mono text-ink-dim uppercase tracking-wider">Pending Scan</p>
+                      <p className="text-xl font-black font-mono text-amber-400 mt-0.5">
+                        {referrals.filter(r => r.status === 'pending').length}
+                      </p>
+                    </div>
+                    <div className="bg-surface-light/60 border border-border/60 p-3.5 rounded-2xl">
+                      <p className="text-[10px] font-mono text-ink-dim uppercase tracking-wider">Credits Earned</p>
+                      <p className="text-xl font-black font-mono text-accent mt-0.5">
+                        +{referrals.filter(r => r.status === 'completed').reduce((sum, r) => sum + (r.rewardCredits || 100), 0)} CR
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Share Boxes: Code and Direct Link */}
+                  <div className="space-y-4">
+                    {/* Invite Code Box */}
+                    <div className="bg-surface-light border border-border p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-ink-dim">Your Personal Referral Code</p>
+                        <span className="text-2xl font-black font-mono text-ink block mt-0.5 tracking-wider">
+                          {creditWallet?.referralCode ?? '---'}
+                        </span>
+                      </div>
+                      <button 
+                        onClick={handleCopyCode}
+                        className="min-h-[44px] w-full sm:w-auto bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider hover:bg-accent/90 flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-sm"
+                      >
+                        {copyCodeSuccess ? <Check className="w-4 h-4 text-emerald-950" /> : <Copy className="w-4 h-4" />}
+                        <span>{copyCodeSuccess ? 'Copied Code' : 'Copy Code'}</span>
+                      </button>
+                    </div>
+
+                    {/* Direct Invite Link Box */}
+                    <div className="bg-surface-light border border-border p-5 rounded-2xl space-y-2">
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-ink-dim">Shareable Invite Link</p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1 flex items-center bg-surface border border-border px-3.5 py-2.5 rounded-xl text-xs font-mono text-ink-dim overflow-hidden">
+                          <Link2 className="w-4 h-4 mr-2 shrink-0 text-ink-dim" />
+                          <span className="truncate select-all text-ink">
+                            {creditWallet?.referralCode ? `${window.location.origin}/?ref=${creditWallet.referralCode}` : 'Generating link...'}
+                          </span>
+                        </div>
+                        <button 
+                          onClick={handleCopyLink}
+                          disabled={!creditWallet?.referralCode}
+                          className="min-h-[44px] bg-surface-light hover:bg-surface border border-border text-ink px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                        >
+                          {copyLinkSuccess ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                          <span>{copyLinkSuccess ? 'Copied Link' : 'Copy Link'}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Redeem Form */}
-                  <form onSubmit={handleReferralSubmit} className="mt-6 space-y-3">
-                    <label className="block text-[11px] font-mono font-bold uppercase text-ink-dim">
-                      Redeem Friend's Registered Email
-                    </label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="email" 
-                        placeholder="friend@email.com" 
-                        value={referralEmailInput}
-                        onChange={(e) => setReferralEmailInput(e.target.value)}
-                        className="bg-surface-light border border-border px-4 py-2.5 rounded-xl text-xs font-sans text-ink focus:outline-none focus:border-accent flex-1"
-                      />
-                      <button 
-                        type="submit"
-                        className="min-h-[44px] bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider hover:bg-accent/90 cursor-pointer"
-                      >
-                        Redeem
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+                  <div className="pt-2 border-t border-border/50">
+                    <form onSubmit={handleReferralSubmit} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-mono font-bold uppercase text-ink-dim">
+                          Enter Friend's Email or Referral Code
+                        </label>
+                        {creditWallet?.referredBy && (
+                          <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Linked to {creditWallet.referredBy}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="e.g. HF-AB12 or friend@company.com" 
+                          value={referralEmailInput}
+                          onChange={(e) => setReferralEmailInput(e.target.value)}
+                          disabled={isSubmittingReferral}
+                          className="bg-surface-light border border-border px-4 py-2.5 rounded-xl text-xs font-sans text-ink focus:outline-none focus:border-accent flex-1"
+                        />
+                        <button 
+                          type="submit"
+                          disabled={isSubmittingReferral || !referralEmailInput.trim()}
+                          className="min-h-[44px] bg-accent text-black px-6 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          {isSubmittingReferral && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                          <span>Redeem</span>
+                        </button>
+                      </div>
 
-              {/* Leaderboard panel */}
-              <div className="bg-surface border border-border p-6 sm:p-7 rounded-3xl shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <Users className="w-5 h-5 text-accent" />
-                  <div>
-                    <h3 className="text-sm font-bold text-ink font-sans">Top Referrers</h3>
-                    <p className="text-[10px] text-ink-dim font-mono">Community Leaders</p>
+                      {referralStatusMessage && (
+                        <div className={cn(
+                          "p-3 rounded-xl text-xs font-sans border flex items-start gap-2.5",
+                          referralStatusMessage.type === 'success' 
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+                            : referralStatusMessage.type === 'info'
+                            ? "bg-accent/10 border-accent/30 text-ink"
+                            : "bg-red-500/10 border-red-500/30 text-red-400"
+                        )}>
+                          {referralStatusMessage.type === 'success' ? (
+                            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                          ) : (
+                            <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                          )}
+                          <span>{referralStatusMessage.text}</span>
+                        </div>
+                      )}
+                    </form>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {leaderboard.map((item, idx) => (
-                    <div key={idx} className="bg-surface-light/60 border border-border/40 p-3.5 rounded-xl flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-xs text-ink-dim w-4">#{idx+1}</span>
-                        <div>
-                          <p className="text-xs font-bold text-ink font-sans">{item.name}</p>
-                          <p className="text-[9px] text-ink-dim font-mono">{item.badge}</p>
-                        </div>
-                      </div>
-                      <span className="font-mono font-bold text-xs text-accent">+{item.earned} CR</span>
+                {/* Referral Tracking History Ledger */}
+                <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-ink font-sans">Referral Activity History</h4>
+                      <p className="text-[11px] text-ink-dim font-sans">Real-time status of candidates who signed up with your invite</p>
                     </div>
-                  ))}
+                    <button
+                      onClick={handleRefreshReferrals}
+                      disabled={isRefreshingReferrals}
+                      className="min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-mono text-ink-dim hover:text-ink bg-surface-light border border-border/80 hover:bg-surface transition-colors cursor-pointer disabled:opacity-50"
+                      title="Re-check pending referral milestones"
+                    >
+                      <RefreshCw className={cn("w-3.5 h-3.5", isRefreshingReferrals && "animate-spin text-accent")} />
+                      <span>{isRefreshingReferrals ? 'Checking...' : 'Refresh Status'}</span>
+                    </button>
+                  </div>
+
+                  {referrals.length === 0 ? (
+                    <div className="text-center py-10 px-4 border border-dashed border-border/80 rounded-2xl bg-surface-light/30">
+                      <div className="w-12 h-12 rounded-2xl bg-surface-light flex items-center justify-center mx-auto mb-3 text-ink-dim">
+                        <Users className="w-6 h-6 text-accent/60" />
+                      </div>
+                      <p className="text-xs font-bold text-ink font-sans">No referrals recorded yet</p>
+                      <p className="text-[11px] text-ink-dim font-sans max-w-sm mx-auto mt-1 leading-relaxed">
+                        Copy your invite code or link above and send it to your colleagues. As soon as they register and complete their first ATS resume scan, +100 Credits will unlock here automatically.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {referrals.map((ref) => (
+                        <div 
+                          key={ref.id}
+                          className="bg-surface-light/70 border border-border/70 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        >
+                          <div className="flex items-start sm:items-center gap-3">
+                            <div className={cn(
+                              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 sm:mt-0",
+                              ref.status === 'completed' 
+                                ? "bg-emerald-500/10 text-emerald-400" 
+                                : "bg-amber-500/10 text-amber-400"
+                            )}>
+                              {ref.status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs font-bold text-ink font-sans">
+                                  {ref.referredEmail || ref.referredName || 'Peer Candidate'}
+                                </p>
+                                <span className="text-[10px] font-mono text-ink-dim">
+                                  {ref.referralCode ? `(${ref.referralCode})` : ''}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-ink-dim mt-0.5">
+                                {ref.notes || (ref.status === 'completed' ? 'Completed first ATS Resume Scan' : 'Awaiting first ATS Resume Scan')}
+                              </p>
+                              {ref.createdAt && (
+                                <p className="text-[9px] font-mono text-ink-dim/80 mt-1">
+                                  Logged: {new Date(ref.createdAt).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40">
+                            <span className={cn(
+                              "text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full",
+                              ref.status === 'completed'
+                                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                            )}>
+                              {ref.status === 'completed' ? 'Reward Credited' : 'Pending 1st Scan'}
+                            </span>
+                            <span className="text-xs font-black font-mono text-accent sm:mt-1">
+                              +{ref.rewardCredits || 100} CR
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Leaderboard & Rules Panel */}
+              <div className="space-y-8">
+                {/* How It Works Card */}
+                <div className="bg-surface border border-border p-6 sm:p-7 rounded-3xl shadow-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-accent" />
+                    <h3 className="text-sm font-bold text-ink font-sans">Program Rules</h3>
+                  </div>
+
+                  <div className="space-y-3 text-xs text-ink-dim font-sans leading-relaxed">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-surface-light border border-border flex items-center justify-center text-[10px] font-mono font-bold text-ink shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <p><strong className="text-ink">Share:</strong> Send your invite link or code to a friend or colleague.</p>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-surface-light border border-border flex items-center justify-center text-[10px] font-mono font-bold text-ink shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <p><strong className="text-ink">Condition:</strong> The invited candidate creates an account and completes their first ATS resume scan.</p>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-surface-light border border-border flex items-center justify-center text-[10px] font-mono font-bold text-ink shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <p><strong className="text-ink">Instant Rewards:</strong> +100 Credits are instantly awarded to both accounts. Zero daily referral limits.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Community Leaderboard */}
+                <div className="bg-surface border border-border p-6 sm:p-7 rounded-3xl shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Users className="w-5 h-5 text-accent" />
+                    <div>
+                      <h3 className="text-sm font-bold text-ink font-sans">Top Referrers</h3>
+                      <p className="text-[10px] text-ink-dim font-mono">Community Leaders</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {leaderboard.map((item, idx) => (
+                      <div key={idx} className="bg-surface-light/60 border border-border/40 p-3.5 rounded-xl flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-xs text-ink-dim w-4">#{idx+1}</span>
+                          <div>
+                            <p className="text-xs font-bold text-ink font-sans">{item.name}</p>
+                            <p className="text-[9px] text-ink-dim font-mono">{item.badge}</p>
+                          </div>
+                        </div>
+                        <span className="font-mono font-bold text-xs text-accent">+{item.earned} CR</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </motion.div>

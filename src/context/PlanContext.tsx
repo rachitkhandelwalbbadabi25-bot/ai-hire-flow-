@@ -50,6 +50,7 @@ export const DEFAULT_CREDIT_COSTS: CreditCosts = {
 
 import { 
   SUBSCRIPTION_PLANS, 
+  PLAN_DAILY_CREDITS,
   PLAN_MONTHLY_CREDITS, 
   normalizePlanTier, 
   getPlanDefinition, 
@@ -60,12 +61,12 @@ import {
   SubscriptionPlan
 } from '../constants/subscriptionPlans';
 
-// Subscription plans monthly credits
+// Subscription plans daily credits
 export const PLAN_CREDITS = {
-  free: 200,
+  free: 150,
   pro: 500,
   standard: 500,
-  premium: 1500,
+  premium: 800,
   admin: 999999
 };
 
@@ -101,9 +102,12 @@ export interface CreditWallet {
   subscriptionCredits?: number;
   topupCredits?: number;
   usedThisMonth: number;
+  usedToday?: number;
   totalEarned: number;
   expiringSoon: number;
-  lastMonthlyGrant: string;
+  lastDailyGrant?: string;
+  lastDailyRefresh?: string;
+  lastMonthlyGrant?: string;
   streak: number;
   lastLoginDate: string;
   xp: number;
@@ -310,7 +314,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
           const data = snap.data();
           let wallet = data.creditWallet as CreditWallet;
           const userPlanNormalized = normalizePlanTier(data.plan || plan);
-          const targetMonthlyCredits = PLAN_MONTHLY_CREDITS[userPlanNormalized];
+          const targetDailyCredits = PLAN_DAILY_CREDITS[userPlanNormalized];
           const planDef = getPlanDefinition(userPlanNormalized);
 
           const now = new Date();
@@ -322,12 +326,15 @@ export function PlanProvider({ children }: { children: ReactNode }) {
           if (!wallet) {
             const generatedCode = 'HF-' + Math.random().toString(36).substring(2, 8).toUpperCase();
             const defaultWallet: CreditWallet = {
-              balance: targetMonthlyCredits,
-              subscriptionCredits: targetMonthlyCredits,
+              balance: userPlanNormalized === 'admin' ? 999999 : targetDailyCredits,
+              subscriptionCredits: userPlanNormalized === 'admin' ? 999999 : targetDailyCredits,
               topupCredits: 0,
               usedThisMonth: 0,
-              totalEarned: targetMonthlyCredits,
+              usedToday: 0,
+              totalEarned: targetDailyCredits,
               expiringSoon: 0,
+              lastDailyGrant: currentDayStr,
+              lastDailyRefresh: now.toISOString(),
               lastMonthlyGrant: now.toISOString(),
               streak: 1,
               lastLoginDate: currentDayStr,
@@ -362,41 +369,43 @@ export function PlanProvider({ children }: { children: ReactNode }) {
             wallet = defaultWallet;
             setSubscriptionUsage(initialUsage);
             
-            // Log initial grant
+            // Log initial daily grant
             await addDoc(collection(db, 'users', user.uid, 'transactions'), {
               amount: defaultWallet.balance,
               type: 'grant',
-              label: `Initial ${planDef.name} Monthly AI Credit Allocation`,
+              label: `Initial ${planDef.name} Daily AI Credit Allocation (Refreshes every 24 hours)`,
               timestamp: now.toISOString()
             });
           } else {
             let updatedWallet = { ...wallet };
             let walletChanged = false;
 
-            // 1. Check for monthly billing cycle / credit grant reset (every 30 days)
-            const lastGrantDate = wallet.lastMonthlyGrant ? new Date(wallet.lastMonthlyGrant) : null;
-            const daysSinceGrant = lastGrantDate ? (now.getTime() - lastGrantDate.getTime()) / (1000 * 3600 * 24) : 999;
-            const isNewBillingMonth = !lastGrantDate || daysSinceGrant >= 30;
+            // 1. Check for 24-hour daily subscription credit refresh
+            // Unused daily subscription credits do NOT accumulate.
+            // Purchased top-up credits remain separate and do NOT expire.
+            const lastGrantDay = wallet.lastDailyGrant || (wallet.lastDailyRefresh ? getDayString(new Date(wallet.lastDailyRefresh)) : null);
+            const isNewDay = !lastGrantDay || lastGrantDay !== currentDayStr;
 
-            if (isNewBillingMonth) {
-              const existingTopup = wallet.topupCredits ?? Math.max(0, wallet.balance - (wallet.subscriptionCredits ?? 0));
-              const newSubCredits = targetMonthlyCredits;
-              const newBalance = newSubCredits + existingTopup;
+            if (isNewDay) {
+              const existingTopup = wallet.topupCredits ?? Math.max(0, (wallet.balance || 0) - (wallet.subscriptionCredits || 0));
+              const newSubCredits = userPlanNormalized === 'admin' ? 999999 : targetDailyCredits;
+              const newBalance = userPlanNormalized === 'admin' ? 999999 : (newSubCredits + existingTopup);
 
               updatedWallet = {
                 ...updatedWallet,
                 subscriptionCredits: newSubCredits,
                 topupCredits: existingTopup,
                 balance: newBalance,
-                usedThisMonth: 0,
-                lastMonthlyGrant: now.toISOString()
+                usedToday: 0,
+                lastDailyGrant: currentDayStr,
+                lastDailyRefresh: now.toISOString()
               };
               walletChanged = true;
 
               await addDoc(collection(db, 'users', user.uid, 'transactions'), {
                 amount: newSubCredits,
                 type: 'grant',
-                label: `${planDef.name} Monthly AI Credit Allocation`,
+                label: `${planDef.name} Daily AI Credit Allocation (Refreshes every 24 hours)`,
                 timestamp: now.toISOString()
               });
             }
@@ -463,18 +472,17 @@ export function PlanProvider({ children }: { children: ReactNode }) {
               interviewLabsWeekly: rawUsage.weekId === currentWeekStr ? (rawUsage.interviewLabsWeekly || 0) : 0,
 
               monthId: currentMonthStr,
-              atsAnalysesMonthly: isNewBillingMonth || rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.atsAnalysesMonthly || 0),
-              interviewLabsMonthly: isNewBillingMonth || rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.interviewLabsMonthly || 0),
-              jobsTrackedMonthly: isNewBillingMonth || rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.jobsTrackedMonthly || 0),
-              resumeEditsMonthly: isNewBillingMonth || rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.resumeEditsMonthly || 0)
+              atsAnalysesMonthly: rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.atsAnalysesMonthly || 0),
+              interviewLabsMonthly: rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.interviewLabsMonthly || 0),
+              jobsTrackedMonthly: rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.jobsTrackedMonthly || 0),
+              resumeEditsMonthly: rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.resumeEditsMonthly || 0)
             };
 
             setSubscriptionUsage(syncedUsage);
 
             const usageNeedsSync = rawUsage.dailyDate !== currentDayStr || 
                                    rawUsage.weekId !== currentWeekStr || 
-                                   rawUsage.monthId !== currentMonthStr || 
-                                   isNewBillingMonth;
+                                   rawUsage.monthId !== currentMonthStr;
 
             if (walletChanged || usageNeedsSync) {
               await updateDoc(userRef, { 
@@ -696,7 +704,8 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       subscriptionCredits: subCredits,
       topupCredits: topupCredits,
       balance: subCredits + topupCredits,
-      usedThisMonth: (creditWallet.usedThisMonth || 0) + cost
+      usedThisMonth: (creditWallet.usedThisMonth || 0) + cost,
+      usedToday: (creditWallet.usedToday || 0) + cost
     };
 
     const userRef = doc(db, 'users', user.uid);
@@ -1526,13 +1535,14 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     const userRef = doc(db, 'users', user.uid);
     const normalized = normalizePlanTier(newPlan);
     const planDef = getPlanDefinition(normalized);
-    const newSubCredits = planDef.monthlyCredits;
+    const newSubCredits = planDef.dailyCredits;
     const now = new Date();
     
     const existingTopup = creditWallet?.topupCredits ?? 0;
     const updatedWallet: CreditWallet = {
       ...(creditWallet || {
         usedThisMonth: 0,
+        usedToday: 0,
         totalEarned: 0,
         expiringSoon: 0,
         streak: 1,
@@ -1549,6 +1559,8 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       subscriptionCredits: newSubCredits,
       topupCredits: existingTopup,
       balance: newSubCredits + existingTopup,
+      lastDailyGrant: getDayString(now),
+      lastDailyRefresh: now.toISOString(),
       lastMonthlyGrant: now.toISOString()
     };
 

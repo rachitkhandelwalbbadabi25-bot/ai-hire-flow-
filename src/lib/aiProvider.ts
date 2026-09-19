@@ -1,3 +1,5 @@
+import { auth } from './firebase';
+
 export type AIProviderId = 'velona' | 'gemini';
 
 export interface AIProviderInfo {
@@ -118,9 +120,25 @@ export async function generateWithVelonaDetailed(options: {
   };
 }): Promise<VelonaDetailedResponse> {
   const endpoint = (typeof window !== 'undefined' ? '' : 'http://localhost:3000') + '/api/velona/generate';
+  
+  const currentUser = auth.currentUser;
+  let idToken: string | undefined;
+  if (currentUser) {
+    try {
+      idToken = await currentUser.getIdToken();
+    } catch {
+      // ignore
+    }
+  }
+
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}),
+      ...(currentUser?.uid ? { 'x-user-id': currentUser.uid } : {}),
+      ...(currentUser?.email ? { 'x-user-email': currentUser.email } : {})
+    },
     body: JSON.stringify({
       prompt: options.prompt,
       systemPrompt: options.systemPrompt,
@@ -128,7 +146,9 @@ export async function generateWithVelonaDetailed(options: {
       jsonMode: options.jsonMode ?? false,
       maxTokens: options.maxTokens,
       operation: options.operation || 'general',
-      meta: options.meta
+      meta: options.meta,
+      userId: currentUser?.uid,
+      userEmail: currentUser?.email
     })
   });
 

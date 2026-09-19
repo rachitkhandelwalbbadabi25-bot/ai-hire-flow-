@@ -45,7 +45,7 @@ import { cn } from '../lib/utils';
 
 import PaymentGatewayModal, { CheckoutItem } from '../components/PaymentGatewayModal';
 import { CREDIT_PACKS } from '../constants/creditPacks.ts';
-import { normalizePlanTier, PLAN_MONTHLY_CREDITS, SUBSCRIPTION_PLANS } from '../constants/subscriptionPlans';
+import { normalizePlanTier, PLAN_DAILY_CREDITS, PLAN_MONTHLY_CREDITS, SUBSCRIPTION_PLANS } from '../constants/subscriptionPlans';
 
 export default function CreditsPage() {
   const { user } = useAuth();
@@ -111,17 +111,16 @@ export default function CreditsPage() {
       period: '/ month',
       description: 'Standard baseline intelligence for individual career explorers.',
       icon: Shield,
-      creditsAdded: 200,
+      creditsAdded: 150,
       features: [
-        '200 AI Credits / month',
-        '10 Job Searches / day',
-        '5 ATS Analyses / week',
-        '3 Interview Labs / week',
-        '10 new jobs tracked / month',
-        '2 Resume Edits / month',
-        '5 Career Advisor chats / day',
-        'Earn extra credits via daily login & referrals',
-        'Credit top-ups available'
+        '150 AI Credits/day',
+        '10 Job Searches/day',
+        '5 ATS Analyses/week',
+        '3 Interview Labs/week',
+        '10 new jobs tracked/month',
+        '2 Resume Edits/month',
+        '5 Career Advisor chats/day',
+        'Earn additional credits through daily login, referrals, achievements, onboarding and campaigns'
       ],
       buttonText: 'Current Plan',
       disabled: normalizedPlan === 'free'
@@ -130,23 +129,22 @@ export default function CreditsPage() {
       id: 'pro',
       name: 'Pro',
       tagline: 'For students & casual job seekers',
-      price: { INR: '₹149', USD: '$3' },
-      rawPrice: { INR: 149, USD: 3 },
+      badge: 'RECOMMENDED',
+      price: { INR: '₹149', USD: '$2' },
+      rawPrice: { INR: 149, USD: 2 },
       period: '/ month',
       recommended: true,
       description: 'Affordable acceleration tailored for students and casual job seekers.',
       icon: Zap,
       creditsAdded: 500,
       features: [
-        '500 AI Credits / month',
-        '30 Job Searches / day',
-        '20 ATS Analyses / month',
-        '15 Interview Labs / month',
-        '75 new jobs tracked / month',
-        '10 Resume Edits / month',
-        '30 Career Advisor chats / day',
-        'Full Personalized Skill Roadmap',
-        'Credit top-ups available'
+        '500 AI Credits/day',
+        '30 Job Searches/day',
+        '20 ATS Analyses/month',
+        '15 Interview Labs/month',
+        '75 new jobs tracked/month',
+        '10 Resume Edits/month',
+        '30 Career Advisor chats/day'
       ],
       buttonText: 'Upgrade to Pro',
       disabled: normalizedPlan === 'pro' || normalizedPlan === 'premium' || normalizedPlan === 'admin'
@@ -155,22 +153,20 @@ export default function CreditsPage() {
       id: 'premium',
       name: 'Premium',
       tagline: 'For active job seekers',
-      price: { INR: '₹249', USD: '$5' },
-      rawPrice: { INR: 249, USD: 5 },
+      price: { INR: '₹249', USD: '$4' },
+      rawPrice: { INR: 249, USD: 4 },
       period: '/ month',
       description: 'Maximum velocity and power for active candidates hunting their next dream role.',
       icon: Sparkles,
-      creditsAdded: 1500,
+      creditsAdded: 800,
       features: [
-        '1,500 AI Credits / month',
-        'High / Unlimited Job Searches*',
-        '50 ATS Analyses / month',
-        '30 Interview Labs / month',
-        'Unlimited Job Tracker*',
-        '25 Resume Edits / month',
-        'High Career Advisor usage*',
-        'Priority AI Engine Processing',
-        'Credit top-ups available'
+        '800 AI Credits/day',
+        'High/Unlimited Job Searches*',
+        '50 ATS Analyses/month',
+        '30 Interview Labs/month',
+        'Unlimited Job Tracker',
+        '25 Resume Edits/month',
+        'High Career Advisor usage'
       ],
       buttonText: 'Unlock Premium',
       disabled: normalizedPlan === 'premium' || normalizedPlan === 'admin'
@@ -184,8 +180,8 @@ export default function CreditsPage() {
       a: 'Activation is instantaneous. As soon as the payment gateway (Razorpay or Stripe) confirms the transaction, our real-time webhook updates your account and credits your wallet immediately.'
     },
     {
-      q: 'Do unused credits roll over to the next month?',
-      a: 'Yes. Top-up credit packs never expire. For monthly recurring plans, unused subscription credits roll over as long as your subscription remains active.'
+      q: 'How do daily credits and rollover work?',
+      a: 'Purchased top-up credit packs never expire and roll over indefinitely. Daily subscription credits refresh every 24 hours (unused daily subscription credits do not accumulate). Your account automatically spends daily subscription credits before using purchased top-up credits.'
     },
     {
       q: 'Can I cancel my subscription at any time?',
@@ -422,11 +418,11 @@ export default function CreditsPage() {
   };
 
   // Helper values for rendering progress wheels
-  const totalMonthlyAllowance = PLAN_MONTHLY_CREDITS[normalizedPlan] || 200;
+  const totalDailyAllowance = PLAN_DAILY_CREDITS[normalizedPlan] || 150;
   const percentageUsed = creditWallet 
-    ? Math.round(((creditWallet.usedThisMonth) / totalMonthlyAllowance) * 100)
+    ? Math.min(100, Math.round(((creditWallet.usedToday || 0) / totalDailyAllowance) * 100))
     : 0;
-  const strokeDashoffset = 440 - (440 * Math.min(100, percentageUsed)) / 100;
+  const strokeDashoffset = 377 - (377 * Math.min(100, percentageUsed)) / 100;
 
   // Derive chart data from real user transactions
   const chartData = React.useMemo(() => {
@@ -605,10 +601,13 @@ export default function CreditsPage() {
               <div className="lg:col-span-2 space-y-8">
                 {/* Allowance & Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Monthly used wheel */}
+                  {/* Daily used wheel */}
                   <div className="bg-surface border border-border p-6 rounded-3xl flex flex-col items-center justify-center text-center shadow-sm">
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-ink-dim mb-4">Monthly Allocation</h3>
-                    <div className="relative w-36 h-36 flex items-center justify-center mb-4">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <Clock className="w-3.5 h-3.5 text-accent" />
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-ink-dim">Daily Allocation</h3>
+                    </div>
+                    <div className="relative w-36 h-36 flex items-center justify-center mb-3">
                       <svg className="w-full h-full transform -rotate-90">
                         <circle cx="72" cy="72" r="60" className="stroke-surface-light fill-transparent stroke-[8]" />
                         <circle 
@@ -617,18 +616,21 @@ export default function CreditsPage() {
                           r="60" 
                           className="stroke-accent fill-transparent stroke-[8] transition-all duration-1000"
                           strokeDasharray="377"
-                          strokeDashoffset={377 - (377 * Math.min(100, percentageUsed)) / 100}
+                          strokeDashoffset={strokeDashoffset}
                           strokeLinecap="round"
                         />
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center">
                         <span className="text-2xl font-black font-mono text-ink">{percentageUsed}%</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-ink-dim">Utilized</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-ink-dim">Today</span>
                       </div>
                     </div>
-                    <p className="text-xs font-mono font-semibold text-ink-dim">
-                      {creditWallet?.usedThisMonth ?? 0} / {totalMonthlyAllowance} Credits Used
+                    <p className="text-xs font-mono font-semibold text-ink mb-1">
+                      {creditWallet?.usedToday ?? 0} / {totalDailyAllowance} Daily Credits
                     </p>
+                    <span className="text-[10px] font-mono text-accent bg-accent/10 px-2.5 py-0.5 rounded-full font-bold">
+                      Refreshes Every 24h
+                    </span>
                   </div>
 
                   {/* Summary Stats */}
@@ -641,17 +643,21 @@ export default function CreditsPage() {
                           <span className="text-xs font-mono font-bold text-accent uppercase">{normalizedPlan} Tier</span>
                         </div>
                         <div className="flex justify-between items-center border-b border-border/40 pb-2.5">
-                          <span className="text-xs text-ink-dim font-sans">Total Lifetime Earned</span>
-                          <span className="text-xs font-mono font-bold text-ink">{creditWallet?.totalEarned?.toLocaleString() ?? 250} CR</span>
+                          <span className="text-xs text-ink-dim font-sans">Daily Plan Credits</span>
+                          <span className="text-xs font-mono font-bold text-ink">
+                            {normalizedPlan === 'admin' ? 'Unlimited' : `${creditWallet?.subscriptionCredits ?? totalDailyAllowance} / ${totalDailyAllowance}`}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center border-b border-border/40 pb-2.5">
-                          <span className="text-xs text-ink-dim font-sans">Hunter Level</span>
-                          <span className="text-xs font-mono font-bold text-amber-400">Level {creditWallet?.level ?? 1}</span>
+                          <span className="text-xs text-ink-dim font-sans">Purchased Top-Up Credits</span>
+                          <span className="text-xs font-mono font-bold text-emerald-400">
+                            {creditWallet?.topupCredits?.toLocaleString() ?? 0} (No Expiry)
+                          </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-ink-dim font-sans">Active Streak</span>
-                          <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
-                            <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" /> {creditWallet?.streak ?? 1} Days Active
+                          <span className="text-xs text-ink-dim font-sans">Active Daily Streak</span>
+                          <span className="text-xs font-mono font-bold text-orange-400 flex items-center gap-1">
+                            <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" /> {creditWallet?.streak ?? 1} Days
                           </span>
                         </div>
                       </div>
@@ -659,14 +665,16 @@ export default function CreditsPage() {
 
                     <div className="bg-surface-light border border-border rounded-xl p-3 mt-4">
                       <p className="text-[10px] text-accent font-mono font-bold uppercase tracking-wider flex items-center gap-1 mb-0.5">
-                        <Zap className="w-3 h-3" /> Monthly Credit Allocation
+                        <Zap className="w-3 h-3" /> AI Credits Daily — Refreshes every day
                       </p>
                       <p className="text-[11px] text-ink-dim leading-relaxed font-sans">
-                        {normalizedPlan === 'premium'
-                          ? '1,500 monthly AI Credits and high-volume limits reset every 30 days.'
+                        {normalizedPlan === 'admin'
+                          ? 'Unlimited AI credits and zero usage limits on all intelligence engines.'
+                          : normalizedPlan === 'premium'
+                          ? '800 AI Credits/day reset every 24 hours. Top-up credits remain separate and never expire.'
                           : normalizedPlan === 'pro'
-                          ? '500 monthly AI Credits and expanded allowances reset every 30 days.'
-                          : '200 monthly AI Credits refresh every 30 days. Top-up credits never expire.'}
+                          ? '500 AI Credits/day reset every 24 hours. Top-up credits remain separate and never expire.'
+                          : '150 AI Credits/day reset every 24 hours. Daily credits are used before top-up credits.'}
                       </p>
                     </div>
                   </div>
@@ -884,6 +892,28 @@ export default function CreditsPage() {
               exit={{ opacity: 0, y: -15 }}
               className="space-y-8"
             >
+              {/* Daily Refresh Information Banner */}
+              <div className="bg-accent/10 border border-accent/30 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-accent/20 flex items-center justify-center text-accent shrink-0">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold font-mono text-accent uppercase tracking-wider">
+                        AI Credits Daily — Refreshes every day
+                      </span>
+                      <span className="bg-accent/20 text-accent text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full">
+                        24h Refresh Cycle
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink/80 mt-1 leading-relaxed">
+                      Daily subscription credits refresh every 24 hours (unused daily credits do not accumulate). Purchased top-up credits remain separate and do not expire.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Plans Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {membershipPlans.map((p) => {
@@ -916,14 +946,14 @@ export default function CreditsPage() {
                         </div>
                         <p className="text-xs text-ink-dim leading-relaxed font-sans mb-6">{p.description}</p>
 
-                        {/* Post-Payment Outcome */}
+                        {/* Daily Plan Allotment */}
                         {p.id !== 'free' && (
                           <div className="mb-6 p-3 bg-surface-light border border-border rounded-xl">
                             <p className="text-[10px] font-mono font-bold text-accent uppercase tracking-wider flex items-center gap-1 mb-0.5">
-                              <Zap className="w-3 h-3" /> Post-Payment Outcome:
+                              <Zap className="w-3 h-3" /> Daily Plan Allotment:
                             </p>
                             <p className="text-xs text-ink font-semibold">
-                              +{p.creditsAdded.toLocaleString()} Credits added immediately & feature barriers lifted.
+                              {p.creditsAdded.toLocaleString()} Daily Credits refreshed every 24h & feature limits active.
                             </p>
                           </div>
                         )}

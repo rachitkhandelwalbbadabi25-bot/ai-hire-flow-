@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 
 export interface AnalysisJobRecord {
   analysisId: string;
@@ -150,12 +150,18 @@ class AnalysisJobService {
     onProgress?.('Auditing resume against ATS benchmarks with Velona GLM 5.3 Flash...');
 
     // Kick off the background processing job on the backend
+    const currentUser = auth.currentUser;
     const startRes = await fetch('/api/resume/analyze-job', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(userId ? { 'x-user-id': userId } : (currentUser?.uid ? { 'x-user-id': currentUser.uid } : {})),
+        ...(currentUser?.email ? { 'x-user-email': currentUser.email } : {})
+      },
       body: JSON.stringify({
         analysisId,
-        userId,
+        userId: userId || currentUser?.uid,
+        userEmail: currentUser?.email,
         resumeText,
         jobDescription: jobDesc,
         fileType: fileType || 'pdf'

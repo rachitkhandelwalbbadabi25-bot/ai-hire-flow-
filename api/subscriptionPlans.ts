@@ -28,7 +28,8 @@ export interface SubscriptionPlan {
     USD: string;
   };
   period: string;
-  monthlyCredits: number;
+  dailyCredits: number;
+  monthlyCredits?: number;
   recommended?: boolean;
   limits: {
     jobSearches: PlanFeatureLimitItem;
@@ -50,7 +51,8 @@ export const SUBSCRIPTION_PLANS: Record<'free' | 'pro' | 'premium', Subscription
     price: { INR: 0, USD: 0 },
     priceFormatted: { INR: '₹0', USD: '$0' },
     period: '/month',
-    monthlyCredits: 200,
+    dailyCredits: 150,
+    monthlyCredits: 150,
     limits: {
       jobSearches: { limit: 10, period: 'day', display: '10 Job Searches/day' },
       atsAnalyses: { limit: 5, period: 'week', display: '5 ATS Analyses/week' },
@@ -60,15 +62,14 @@ export const SUBSCRIPTION_PLANS: Record<'free' | 'pro' | 'premium', Subscription
       careerAdvisor: { limit: 5, period: 'day', display: '5 Career Advisor chats/day' }
     },
     bulletFeatures: [
-      '200 AI Credits/month',
+      '150 AI Credits/day',
       '10 Job Searches/day',
       '5 ATS Analyses/week',
       '3 Interview Labs/week',
       '10 new jobs tracked/month',
       '2 Resume Edits/month',
       '5 Career Advisor chats/day',
-      'Earn additional credits through daily login, referrals, achievements, onboarding and campaigns',
-      'Credit top-ups available'
+      'Earn additional credits through daily login, referrals, achievements, onboarding and campaigns'
     ]
   },
   pro: {
@@ -79,6 +80,7 @@ export const SUBSCRIPTION_PLANS: Record<'free' | 'pro' | 'premium', Subscription
     price: { INR: 149, USD: 2 },
     priceFormatted: { INR: '₹149', USD: '$2' },
     period: '/month',
+    dailyCredits: 500,
     monthlyCredits: 500,
     recommended: true,
     limits: {
@@ -90,7 +92,7 @@ export const SUBSCRIPTION_PLANS: Record<'free' | 'pro' | 'premium', Subscription
       careerAdvisor: { limit: 30, period: 'day', display: '30 Career Advisor chats/day' }
     },
     bulletFeatures: [
-      '500 AI Credits/month',
+      '500 AI Credits/day',
       '30 Job Searches/day',
       '20 ATS Analyses/month',
       '15 Interview Labs/month',
@@ -106,7 +108,8 @@ export const SUBSCRIPTION_PLANS: Record<'free' | 'pro' | 'premium', Subscription
     price: { INR: 249, USD: 4 },
     priceFormatted: { INR: '₹249', USD: '$4' },
     period: '/month',
-    monthlyCredits: 1500,
+    dailyCredits: 800,
+    monthlyCredits: 800,
     limits: {
       jobSearches: { limit: 999999, period: 'unlimited', display: 'High/Unlimited Job Searches*' },
       atsAnalyses: { limit: 50, period: 'month', display: '50 ATS Analyses/month' },
@@ -116,7 +119,7 @@ export const SUBSCRIPTION_PLANS: Record<'free' | 'pro' | 'premium', Subscription
       careerAdvisor: { limit: 999999, period: 'unlimited', display: 'High Career Advisor usage' }
     },
     bulletFeatures: [
-      '1,500 AI Credits/month',
+      '800 AI Credits/day',
       'High/Unlimited Job Searches*',
       '50 ATS Analyses/month',
       '30 Interview Labs/month',
@@ -129,6 +132,7 @@ export const SUBSCRIPTION_PLANS: Record<'free' | 'pro' | 'premium', Subscription
 };
 
 export const ADMIN_PLAN_LIMITS = {
+  dailyCredits: Infinity,
   monthlyCredits: Infinity,
   limits: {
     jobSearches: { limit: Infinity, period: 'unlimited' as const, display: 'Unlimited Job Searches' },
@@ -140,23 +144,20 @@ export const ADMIN_PLAN_LIMITS = {
   },
   bulletFeatures: [
     'Unlimited AI Credits',
-    'Unlimited Job Searches',
-    'Unlimited ATS Analyses',
-    'Unlimited Interview Labs',
-    'Unlimited Job Tracker',
-    'Unlimited Resume Edits',
-    'Unlimited Career Advisor usage',
+    'Unlimited feature usage',
     'No subscription limits'
   ]
 };
 
-export const PLAN_MONTHLY_CREDITS: Record<'free' | 'pro' | 'standard' | 'premium' | 'admin', number> = {
-  free: 200,
+export const PLAN_DAILY_CREDITS: Record<'free' | 'pro' | 'standard' | 'premium' | 'admin', number> = {
+  free: 150,
   pro: 500,
   standard: 500,
-  premium: 1500,
+  premium: 800,
   admin: 999999
 };
+
+export const PLAN_MONTHLY_CREDITS = PLAN_DAILY_CREDITS;
 
 export function normalizePlanTier(plan?: string | null): 'free' | 'pro' | 'premium' | 'admin' {
   if (!plan) return 'free';
@@ -177,6 +178,7 @@ export function getPlanDefinition(planTier?: string | null): SubscriptionPlan {
       price: { INR: 0, USD: 0 },
       priceFormatted: { INR: '₹0', USD: '$0' },
       period: '/unlimited',
+      dailyCredits: 999999,
       monthlyCredits: 999999,
       limits: {
         jobSearches: { limit: 999999, period: 'unlimited', display: 'Unlimited' },

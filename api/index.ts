@@ -1,6 +1,7 @@
 import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
+import { enforceSubscriptionAndCredits } from './subscriptionEnforcement.ts';
 
 // Guard serverless runtime against unhandled async exceptions
 process.on('unhandledRejection', (reason) => {
@@ -17,7 +18,7 @@ export const app = express();
 app.use(cors({
   origin: true,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-user-email'],
   credentials: true
 }));
 
@@ -353,6 +354,28 @@ app.post(['/api/velona/generate', '/velona/generate', '/api/ai/generate', '/ai/g
 
     const promptLength = prompt ? prompt.length : (incomingMessages ? JSON.stringify(incomingMessages).length : 0);
     console.log(`[AI HireFlow][Velona][Req:${requestId}][Op:${operation}] Request start: timestamp=${new Date().toISOString()}, endpoint=${req.path}, jsonMode=${jsonMode}, promptLength=${promptLength}, fileType=${meta?.fileType || 'N/A'}, charCount=${meta?.charCount ?? 'N/A'}`);
+
+    // Backend Enforcement: Check user plan, feature allowances, and credit balances
+    const effectiveUserId = body.userId || (req.headers['x-user-id'] as string);
+    const effectiveUserEmail = body.userEmail || (req.headers['x-user-email'] as string);
+
+    if (effectiveUserId || effectiveUserEmail) {
+      const enforcement = await enforceSubscriptionAndCredits({
+        userId: effectiveUserId,
+        userEmail: effectiveUserEmail,
+        operation: operation || 'general'
+      });
+
+      if (!enforcement.allowed) {
+        console.warn(`[AI HireFlow][Velona][Req:${requestId}] Access denied: ${enforcement.error}`);
+        return res.status(enforcement.status || 403).json({
+          error: enforcement.error,
+          code: enforcement.code || 'ACCESS_DENIED',
+          requiredCredits: enforcement.requiredCredits,
+          balance: enforcement.balance
+        });
+      }
+    }
 
     if (!prompt && (!incomingMessages || incomingMessages.length === 0)) {
       return res.status(400).json({ 
@@ -986,6 +1009,27 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
       jobDescription, 
       fileType = 'pdf' 
     } = body;
+
+    const effectiveUserId = userId || (req.headers['x-user-id'] as string);
+    const effectiveUserEmail = body.userEmail || (req.headers['x-user-email'] as string);
+
+    if (effectiveUserId || effectiveUserEmail) {
+      const enforcement = await enforceSubscriptionAndCredits({
+        userId: effectiveUserId,
+        userEmail: effectiveUserEmail,
+        operation: 'ats_analysis',
+        overrideCost: 20
+      });
+
+      if (!enforcement.allowed) {
+        return res.status(enforcement.status || 403).json({
+          error: enforcement.error,
+          code: enforcement.code || 'ACCESS_DENIED',
+          requiredCredits: enforcement.requiredCredits,
+          balance: enforcement.balance
+        });
+      }
+    }
 
     if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 25) {
       return res.status(400).json({

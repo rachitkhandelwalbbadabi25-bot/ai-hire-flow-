@@ -38,17 +38,16 @@ export default function UpgradeModal() {
       period: '/ month',
       description: 'Essential AI career intelligence for exploring AI HireFlow and getting started.',
       icon: <Shield className="w-6 h-6 text-ink-dim" />,
-      creditsAdded: 200,
+      creditsAdded: 150,
       features: [
-        '200 AI Credits / month',
-        '10 Job Searches / day',
-        '5 ATS Analyses / week',
-        '3 Interview Labs / week',
-        '10 new jobs tracked / month',
-        '2 Resume Edits / month',
-        '5 Career Advisor chats / day',
-        'Earn extra credits via daily login & referrals',
-        'Credit top-ups available'
+        '150 AI Credits/day',
+        '10 Job Searches/day',
+        '5 ATS Analyses/week',
+        '3 Interview Labs/week',
+        '10 new jobs tracked/month',
+        '2 Resume Edits/month',
+        '5 Career Advisor chats/day',
+        'Earn additional credits through daily login, referrals, achievements, onboarding and campaigns'
       ],
       buttonText: normalizedCurrentPlan === 'free' ? 'Current Plan' : 'Free Tier',
       disabled: normalizedCurrentPlan === 'free',
@@ -57,24 +56,23 @@ export default function UpgradeModal() {
     {
       id: 'pro',
       name: 'Pro',
+      badge: 'RECOMMENDED',
       tagline: 'For students & casual job seekers',
-      price: { INR: '₹149', USD: '$3' },
-      rawPrice: { INR: 149, USD: 3 },
+      price: { INR: '₹149', USD: '$2' },
+      rawPrice: { INR: 149, USD: 2 },
       period: '/ month',
       recommended: true,
       description: 'Affordable acceleration tailored for students and casual job seekers.',
       icon: <Zap className="w-6 h-6 text-accent" />,
       creditsAdded: 500,
       features: [
-        '500 AI Credits / month',
-        '30 Job Searches / day',
-        '20 ATS Analyses / month',
-        '15 Interview Labs / month',
-        '75 new jobs tracked / month',
-        '10 Resume Edits / month',
-        '30 Career Advisor chats / day',
-        'Full Personalized Skill Roadmap',
-        'Credit top-ups available'
+        '500 AI Credits/day',
+        '30 Job Searches/day',
+        '20 ATS Analyses/month',
+        '15 Interview Labs/month',
+        '75 new jobs tracked/month',
+        '10 Resume Edits/month',
+        '30 Career Advisor chats/day'
       ],
       buttonText: normalizedCurrentPlan === 'pro' 
         ? 'Current Plan' 
@@ -86,22 +84,20 @@ export default function UpgradeModal() {
       id: 'premium',
       name: 'Premium',
       tagline: 'For active job seekers',
-      price: { INR: '₹249', USD: '$5' },
-      rawPrice: { INR: 249, USD: 5 },
+      price: { INR: '₹249', USD: '$4' },
+      rawPrice: { INR: 249, USD: 4 },
       period: '/ month',
       description: 'Maximum velocity and power for active candidates hunting their next dream role.',
       icon: <Sparkles className="w-6 h-6 text-amber-400" />,
-      creditsAdded: 1500,
+      creditsAdded: 800,
       features: [
-        '1,500 AI Credits / month',
-        'High / Unlimited Job Searches*',
-        '50 ATS Analyses / month',
-        '30 Interview Labs / month',
-        'Unlimited Job Tracker*',
-        '25 Resume Edits / month',
-        'High Career Advisor usage*',
-        'Priority AI Engine Processing',
-        'Credit top-ups available'
+        '800 AI Credits/day',
+        'High/Unlimited Job Searches*',
+        '50 ATS Analyses/month',
+        '30 Interview Labs/month',
+        'Unlimited Job Tracker',
+        '25 Resume Edits/month',
+        'High Career Advisor usage'
       ],
       buttonText: normalizedCurrentPlan === 'premium' 
         ? 'Current Plan' 
@@ -141,9 +137,9 @@ export default function UpgradeModal() {
       basePriceINR: planItem.rawPrice.INR,
       basePriceUSD: planItem.rawPrice.USD,
       credits: planItem.creditsAdded,
-      badge: planItem.recommended ? 'MOST POPULAR' : undefined,
+      badge: planItem.recommended ? 'RECOMMENDED' : undefined,
       featuresUnlocked: [
-        `+${planItem.creditsAdded.toLocaleString()} Monthly AI Credits`,
+        `+${planItem.creditsAdded.toLocaleString()} Daily AI Credits (Refreshes daily)`,
         `${planItem.features[1]}`,
         `${planItem.features[2]}`,
         `${planItem.features[3]}`
@@ -262,6 +258,28 @@ export default function UpgradeModal() {
                   </div>
                 </div>
 
+                {/* Daily Refresh Information Banner */}
+                <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center text-accent shrink-0">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold font-mono text-accent uppercase tracking-wider">
+                          AI Credits Daily — Refreshes every day
+                        </span>
+                        <span className="bg-accent/20 text-accent text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full">
+                          24h Cycle
+                        </span>
+                      </div>
+                      <p className="text-xs text-ink/80 mt-0.5">
+                        Daily subscription credits refresh every 24 hours (unused daily credits do not accumulate). Purchased top-up credits remain separate and never expire.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Plans Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {plansData.map((p) => (
@@ -275,7 +293,7 @@ export default function UpgradeModal() {
                     >
                       {p.recommended && (
                         <div className="absolute -top-3 right-6 bg-accent text-black text-[9px] font-mono font-bold uppercase tracking-widest px-3 py-0.5 rounded-full shadow-lg">
-                          MOST POPULAR
+                          RECOMMENDED
                         </div>
                       )}
                       
@@ -300,10 +318,10 @@ export default function UpgradeModal() {
                         {p.id !== 'free' && (
                           <div className="mb-6 p-3 bg-surface border border-border/80 rounded-xl">
                             <p className="text-[10px] font-mono font-bold text-accent uppercase tracking-wider flex items-center gap-1.5 mb-0.5">
-                              <Zap className="w-3 h-3" /> Post-Payment Outcome:
+                              <Zap className="w-3 h-3" /> Daily Plan Allotment:
                             </p>
                             <p className="text-[11px] text-ink font-semibold">
-                              +{p.creditsAdded.toLocaleString()} Credits added immediately & all features unlocked.
+                              {p.creditsAdded.toLocaleString()} Daily Credits refreshed every 24h & features active.
                             </p>
                           </div>
                         )}

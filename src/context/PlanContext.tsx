@@ -48,11 +48,25 @@ export const DEFAULT_CREDIT_COSTS: CreditCosts = {
   careerCoachChat: 5
 };
 
-// Subscription plans credits
+import { 
+  SUBSCRIPTION_PLANS, 
+  PLAN_MONTHLY_CREDITS, 
+  normalizePlanTier, 
+  getPlanDefinition, 
+  getISOWeekString, 
+  getMonthString, 
+  getDayString,
+  FeatureLimitKey,
+  SubscriptionPlan
+} from '../constants/subscriptionPlans';
+
+// Subscription plans monthly credits
 export const PLAN_CREDITS = {
-  free: 250,
-  standard: 2000,
-  premium: 8000
+  free: 200,
+  pro: 500,
+  standard: 500,
+  premium: 1500,
+  admin: 999999
 };
 
 // Transaction record
@@ -64,9 +78,28 @@ export interface CreditTransaction {
   timestamp: string;
 }
 
+// Subscription Usage tracking across daily, weekly, and monthly periods
+export interface SubscriptionUsage {
+  dailyDate: string;
+  jobSearchesDaily: number;
+  careerAdvisorDaily: number;
+
+  weekId: string;
+  atsAnalysesWeekly: number;
+  interviewLabsWeekly: number;
+
+  monthId: string;
+  atsAnalysesMonthly: number;
+  interviewLabsMonthly: number;
+  jobsTrackedMonthly: number;
+  resumeEditsMonthly: number;
+}
+
 // Full AI Credit Wallet Interface
 export interface CreditWallet {
   balance: number;
+  subscriptionCredits?: number;
+  topupCredits?: number;
   usedThisMonth: number;
   totalEarned: number;
   expiringSoon: number;
@@ -154,9 +187,25 @@ interface PlanContextType {
   leaderboard: any[];
   referrals: ReferralRecord[];
   
-  // Backward compatible old props
+  // Subscription usage & limits
+  subscriptionUsage: SubscriptionUsage | null;
+  recordUsage: (feature: FeatureLimitKey | string) => Promise<void>;
+  upgradePlan: (newPlan: 'pro' | 'premium') => Promise<void>;
+  downgradePlan: (newPlan: 'free' | 'pro') => Promise<void>;
+  getPlanDefinition: (planTier?: string | null) => SubscriptionPlan;
+
+  // Backward compatible old props & access checks
   credits: UserCredits | null;
-  checkAccess: (feature: keyof CreditCosts | string, currentCount?: number) => { hasAccess: boolean; remaining: number | string; limit: number | string };
+  checkAccess: (feature: keyof CreditCosts | string, currentCount?: number) => { 
+    hasAccess: boolean; 
+    remaining: number | string; 
+    limit: number | string;
+    period?: 'day' | 'week' | 'month' | 'unlimited' | 'action';
+    displayLimit?: string;
+    hasCredits?: boolean;
+    creditsNeeded?: number;
+    reason?: string;
+  };
   deductCredit: (feature: keyof CreditCosts | string) => Promise<void>;
   openUpgradeModal: (feature?: string) => void;
   closeUpgradeModal: () => void;
@@ -186,6 +235,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const { user, plan } = useAuth();
   
   const [creditWallet, setCreditWallet] = useState<CreditWallet | null>(null);
+  const [subscriptionUsage, setSubscriptionUsage] = useState<SubscriptionUsage | null>(null);
   const [creditCosts, setCreditCosts] = useState<CreditCosts>(DEFAULT_CREDIT_COSTS);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -259,18 +309,28 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         if (snap.exists()) {
           const data = snap.data();
           let wallet = data.creditWallet as CreditWallet;
+          const userPlanNormalized = normalizePlanTier(data.plan || plan);
+          const targetMonthlyCredits = PLAN_MONTHLY_CREDITS[userPlanNormalized];
+          const planDef = getPlanDefinition(userPlanNormalized);
+
+          const now = new Date();
+          const currentDayStr = getDayString(now);
+          const currentWeekStr = getISOWeekString(now);
+          const currentMonthStr = getMonthString(now);
           
           // Auto-migrate or initialize Credit Wallet
           if (!wallet) {
             const generatedCode = 'HF-' + Math.random().toString(36).substring(2, 8).toUpperCase();
             const defaultWallet: CreditWallet = {
-              balance: PLAN_CREDITS[plan as keyof typeof PLAN_CREDITS] || 250,
+              balance: targetMonthlyCredits,
+              subscriptionCredits: targetMonthlyCredits,
+              topupCredits: 0,
               usedThisMonth: 0,
-              totalEarned: PLAN_CREDITS[plan as keyof typeof PLAN_CREDITS] || 250,
+              totalEarned: targetMonthlyCredits,
               expiringSoon: 0,
-              lastMonthlyGrant: new Date().toISOString(),
+              lastMonthlyGrant: now.toISOString(),
               streak: 1,
-              lastLoginDate: new Date().toISOString().split('T')[0],
+              lastLoginDate: currentDayStr,
               xp: 50, // bonus for registering
               level: 1,
               referralCode: generatedCode,
@@ -280,24 +340,73 @@ export function PlanProvider({ children }: { children: ReactNode }) {
               banReferrals: false,
               unlockedBadges: ['Verified Candidate']
             };
+
+            const initialUsage: SubscriptionUsage = {
+              dailyDate: currentDayStr,
+              jobSearchesDaily: 0,
+              careerAdvisorDaily: 0,
+              weekId: currentWeekStr,
+              atsAnalysesWeekly: 0,
+              interviewLabsWeekly: 0,
+              monthId: currentMonthStr,
+              atsAnalysesMonthly: 0,
+              interviewLabsMonthly: 0,
+              jobsTrackedMonthly: 0,
+              resumeEditsMonthly: 0
+            };
             
-            await updateDoc(userRef, { creditWallet: defaultWallet });
+            await updateDoc(userRef, { 
+              creditWallet: defaultWallet,
+              subscriptionUsage: initialUsage
+            });
             wallet = defaultWallet;
+            setSubscriptionUsage(initialUsage);
             
             // Log initial grant
             await addDoc(collection(db, 'users', user.uid, 'transactions'), {
               amount: defaultWallet.balance,
               type: 'grant',
-              label: `Initial Free Tier Monthly Grant`,
-              timestamp: new Date().toISOString()
+              label: `Initial ${planDef.name} Monthly AI Credit Allocation`,
+              timestamp: now.toISOString()
             });
           } else {
-            // Check for login streak or daily reset
-            const today = new Date().toISOString().split('T')[0];
+            let updatedWallet = { ...wallet };
+            let walletChanged = false;
+
+            // 1. Check for monthly billing cycle / credit grant reset (every 30 days)
+            const lastGrantDate = wallet.lastMonthlyGrant ? new Date(wallet.lastMonthlyGrant) : null;
+            const daysSinceGrant = lastGrantDate ? (now.getTime() - lastGrantDate.getTime()) / (1000 * 3600 * 24) : 999;
+            const isNewBillingMonth = !lastGrantDate || daysSinceGrant >= 30;
+
+            if (isNewBillingMonth) {
+              const existingTopup = wallet.topupCredits ?? Math.max(0, wallet.balance - (wallet.subscriptionCredits ?? 0));
+              const newSubCredits = targetMonthlyCredits;
+              const newBalance = newSubCredits + existingTopup;
+
+              updatedWallet = {
+                ...updatedWallet,
+                subscriptionCredits: newSubCredits,
+                topupCredits: existingTopup,
+                balance: newBalance,
+                usedThisMonth: 0,
+                lastMonthlyGrant: now.toISOString()
+              };
+              walletChanged = true;
+
+              await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+                amount: newSubCredits,
+                type: 'grant',
+                label: `${planDef.name} Monthly AI Credit Allocation`,
+                timestamp: now.toISOString()
+              });
+            }
+
+            // 2. Check for login streak or daily reset
+            const today = currentDayStr;
             const lastDate = wallet.lastLoginDate;
 
             if (lastDate !== today) {
-              let newStreak = wallet.streak;
+              let newStreak = wallet.streak || 1;
               const yesterday = new Date();
               yesterday.setDate(yesterday.getDate() - 1);
               const yesterdayStr = yesterday.toISOString().split('T')[0];
@@ -308,42 +417,72 @@ export function PlanProvider({ children }: { children: ReactNode }) {
                 newStreak = 1;
               }
 
-              // Streak Reward Scheme:
-              // Day 1: 5, Day 2: 5, Day 3: 10, Day 7: 25, Day 15: 50, Day 30: 100
+              // Streak Reward Scheme
               let rewardCredits = 5;
               if (newStreak === 3) rewardCredits = 10;
               else if (newStreak === 7) rewardCredits = 25;
               else if (newStreak === 15) rewardCredits = 50;
               else if (newStreak === 30) rewardCredits = 100;
 
-              const updatedWallet = {
-                ...wallet,
+              const existingTopup = updatedWallet.topupCredits ?? 0;
+              updatedWallet = {
+                ...updatedWallet,
                 streak: newStreak,
                 lastLoginDate: today,
-                balance: wallet.balance + rewardCredits,
-                totalEarned: wallet.totalEarned + rewardCredits,
-                xp: wallet.xp + 10 // login bonus XP
+                topupCredits: existingTopup + rewardCredits,
+                balance: updatedWallet.balance + rewardCredits,
+                totalEarned: updatedWallet.totalEarned + rewardCredits,
+                xp: updatedWallet.xp + 10
               };
+              walletChanged = true;
 
-              await updateDoc(userRef, { creditWallet: updatedWallet });
-              wallet = updatedWallet;
-
-              // Log streak reward transaction
               await addDoc(collection(db, 'users', user.uid, 'transactions'), {
                 amount: rewardCredits,
                 type: 'bonus',
                 label: `Day ${newStreak} Login Streak Reward`,
-                timestamp: new Date().toISOString()
+                timestamp: now.toISOString()
               });
 
               triggerNotification(`Daily Streak Day ${newStreak}!`, `You earned +${rewardCredits} Credits and +10 XP for staying consistent.`, 'streak', rewardCredits);
               
-              // Trigger streak achievements
               if (newStreak >= 7) {
                 await updateAchievementProgress('weekly_warrior', newStreak);
               }
-              await updateAchievementProgress('consistency_master', 1); // logins accumulation
+              await updateAchievementProgress('consistency_master', 1);
             }
+
+            // 3. Sync & Reset subscriptionUsage across day, week, month
+            const rawUsage: Partial<SubscriptionUsage> = (data.subscriptionUsage as SubscriptionUsage) || {};
+            const syncedUsage: SubscriptionUsage = {
+              dailyDate: currentDayStr,
+              jobSearchesDaily: rawUsage.dailyDate === currentDayStr ? (rawUsage.jobSearchesDaily || 0) : 0,
+              careerAdvisorDaily: rawUsage.dailyDate === currentDayStr ? (rawUsage.careerAdvisorDaily || 0) : 0,
+
+              weekId: currentWeekStr,
+              atsAnalysesWeekly: rawUsage.weekId === currentWeekStr ? (rawUsage.atsAnalysesWeekly || 0) : 0,
+              interviewLabsWeekly: rawUsage.weekId === currentWeekStr ? (rawUsage.interviewLabsWeekly || 0) : 0,
+
+              monthId: currentMonthStr,
+              atsAnalysesMonthly: isNewBillingMonth || rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.atsAnalysesMonthly || 0),
+              interviewLabsMonthly: isNewBillingMonth || rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.interviewLabsMonthly || 0),
+              jobsTrackedMonthly: isNewBillingMonth || rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.jobsTrackedMonthly || 0),
+              resumeEditsMonthly: isNewBillingMonth || rawUsage.monthId !== currentMonthStr ? 0 : (rawUsage.resumeEditsMonthly || 0)
+            };
+
+            setSubscriptionUsage(syncedUsage);
+
+            const usageNeedsSync = rawUsage.dailyDate !== currentDayStr || 
+                                   rawUsage.weekId !== currentWeekStr || 
+                                   rawUsage.monthId !== currentMonthStr || 
+                                   isNewBillingMonth;
+
+            if (walletChanged || usageNeedsSync) {
+              await updateDoc(userRef, { 
+                creditWallet: updatedWallet,
+                subscriptionUsage: syncedUsage
+              });
+            }
+            wallet = updatedWallet;
           }
 
           // Calculate Level from XP
@@ -530,22 +669,37 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   // Spend Credits logic with transaction locking
   const spendCredits = async (featureId: keyof CreditCosts, label: string) => {
     if (!user || !creditWallet) return;
+    if (normalizePlanTier(plan) === 'admin') {
+      return; // Admin has unlimited AI Credits
+    }
     const cost = creditCosts[featureId] || 0;
 
     if (creditWallet.balance < cost) {
-      triggerNotification('Insufficient AI Credits', `This feature requires ${cost} credits. Please top up.`, 'low-credits');
+      triggerNotification('Insufficient AI Credits', `This feature requires ${cost} credits. Please top up or upgrade your plan.`, 'low-credits');
       setIsUpgradeModalOpen(true);
       throw new Error(`Insufficient credits: Requires ${cost}`);
     }
 
-    const userRef = doc(db, 'users', user.uid);
-    const updatedWallet = {
+    let subCredits = creditWallet.subscriptionCredits ?? creditWallet.balance;
+    let topupCredits = creditWallet.topupCredits ?? 0;
+
+    if (subCredits >= cost) {
+      subCredits -= cost;
+    } else {
+      const remainder = cost - subCredits;
+      subCredits = 0;
+      topupCredits = Math.max(0, topupCredits - remainder);
+    }
+
+    const updatedWallet: CreditWallet = {
       ...creditWallet,
-      balance: creditWallet.balance - cost,
-      usedThisMonth: creditWallet.usedThisMonth + cost
+      subscriptionCredits: subCredits,
+      topupCredits: topupCredits,
+      balance: subCredits + topupCredits,
+      usedThisMonth: (creditWallet.usedThisMonth || 0) + cost
     };
 
-    // Update DB
+    const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, { creditWallet: updatedWallet });
     setCreditWallet(updatedWallet);
 
@@ -558,19 +712,20 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     });
 
     if (updatedWallet.balance < 50) {
-      triggerNotification('AI Credits Running Low!', `You only have ${updatedWallet.balance} credits left. Upgrade to stay connected.`, 'low-credits');
+      triggerNotification('AI Credits Running Low!', `You have ${updatedWallet.balance} credits left. Upgrade to stay connected.`, 'low-credits');
     }
   };
 
-  // Earn Credits logic
+  // Earn Credits logic (preserves top-up and earned balance across resets)
   const earnCredits = async (amount: number, label: string, type: CreditTransaction['type'] = 'bonus') => {
     if (!user || !creditWallet) return;
 
     const userRef = doc(db, 'users', user.uid);
-    const updatedWallet = {
+    const updatedWallet: CreditWallet = {
       ...creditWallet,
+      topupCredits: (creditWallet.topupCredits ?? 0) + amount,
       balance: creditWallet.balance + amount,
-      totalEarned: creditWallet.totalEarned + amount
+      totalEarned: (creditWallet.totalEarned || 0) + amount
     };
 
     await updateDoc(userRef, { creditWallet: updatedWallet });
@@ -834,8 +989,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     }
 
     const userRef = doc(db, 'users', user.uid);
-    const updatedWallet = {
+    const updatedWallet: CreditWallet = {
       ...creditWallet,
+      topupCredits: (creditWallet.topupCredits ?? 0) + creditsAmount,
       balance: creditWallet.balance + creditsAmount,
       totalEarned: creditWallet.totalEarned + creditsAmount
     };
@@ -1284,13 +1440,13 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     let totalSpent = 0;
     let totalEarned = 0;
     let premiumCount = 0;
-    let standardCount = 0;
+    let proCount = 0;
     let freeCount = 0;
     let referralConversions = 0;
 
     users.forEach((u) => {
       if (u.plan === 'premium') premiumCount++;
-      else if (u.plan === 'standard') standardCount++;
+      else if (u.plan === 'pro' || u.plan === 'standard') proCount++;
       else freeCount++;
 
       if (u.creditWallet) {
@@ -1304,53 +1460,307 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       creditsEarned: totalEarned,
       creditsSpent: totalSpent,
       premiumUsers: premiumCount,
-      standardUsers: standardCount,
+      proUsers: proCount,
+      standardUsers: proCount,
       freeUsers: freeCount,
-      estimatedRevenue: premiumCount * 299 + standardCount * 200
+      estimatedRevenue: premiumCount * 249 + proCount * 149
     };
   };
 
-  // Backward-compatible checking methods
-  const checkAccess = (feature: keyof CreditCosts | string, currentCount?: number) => {
-    if ((plan as string) === 'admin') return { hasAccess: true, remaining: 'Unlimited', limit: 'Unlimited' };
+  // Record feature usage for subscriptions
+  const recordUsage = async (feature: FeatureLimitKey | string) => {
+    if (!user) return;
+    const userPlanNormalized = normalizePlanTier(plan);
+    if (userPlanNormalized === 'admin') return;
+
+    const userRef = doc(db, 'users', user.uid);
+    const now = new Date();
+    const dayStr = getDayString(now);
+    const weekStr = getISOWeekString(now);
+    const monthStr = getMonthString(now);
+
+    const isJobSearch = feature === 'jobSearches' || feature === 'jobSearch';
+    const isAts = feature === 'atsAnalyses' || feature === 'atsAnalysis' || feature === 'resumeScans' || feature === 'resumeScan';
+    const isInterview = feature === 'interviewLabs' || feature === 'interviewLab' || feature === 'interviewSessions' || feature === 'interviewSession';
+    const isJobTrack = feature === 'jobsTracked' || feature === 'jobTracker';
+    const isResumeEdit = feature === 'resumeEdits' || feature === 'resumeEditor' || feature === 'resumeEdit';
+    const isCoach = feature === 'careerAdvisor' || feature === 'careerCoachChat' || feature === 'careerCoach';
+
+    const current = subscriptionUsage || {
+      dailyDate: dayStr,
+      jobSearchesDaily: 0,
+      careerAdvisorDaily: 0,
+      weekId: weekStr,
+      atsAnalysesWeekly: 0,
+      interviewLabsWeekly: 0,
+      monthId: monthStr,
+      atsAnalysesMonthly: 0,
+      interviewLabsMonthly: 0,
+      jobsTrackedMonthly: 0,
+      resumeEditsMonthly: 0,
+    };
+
+    const updatedUsage: SubscriptionUsage = {
+      dailyDate: dayStr,
+      jobSearchesDaily: (current.dailyDate === dayStr ? current.jobSearchesDaily : 0) + (isJobSearch ? 1 : 0),
+      careerAdvisorDaily: (current.dailyDate === dayStr ? current.careerAdvisorDaily : 0) + (isCoach ? 1 : 0),
+
+      weekId: weekStr,
+      atsAnalysesWeekly: (current.weekId === weekStr ? current.atsAnalysesWeekly : 0) + (isAts ? 1 : 0),
+      interviewLabsWeekly: (current.weekId === weekStr ? current.interviewLabsWeekly : 0) + (isInterview ? 1 : 0),
+
+      monthId: monthStr,
+      atsAnalysesMonthly: (current.monthId === monthStr ? current.atsAnalysesMonthly : 0) + (isAts ? 1 : 0),
+      interviewLabsMonthly: (current.monthId === monthStr ? current.interviewLabsMonthly : 0) + (isInterview ? 1 : 0),
+      jobsTrackedMonthly: (current.monthId === monthStr ? current.jobsTrackedMonthly : 0) + (isJobTrack ? 1 : 0),
+      resumeEditsMonthly: (current.monthId === monthStr ? current.resumeEditsMonthly : 0) + (isResumeEdit ? 1 : 0),
+    };
+
+    setSubscriptionUsage(updatedUsage);
+    await updateDoc(userRef, { subscriptionUsage: updatedUsage }).catch(() => {});
+  };
+
+  // Upgrade Plan handler
+  const upgradePlan = async (newPlan: 'pro' | 'premium') => {
+    if (!user) return;
+    const userRef = doc(db, 'users', user.uid);
+    const normalized = normalizePlanTier(newPlan);
+    const planDef = getPlanDefinition(normalized);
+    const newSubCredits = planDef.monthlyCredits;
+    const now = new Date();
     
-    // 1. Resume Editor check
-    if (feature === 'resumeEditor') {
-      return {
-        hasAccess: true,
-        remaining: 'Unlimited',
-        limit: 'Unlimited'
+    const existingTopup = creditWallet?.topupCredits ?? 0;
+    const updatedWallet: CreditWallet = {
+      ...(creditWallet || {
+        usedThisMonth: 0,
+        totalEarned: 0,
+        expiringSoon: 0,
+        streak: 1,
+        lastLoginDate: getDayString(now),
+        xp: 100,
+        level: 1,
+        referralCode: 'HF-' + user.uid.slice(0, 5).toUpperCase(),
+        referredBy: null,
+        hasUploadedResume: false,
+        hasCompletedAnalysis: false,
+        banReferrals: false,
+        unlockedBadges: []
+      }),
+      subscriptionCredits: newSubCredits,
+      topupCredits: existingTopup,
+      balance: newSubCredits + existingTopup,
+      lastMonthlyGrant: now.toISOString()
+    };
+
+    const resetUsage: SubscriptionUsage = {
+      dailyDate: subscriptionUsage?.dailyDate || getDayString(now),
+      jobSearchesDaily: subscriptionUsage?.jobSearchesDaily || 0,
+      careerAdvisorDaily: subscriptionUsage?.careerAdvisorDaily || 0,
+      weekId: subscriptionUsage?.weekId || getISOWeekString(now),
+      atsAnalysesWeekly: 0,
+      interviewLabsWeekly: 0,
+      monthId: getMonthString(now),
+      atsAnalysesMonthly: 0,
+      interviewLabsMonthly: 0,
+      jobsTrackedMonthly: 0,
+      resumeEditsMonthly: 0
+    };
+
+    await setDoc(userRef, {
+      plan: normalized,
+      creditWallet: updatedWallet,
+      subscriptionUsage: resetUsage,
+      subscriptionStartDate: now.toISOString()
+    }, { merge: true });
+
+    setCreditWallet(updatedWallet);
+    setSubscriptionUsage(resetUsage);
+
+    await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+      amount: newSubCredits,
+      type: 'purchase',
+      label: `Upgraded to ${planDef.name} Subscription Plan`,
+      timestamp: now.toISOString()
+    });
+
+    triggerNotification(
+      'Subscription Activated!',
+      `You are now on the ${planDef.name} plan (${planDef.priceFormatted.INR}/month). ${newSubCredits.toLocaleString()} AI Credits allocated!`,
+      'info'
+    );
+  };
+
+  const downgradePlan = async (newPlan: 'free' | 'pro') => {
+    if (!user) return;
+    const userRef = doc(db, 'users', user.uid);
+    const normalized = normalizePlanTier(newPlan);
+    await updateDoc(userRef, {
+      plan: normalized
+    });
+    triggerNotification('Plan Updated', `Your plan is now set to ${getPlanDefinition(normalized).name}.`, 'info');
+  };
+
+  // Check feature limit & credit access
+  const checkAccess = (feature: keyof CreditCosts | string, currentCount?: number) => {
+    const userPlanNormalized = normalizePlanTier(plan);
+    if (userPlanNormalized === 'admin') {
+      return { 
+        hasAccess: true, 
+        remaining: 'Unlimited', 
+        limit: 'Unlimited',
+        period: 'unlimited' as const,
+        displayLimit: 'Unlimited',
+        hasCredits: true,
+        creditsNeeded: 0
       };
     }
 
-    // 2. Learning Path check
-    if (feature === 'learningPath') {
-      const type = plan === 'premium' || (plan as string) === 'admin' ? 'personalized' : plan === 'standard' ? 'full' : 'basic';
+    const planDef = getPlanDefinition(userPlanNormalized);
+    const usage = subscriptionUsage || {
+      dailyDate: getDayString(),
+      jobSearchesDaily: 0,
+      careerAdvisorDaily: 0,
+      weekId: getISOWeekString(),
+      atsAnalysesWeekly: 0,
+      interviewLabsWeekly: 0,
+      monthId: getMonthString(),
+      atsAnalysesMonthly: 0,
+      interviewLabsMonthly: 0,
+      jobsTrackedMonthly: 0,
+      resumeEditsMonthly: 0,
+    };
+
+    // 1. Job Searches: Free: 10/day, Pro: 30/day, Premium: Unlimited*
+    if (feature === 'jobSearches' || feature === 'jobSearch') {
+      const lim = planDef.limits.jobSearches;
+      if (lim.period === 'unlimited') {
+        return { hasAccess: true, remaining: 'Unlimited', limit: 'Unlimited', period: 'unlimited' as const, displayLimit: lim.display };
+      }
+      const used = usage.dailyDate === getDayString() ? usage.jobSearchesDaily : 0;
+      const remaining = Math.max(0, lim.limit - used);
       return {
-        hasAccess: plan !== 'free',
-        remaining: type,
-        limit: type
+        hasAccess: remaining > 0,
+        remaining,
+        limit: lim.limit,
+        period: 'day' as const,
+        displayLimit: lim.display,
+        reason: remaining <= 0 ? `Daily search limit reached (${lim.limit}/day on ${planDef.name}). Upgrade for more searches.` : undefined
       };
     }
 
-    // 3. Jobs Tracked check
-    if (feature === 'jobsTracked') {
-      const trackedCount = currentCount || 0;
-      const limitVal = plan === 'premium' || (plan as string) === 'admin' ? 99999 : plan === 'standard' ? 25 : 5;
+    // 2. ATS Analyses: Free: 5/week, Pro: 20/month, Premium: 50/month
+    if (feature === 'resumeScans' || feature === 'resumeScan' || feature === 'atsAnalyses' || feature === 'atsAnalysis') {
+      const lim = planDef.limits.atsAnalyses;
+      const isWeekly = lim.period === 'week';
+      const used = isWeekly
+        ? (usage.weekId === getISOWeekString() ? usage.atsAnalysesWeekly : 0)
+        : (usage.monthId === getMonthString() ? usage.atsAnalysesMonthly : 0);
+      const remaining = Math.max(0, lim.limit - used);
+      const cost = creditCosts.resumeScan || 20;
+      const balance = creditWallet?.balance || 0;
+      const hasCredits = balance >= cost;
+      const hasAllowance = remaining > 0;
       return {
-        hasAccess: trackedCount < limitVal,
-        remaining: Math.max(0, limitVal - trackedCount),
-        limit: limitVal
+        hasAccess: hasAllowance && hasCredits,
+        remaining,
+        limit: lim.limit,
+        period: lim.period,
+        displayLimit: lim.display,
+        hasCredits,
+        creditsNeeded: cost,
+        reason: !hasAllowance 
+          ? `${isWeekly ? 'Weekly' : 'Monthly'} ATS Analysis limit reached (${lim.display} on ${planDef.name}). Upgrade for more scans.`
+          : (!hasCredits ? `Insufficient AI Credits (${balance} / ${cost} needed). Top up or upgrade.` : undefined)
       };
     }
 
-    // Check key mapping
+    // 3. Interview Labs: Free: 3/week, Pro: 15/month, Premium: 30/month
+    if (feature === 'interviewSessions' || feature === 'interviewSession' || feature === 'interviewLabs' || feature === 'interviewLab') {
+      const lim = planDef.limits.interviewLabs;
+      const isWeekly = lim.period === 'week';
+      const used = isWeekly
+        ? (usage.weekId === getISOWeekString() ? usage.interviewLabsWeekly : 0)
+        : (usage.monthId === getMonthString() ? usage.interviewLabsMonthly : 0);
+      const remaining = Math.max(0, lim.limit - used);
+      const cost = creditCosts.interviewSession || 25;
+      const balance = creditWallet?.balance || 0;
+      const hasCredits = balance >= cost;
+      const hasAllowance = remaining > 0;
+      return {
+        hasAccess: hasAllowance && hasCredits,
+        remaining,
+        limit: lim.limit,
+        period: lim.period,
+        displayLimit: lim.display,
+        hasCredits,
+        creditsNeeded: cost,
+        reason: !hasAllowance
+          ? `${isWeekly ? 'Weekly' : 'Monthly'} Interview Lab limit reached (${lim.display} on ${planDef.name}). Upgrade to practice more.`
+          : (!hasCredits ? `Insufficient AI Credits (${balance} / ${cost} needed). Top up or upgrade.` : undefined)
+      };
+    }
+
+    // 4. Job Tracker: Free: 10/month, Pro: 75/month, Premium: Unlimited
+    if (feature === 'jobsTracked' || feature === 'jobTracker') {
+      const lim = planDef.limits.jobsTracked;
+      if (lim.period === 'unlimited') {
+        return { hasAccess: true, remaining: 'Unlimited', limit: 'Unlimited', period: 'unlimited' as const, displayLimit: lim.display };
+      }
+      const used = usage.monthId === getMonthString() ? usage.jobsTrackedMonthly : (currentCount || 0);
+      const remaining = Math.max(0, lim.limit - used);
+      return {
+        hasAccess: remaining > 0,
+        remaining,
+        limit: lim.limit,
+        period: 'month' as const,
+        displayLimit: lim.display,
+        reason: remaining <= 0 ? `Monthly job tracking limit reached (${lim.display} on ${planDef.name}). Upgrade for more job tracking.` : undefined
+      };
+    }
+
+    // 5. Resume Edits: Free: 2/month, Pro: 10/month, Premium: 25/month
+    if (feature === 'resumeEdits' || feature === 'resumeEditor' || feature === 'resumeEdit') {
+      const lim = planDef.limits.resumeEdits;
+      const used = usage.monthId === getMonthString() ? usage.resumeEditsMonthly : 0;
+      const remaining = Math.max(0, lim.limit - used);
+      return {
+        hasAccess: remaining > 0,
+        remaining,
+        limit: lim.limit,
+        period: 'month' as const,
+        displayLimit: lim.display,
+        reason: remaining <= 0 ? `Monthly resume edit limit reached (${lim.display} on ${planDef.name}). Upgrade to edit more.` : undefined
+      };
+    }
+
+    // 6. Career Advisor: Free: 5/day, Pro: 30/day, Premium: High usage*
+    if (feature === 'careerAdvisor' || feature === 'careerCoachChat' || feature === 'careerCoach') {
+      const lim = planDef.limits.careerAdvisor;
+      if (lim.period === 'unlimited') {
+        return { hasAccess: true, remaining: 'Unlimited', limit: 'Unlimited', period: 'day' as const, displayLimit: lim.display };
+      }
+      const used = usage.dailyDate === getDayString() ? usage.careerAdvisorDaily : 0;
+      const remaining = Math.max(0, lim.limit - used);
+      const cost = creditCosts.careerCoachChat || 5;
+      const balance = creditWallet?.balance || 0;
+      const hasCredits = balance >= cost;
+      const hasAllowance = remaining > 0;
+      return {
+        hasAccess: hasAllowance && hasCredits,
+        remaining,
+        limit: lim.limit,
+        period: 'day' as const,
+        displayLimit: lim.display,
+        hasCredits,
+        creditsNeeded: cost,
+        reason: !hasAllowance ? `Daily Career Advisor chat limit reached (${lim.display} on ${planDef.name}). Upgrade for more chats.` : undefined
+      };
+    }
+
+    // Fallback: credits based check
     let key: keyof CreditCosts = 'resumeScan';
-    if (feature === 'resumeScans' || feature === 'resumeScan') key = 'resumeScan';
-    else if (feature === 'interviewSessions' || feature === 'interviewSession') key = 'interviewSession';
-    else if (feature === 'coverLetters' || feature === 'coverLetter') key = 'coverLetter';
-    else if (feature === 'jobSearches' || feature === 'jobMatchAnalysis') key = 'jobMatchAnalysis';
-    else if (feature === 'careerRoadmap') key = 'careerRoadmap';
+    if (feature === 'coverLetters' || feature === 'coverLetter') key = 'coverLetter';
+    else if (feature === 'careerRoadmap' || feature === 'learningPath') key = 'careerRoadmap';
     else if (feature in creditCosts) key = feature as keyof CreditCosts;
 
     const cost = creditCosts[key] || 0;
@@ -1360,27 +1770,38 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     return {
       hasAccess,
       remaining: balance,
-      limit: cost
+      limit: cost,
+      period: 'action' as const,
+      displayLimit: `${cost} credits`,
+      hasCredits: hasAccess,
+      creditsNeeded: cost
     };
   };
 
   const deductCredit = async (feature: keyof CreditCosts | string) => {
-    let key: keyof CreditCosts = 'resumeScan';
-    if (feature === 'resumeScans' || feature === 'resumeScan') key = 'resumeScan';
-    else if (feature === 'interviewSessions' || feature === 'interviewSession') key = 'interviewSession';
-    else if (feature === 'coverLetters' || feature === 'coverLetter') key = 'coverLetter';
-    else if (feature === 'jobSearches' || feature === 'jobMatchAnalysis') key = 'jobMatchAnalysis';
-    else if (feature === 'jobsTracked') key = 'jobMatchAnalysis';
-    else if (feature === 'careerRoadmap' || feature === 'learningPath') key = 'careerRoadmap';
-    else if (feature in creditCosts) key = feature as keyof CreditCosts;
+    // 1. Record feature usage
+    await recordUsage(feature);
 
-    await spendCredits(key, `Triggered Feature: ${feature}`);
-    
-    // Map actions for rewards progression
-    if (key === 'resumeScan') {
+    // 2. Deduct credit cost if applicable
+    let key: keyof CreditCosts | null = null;
+    if (feature === 'resumeScans' || feature === 'resumeScan' || feature === 'atsAnalyses' || feature === 'atsAnalysis') {
+      key = 'resumeScan';
       await triggerAction('run_analysis');
-    } else if (key === 'interviewSession') {
+    } else if (feature === 'interviewSessions' || feature === 'interviewSession' || feature === 'interviewLabs' || feature === 'interviewLab') {
+      key = 'interviewSession';
       await triggerAction('practice_interview');
+    } else if (feature === 'coverLetters' || feature === 'coverLetter') {
+      key = 'coverLetter';
+    } else if (feature === 'careerAdvisor' || feature === 'careerCoachChat' || feature === 'careerCoach') {
+      key = 'careerCoachChat';
+    } else if (feature === 'careerRoadmap' || feature === 'learningPath') {
+      key = 'careerRoadmap';
+    } else if (feature in creditCosts) {
+      key = feature as keyof CreditCosts;
+    }
+
+    if (key) {
+      await spendCredits(key, `Triggered Feature: ${feature}`);
     }
   };
 
@@ -1409,6 +1830,11 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     leaderboard,
     referrals,
     credits,
+    subscriptionUsage,
+    recordUsage,
+    upgradePlan,
+    downgradePlan,
+    getPlanDefinition,
     checkAccess,
     deductCredit,
     openUpgradeModal,

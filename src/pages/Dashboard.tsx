@@ -29,7 +29,9 @@ import {
   Building2,
   MapPin,
   Clock,
-  Check
+  Check,
+  Terminal,
+  Award
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -54,7 +56,7 @@ interface RecommendedJob {
 
 export default function Dashboard() {
   const { user, isAdmin, isPremium } = useAuth();
-  const { plan, creditWallet } = usePlan();
+  const { plan, creditWallet, checkAccess, deductCredit, openUpgradeModal } = usePlan();
   const { 
     activeTargetRole, 
     latestResume,
@@ -62,7 +64,8 @@ export default function Dashboard() {
   } = useSystemOS();
   const navigate = useNavigate();
 
-  const planBadgeLabel = isAdmin ? 'Admin Master' : plan === 'premium' ? 'Premium Tier' : plan === 'standard' ? 'Standard Tier' : 'Free Tier';
+  const planBadgeLabel = isAdmin ? 'Admin Master' : plan === 'premium' ? 'Premium Tier' : (plan === 'pro' || plan === 'standard') ? 'Pro Tier' : 'Free Tier';
+  const advisorAccess = checkAccess('careerAdvisor');
   const [stats, setStats] = useState({
     totalJobs: 0,
     resumesAnalyzed: 0,
@@ -443,6 +446,12 @@ export default function Dashboard() {
     e.preventDefault();
     if (!coachQuestion.trim()) return;
 
+    const access = checkAccess('careerAdvisor');
+    if (!access.hasAccess) {
+      openUpgradeModal();
+      return;
+    }
+
     setIsCoachLoading(true);
     setCoachAnswer(null);
 
@@ -467,6 +476,7 @@ export default function Dashboard() {
       `.trim();
       const res = await askAICoach(coachQuestion, context);
       setCoachAnswer(res);
+      await deductCredit('careerAdvisor');
     } catch (err) {
       console.error(err);
     } finally {
@@ -780,7 +790,110 @@ export default function Dashboard() {
       </div>
 
       {/* ========================================================================= */}
-      {/* UPCOMING EVENTS & CALENDAR                                                 */}
+      {/* TACTICAL CAREER WORKBENCHES (QUICK-LAUNCH HUBS)                           */}
+      {/* ========================================================================= */}
+      <div className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <span className="text-[10px] font-bold text-accent uppercase tracking-widest font-mono">Specialized Modules</span>
+            <h2 className="text-xl font-bold text-ink uppercase tracking-tight font-mono">Career Acceleration Workbenches</h2>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: CodeRabbit */}
+          <div 
+            onClick={() => navigate('/coderabbit')}
+            className="bg-surface border border-border hover:border-accent/40 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all group"
+          >
+            <div>
+              <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-3 group-hover:scale-105 transition-transform">
+                <Terminal className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-bold text-ink font-mono uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Code Sandbox</span>
+                <ArrowRight className="w-3 h-3 text-ink-dim group-hover:text-accent group-hover:translate-x-0.5 transition-all" />
+              </h3>
+              <p className="text-[11px] text-ink-dim leading-relaxed">
+                Automated AST code auditor, security patch generator, and bug fixer.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+              <span className="text-[9px] font-mono font-bold text-accent uppercase">Live AST Engine</span>
+              <span className="text-[10px] text-ink-dim font-mono group-hover:text-ink">Launch &rarr;</span>
+            </div>
+          </div>
+
+          {/* Card 2: Campus Prep */}
+          <div 
+            onClick={() => navigate('/campus')}
+            className="bg-surface border border-border hover:border-accent/40 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all group"
+          >
+            <div>
+              <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-3 group-hover:scale-105 transition-transform">
+                <Award className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-bold text-ink font-mono uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Campus Prep</span>
+                <ArrowRight className="w-3 h-3 text-ink-dim group-hover:text-accent group-hover:translate-x-0.5 transition-all" />
+              </h3>
+              <p className="text-[11px] text-ink-dim leading-relaxed">
+                MNC recruitment tests, technical rounds, aptitude drills, and mock challenges.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+              <span className="text-[9px] font-mono font-bold text-accent uppercase">Placement Drills</span>
+              <span className="text-[10px] text-ink-dim font-mono group-hover:text-ink">Launch &rarr;</span>
+            </div>
+          </div>
+
+          {/* Card 3: Outreach Hub */}
+          <div 
+            onClick={() => navigate('/outreach')}
+            className="bg-surface border border-border hover:border-accent/40 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all group"
+          >
+            <div>
+              <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-3 group-hover:scale-105 transition-transform">
+                <MessageCircle className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-bold text-ink font-mono uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Outreach Hub</span>
+                <ArrowRight className="w-3 h-3 text-ink-dim group-hover:text-accent group-hover:translate-x-0.5 transition-all" />
+              </h3>
+              <p className="text-[11px] text-ink-dim leading-relaxed">
+                High-converting recruiter pitches, referral templates, and follow-up tracking.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+              <span className="text-[9px] font-mono font-bold text-accent uppercase">Referral Generator</span>
+              <span className="text-[10px] text-ink-dim font-mono group-hover:text-ink">Launch &rarr;</span>
+            </div>
+          </div>
+
+          {/* Card 4: Resume Editor */}
+          <div 
+            onClick={() => navigate('/editor')}
+            className="bg-surface border border-border hover:border-accent/40 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all group"
+          >
+            <div>
+              <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-3 group-hover:scale-105 transition-transform">
+                <FileEdit className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-bold text-ink font-mono uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Resume Editor</span>
+                <ArrowRight className="w-3 h-3 text-ink-dim group-hover:text-accent group-hover:translate-x-0.5 transition-all" />
+              </h3>
+              <p className="text-[11px] text-ink-dim leading-relaxed">
+                In-line master profile editor with AI STAR bullet points enhancement.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+              <span className="text-[9px] font-mono font-bold text-accent uppercase">STAR Optimizer</span>
+              <span className="text-[10px] text-ink-dim font-mono group-hover:text-ink">Launch &rarr;</span>
+            </div>
+          </div>
+        </div>
+      </div>
       {/* ========================================================================= */}
       <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-border">
@@ -857,9 +970,14 @@ export default function Dashboard() {
           {/* Left info column */}
           <div className="lg:w-1/3 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-accent" />
-                <span className="text-[10px] font-bold text-accent uppercase tracking-wider font-mono">EXPERT ADVISORY</span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                  <span className="text-[10px] font-bold text-accent uppercase tracking-wider font-mono">EXPERT ADVISORY</span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-light border border-border text-ink-dim">
+                  {typeof advisorAccess.limit === 'number' && advisorAccess.limit < 9999 ? `${advisorAccess.remaining} left today` : 'High / Fair-use daily'}
+                </span>
               </div>
               <h2 className="text-2xl font-bold text-ink uppercase tracking-tight font-mono mb-2">AI Career Advisor</h2>
               <p className="text-xs text-ink-dim leading-relaxed mb-4">

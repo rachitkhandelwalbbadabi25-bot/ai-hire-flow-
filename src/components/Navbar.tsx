@@ -27,7 +27,8 @@ import {
   Mic,
   Award,
   MessageCircle,
-  ArrowRight
+  ArrowRight,
+  Terminal
 } from 'lucide-react';
 
 import { usePlan } from '../context/PlanContext';
@@ -64,6 +65,7 @@ export default function Navbar({ user }: NavbarProps) {
     { name: 'Outreach & Alerts', path: '/outreach', icon: MessageCircle },
     { name: 'Analyzer', path: '/analyzer', icon: BarChart3 },
     { name: 'Interview Lab', path: '/interview', icon: Mic },
+    { name: 'Code Sandbox', path: '/coderabbit', icon: Terminal },
     { name: 'Learning Path', path: '/learning', icon: GraduationCap },
     { name: 'Resume Editor', path: '/editor', icon: FileEdit },
     { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
@@ -74,9 +76,10 @@ export default function Navbar({ user }: NavbarProps) {
   const getPlanLabel = (p: string) => {
     switch (p) {
       case 'admin': return 'System Admin';
-      case 'premium': return 'Premium Pro';
-      case 'standard': return 'Standard Tier';
-      default: return 'Free Tier';
+      case 'premium': return 'Premium';
+      case 'pro':
+      case 'standard': return 'Pro';
+      default: return 'Free';
     }
   };
 

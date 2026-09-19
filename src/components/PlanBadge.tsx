@@ -20,11 +20,12 @@ export default function PlanBadge() {
           icon: <Sparkles className="w-3.5 h-3.5" />,
           className: 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20'
         };
+      case 'pro':
       case 'standard':
         return {
-          label: 'Standard',
+          label: 'Pro',
           icon: <Zap className="w-3.5 h-3.5" />,
-          className: 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20'
+          className: 'bg-accent/10 text-accent border-accent/20 hover:bg-accent/20'
         };
       default:
         return {

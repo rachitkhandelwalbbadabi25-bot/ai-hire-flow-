@@ -14,7 +14,8 @@ import {
   Search,
   CheckCircle2,
   Award,
-  MessageCircle
+  MessageCircle,
+  Terminal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -61,6 +62,13 @@ export default function MobileBottomNav({ onOpenOverflowDrawer }: MobileBottomNa
       path: '/editor', 
       icon: FileEdit,
       badge: 'Master Profile'
+    },
+    { 
+      name: 'Code Sandbox', 
+      desc: 'AST code reviewer & vulnerability engine',
+      path: '/coderabbit', 
+      icon: Terminal,
+      badge: 'Code Audit'
     },
   ];
 

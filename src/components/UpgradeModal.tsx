@@ -17,9 +17,11 @@ import {
 import { usePlan } from '../context/PlanContext';
 import { cn } from '../lib/utils';
 import PaymentGatewayModal, { CheckoutItem } from './PaymentGatewayModal';
+import { normalizePlanTier } from '../constants/subscriptionPlans';
 
 export default function UpgradeModal() {
   const { isUpgradeModalOpen, closeUpgradeModal, plan: currentPlan } = usePlan();
+  const normalizedCurrentPlan = normalizePlanTier(currentPlan);
 
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
   const [checkoutItem, setCheckoutItem] = useState<CheckoutItem | null>(null);
@@ -29,86 +31,102 @@ export default function UpgradeModal() {
   const plansData = [
     {
       id: 'free',
-      name: 'Starter Plan',
+      name: 'Free',
+      tagline: 'For exploring AI HireFlow',
       price: { INR: '₹0', USD: '$0' },
       rawPrice: { INR: 0, USD: 0 },
-      period: 'forever',
-      description: 'Standard baseline intelligence for individual career explorers.',
+      period: '/ month',
+      description: 'Essential AI career intelligence for exploring AI HireFlow and getting started.',
       icon: <Shield className="w-6 h-6 text-ink-dim" />,
-      creditsAdded: 100,
+      creditsAdded: 200,
       features: [
-        '100 Initial Wallet Credits',
-        '2 ATS Resume Scans / month',
-        '1 AI Voice Interview Lab session',
-        'Global Tech Job Finder Access',
-        'Standard Community Support'
+        '200 AI Credits / month',
+        '10 Job Searches / day',
+        '5 ATS Analyses / week',
+        '3 Interview Labs / week',
+        '10 new jobs tracked / month',
+        '2 Resume Edits / month',
+        '5 Career Advisor chats / day',
+        'Earn extra credits via daily login & referrals',
+        'Credit top-ups available'
       ],
-      buttonText: 'Current Plan',
-      disabled: currentPlan === 'free',
+      buttonText: normalizedCurrentPlan === 'free' ? 'Current Plan' : 'Free Tier',
+      disabled: normalizedCurrentPlan === 'free',
       color: 'border-border bg-surface/50 text-ink'
     },
     {
-      id: 'standard',
-      name: 'Standard Pro',
-      price: { INR: '₹1,499', USD: '$19' },
-      rawPrice: { INR: 1499, USD: 19 },
+      id: 'pro',
+      name: 'Pro',
+      tagline: 'For students & casual job seekers',
+      price: { INR: '₹149', USD: '$3' },
+      rawPrice: { INR: 149, USD: 3 },
       period: '/ month',
       recommended: true,
-      description: 'High-velocity toolkit for active candidates and interview preparation.',
+      description: 'Affordable acceleration tailored for students and casual job seekers.',
       icon: <Zap className="w-6 h-6 text-accent" />,
-      creditsAdded: 2000,
+      creditsAdded: 500,
       features: [
-        '2,000 Monthly Credits (Instant top-up)',
-        'Unlimited ATS Scans & Keyword Gap Audits',
-        'Live Voice Mock Interview Lab with real-time feedback',
-        'Tailored Cover Letter Generator',
+        '500 AI Credits / month',
+        '30 Job Searches / day',
+        '20 ATS Analyses / month',
+        '15 Interview Labs / month',
+        '75 new jobs tracked / month',
+        '10 Resume Edits / month',
+        '30 Career Advisor chats / day',
         'Full Personalized Skill Roadmap',
-        'Master Resume Cloud Sync & Builder'
+        'Credit top-ups available'
       ],
-      buttonText: 'Upgrade to Standard',
-      disabled: currentPlan === 'standard' || currentPlan === 'premium' || currentPlan === 'admin',
+      buttonText: normalizedCurrentPlan === 'pro' 
+        ? 'Current Plan' 
+        : (normalizedCurrentPlan === 'premium' || normalizedCurrentPlan === 'admin' ? 'Included in Plan' : 'Upgrade to Pro'),
+      disabled: normalizedCurrentPlan === 'pro' || normalizedCurrentPlan === 'premium' || normalizedCurrentPlan === 'admin',
       color: 'border-accent/40 bg-accent/5 text-ink'
     },
     {
       id: 'premium',
-      name: 'Premium Elite',
-      price: { INR: '₹3,499', USD: '$49' },
-      rawPrice: { INR: 3499, USD: 49 },
+      name: 'Premium',
+      tagline: 'For active job seekers',
+      price: { INR: '₹249', USD: '$5' },
+      rawPrice: { INR: 249, USD: 5 },
       period: '/ month',
-      description: 'Full-spectrum autonomous career suite with priority GPU allocation.',
+      description: 'Maximum velocity and power for active candidates hunting their next dream role.',
       icon: <Sparkles className="w-6 h-6 text-amber-400" />,
-      creditsAdded: 8000,
+      creditsAdded: 1500,
       features: [
-        '8,000 Monthly Credits (Instant top-up)',
-        'All Standard Pro capabilities included',
-        'Campus Placement & University Drives Tracker',
-        'Executive Salary & Negotiation Simulator',
-        'Direct Recruiter Cold Outreach Pitch Engine',
-        'Priority GPU Allocation & Ultra-fast AI Processing',
-        'Dedicated 1-on-1 Priority Technical Support'
+        '1,500 AI Credits / month',
+        'High / Unlimited Job Searches*',
+        '50 ATS Analyses / month',
+        '30 Interview Labs / month',
+        'Unlimited Job Tracker*',
+        '25 Resume Edits / month',
+        'High Career Advisor usage*',
+        'Priority AI Engine Processing',
+        'Credit top-ups available'
       ],
-      buttonText: 'Unlock Premium Elite',
-      disabled: currentPlan === 'premium' || currentPlan === 'admin',
+      buttonText: normalizedCurrentPlan === 'premium' 
+        ? 'Current Plan' 
+        : (normalizedCurrentPlan === 'admin' ? 'Included with Admin' : 'Upgrade to Premium'),
+      disabled: normalizedCurrentPlan === 'premium' || normalizedCurrentPlan === 'admin',
       color: 'border-amber-500/40 bg-amber-500/5 text-ink'
     }
   ];
 
   const faqs = [
     {
-      q: 'How quickly are my credits and features unlocked?',
-      a: 'Activation is instantaneous. The moment your payment is verified by Razorpay or Stripe, your account tier upgrades and your credit balance updates automatically.'
+      q: 'How quickly are my credits and subscription limits activated?',
+      a: 'Activation is instantaneous. The moment your payment is verified by Razorpay, your account tier upgrades and your monthly AI Credits and feature allowances apply immediately.'
     },
     {
-      q: 'Can I cancel my subscription at any time?',
-      a: 'Yes, you can cancel whenever you want from your Profile & Billing settings. You retain access to all plan features and remaining credits until the end of your billing cycle.'
+      q: 'What does "Fair-use limits may apply" mean for unlimited features?',
+      a: 'For unlimited features on the Premium plan (such as high job search volume and unlimited job tracker), standard automated rate limits apply to protect platform availability and prevent bot abuse.'
     },
     {
-      q: 'Do subscription credits roll over?',
-      a: 'Yes. Standard plan credits roll over for 2 months, and Premium plan credits roll over for 3 months as long as your subscription remains active.'
+      q: 'Can I earn extra credits without paying?',
+      a: 'Yes! On every plan, including the Free tier, you can earn extra credits through daily login streaks (+5 to +100 credits), referral bonuses (+100 credits per friend), daily missions, and career achievements.'
     },
     {
-      q: 'Will I receive a GST / Tax Invoice?',
-      a: 'Yes. An official tax-compliant receipt with order ID and transaction details is generated and available for immediate printing/download.'
+      q: 'Are credit top-ups available if I run out?',
+      a: 'Yes! You can top up AI credits at any time. Top-up credits never expire and roll over indefinitely on your account.'
     }
   ];
 
@@ -118,17 +136,17 @@ export default function UpgradeModal() {
     setCheckoutItem({
       type: 'subscription',
       itemId: planItem.id,
-      title: planItem.name,
-      subtitle: planItem.description,
+      title: `${planItem.name} Plan Subscription`,
+      subtitle: planItem.tagline,
       basePriceINR: planItem.rawPrice.INR,
       basePriceUSD: planItem.rawPrice.USD,
       credits: planItem.creditsAdded,
       badge: planItem.recommended ? 'MOST POPULAR' : undefined,
       featuresUnlocked: [
-        `+${planItem.creditsAdded.toLocaleString()} Monthly Credits (Instant Top-Up)`,
-        'Unlimited ATS & Resume Optimizations',
-        'Interactive AI Mock Interview Lab',
-        'Priority GPU Acceleration & 0s Queue'
+        `+${planItem.creditsAdded.toLocaleString()} Monthly AI Credits`,
+        `${planItem.features[1]}`,
+        `${planItem.features[2]}`,
+        `${planItem.features[3]}`
       ]
     });
     setIsPaymentGatewayOpen(true);
@@ -265,7 +283,10 @@ export default function UpgradeModal() {
                         <div className="w-12 h-12 rounded-2xl bg-surface border border-border flex items-center justify-center mb-5 shadow-sm">
                           {p.icon}
                         </div>
-                        <h3 className="text-lg font-bold text-ink mb-1 font-sans">{p.name}</h3>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h3 className="text-lg font-bold text-ink font-sans">{p.name}</h3>
+                        </div>
+                        <p className="text-[11px] font-mono text-accent font-semibold mb-2">{p.tagline}</p>
                         <div className="flex items-baseline gap-1 mb-3">
                           <span className="text-3xl font-black font-mono text-ink">{p.price[currency]}</span>
                           <span className="text-xs text-ink-dim font-mono">{p.period}</span>
@@ -317,6 +338,11 @@ export default function UpgradeModal() {
                     </div>
                   ))}
                 </div>
+
+                {/* Fair-use policy notice */}
+                <p className="text-xs text-ink-dim font-mono text-center">
+                  *Fair-use limits may apply for high-volume and unlimited features.
+                </p>
 
                 {/* FAQ Accordion Section */}
                 <div className="bg-surface/50 border border-border rounded-2xl p-6">

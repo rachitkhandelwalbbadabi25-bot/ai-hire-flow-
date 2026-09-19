@@ -17,6 +17,7 @@ import Profile from './pages/Profile';
 import CampusPlacement from './pages/CampusPlacement';
 import OutreachHub from './pages/OutreachHub';
 import CreditsPage from './pages/Credits';
+import CodeRabbit from './pages/CodeRabbit';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PlanProvider } from './context/PlanContext';
@@ -74,6 +75,9 @@ function AppRoutes() {
           <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" replace />} />
           <Route path="/campus" element={user ? <CampusPlacement /> : <Navigate to="/" replace />} />
           <Route path="/outreach" element={user ? <OutreachHub /> : <Navigate to="/" replace />} />
+          <Route path="/coderabbit" element={user ? <CodeRabbit /> : <Navigate to="/" replace />} />
+          <Route path="/code-sandbox" element={user ? <CodeRabbit /> : <Navigate to="/" replace />} />
+          <Route path="/code-audit" element={user ? <CodeRabbit /> : <Navigate to="/" replace />} />
           <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" replace />} />
           <Route path="/credits" element={user ? <CreditsPage /> : <Navigate to="/" replace />} />
 

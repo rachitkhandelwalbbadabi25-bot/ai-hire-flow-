@@ -35,7 +35,7 @@ service cloud.firestore {
     match /users/{userId} {
       function isValidUser(data) {
         return (!('email' in data) || data.email is string) &&
-               (!('plan' in data) || data.plan in ['free', 'standard', 'premium', 'admin']);
+               (!('plan' in data) || data.plan in ['free', 'pro', 'standard', 'premium', 'admin']);
       }
 
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());

@@ -3,7 +3,7 @@ import { onAuthStateChanged, User, signOut, setPersistence, browserLocalPersiste
 import { doc, getDoc, setDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
-export type UserPlan = 'free' | 'standard' | 'premium' | 'admin';
+export type UserPlan = 'free' | 'pro' | 'standard' | 'premium' | 'admin';
 
 const ADMIN_EMAILS = ["rrachitkhandelwal8@gmail.com"]; // User's email from runtime context
 
@@ -50,8 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const data = snapshot.data();
             const isEmailAdmin = !!(firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email));
             
-            // Respect stored user plan, default to admin if admin email and no plan set
-            const currentPlan = data.plan || (isEmailAdmin ? 'admin' : 'free');
+            // Respect stored user plan, normalize 'standard' to 'pro', default to admin if admin email and no plan set
+            const rawPlan = data.plan || (isEmailAdmin ? 'admin' : 'free');
+            const currentPlan: UserPlan = (rawPlan === 'standard' ? 'pro' : rawPlan);
             setPlan(currentPlan);
           } else {
             const isEmailAdmin = !!(firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email));

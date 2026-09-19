@@ -45,12 +45,15 @@ import { cn } from '../lib/utils';
 
 import PaymentGatewayModal, { CheckoutItem } from '../components/PaymentGatewayModal';
 import { CREDIT_PACKS } from '../constants/creditPacks.ts';
+import { normalizePlanTier, PLAN_MONTHLY_CREDITS, SUBSCRIPTION_PLANS } from '../constants/subscriptionPlans';
 
 export default function CreditsPage() {
   const { user } = useAuth();
   const {
     plan,
     creditWallet,
+    subscriptionUsage,
+    checkAccess,
     creditCosts,
     transactions,
     achievements,
@@ -72,6 +75,8 @@ export default function CreditsPage() {
     adminFetchAllUsers,
     adminGetAnalytics
   } = usePlan();
+
+  const normalizedPlan = normalizePlanTier(plan);
 
   const [activeTab, setActiveTab] = useState<'wallet' | 'missions' | 'referrals' | 'pricing' | 'admin'>('wallet');
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
@@ -95,65 +100,80 @@ export default function CreditsPage() {
   // Store packages (Finalized AI Credit Top-Up Pricing: MINI ₹49, BOOST ₹99, JOB HUNT ₹199, CAREER PACK ₹399)
   const storePackages = CREDIT_PACKS;
 
-  // Membership Plans for Pricing Tab
+  // Membership Plans for Pricing Tab (Final 3-tier model)
   const membershipPlans = [
     {
       id: 'free',
-      name: 'Starter Plan',
+      name: 'Free',
+      tagline: 'For exploring AI HireFlow',
       price: { INR: '₹0', USD: '$0' },
-      period: 'forever',
+      rawPrice: { INR: 0, USD: 0 },
+      period: '/ month',
       description: 'Standard baseline intelligence for individual career explorers.',
       icon: Shield,
-      creditsAdded: 100,
+      creditsAdded: 200,
       features: [
-        '100 Initial Wallet Credits',
-        '2 Free ATS Resume Scans / month',
-        '1 Live AI Voice Mock Interview',
-        'Global Tech Job Finder Access',
-        'Standard Community Support'
+        '200 AI Credits / month',
+        '10 Job Searches / day',
+        '5 ATS Analyses / week',
+        '3 Interview Labs / week',
+        '10 new jobs tracked / month',
+        '2 Resume Edits / month',
+        '5 Career Advisor chats / day',
+        'Earn extra credits via daily login & referrals',
+        'Credit top-ups available'
       ],
       buttonText: 'Current Plan',
-      disabled: plan === 'free'
+      disabled: normalizedPlan === 'free'
     },
     {
-      id: 'standard',
-      name: 'Pro Accelerator',
-      price: { INR: '₹1,499', USD: '$19' },
+      id: 'pro',
+      name: 'Pro',
+      tagline: 'For students & casual job seekers',
+      price: { INR: '₹149', USD: '$3' },
+      rawPrice: { INR: 149, USD: 3 },
       period: '/ month',
       recommended: true,
-      description: 'The preferred choice for active candidates and rapid job seekers.',
+      description: 'Affordable acceleration tailored for students and casual job seekers.',
       icon: Zap,
-      creditsAdded: 2000,
+      creditsAdded: 500,
       features: [
-        '2,000 Monthly Credits (Instant top-up)',
-        'Unlimited ATS Scans & Keyword Gap Audits',
-        'Live Voice Mock Interview Lab with real-time feedback',
-        'Tailored Cover Letter Generator',
+        '500 AI Credits / month',
+        '30 Job Searches / day',
+        '20 ATS Analyses / month',
+        '15 Interview Labs / month',
+        '75 new jobs tracked / month',
+        '10 Resume Edits / month',
+        '30 Career Advisor chats / day',
         'Full Personalized Skill Roadmap',
-        'Master Resume Cloud Sync & Editor'
+        'Credit top-ups available'
       ],
       buttonText: 'Upgrade to Pro',
-      disabled: plan === 'standard' || plan === 'premium' || plan === 'admin'
+      disabled: normalizedPlan === 'pro' || normalizedPlan === 'premium' || normalizedPlan === 'admin'
     },
     {
       id: 'premium',
-      name: 'Elite Executive',
-      price: { INR: '₹3,499', USD: '$49' },
+      name: 'Premium',
+      tagline: 'For active job seekers',
+      price: { INR: '₹249', USD: '$5' },
+      rawPrice: { INR: 249, USD: 5 },
       period: '/ month',
-      description: 'Full-spectrum autonomous career suite with priority GPU allocation.',
+      description: 'Maximum velocity and power for active candidates hunting their next dream role.',
       icon: Sparkles,
-      creditsAdded: 8000,
+      creditsAdded: 1500,
       features: [
-        '8,000 Monthly Credits (Instant top-up)',
-        'All Pro Accelerator capabilities included',
-        'Campus Placement & University Drives Tracker',
-        'Executive Salary & Negotiation Simulator',
-        'Direct Recruiter Cold Outreach Pitch Engine',
-        'Priority GPU Allocation & Ultra-fast AI Processing',
-        'Dedicated 1-on-1 Priority Technical Support'
+        '1,500 AI Credits / month',
+        'High / Unlimited Job Searches*',
+        '50 ATS Analyses / month',
+        '30 Interview Labs / month',
+        'Unlimited Job Tracker*',
+        '25 Resume Edits / month',
+        'High Career Advisor usage*',
+        'Priority AI Engine Processing',
+        'Credit top-ups available'
       ],
-      buttonText: 'Unlock Elite Executive',
-      disabled: plan === 'premium' || plan === 'admin'
+      buttonText: 'Unlock Premium',
+      disabled: normalizedPlan === 'premium' || normalizedPlan === 'admin'
     }
   ];
 
@@ -402,7 +422,7 @@ export default function CreditsPage() {
   };
 
   // Helper values for rendering progress wheels
-  const totalMonthlyAllowance = plan === 'premium' ? 8000 : plan === 'standard' ? 2000 : 250;
+  const totalMonthlyAllowance = PLAN_MONTHLY_CREDITS[normalizedPlan] || 200;
   const percentageUsed = creditWallet 
     ? Math.round(((creditWallet.usedThisMonth) / totalMonthlyAllowance) * 100)
     : 0;
@@ -618,7 +638,7 @@ export default function CreditsPage() {
                       <div className="space-y-3">
                         <div className="flex justify-between items-center border-b border-border/40 pb-2.5">
                           <span className="text-xs text-ink-dim font-sans">Active Plan</span>
-                          <span className="text-xs font-mono font-bold text-accent uppercase">{plan} Tier</span>
+                          <span className="text-xs font-mono font-bold text-accent uppercase">{normalizedPlan} Tier</span>
                         </div>
                         <div className="flex justify-between items-center border-b border-border/40 pb-2.5">
                           <span className="text-xs text-ink-dim font-sans">Total Lifetime Earned</span>
@@ -639,10 +659,14 @@ export default function CreditsPage() {
 
                     <div className="bg-surface-light border border-border rounded-xl p-3 mt-4">
                       <p className="text-[10px] text-accent font-mono font-bold uppercase tracking-wider flex items-center gap-1 mb-0.5">
-                        <Zap className="w-3 h-3" /> Rollover Guarantee
+                        <Zap className="w-3 h-3" /> Monthly Credit Allocation
                       </p>
                       <p className="text-[11px] text-ink-dim leading-relaxed font-sans">
-                        {plan === 'premium' ? 'Premium credits roll over for 3 months.' : plan === 'standard' ? 'Standard credits roll over for 2 months.' : 'Free tier monthly credits refresh every 30 days.'}
+                        {normalizedPlan === 'premium'
+                          ? '1,500 monthly AI Credits and high-volume limits reset every 30 days.'
+                          : normalizedPlan === 'pro'
+                          ? '500 monthly AI Credits and expanded allowances reset every 30 days.'
+                          : '200 monthly AI Credits refresh every 30 days. Top-up credits never expire.'}
                       </p>
                     </div>
                   </div>
@@ -863,18 +887,14 @@ export default function CreditsPage() {
               {/* Plans Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {membershipPlans.map((p) => {
-                  const rawPriceNumber = p.id === 'standard' 
-                    ? (currency === 'INR' ? 1499 : 19) 
-                    : p.id === 'premium' 
-                    ? (currency === 'INR' ? 3499 : 49) 
-                    : 0;
+                  const rawPriceNumber = p.rawPrice[currency];
 
                   return (
                     <div 
                       key={p.id}
                       className={cn(
                         "p-7 rounded-3xl border transition-all flex flex-col justify-between relative bg-surface",
-                        p.id === plan ? "border-accent ring-1 ring-accent" : "border-border",
+                        p.id === normalizedPlan ? "border-accent ring-1 ring-accent" : "border-border",
                         p.recommended && "shadow-lg shadow-accent/10 border-accent/60"
                       )}
                     >
@@ -888,7 +908,8 @@ export default function CreditsPage() {
                         <div className="w-12 h-12 rounded-2xl bg-surface-light border border-border flex items-center justify-center mb-5">
                           <p.icon className="w-6 h-6 text-accent" />
                         </div>
-                        <h3 className="text-xl font-bold text-ink font-sans mb-1">{p.name}</h3>
+                        <h3 className="text-xl font-bold text-ink font-sans mb-0.5">{p.name}</h3>
+                        <p className="text-[11px] font-mono font-semibold text-accent mb-2">{p.tagline}</p>
                         <div className="flex items-baseline gap-1 mb-4">
                           <span className="text-3xl font-black font-mono text-ink">{p.price[currency]}</span>
                           <span className="text-xs text-ink-dim font-mono">{p.period}</span>
@@ -924,7 +945,7 @@ export default function CreditsPage() {
                           handlePaymentInitiation({
                             type: 'subscription',
                             item: p.id,
-                            itemName: p.name,
+                            itemName: `${p.name} Plan`,
                             price: rawPriceNumber,
                             currencySymbol: currency === 'INR' ? '₹' : '$',
                             credits: p.creditsAdded
@@ -933,7 +954,7 @@ export default function CreditsPage() {
                         disabled={p.disabled}
                         className={cn(
                           "min-h-[44px] mt-8 w-full py-3.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md",
-                          p.id === plan 
+                          p.id === normalizedPlan 
                             ? "bg-surface-light border-border text-ink-dim cursor-not-allowed" 
                             : p.id === 'premium'
                             ? "bg-amber-400 text-black hover:bg-amber-300 border-amber-400"
@@ -941,13 +962,18 @@ export default function CreditsPage() {
                           p.disabled && "opacity-50 grayscale cursor-not-allowed"
                         )}
                       >
-                        {p.id === plan ? 'Active Plan' : p.buttonText}
-                        {p.id !== plan && p.id !== 'free' && <Lock className="w-3 h-3" />}
+                        {p.id === normalizedPlan ? 'Active Plan' : p.buttonText}
+                        {p.id !== normalizedPlan && p.id !== 'free' && <Lock className="w-3 h-3" />}
                       </button>
                     </div>
                   );
                 })}
               </div>
+
+              {/* Fair-use policy notice */}
+              <p className="text-xs text-ink-dim font-mono text-center">
+                *Fair-use limits may apply for high-volume and unlimited features.
+              </p>
 
               {/* Payment FAQ Section */}
               <div className="bg-surface border border-border rounded-3xl p-6 sm:p-8 shadow-sm">

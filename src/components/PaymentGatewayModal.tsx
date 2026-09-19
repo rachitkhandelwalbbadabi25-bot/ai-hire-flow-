@@ -29,7 +29,7 @@ import confetti from 'canvas-confetti';
 
 export interface CheckoutItem {
   type: 'subscription' | 'credits';
-  itemId: string; // 'standard' | 'premium' | 'starter_pack' | 'pro_pack' | 'executive_pack'
+  itemId: string; // 'pro' | 'standard' | 'premium' | 'starter_pack' | 'pro_pack' | 'executive_pack'
   title: string;
   subtitle?: string;
   basePriceINR: number;
@@ -321,8 +321,10 @@ export default function PaymentGatewayModal({
           creditWallet: updatedWallet
         };
 
-        if (item.type === 'subscription' && (item.itemId === 'standard' || item.itemId === 'premium')) {
-          updatePayload.plan = item.itemId as UserPlan;
+        if (item.type === 'subscription' && (item.itemId === 'pro' || item.itemId === 'standard' || item.itemId === 'premium')) {
+          const normPlan: UserPlan = item.itemId === 'standard' ? 'pro' : (item.itemId as UserPlan);
+          updatePayload.plan = normPlan;
+          updatePayload.subscriptionStartDate = new Date().toISOString();
         }
 
         try {

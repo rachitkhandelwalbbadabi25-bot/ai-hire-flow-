@@ -60,7 +60,8 @@ function generateUniqueId(): string {
 
 export default function ResumeEditor() {
   const { user } = useAuth();
-  const { triggerAction } = usePlan();
+  const { triggerAction, checkAccess, deductCredit, openUpgradeModal } = usePlan();
+  const editAccess = checkAccess('resumeEdits');
   
   const [data, setData] = useState<ResumeData>({
     summary: '',
@@ -112,6 +113,13 @@ export default function ResumeEditor() {
 
   const handleSave = async () => {
     if (!user?.uid) return;
+
+    const access = checkAccess('resumeEdits');
+    if (!access.hasAccess) {
+      openUpgradeModal();
+      return;
+    }
+
     setIsSaving(true);
     setSaveSuccess(false);
 
@@ -122,6 +130,7 @@ export default function ResumeEditor() {
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      await deductCredit('resumeEdits');
       if (triggerAction) {
         triggerAction('profile_complete').catch(console.error);
       }
@@ -268,6 +277,11 @@ export default function ResumeEditor() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-mono text-ink-dim bg-surface border border-border px-3.5 py-3 rounded-2xl shadow-sm hidden sm:inline-flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
+            {typeof editAccess.limit === 'number' && editAccess.limit < 9999 ? `${editAccess.remaining} edits left this month` : 'Unlimited edits'}
+          </span>
+
           <button
             type="button"
             onClick={handleClearAll}

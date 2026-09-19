@@ -27,7 +27,7 @@ import NextStepBridgeCard from '../components/NextStepBridgeCard';
 export default function JobTracker() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { checkAccess, openUpgradeModal } = usePlan();
+  const { checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const { activeTargetRole } = useSystemOS();
   const [jobs, setJobs] = useState<any[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -82,6 +82,7 @@ export default function JobTracker() {
       });
       setIsAdding(false);
       setNewJob({ company: '', role: '', status: 'Applied', notes: '' });
+      await deductCredit('jobsTracked');
       fetchJobs();
     } catch (err) {
       console.error(err);
@@ -158,8 +159,14 @@ export default function JobTracker() {
             />
           </div>
           <button 
-            onClick={() => setIsAdding(true)}
-            className="bg-accent text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20 whitespace-nowrap"
+            onClick={() => {
+              if (!canAddJob) {
+                openUpgradeModal('jobsTracked');
+                return;
+              }
+              setIsAdding(true);
+            }}
+            className="bg-accent text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20 whitespace-nowrap cursor-pointer"
           >
             <Plus className="w-4 h-4" /> New Target
           </button>

@@ -39,15 +39,39 @@ app.post(['/api/coach', '/coach'], (req, res) => {
 // VELONA (Z.ai / GLM-5.3-Flash) AI PROVIDER INTEGRATION
 // =========================================================================
 const VELONA_BASE_URL = 'https://velona.in/v1';
-const VELONA_MODEL_ID = process.env.VELONA_MODEL || 'z-ai/glm-5.3-flash';
+
+export function getVelonaModel(): string {
+  const envModel = (process.env.VELONA_MODEL || '').trim();
+  const sanitized = envModel.replace(/^["']|["']$/g, '').trim();
+  return sanitized || 'z-ai/glm-5.3-flash';
+}
+
+export const VELONA_MODEL_ID = getVelonaModel();
 
 export function getVelonaApiKey(): string | undefined {
-  return (
+  const raw = (
     process.env.VELONA_API_KEY ||
     process.env.VELONA_KEY ||
     process.env.VELONA_AUTH_TOKEN ||
-    process.env.Z_AI_API_KEY
-  );
+    process.env.Z_AI_API_KEY ||
+    ''
+  ).trim();
+  const sanitized = raw.replace(/^["']|["']$/g, '').trim();
+  return sanitized || undefined;
+}
+
+export function sanitizeSafeErrorMessage(rawMessage: any): string {
+  if (!rawMessage) return 'An unexpected error occurred during AI generation.';
+  const str = typeof rawMessage === 'string' ? rawMessage : (rawMessage.message || String(rawMessage));
+  let safe = str
+    .replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, 'Bearer [REDACTED]')
+    .replace(/[a-zA-Z0-9_\-]{32,}/g, '[REDACTED_KEY]')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (safe.length > 250) {
+    safe = safe.slice(0, 250) + '...';
+  }
+  return safe || 'An unexpected error occurred during AI generation.';
 }
 
 export async function callVelonaChatCompletion({
@@ -71,22 +95,26 @@ export async function callVelonaChatCompletion({
     wordCount?: number;
   };
 }) {
-  const reqTag = requestId ? `[Req:${requestId}]` : '';
   const apiKey = getVelonaApiKey();
+  const modelId = getVelonaModel();
+
   if (!apiKey) {
-    const error: any = new Error('VELONA_API_KEY is not configured in server environment or secrets.');
-    error.status = 401;
+    const error: any = new Error('VELONA_API_KEY is not configured in server environment.');
+    error.status = 500;
     error.code = 'MISSING_API_KEY';
     throw error;
   }
 
   // Sanitize and ensure valid messages
-  let formattedMessages = (messages || [])
-    .filter(m => m && typeof m.content === 'string' && m.content.trim().length > 0)
-    .map(m => ({
-      role: m.role || 'user',
-      content: m.content.trim()
-    }));
+  let formattedMessages: Array<{ role: string; content: string }> = [];
+  if (Array.isArray(messages)) {
+    formattedMessages = messages
+      .filter(m => m && typeof m === 'object' && typeof m.content === 'string' && m.content.trim().length > 0)
+      .map(m => ({
+        role: (m.role === 'assistant' || m.role === 'system') ? m.role : 'user',
+        content: m.content.trim()
+      }));
+  }
 
   if (formattedMessages.length === 0) {
     formattedMessages = [{ role: 'user', content: 'Hello' }];
@@ -103,27 +131,21 @@ export async function callVelonaChatCompletion({
     }
   }
 
-  // Safe bounded max_tokens for GLM-5.3-Flash (ensures sufficient floor for reasoning tokens)
-  const safeMaxTokens = maxTokens ? Math.min(Math.max(1200, maxTokens), 4096) : 3200;
+  // Safe bounded max_tokens for GLM-5.3-Flash
+  const safeMaxTokens = maxTokens ? Math.min(Math.max(500, maxTokens), 4096) : 3200;
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.1, Math.min(1.0, temperature))
     : 0.7;
 
   const velonaStart = Date.now();
-  const approxPromptLength = formattedMessages.reduce((sum, m) => sum + m.content.length, 0);
-  console.log(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Start: model=${VELONA_MODEL_ID}, promptSize=${approxPromptLength} chars, fileType=${meta?.fileType || 'N/A'}, textChars=${meta?.charCount ?? 'N/A'}, textWords=${meta?.wordCount ?? 'N/A'}, jsonMode=${jsonMode}, maxTokens=${safeMaxTokens}, temperature=${safeTemperature}`);
-
-  // Resilient execution with bounded total budget to stay safely within Vercel's 60s limit
-  // For background async jobs, use a generous provider timeout (110s) so Node background tasks aren't prematurely killed
-  const isJob = operation.includes('job');
+  const isJob = (operation || '').includes('job');
   const maxRetries = 1;
-  const maxTotalBudgetMs = isJob ? 180000 : 58000;
-  const perAttemptTimeoutMs = isJob ? 110000 : 52000;
+  const maxTotalBudgetMs = isJob ? 180000 : 55000;
+  const perAttemptTimeoutMs = isJob ? 110000 : 48000;
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 15000)) {
-      console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Insufficient time remaining in budget (${Date.now() - velonaStart}ms). Stopping retries.`);
       break;
     }
 
@@ -131,7 +153,6 @@ export async function callVelonaChatCompletion({
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeoutMs);
 
-    // On retry attempts after a 500, adapt message structure to merged user message (handles any gateway system-role incompatibilities)
     let currentMessages = formattedMessages;
     if (attempt > 0) {
       const systemParts = formattedMessages.filter(m => m.role === 'system').map(m => m.content);
@@ -151,7 +172,7 @@ export async function callVelonaChatCompletion({
     }
 
     const payload: any = {
-      model: VELONA_MODEL_ID,
+      model: modelId,
       messages: currentMessages,
       temperature: safeTemperature,
       stream: false,
@@ -178,87 +199,101 @@ export async function callVelonaChatCompletion({
       });
 
       clearTimeout(timeoutId);
-      const attemptElapsed = Date.now() - attemptStart;
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        let errorDetails = errorBody;
+        let errorDetails = '';
         try {
-          const errJson = JSON.parse(errorBody);
-          errorDetails = errJson.error?.message || errJson.message || errorBody;
+          const errorBody = await response.text();
+          try {
+            const errJson = JSON.parse(errorBody);
+            errorDetails = errJson.error?.message || errJson.message || errorBody;
+          } catch {
+            errorDetails = errorBody;
+          }
         } catch {
-          // errorDetails is plain text
+          errorDetails = `HTTP status ${response.status}`;
         }
 
+        const safeDetails = sanitizeSafeErrorMessage(errorDetails);
         const isTransient = [500, 502, 503, 504].includes(response.status);
-        const err: any = new Error(errorDetails || `Velona API responded with HTTP status ${response.status}`);
+        const err: any = new Error(safeDetails || `Velona API responded with HTTP status ${response.status}`);
         err.status = response.status;
-        
+        err.velonaStatus = response.status;
+
         if (response.status === 401) {
           err.code = 'INVALID_API_KEY';
-          err.message = `Velona Authentication Failed: Invalid or expired API key. (${errorDetails})`;
-          throw err; // Non-retryable
+          err.message = `Velona Authentication Failed: Invalid or expired API key. (${safeDetails})`;
+          throw err;
         } else if (response.status === 402 || response.status === 429) {
           err.code = 'INSUFFICIENT_BALANCE_OR_RATE_LIMIT';
-          err.message = `Velona Quota/Balance Error: ${errorDetails || 'Insufficient prepaid balance or rate limit exceeded.'}`;
-          throw err; // Non-retryable
+          err.message = `Velona Quota/Balance Error: ${safeDetails || 'Insufficient prepaid balance or rate limit exceeded.'}`;
+          throw err;
         } else {
           err.code = 'VELONA_API_ERROR';
         }
 
-        if (isTransient && attempt < maxRetries && (Date.now() - velonaStart) < maxTotalBudgetMs) {
+        if (isTransient && attempt < maxRetries && (Date.now() - velonaStart) < (maxTotalBudgetMs - 15000)) {
           lastError = err;
-          continue; // Try next attempt with adaptive format and exponential backoff
+          continue;
         }
-        
-        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona HTTP ${response.status} on final attempt ${attempt + 1} (${attemptElapsed}ms): ${errorDetails}`);
+
         throw err;
       }
 
-      const rawText = await response.text();
+      let rawText = '';
+      try {
+        rawText = await response.text();
+      } catch (readErr: any) {
+        const err: any = new Error('Failed to read response body from AI service.');
+        err.status = 502;
+        err.velonaStatus = response.status;
+        err.code = 'NETWORK_ERROR';
+        throw err;
+      }
+
       let data: any;
       try {
         data = JSON.parse(rawText);
       } catch (parseErr) {
-        console.error(`[AI HireFlow][Velona]${reqTag} Failed to parse upstream JSON:`, rawText.slice(0, 200));
-        const err: any = new Error(`Velona API returned non-JSON response: ${rawText.slice(0, 150)}`);
+        const err: any = new Error('Velona API returned a non-JSON response.');
         err.status = 502;
+        err.velonaStatus = response.status;
+        err.code = 'INVALID_UPSTREAM_RESPONSE';
+        throw err;
+      }
+
+      if (!data || typeof data !== 'object') {
+        const err: any = new Error('Velona API returned an invalid response structure.');
+        err.status = 502;
+        err.velonaStatus = response.status;
         err.code = 'INVALID_UPSTREAM_RESPONSE';
         throw err;
       }
 
       if (data.error) {
-        const err: any = new Error(data.error.message || 'Velona API returned an error response.');
-        err.status = data.error.code === 'invalid_api_key' ? 401 : 500;
+        const errMsg = sanitizeSafeErrorMessage(typeof data.error === 'string' ? data.error : (data.error.message || 'Velona API error'));
+        const err: any = new Error(errMsg);
+        err.status = data.error.code === 'invalid_api_key' ? 401 : 502;
+        err.velonaStatus = response.status;
         err.code = data.error.code || 'VELONA_API_ERROR';
         throw err;
       }
 
       const choice = data.choices?.[0];
-      const content = choice?.message?.content || '';
+      const content = choice?.message?.content;
+      if (typeof content !== 'string') {
+        const err: any = new Error('Velona API response did not contain completion content.');
+        err.status = 502;
+        err.velonaStatus = response.status;
+        err.code = 'MALFORMED_UPSTREAM_RESPONSE';
+        throw err;
+      }
+
       const finishReason = choice?.finish_reason || 'stop';
-      const completionTokens = data.usage?.completion_tokens || 0;
-      const promptTokens = data.usage?.prompt_tokens || 0;
-      const totalTokens = data.usage?.total_tokens || 0;
       const totalElapsed = Date.now() - velonaStart;
 
-      let jsonParseStatus = 'N/A';
-      if (jsonMode) {
-        try {
-          const stripped = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-          JSON.parse(stripped);
-          jsonParseStatus = 'SUCCESS';
-        } catch {
-          jsonParseStatus = 'FAILED';
-        }
-      }
-
       // Safe diagnostics: strictly operational metrics without sensitive user prompt/resume content
-      console.log(`[AI HireFlow][Diagnostics] endpoint=${VELONA_BASE_URL}/chat/completions, model=${VELONA_MODEL_ID}, prompt_chars=${approxPromptLength}, prompt_tokens=${promptTokens}, max_tokens=${safeMaxTokens}, temperature=${safeTemperature}, enable_thinking=false, duration=${totalElapsed}ms, status=${response.status}, completion_chars=${content.length}, completion_tokens=${completionTokens}, finish_reason=${finishReason}, parser_result=${jsonParseStatus}`);
-
-      if (finishReason === 'length') {
-        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] WARNING: Model response hit finish_reason=length (token limit reached, output truncated).`);
-      }
+      console.log(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=200, model=${modelId}, duration_ms=${totalElapsed}, velona_status=${response.status}, error_category=none, message=ok`);
 
       let cleanText = content;
       if (jsonMode && typeof cleanText === 'string') {
@@ -273,31 +308,28 @@ export async function callVelonaChatCompletion({
         rawText: content,
         finishReason,
         isTruncated: finishReason === 'length',
-        model: data.model || VELONA_MODEL_ID,
+        model: data.model || modelId,
         provider: 'velona',
-        usage: data.usage,
+        usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         timing: {
           velonaDurationMs: totalElapsed
         }
       };
     } catch (err: any) {
       clearTimeout(timeoutId);
-      const attemptElapsed = Date.now() - attemptStart;
       
       if (err.name === 'AbortError') {
-        console.error(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona request aborted after timeout (${attemptElapsed}ms).`);
-        lastError = new Error(isJob ? 'Analysis is taking longer than expected. Please retry in a moment.' : 'AI request took longer than expected. Please try again.');
+        lastError = new Error(isJob ? 'Analysis is taking longer than expected. Please retry in a moment.' : 'AI request timed out. Please try again.');
         lastError.status = 504;
+        lastError.velonaStatus = 504;
         lastError.code = 'TIMEOUT';
-        break; // Never retry a timed-out attempt
+        break;
       } else {
         lastError = err;
       }
 
-      // Only retry immediate network drops (ECONNRESET, FetchError) if ample time remains in budget
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
       if (attempt < maxRetries && timeRemaining > 20000 && (err.name === 'FetchError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT')) {
-        console.warn(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Retrying after network error (${timeRemaining}ms remaining): ${err.message}`);
         continue;
       }
 
@@ -306,20 +338,25 @@ export async function callVelonaChatCompletion({
   }
 
   const totalElapsed = Date.now() - velonaStart;
-  console.error(`[AI HireFlow][Velona]${reqTag}[Op:${operation}] Velona attempts completed after ${totalElapsed}ms:`, lastError?.message);
+  const safeMessage = sanitizeSafeErrorMessage(lastError?.message || 'Velona API request failed.');
+  const errorCategory = lastError?.code || 'AI_GENERATION_FAILED';
+  const velonaStatus = lastError?.velonaStatus || lastError?.status || 500;
+  console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=${lastError?.status || 500}, model=${modelId}, duration_ms=${totalElapsed}, velona_status=${velonaStatus}, error_category=${errorCategory}, message=${safeMessage}`);
+
   throw lastError || new Error('Velona API request failed after retries.');
 }
 
 // Get AI Provider Status
 app.get(['/api/ai/providers', '/ai/providers'], (req, res) => {
   const velonaKey = getVelonaApiKey();
+  const currentModel = getVelonaModel();
   res.json({
     providers: [
       {
         id: 'velona',
         name: 'Velona (GLM 5.3 Flash)',
         providerName: 'Z.ai via Velona',
-        model: VELONA_MODEL_ID,
+        model: currentModel,
         configured: !!velonaKey,
         isDefault: true,
         capabilities: ['structured_json', 'openai_compatible', 'fast_inference', 'ats_scoring', 'job_matching'],
@@ -335,12 +372,21 @@ app.get(['/api/ai/providers', '/ai/providers'], (req, res) => {
 });
 
 // Velona Generation endpoint
-app.post(['/api/velona/generate', '/velona/generate', '/api/ai/generate', '/ai/generate'], async (req, res) => {
+app.post([
+  '/api/velona/generate', 
+  '/api/velona/generate/', 
+  '/velona/generate', 
+  '/velona/generate/', 
+  '/api/ai/generate', 
+  '/api/ai/generate/', 
+  '/ai/generate', 
+  '/ai/generate/'
+], async (req, res) => {
   const requestStart = Date.now();
-  const requestId = Math.random().toString(36).substring(2, 9);
-  
+  const modelId = getVelonaModel();
+
   try {
-    const body = req.body || {};
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
     const { 
       prompt, 
       systemPrompt, 
@@ -352,32 +398,46 @@ app.post(['/api/velona/generate', '/velona/generate', '/api/ai/generate', '/ai/g
       meta
     } = body;
 
-    const promptLength = prompt ? prompt.length : (incomingMessages ? JSON.stringify(incomingMessages).length : 0);
-    console.log(`[AI HireFlow][Velona][Req:${requestId}][Op:${operation}] Request start: timestamp=${new Date().toISOString()}, endpoint=${req.path}, jsonMode=${jsonMode}, promptLength=${promptLength}, fileType=${meta?.fileType || 'N/A'}, charCount=${meta?.charCount ?? 'N/A'}`);
-
     // Backend Enforcement: Check user plan, feature allowances, and credit balances
-    const effectiveUserId = body.userId || (req.headers['x-user-id'] as string);
-    const effectiveUserEmail = body.userEmail || (req.headers['x-user-email'] as string);
+    const effectiveUserId = (typeof body.userId === 'string' && body.userId.trim()) 
+      ? body.userId.trim() 
+      : (typeof req.headers['x-user-id'] === 'string' ? (req.headers['x-user-id'] as string).trim() : undefined);
+    const effectiveUserEmail = (typeof body.userEmail === 'string' && body.userEmail.trim()) 
+      ? body.userEmail.trim() 
+      : (typeof req.headers['x-user-email'] === 'string' ? (req.headers['x-user-email'] as string).trim() : undefined);
 
     if (effectiveUserId || effectiveUserEmail) {
-      const enforcement = await enforceSubscriptionAndCredits({
-        userId: effectiveUserId,
-        userEmail: effectiveUserEmail,
-        operation: operation || 'general'
-      });
-
-      if (!enforcement.allowed) {
-        console.warn(`[AI HireFlow][Velona][Req:${requestId}] Access denied: ${enforcement.error}`);
-        return res.status(enforcement.status || 403).json({
-          error: enforcement.error,
-          code: enforcement.code || 'ACCESS_DENIED',
-          requiredCredits: enforcement.requiredCredits,
-          balance: enforcement.balance
+      try {
+        const enforcement = await enforceSubscriptionAndCredits({
+          userId: effectiveUserId,
+          userEmail: effectiveUserEmail,
+          operation: typeof operation === 'string' ? operation : 'general'
         });
+
+        if (!enforcement.allowed) {
+          const duration = Date.now() - requestStart;
+          const safeReason = sanitizeSafeErrorMessage(enforcement.error || 'Access denied');
+          console.warn(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=${enforcement.status || 403}, model=${modelId}, duration_ms=${duration}, velona_status=N/A, error_category=${enforcement.code || 'ACCESS_DENIED'}, message=${safeReason}`);
+          return res.status(enforcement.status || 403).json({
+            error: safeReason,
+            code: enforcement.code || 'ACCESS_DENIED',
+            requiredCredits: enforcement.requiredCredits,
+            balance: enforcement.balance
+          });
+        }
+      } catch (enfErr: any) {
+        // Safe fail-open for enforcement in case of transient database connection issue
+        console.warn(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=200, model=${modelId}, duration_ms=${Date.now() - requestStart}, velona_status=N/A, error_category=ENFORCEMENT_FAILOPEN, message=Allowed with fallback`);
       }
     }
 
-    if (!prompt && (!incomingMessages || incomingMessages.length === 0)) {
+    // Validate prompt and messages
+    const hasPrompt = typeof prompt === 'string' && prompt.trim().length > 0;
+    const hasMessages = Array.isArray(incomingMessages) && incomingMessages.length > 0 && incomingMessages.some(m => m && typeof m.content === 'string' && m.content.trim().length > 0);
+
+    if (!hasPrompt && !hasMessages) {
+      const duration = Date.now() - requestStart;
+      console.warn(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=400, model=${modelId}, duration_ms=${duration}, velona_status=N/A, error_category=INVALID_REQUEST, message=Prompt string or messages array is required.`);
       return res.status(400).json({ 
         error: 'Prompt string or messages array is required.',
         code: 'INVALID_REQUEST'
@@ -385,29 +445,26 @@ app.post(['/api/velona/generate', '/velona/generate', '/api/ai/generate', '/ai/g
     }
 
     let messages: Array<{ role: string; content: string }> = [];
-    if (incomingMessages && Array.isArray(incomingMessages) && incomingMessages.length > 0) {
+    if (hasMessages) {
       messages = incomingMessages;
     } else {
-      if (systemPrompt) {
-        messages.push({ role: 'system', content: systemPrompt });
+      if (typeof systemPrompt === 'string' && systemPrompt.trim().length > 0) {
+        messages.push({ role: 'system', content: systemPrompt.trim() });
       }
-      messages.push({ role: 'user', content: prompt });
+      messages.push({ role: 'user', content: (prompt as string).trim() });
     }
 
     const result = await callVelonaChatCompletion({
       messages,
       temperature,
-      jsonMode,
+      jsonMode: Boolean(jsonMode),
       maxTokens,
-      requestId,
-      operation,
+      operation: typeof operation === 'string' ? operation : 'general',
       meta
     });
 
     const totalDuration = Date.now() - requestStart;
-    console.log(`[AI HireFlow][Velona][Req:${requestId}] Request complete: totalTime=${totalDuration}ms, status=200`);
-
-    res.json({
+    return res.status(200).json({
       ...result,
       timing: {
         ...result.timing,
@@ -416,13 +473,18 @@ app.post(['/api/velona/generate', '/velona/generate', '/api/ai/generate', '/ai/g
     });
   } catch (err: any) {
     const totalDuration = Date.now() - requestStart;
-    console.error(`[AI HireFlow][Velona][Req:${requestId}] AI Generation error after ${totalDuration}ms:`, err);
-    const status = (typeof err.status === 'number' && err.status >= 400 && err.status < 600) ? err.status : 500;
-    res.status(status).json({ 
-      error: err.message || 'Internal AI generation error',
-      code: err.code || 'AI_GENERATION_FAILED',
+    const rawStatus = (typeof err.status === 'number' && err.status >= 400 && err.status < 600) ? err.status : 500;
+    const safeMsg = sanitizeSafeErrorMessage(err.message || 'Internal AI generation error');
+    const errorCode = err.code || 'AI_GENERATION_FAILED';
+    const velonaStatus = err.velonaStatus || (rawStatus !== 500 ? rawStatus : 'N/A');
+
+    console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=${rawStatus}, model=${modelId}, duration_ms=${totalDuration}, velona_status=${velonaStatus}, error_category=${errorCode}, message=${safeMsg}`);
+
+    return res.status(rawStatus).json({ 
+      error: safeMsg,
+      code: errorCode,
       provider: 'velona',
-      model: VELONA_MODEL_ID,
+      model: modelId,
       timing: { totalDurationMs: totalDuration }
     });
   }
@@ -1361,15 +1423,29 @@ app.all(['/api/*', '/api'], (req, res) => {
 
 // Global Error Handler for API
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled API Error:', err);
   const status = (typeof err.status === 'number' && err.status >= 400 && err.status < 600) 
     ? err.status 
     : ((typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600) ? err.statusCode : 500);
-  res.status(status).json({
-    error: err.message || 'Internal Server Error',
-    code: err.code || 'INTERNAL_ERROR'
-  });
+  const safeMsg = sanitizeSafeErrorMessage(err.message || 'Internal Server Error');
+  console.error(`[AI HireFlow][Diagnostics] endpoint=${req.path || '/api'}, http_status=${status}, model=${getVelonaModel()}, duration_ms=0, velona_status=N/A, error_category=${err.code || 'INTERNAL_ERROR'}, message=${safeMsg}`);
+  
+  if (!res.headersSent) {
+    res.status(status).json({
+      error: safeMsg,
+      code: err.code || 'INTERNAL_ERROR'
+    });
+  }
 });
 
-export const handler = (req: any, res: any) => app(req, res);
+export const handler = (req: any, res: any) => {
+  return new Promise<void>((resolve, reject) => {
+    res.on('finish', resolve);
+    res.on('close', resolve);
+    res.on('error', reject);
+    app(req, res, (err: any) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+};
 export default app;

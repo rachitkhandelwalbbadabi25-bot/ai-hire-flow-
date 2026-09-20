@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "node server.ts",
-    "build": "vite build && esbuild api/index.ts --bundle --platform=node --format=esm --packages=external --outfile=api/index.js",
+    "build": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist api/index.js",
+    "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

@@ -141,16 +141,18 @@ export async function callVelonaChatCompletion({
   }
 
   // Safe bounded max_tokens for GLM-5.3-Flash
-  const safeMaxTokens = maxTokens ? Math.min(Math.max(500, maxTokens), 4096) : 3200;
+  const safeMaxTokens = maxTokens ? Math.min(Math.max(300, maxTokens), 4096) : 2400;
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.1, Math.min(1.0, temperature))
     : 0.7;
 
   const velonaStart = Date.now();
   const isJob = (operation || '').includes('job');
-  const maxRetries = 1;
-  const maxTotalBudgetMs = isJob ? 180000 : 55000;
-  const perAttemptTimeoutMs = isJob ? 110000 : 48000;
+  const isLearningPath = operation === 'learning_path';
+  // Avoid duplicate retries for learning_path to stay well within Vercel's 60-second execution window
+  const maxRetries = (isLearningPath || !isJob) ? 0 : 1;
+  const maxTotalBudgetMs = isJob ? 180000 : 50000;
+  const perAttemptTimeoutMs = isJob ? 110000 : (isLearningPath ? 38000 : 42000);
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -189,6 +191,10 @@ export async function callVelonaChatCompletion({
       enable_thinking: false
     };
 
+    if (jsonMode && !attempt) {
+      payload.response_format = { type: 'json_object' };
+    }
+
     try {
       if (attempt > 0) {
         const backoffMs = Math.min(2000, 400 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 200));
@@ -208,6 +214,7 @@ export async function callVelonaChatCompletion({
       });
 
       clearTimeout(timeoutId);
+      const attemptDuration = Date.now() - attemptStart;
 
       if (!response.ok) {
         let errorDetails = '';
@@ -228,6 +235,7 @@ export async function callVelonaChatCompletion({
         const err: any = new Error(safeDetails || `Velona API responded with HTTP status ${response.status}`);
         err.status = response.status;
         err.velonaStatus = response.status;
+        err.attemptDuration = attemptDuration;
 
         if (response.status === 401) {
           err.code = 'INVALID_API_KEY';
@@ -257,6 +265,7 @@ export async function callVelonaChatCompletion({
         err.status = 502;
         err.velonaStatus = response.status;
         err.code = 'NETWORK_ERROR';
+        err.attemptDuration = attemptDuration;
         throw err;
       }
 
@@ -268,6 +277,7 @@ export async function callVelonaChatCompletion({
         err.status = 502;
         err.velonaStatus = response.status;
         err.code = 'INVALID_UPSTREAM_RESPONSE';
+        err.attemptDuration = attemptDuration;
         throw err;
       }
 
@@ -276,6 +286,7 @@ export async function callVelonaChatCompletion({
         err.status = 502;
         err.velonaStatus = response.status;
         err.code = 'INVALID_UPSTREAM_RESPONSE';
+        err.attemptDuration = attemptDuration;
         throw err;
       }
 
@@ -285,16 +296,25 @@ export async function callVelonaChatCompletion({
         err.status = data.error.code === 'invalid_api_key' ? 401 : 502;
         err.velonaStatus = response.status;
         err.code = data.error.code || 'VELONA_API_ERROR';
+        err.attemptDuration = attemptDuration;
         throw err;
       }
 
       const choice = data.choices?.[0];
-      const content = choice?.message?.content;
-      if (typeof content !== 'string') {
+      const content = (typeof choice?.message?.content === 'string' && choice.message.content.trim())
+        ? choice.message.content
+        : (typeof choice?.text === 'string' && choice.text.trim())
+          ? choice.text
+          : (typeof choice?.message?.reasoning_content === 'string' && choice.message.reasoning_content.trim())
+            ? choice.message.reasoning_content
+            : null;
+
+      if (!content) {
         const err: any = new Error('Velona API response did not contain completion content.');
         err.status = 502;
         err.velonaStatus = response.status;
         err.code = 'MALFORMED_UPSTREAM_RESPONSE';
+        err.attemptDuration = attemptDuration;
         throw err;
       }
 
@@ -302,7 +322,7 @@ export async function callVelonaChatCompletion({
       const totalElapsed = Date.now() - velonaStart;
 
       // Safe diagnostics: strictly operational metrics without sensitive user prompt/resume content
-      console.log(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=200, model=${modelId}, duration_ms=${totalElapsed}, velona_status=${response.status}, error_category=none, message=ok`);
+      console.log(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(velonaStart).toISOString()}, http_status=200, model=${modelId}, total_duration_ms=${totalElapsed}, velona_duration_ms=${attemptDuration}, velona_status=${response.status}, timeout_stage=none, error_category=none, message=ok`);
 
       let cleanText = content;
       if (jsonMode && typeof cleanText === 'string') {
@@ -321,20 +341,27 @@ export async function callVelonaChatCompletion({
         provider: 'velona',
         usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         timing: {
-          velonaDurationMs: totalElapsed
+          velonaDurationMs: attemptDuration,
+          totalDurationMs: totalElapsed
         }
       };
     } catch (err: any) {
       clearTimeout(timeoutId);
+      const attemptDuration = Date.now() - attemptStart;
       
       if (err.name === 'AbortError') {
+        const stage = isLearningPath ? 'learning_path_timeout' : (isJob ? 'job_timeout' : `attempt_${attempt}_timeout`);
         lastError = new Error(isJob ? 'Analysis is taking longer than expected. Please retry in a moment.' : 'AI request timed out. Please try again.');
         lastError.status = 504;
         lastError.velonaStatus = 504;
         lastError.code = 'TIMEOUT';
+        lastError.timeoutStage = stage;
+        lastError.attemptDuration = attemptDuration;
         break;
       } else {
         lastError = err;
+        lastError.timeoutStage = 'none';
+        lastError.attemptDuration = attemptDuration;
       }
 
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
@@ -350,7 +377,10 @@ export async function callVelonaChatCompletion({
   const safeMessage = sanitizeSafeErrorMessage(lastError?.message || 'Velona API request failed.');
   const errorCategory = lastError?.code || 'AI_GENERATION_FAILED';
   const velonaStatus = lastError?.velonaStatus || lastError?.status || 500;
-  console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=${lastError?.status || 500}, model=${modelId}, duration_ms=${totalElapsed}, velona_status=${velonaStatus}, error_category=${errorCategory}, message=${safeMessage}`);
+  const timeoutStage = lastError?.timeoutStage || (errorCategory === 'TIMEOUT' ? 'request_timeout' : 'none');
+  const velonaDuration = lastError?.attemptDuration || totalElapsed;
+
+  console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(velonaStart).toISOString()}, http_status=${lastError?.status || 500}, model=${modelId}, total_duration_ms=${totalElapsed}, velona_duration_ms=${velonaDuration}, velona_status=${velonaStatus}, timeout_stage=${timeoutStage}, error_category=${errorCategory}, message=${safeMessage}`);
 
   throw lastError || new Error('Velona API request failed after retries.');
 }
@@ -486,14 +516,16 @@ app.post([
     const safeMsg = sanitizeSafeErrorMessage(err.message || 'Internal AI generation error');
     const errorCode = err.code || 'AI_GENERATION_FAILED';
     const velonaStatus = err.velonaStatus || (rawStatus !== 500 ? rawStatus : 'N/A');
+    const timeoutStage = err.timeoutStage || (errorCode === 'TIMEOUT' ? 'request_timeout' : 'none');
 
-    console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=${rawStatus}, model=${modelId}, duration_ms=${totalDuration}, velona_status=${velonaStatus}, error_category=${errorCode}, message=${safeMsg}`);
+    console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(requestStart).toISOString()}, http_status=${rawStatus}, model=${modelId}, total_duration_ms=${totalDuration}, velona_status=${velonaStatus}, timeout_stage=${timeoutStage}, error_category=${errorCode}, message=${safeMsg}`);
 
     return res.status(rawStatus).json({ 
       error: safeMsg,
       code: errorCode,
       provider: 'velona',
       model: modelId,
+      timeoutStage,
       timing: { totalDurationMs: totalDuration }
     });
   }

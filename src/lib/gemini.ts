@@ -991,40 +991,62 @@ export const evaluateInterviewAnswer = async (question: string, answer: string, 
 // 4. LEARNING PATH & SKILL GAP ROADMAP
 // =========================================================================
 export const generateLearningPath = async (missingSkills: string[], targetRole: string) => {
-  const skillsList = missingSkills.length > 0 ? missingSkills.join(', ') : 'Core Engineering & Domain Competencies';
-  const prompt = `Generate a curated, professional 30-day learning roadmap for a candidate preparing for the target role "${targetRole}".
-The candidate needs to master these specific target skills: ${skillsList}.
+  const cleanSkills = (missingSkills || []).map(s => s.trim()).filter(Boolean);
+  const skillsList = cleanSkills.length > 0 ? cleanSkills.slice(0, 6).join(', ') : 'Core Technical & Engineering Competencies';
+  const roleTitle = (targetRole || 'Target Role').trim();
 
-Provide curated, industry-standard learning resources from platforms like Coursera, Udemy, edX, YouTube, Official Documentation, and freeCodeCamp.
-Provide 3 focused sequential milestone modules. For each milestone, provide 2 high-quality resources with concise descriptions (under 20 words).
+  const prompt = `Generate a compact 3-milestone accelerated learning roadmap for a candidate preparing for the target role "${roleTitle}".
+Key target skills: ${skillsList}.
 
-Return a JSON object with:
+CRITICAL REQUIREMENTS:
+- Output strictly valid JSON matching the exact schema below.
+- Do NOT generate a day-by-day 30-day breakdown. Provide exactly 3 sequential milestone modules (e.g. Phase 1: Core Fundamentals, Phase 2: System Architecture, Phase 3: Production & Performance).
+- For each milestone, provide exactly 2 curated educational resources (from Official Documentation, YouTube, freeCodeCamp, Coursera, or Udemy).
+- Keep every resource description strictly under 15 words.
+- Output raw JSON immediately without markdown code blocks, conversational intro, or reasoning preamble.
+
+JSON SCHEMA:
 {
-  "roadmapTitle": "30-Day Accelerated Learning Path: ${targetRole}",
+  "roadmapTitle": "Accelerated Learning Roadmap: ${roleTitle}",
   "sections": [
     {
-      "title": "Milestone phase title",
+      "title": "Phase 1: Milestone Title",
       "skillsCovered": ["skill1", "skill2"],
       "resources": [
         {
           "name": "Resource or Course Name",
-          "platform": "Platform Name (Coursera, Udemy, YouTube, Official Documentation, etc.)",
+          "platform": "Platform Name",
           "link": "https://...",
-          "description": "Concise high-impact description",
-          "type": "video" | "course" | "book" | "documentation"
+          "description": "Concise high-impact description under 15 words.",
+          "type": "course" | "documentation" | "video" | "book"
+        },
+        {
+          "name": "Second Resource Name",
+          "platform": "Platform Name",
+          "link": "https://...",
+          "description": "Concise high-impact description under 15 words.",
+          "type": "course" | "documentation" | "video" | "book"
         }
       ]
     }
   ]
 }`;
 
-  const res = await executeAICompletion({
-    prompt,
-    jsonMode: true,
-    temperature: 0.2,
-    maxTokens: 4096,
-    operation: 'learning_path'
-  });
+  let res: any;
+  try {
+    res = await executeAICompletion({
+      prompt,
+      systemPrompt: "You are an expert curriculum architect for AI HireFlow. Output strictly valid, concise raw JSON immediately with no markdown fences, no conversational preamble, and no reasoning output.",
+      jsonMode: true,
+      temperature: 0.15,
+      maxTokens: 1600,
+      operation: 'learning_path'
+    });
+  } catch (err: any) {
+    console.warn('[LearningPath] Upstream AI generation error, building fallback curriculum:', err?.message);
+    // If AI fails or times out, provide a structured curriculum so candidate work is never blocked
+    return buildFallbackLearningPath(roleTitle, cleanSkills);
+  }
 
   const roadmapTitle = 
     res?.roadmapTitle || 
@@ -1033,7 +1055,7 @@ Return a JSON object with:
     res?.roadmap?.title || 
     res?.learningPath?.roadmapTitle || 
     res?.learningPath?.title || 
-    `30-Day Accelerated Learning Path: ${targetRole}`;
+    `Accelerated Learning Roadmap: ${roleTitle}`;
 
   const rawSections = 
     (Array.isArray(res?.sections) && res.sections.length > 0 ? res.sections : null) ||
@@ -1048,7 +1070,7 @@ Return a JSON object with:
     (Array.isArray(res) && res.length > 0 ? res : null);
 
   if (!rawSections || rawSections.length === 0) {
-    throw new Error('AI generation did not return valid learning roadmap milestones. Please retry.');
+    return buildFallbackLearningPath(roleTitle, cleanSkills);
   }
 
   return {
@@ -1063,7 +1085,15 @@ Return a JSON object with:
         skillsCovered: Array.isArray(sec.skillsCovered) 
           ? sec.skillsCovered 
           : (Array.isArray(sec.skills) ? sec.skills : (sec.skill ? [sec.skill] : [])),
-        resources: rawResources.map((r: any) => ({
+        resources: (rawResources.length > 0 ? rawResources : [
+          {
+            name: `${sec.title || roleTitle} Official Documentation`,
+            platform: 'Official Docs',
+            link: 'https://developer.mozilla.org',
+            description: 'Comprehensive documentation and standards reference.',
+            type: 'documentation'
+          }
+        ]).map((r: any) => ({
           name: r.name || r.title || 'Learning Resource',
           platform: r.platform || r.source || 'Online',
           link: r.link || r.url || 'https://google.com',
@@ -1074,6 +1104,82 @@ Return a JSON object with:
     })
   };
 };
+
+/**
+ * Deterministic fallback curriculum builder to guarantee zero user-facing breakage
+ * in case upstream LLM experiences transient latency or network drops.
+ */
+function buildFallbackLearningPath(targetRole: string, skills: string[]) {
+  const primarySkill = skills[0] || 'Core Technical Foundations';
+  const secondarySkill = skills[1] || 'System Architecture';
+  const advancedSkill = skills[2] || 'Production Engineering';
+
+  return {
+    roadmapTitle: `Accelerated Learning Roadmap: ${targetRole}`,
+    sections: [
+      {
+        title: `Phase 1: Core Fundamentals & ${primarySkill}`,
+        skillsCovered: skills.slice(0, 2).length > 0 ? skills.slice(0, 2) : [primarySkill],
+        resources: [
+          {
+            name: `${primarySkill} Official Documentation & Reference`,
+            platform: 'Official Documentation',
+            link: 'https://developer.mozilla.org',
+            description: 'Essential syntax, core specifications, and standard library patterns.',
+            type: 'documentation'
+          },
+          {
+            name: `${primarySkill} Crash Course & Practical Labs`,
+            platform: 'freeCodeCamp',
+            link: 'https://www.freecodecamp.org',
+            description: 'Hands-on interactive exercises to build foundational proficiency rapidly.',
+            type: 'video'
+          }
+        ]
+      },
+      {
+        title: `Phase 2: Applied Architecture & ${secondarySkill}`,
+        skillsCovered: skills.slice(2, 4).length > 0 ? skills.slice(2, 4) : [secondarySkill],
+        resources: [
+          {
+            name: `Production ${secondarySkill} Design Patterns`,
+            platform: 'Coursera / edX',
+            link: 'https://www.coursera.org',
+            description: 'Architectural blueprints, modular design, and robust state structures.',
+            type: 'course'
+          },
+          {
+            name: `Modern Full-Stack Engineering & Case Studies`,
+            platform: 'YouTube',
+            link: 'https://www.youtube.com',
+            description: 'Real-world implementations from high-scale engineering teams.',
+            type: 'video'
+          }
+        ]
+      },
+      {
+        title: `Phase 3: Production Mastery & ${advancedSkill}`,
+        skillsCovered: skills.slice(4, 6).length > 0 ? skills.slice(4, 6) : [advancedSkill, 'Performance Tuning'],
+        resources: [
+          {
+            name: `${targetRole} Production Mastery & Interview Prep`,
+            platform: 'Udemy / GitHub',
+            link: 'https://github.com',
+            description: 'Comprehensive end-to-end integration and technical interview walkthroughs.',
+            type: 'course'
+          },
+          {
+            name: `Performance Optimization & Profiling Handbook`,
+            platform: 'web.dev',
+            link: 'https://web.dev',
+            description: 'Practical techniques for benchmarking, latency reduction, and observability.',
+            type: 'documentation'
+          }
+        ]
+      }
+    ]
+  };
+}
 
 // =========================================================================
 // 5. RESUME BULLET ENHANCER & COPYEDITOR (XYZ FORMULA)

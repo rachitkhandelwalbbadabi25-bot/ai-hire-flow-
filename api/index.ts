@@ -2,6 +2,7 @@ import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
 import { enforceSubscriptionAndCredits } from './subscriptionEnforcement.ts';
+import { CREDIT_PACKS, getCreditPackById } from './creditPacks.ts';
 
 // Guard serverless runtime against unhandled async exceptions
 process.on('unhandledRejection', (reason) => {
@@ -556,7 +557,7 @@ interface ResumeAnalysisJob {
 const analysisJobs = new Map<string, ResumeAnalysisJob>();
 
 // Auto-prune stale jobs older than 2 hours every 15 minutes
-setInterval(() => {
+const pruneInterval = setInterval(() => {
   const cutoff = Date.now() - 2 * 60 * 60 * 1000;
   for (const [id, job] of analysisJobs.entries()) {
     if (job.updatedAt < cutoff) {
@@ -564,6 +565,9 @@ setInterval(() => {
     }
   }
 }, 15 * 60 * 1000);
+if (typeof pruneInterval.unref === 'function') {
+  pruneInterval.unref();
+}
 
 function normalizeAtsAuditResult(rawData: any) {
   const canonicalCategories = [
@@ -1247,8 +1251,6 @@ async function getRazorpay() {
   return razorpayClient;
 }
 
-import { CREDIT_PACKS, getCreditPackById } from './creditPacks.ts';
-
 // Track processed payment IDs in memory to prevent duplicate credit claims
 const processedPaymentIds = new Set<string>();
 
@@ -1437,15 +1439,4 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   }
 });
 
-export const handler = (req: any, res: any) => {
-  return new Promise<void>((resolve, reject) => {
-    res.on('finish', resolve);
-    res.on('close', resolve);
-    res.on('error', reject);
-    app(req, res, (err: any) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
-};
 export default app;

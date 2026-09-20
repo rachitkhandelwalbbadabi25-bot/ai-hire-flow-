@@ -994,6 +994,17 @@ ${firstUser.content}`
       let cleanText = content;
       if (jsonMode && typeof cleanText === "string") {
         cleanText = cleanText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+        const firstBrace = cleanText.indexOf("{");
+        const firstBracket = cleanText.indexOf("[");
+        let firstJsonChar = -1;
+        if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+          firstJsonChar = firstBrace;
+        } else if (firstBracket !== -1) {
+          firstJsonChar = firstBracket;
+        }
+        if (firstJsonChar > 0) {
+          cleanText = cleanText.slice(firstJsonChar).trim();
+        }
       }
       return {
         text: cleanText,

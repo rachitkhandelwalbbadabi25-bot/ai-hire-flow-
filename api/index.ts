@@ -1,8 +1,8 @@
 import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
-import { enforceSubscriptionAndCredits } from './_lib/subscriptionEnforcement.js';
-import { CREDIT_PACKS, getCreditPackById } from './_lib/creditPacks.js';
+import { enforceSubscriptionAndCredits } from './_lib/subscriptionEnforcement.ts';
+import { CREDIT_PACKS, getCreditPackById } from './_lib/creditPacks.ts';
 
 // Guard serverless runtime against unhandled async exceptions
 process.on('unhandledRejection', (reason) => {
@@ -1408,7 +1408,7 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
 // Resume PDF & Image OCR Analysis Endpoint (lazy-loaded to keep serverless cold-start light)
 app.post(['/api/ocr', '/ocr'], async (req, res, next) => {
   try {
-    const { handleOcrRequest } = await import('./_lib/ocr.js');
+    const { handleOcrRequest } = await import('./_lib/ocr.ts');
     return handleOcrRequest(req, res);
   } catch (err) {
     next(err);

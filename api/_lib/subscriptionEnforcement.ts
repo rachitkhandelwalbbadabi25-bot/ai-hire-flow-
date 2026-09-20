@@ -8,7 +8,7 @@ import {
   getDayString, 
   getISOWeekString, 
   getMonthString 
-} from './subscriptionPlans.js';
+} from './subscriptionPlans.ts';
 import fs from 'fs';
 import path from 'path';
 

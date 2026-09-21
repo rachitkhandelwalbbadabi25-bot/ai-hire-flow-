@@ -354,27 +354,142 @@ export default function ResumeAnalyzer() {
   }, [location.state, currentActiveJob]);
 
   // Derive complete Analyzer Job Context for inter-module cross-pollination (Learning Path, Simulator, Tracker)
-  const getAnalyzerJobContext = () => {
+  const getAnalyzerJobContext = (overrideAnalysis?: any) => {
+    const activeAnalysis = overrideAnalysis || analysis;
     let role = '';
+
+    // 1. Current active job from context (if set and not demo)
     if (currentActiveJob?.title && !isDemoRole(currentActiveJob.title)) {
       role = currentActiveJob.title;
-    } else if (jobDesc && jobDesc.trim()) {
-      const firstLine = jobDesc.trim().split('\n')[0].trim();
-      const cleaned = firstLine.replace(/^(role|position|job title|title|target role)\s*[:\-]\s*/i, '').trim();
-      role = cleaned.length > 60 ? cleaned.substring(0, 60) + '...' : cleaned;
-    } else if (analysis?.targetRole && !isDemoRole(analysis.targetRole)) {
-      role = analysis.targetRole;
     }
 
-    let skills: string[] = [];
-    if (analysis?.missingKeywords && Array.isArray(analysis.missingKeywords) && analysis.missingKeywords.length > 0) {
-      skills = analysis.missingKeywords.filter((s: string) => !isDemoSkills(s));
+    // 2. Direct analysis targetRole if returned by AI
+    if (!role && activeAnalysis?.targetRole && !isDemoRole(activeAnalysis.targetRole)) {
+      role = activeAnalysis.targetRole;
     }
-    if (skills.length === 0 && currentActiveJob?.skills && currentActiveJob.skills.length > 0) {
-      skills = currentActiveJob.skills.filter((s: string) => !isDemoSkills(s));
+    if (!role && activeAnalysis?.targetJobTitle && !isDemoRole(activeAnalysis.targetJobTitle)) {
+      role = activeAnalysis.targetJobTitle;
     }
-    if (skills.length === 0 && jobDesc && jobDesc.trim()) {
-      skills = extractJobSkills({ title: role, description: jobDesc });
+
+    // 3. Extract role title from job description
+    if (!role && jobDesc && jobDesc.trim()) {
+      // Check explicit labels
+      const labelMatch = jobDesc.match(/(?:job\s+title|target\s+role|role|position|opening)\s*[:\-]\s*([^\n\r]+)/i);
+      if (labelMatch && labelMatch[1]) {
+        const cleaned = labelMatch[1].replace(/^(?:looking for|hiring|seeking)\s+/i, '').trim();
+        if (cleaned.length > 2 && cleaned.length < 60 && !isDemoRole(cleaned)) {
+          role = cleaned;
+        }
+      }
+
+      if (!role) {
+        // Inspect first 3 non-empty lines for role title
+        const lines = jobDesc.split('\n').map(l => l.trim()).filter(Boolean);
+        for (const line of lines.slice(0, 3)) {
+          const cleaned = line.replace(/^(role|position|job title|title|target role)\s*[:\-]\s*/i, '').trim();
+          if (
+            cleaned.length > 2 && 
+            cleaned.length < 60 && 
+            !/^(about|overview|company|responsibilities|qualifications|requirements|we are|who we are|location|salary|benefits)/i.test(cleaned) &&
+            !isDemoRole(cleaned)
+          ) {
+            role = cleaned;
+            break;
+          }
+        }
+      }
+
+      if (!role) {
+        // Match common job title phrases
+        const titleMatch = jobDesc.match(/\b([A-Za-z\s]{3,35}\s(?:Engineer|Developer|Architect|Manager|Designer|Analyst|Scientist|DevOps|Lead|Consultant|Specialist|Administrator))\b/i);
+        if (titleMatch && titleMatch[1] && !isDemoRole(titleMatch[1])) {
+          role = titleMatch[1].trim();
+        }
+      }
+    }
+
+    // 4. Extract from summary / headline or master resume if available
+    if (!role && activeAnalysis?.summary) {
+      const summaryMatch = activeAnalysis.summary.match(/\b([A-Za-z\s]{3,35}\s(?:Engineer|Developer|Architect|Manager|Designer|Analyst|Scientist|DevOps|Lead|Consultant|Specialist|Administrator))\b/i);
+      if (summaryMatch && summaryMatch[1] && !isDemoRole(summaryMatch[1])) {
+        role = summaryMatch[1].trim();
+      }
+    }
+
+    if (!role && masterResume?.experience && masterResume.experience.length > 0) {
+      const expRole = masterResume.experience[0]?.role;
+      if (expRole && !isDemoRole(expRole)) {
+        role = expRole.trim();
+      }
+    }
+
+    if (!role && extractedDoc?.fileName) {
+      const cleanDocTitle = extractedDoc.fileName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+      const docMatch = cleanDocTitle.match(/\b([A-Za-z\s]{3,35}\s(?:Engineer|Developer|Architect|Manager|Designer|Analyst|Scientist|DevOps|Lead|Consultant|Specialist|Administrator))\b/i);
+      if (docMatch && docMatch[1] && !isDemoRole(docMatch[1])) {
+        role = docMatch[1].trim();
+      }
+    }
+
+    // 5. Default fallback if analysis exists
+    if (!role && activeAnalysis) {
+      role = 'Software Engineer';
+    }
+
+    // Extract skills and gaps
+    const skillsSet = new Set<string>();
+
+    // Priority A: Missing skill keywords from ATS audit
+    if (activeAnalysis?.missingKeywords && Array.isArray(activeAnalysis.missingKeywords)) {
+      activeAnalysis.missingKeywords.forEach((s: any) => {
+        if (typeof s === 'string' && s.trim().length > 0 && !isDemoSkills(s)) {
+          const clean = s.trim();
+          if (clean !== 'undefined' && clean !== 'null') skillsSet.add(clean);
+        }
+      });
+    }
+
+    // Priority B: Skills analysis
+    if (activeAnalysis?.skillsAnalysis && Array.isArray(activeAnalysis.skillsAnalysis)) {
+      activeAnalysis.skillsAnalysis.forEach((item: any) => {
+        const skillName = typeof item === 'string' ? item : item?.skill;
+        if (typeof skillName === 'string' && skillName.trim().length > 0 && !isDemoSkills(skillName)) {
+          const clean = skillName.trim();
+          if (clean !== 'undefined' && clean !== 'null') skillsSet.add(clean);
+        }
+      });
+    }
+
+    // Priority C: Current active job skills
+    if (currentActiveJob?.skills && Array.isArray(currentActiveJob.skills)) {
+      currentActiveJob.skills.forEach((s: any) => {
+        if (typeof s === 'string' && s.trim().length > 0 && !isDemoSkills(s)) {
+          const clean = s.trim();
+          if (clean !== 'undefined' && clean !== 'null') skillsSet.add(clean);
+        }
+      });
+    }
+
+    // Priority D: Extract from job description if still few skills
+    if (skillsSet.size < 3 && jobDesc && jobDesc.trim()) {
+      const extracted = extractJobSkills({ title: role || 'Software Engineer', description: jobDesc });
+      extracted.forEach((s: string) => {
+        if (typeof s === 'string' && s.trim().length > 0 && !isDemoSkills(s)) {
+          const clean = s.trim();
+          if (clean !== 'undefined' && clean !== 'null') skillsSet.add(clean);
+        }
+      });
+    }
+
+    // Extract recommendations
+    const recommendations: string[] = [];
+    if (activeAnalysis?.recommendations && Array.isArray(activeAnalysis.recommendations)) {
+      activeAnalysis.recommendations.forEach((rec: any) => {
+        const text = typeof rec === 'string' ? rec : (rec?.recommendation || rec?.action || '');
+        if (typeof text === 'string' && text.trim().length > 0) {
+          recommendations.push(text.trim());
+        }
+      });
     }
 
     let company = currentActiveJob?.company || '';
@@ -385,12 +500,77 @@ export default function ResumeAnalyzer() {
       }
     }
 
+    const skills = Array.from(skillsSet).slice(0, 8);
+
     return {
       role: role.trim(),
       skills,
+      recommendations,
       company: (company || (role ? 'Target Opportunity' : '')).trim(),
       description: jobDesc || currentActiveJob?.description || ''
     };
+  };
+
+  // Dedicated reliable context transfer from Resume Analyzer to Learning Path
+  const handleNavigateToLearningPath = () => {
+    const ctx = getAnalyzerJobContext();
+    const cleanRole = ctx.role || 'Software Engineer';
+    const cleanSkills = ctx.skills || [];
+    const skillsStr = cleanSkills.join(', ');
+
+    // 1. Persist directly to sessionStorage for bulletproof persistence across page loads & refreshes
+    try {
+      sessionStorage.setItem('learning_path_target_role', cleanRole);
+      if (skillsStr) {
+        sessionStorage.setItem('learning_path_skills', skillsStr);
+      }
+      sessionStorage.setItem('learning_path_analyzer_context', JSON.stringify({
+        from: 'analyzer',
+        targetRole: cleanRole,
+        missingSkills: cleanSkills,
+        targetSkills: cleanSkills,
+        recommendations: ctx.recommendations || [],
+        atsScore: normalizedAnalysis?.score ?? 0,
+        jobContext: {
+          title: cleanRole,
+          company: ctx.company || 'Target Opportunity',
+          skills: cleanSkills,
+          description: jobDesc,
+          source: 'analyzer'
+        },
+        transferredAt: Date.now()
+      }));
+    } catch (e) {
+      console.warn('SessionStorage write error for learning path context:', e);
+    }
+
+    // 2. Set current active job in system OS context
+    setCurrentActiveJob({
+      title: cleanRole,
+      company: ctx.company || 'Target Opportunity',
+      skills: cleanSkills,
+      description: jobDesc,
+      source: 'analyzer',
+      selectedAt: Date.now()
+    });
+
+    // 3. React Router navigation with explicit state payload
+    navigate('/learning', {
+      state: {
+        from: 'analyzer',
+        targetRole: cleanRole,
+        missingSkills: cleanSkills,
+        targetSkills: cleanSkills,
+        recommendations: ctx.recommendations || [],
+        jobContext: {
+          title: cleanRole,
+          company: ctx.company || 'Target Opportunity',
+          skills: cleanSkills,
+          description: jobDesc,
+          source: 'analyzer'
+        }
+      }
+    });
   };
 
   // Normalized ATS Audit Object guaranteeing all 12 sections have recruiter-grade data
@@ -768,31 +948,16 @@ export default function ResumeAnalyzer() {
       setAnalysis(analysisResult);
 
       // Synchronize active job context across system modules
-      if (jobDesc && jobDesc.trim()) {
-        const firstLine = jobDesc.trim().split('\n')[0].trim();
-        const cleanedRole = firstLine.replace(/^(role|position|job title|title|target role)\s*[:\-]\s*/i, '').trim();
-        const role = cleanedRole.length > 60 ? cleanedRole.substring(0, 60) + '...' : cleanedRole;
-        const missing = analysisResult?.missingKeywords || [];
-        const skills = missing.length > 0 ? missing : extractJobSkills({ title: role, description: jobDesc });
-        
-        let company = currentActiveJob?.company || '';
-        if (!company) {
-          const match = jobDesc.match(/(?:at|company:?|organization:?)\s+([A-Z][A-Za-z0-9&., ]{1,30})/);
-          if (match && match[1]) {
-            company = match[1].trim();
-          }
-        }
-
-        if (role) {
-          setCurrentActiveJob({
-            title: role,
-            company: company || 'Target Opportunity',
-            skills: skills.filter((s: string) => !isDemoSkills(s)),
-            description: jobDesc,
-            source: 'analyzer',
-            selectedAt: Date.now()
-          });
-        }
+      const derivedCtx = getAnalyzerJobContext(analysisResult);
+      if (derivedCtx.role) {
+        setCurrentActiveJob({
+          title: derivedCtx.role,
+          company: derivedCtx.company || 'Target Opportunity',
+          skills: derivedCtx.skills,
+          description: jobDesc || derivedCtx.description,
+          source: 'analyzer',
+          selectedAt: Date.now()
+        });
       }
 
       // Execute optional cover letter asynchronously without blocking primary audit
@@ -1717,34 +1882,7 @@ export default function ResumeAnalyzer() {
 
                 {normalizedAnalysis.missingKeywords.length > 0 && (
                   <button 
-                    onClick={() => {
-                      const ctx = getAnalyzerJobContext();
-                      if (ctx.role) {
-                        setCurrentActiveJob({
-                          title: ctx.role,
-                          company: ctx.company || 'Target Opportunity',
-                          skills: ctx.skills,
-                          description: jobDesc,
-                          source: 'analyzer',
-                          selectedAt: Date.now()
-                        });
-                      }
-                      navigate('/learning', {
-                        state: {
-                          from: 'analyzer',
-                          targetRole: ctx.role,
-                          missingSkills: ctx.skills,
-                          targetSkills: ctx.skills,
-                          jobContext: {
-                            title: ctx.role,
-                            company: ctx.company || 'Target Opportunity',
-                            skills: ctx.skills,
-                            description: jobDesc,
-                            source: 'analyzer'
-                          }
-                        }
-                      });
-                    }}
+                    onClick={handleNavigateToLearningPath}
                     className="text-[9px] font-bold text-accent px-3.5 py-2 bg-accent/10 border border-accent/20 rounded-xl hover:bg-accent/20 transition-all uppercase tracking-widest shrink-0 flex items-center gap-1.5 cursor-pointer"
                   >
                     <GraduationCap className="w-3.5 h-3.5" />
@@ -1997,13 +2135,15 @@ export default function ResumeAnalyzer() {
               to: "/learning",
               state: (() => {
                 const ctx = getAnalyzerJobContext();
+                const cleanRole = ctx.role || 'Software Engineer';
                 return {
                   from: 'analyzer',
-                  targetRole: ctx.role,
+                  targetRole: cleanRole,
                   missingSkills: ctx.skills,
                   targetSkills: ctx.skills,
+                  recommendations: ctx.recommendations,
                   jobContext: {
-                    title: ctx.role,
+                    title: cleanRole,
                     company: ctx.company || 'Target Opportunity',
                     skills: ctx.skills,
                     description: jobDesc,
@@ -2011,19 +2151,7 @@ export default function ResumeAnalyzer() {
                   }
                 };
               })(),
-              onClick: () => {
-                const ctx = getAnalyzerJobContext();
-                if (ctx.role) {
-                  setCurrentActiveJob({
-                    title: ctx.role,
-                    company: ctx.company || 'Target Opportunity',
-                    skills: ctx.skills,
-                    description: jobDesc,
-                    source: 'analyzer',
-                    selectedAt: Date.now()
-                  });
-                }
-              }
+              onClick: handleNavigateToLearningPath
             }}
           />
 

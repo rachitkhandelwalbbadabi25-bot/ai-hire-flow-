@@ -943,6 +943,7 @@ async function processResumeAnalysisJob(
 
 Schema:
 {
+  "targetRole": "Candidate target or primary job title (e.g. Senior Frontend Engineer, DevOps Engineer, Full Stack Developer, Product Manager)",
   "score": number (0-100),
   "atsCompatibility": "High" | "Moderate" | "Low",
   "summary": "max 30 words",

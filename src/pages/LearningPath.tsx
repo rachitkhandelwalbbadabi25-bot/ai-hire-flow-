@@ -57,27 +57,105 @@ import { useSystemOS } from '../context/SystemOSContext';
 import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 
+// Safe normalizers for incoming job role and skills
+function normalizeIncomingRole(rawRole?: any): string {
+  if (!rawRole || typeof rawRole !== 'string') return '';
+  const trimmed = rawRole.trim();
+  if (
+    isDemoRole(trimmed) || 
+    trimmed.toLowerCase().includes('sarvam') || 
+    trimmed.toLowerCase().includes('glean') ||
+    trimmed.toLowerCase().includes('target organization') ||
+    trimmed.toLowerCase().includes('sample role') ||
+    trimmed.toLowerCase().includes('demo role')
+  ) {
+    return '';
+  }
+  return trimmed;
+}
+
+function normalizeIncomingSkills(rawSkills?: any): string {
+  if (!rawSkills) return '';
+  let arr: string[] = [];
+  if (Array.isArray(rawSkills)) {
+    arr = rawSkills.map(s => {
+      if (typeof s === 'string') return s.trim();
+      if (s && typeof s === 'object' && s.skill) return String(s.skill).trim();
+      return '';
+    }).filter(Boolean);
+  } else if (typeof rawSkills === 'string') {
+    arr = rawSkills.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  const cleanArr = arr.filter(s => 
+    s.length > 0 && 
+    s !== 'undefined' && 
+    s !== 'null' && 
+    !isDemoSkills(s) &&
+    !s.toLowerCase().includes('indic') && 
+    !s.toLowerCase().includes('copilot')
+  );
+
+  // Case-insensitive deduplication
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const item of cleanArr) {
+    const lower = item.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      unique.push(item);
+    }
+  }
+
+  return unique.join(', ');
+}
+
 export default function LearningPath() {
   const { user } = useAuth();
   const { plan, checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const location = useLocation();
   const { currentActiveJob, setCurrentActiveJob, clearCurrentJobContext } = useSystemOS();
 
-  // Learning Path inputs MUST start completely empty for fresh starts with proper placeholders
+  // Learning Path inputs: Initialize from location.state or sessionStorage context
   const [targetRole, setTargetRole] = useState(() => {
+    // 1. Direct location.state (e.g. from Resume Analyzer)
+    const stateRole = location.state?.targetRole || location.state?.role || location.state?.jobContext?.title;
+    const cleanStateRole = normalizeIncomingRole(stateRole);
+    if (cleanStateRole) return cleanStateRole;
+
+    // 2. Persistent storage
     try {
       const saved = sessionStorage.getItem('learning_path_target_role');
-      if (saved && !isDemoRole(saved) && !saved.toLowerCase().includes('sarvam') && !saved.toLowerCase().includes('target organization')) {
-        return saved;
+      const cleanSaved = normalizeIncomingRole(saved);
+      if (cleanSaved) return cleanSaved;
+
+      const analyzerCtx = sessionStorage.getItem('learning_path_analyzer_context');
+      if (analyzerCtx) {
+        const parsed = JSON.parse(analyzerCtx);
+        const ctxRole = normalizeIncomingRole(parsed?.targetRole || parsed?.jobContext?.title);
+        if (ctxRole) return ctxRole;
       }
     } catch (e) {}
     return '';
   });
+
   const [skillsStr, setSkillsStr] = useState(() => {
+    // 1. Direct location.state
+    const stateSkills = location.state?.missingSkills || location.state?.targetSkills || location.state?.skills || location.state?.jobContext?.skills;
+    const cleanStateSkills = normalizeIncomingSkills(stateSkills);
+    if (cleanStateSkills) return cleanStateSkills;
+
+    // 2. Persistent storage
     try {
       const saved = sessionStorage.getItem('learning_path_skills');
-      if (saved && !isDemoSkills(saved) && !saved.toLowerCase().includes('indic') && !saved.toLowerCase().includes('copilot')) {
-        return saved;
+      const cleanSaved = normalizeIncomingSkills(saved);
+      if (cleanSaved) return cleanSaved;
+
+      const analyzerCtx = sessionStorage.getItem('learning_path_analyzer_context');
+      if (analyzerCtx) {
+        const parsed = JSON.parse(analyzerCtx);
+        const ctxSkills = normalizeIncomingSkills(parsed?.missingSkills || parsed?.targetSkills || parsed?.jobContext?.skills);
+        if (ctxSkills) return ctxSkills;
       }
     } catch (e) {}
     return '';
@@ -149,12 +227,14 @@ export default function LearningPath() {
     userEditedRoleRef.current = false;
     userEditedSkillsRef.current = false;
     activeJobKeyRef.current = null;
+    handledLocationKeyRef.current = null;
     clearCurrentJobContext();
     try {
       sessionStorage.removeItem('learning_path_roadmap');
       sessionStorage.removeItem('learning_path_target_role');
       sessionStorage.removeItem('learning_path_skills');
       sessionStorage.removeItem('learning_path_active_job_key');
+      sessionStorage.removeItem('learning_path_analyzer_context');
     } catch (e) {}
   };
 
@@ -171,55 +251,34 @@ export default function LearningPath() {
   };
 
   // State synchronization & Stale-data clearing:
-  // When a user selects a new job, or clears search context, the previous search context must be replaced cleanly.
+  // When navigating with context (e.g. from Resume Analyzer), populate target role and skills seamlessly.
   useEffect(() => {
     // 1. Explicit navigation state takes first priority (e.g. from Resume Analyzer)
-    const incomingRole = location.state?.targetRole || location.state?.role || location.state?.jobContext?.title;
-    const isFromAnalyzer = location.state?.from === 'analyzer';
+    const incomingRole = normalizeIncomingRole(location.state?.targetRole || location.state?.role || location.state?.jobContext?.title);
+    const rawSkills = location.state?.missingSkills || location.state?.targetSkills || location.state?.skills || location.state?.jobContext?.skills;
+    const incomingSkills = normalizeIncomingSkills(rawSkills);
+    const isFromAnalyzer = location.state?.from === 'analyzer' || !!sessionStorage.getItem('learning_path_analyzer_context');
 
-    const isKnownFakeDemo = typeof incomingRole === 'string' && (
-      incomingRole.toLowerCase().includes('sarvam') ||
-      incomingRole.toLowerCase().includes('glean') ||
-      incomingRole.toLowerCase().includes('target organization') ||
-      incomingRole.toLowerCase().includes('sample role') ||
-      incomingRole.toLowerCase().includes('demo role')
-    );
-
-    const isValidIncomingRole = incomingRole && 
-      typeof incomingRole === 'string' && 
-      incomingRole.trim().length > 0 && 
-      !isKnownFakeDemo && 
-      (isFromAnalyzer || !isDemoRole(incomingRole));
-
-    if (isValidIncomingRole) {
-      const locKey = location.key || `${incomingRole}__${Date.now()}`;
+    if (incomingRole || incomingSkills) {
+      const locKey = location.key || `${incomingRole}__${incomingSkills}__${Date.now()}`;
       if (handledLocationKeyRef.current !== locKey) {
         handledLocationKeyRef.current = locKey;
-        const cleanRole = incomingRole.trim();
-        setTargetRole(cleanRole);
-        userEditedRoleRef.current = false;
 
-        const rawSkills = location.state?.missingSkills || location.state?.targetSkills || location.state?.skills || location.state?.jobContext?.skills;
-        let skillsText = '';
-        if (rawSkills) {
-          const skillsArr = Array.isArray(rawSkills) 
-            ? rawSkills.filter((s: any) => typeof s === 'string' && s.trim().length > 0 && !isDemoSkills(s))
-            : String(rawSkills).split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0 && !isDemoSkills(s));
-          skillsText = skillsArr.join(', ');
+        if (incomingRole && !userEditedRoleRef.current) {
+          setTargetRole(incomingRole);
         }
-        setSkillsStr(skillsText);
-        userEditedSkillsRef.current = false;
+        if (incomingSkills && !userEditedSkillsRef.current) {
+          setSkillsStr(incomingSkills);
+        }
         setRoadmap(null);
         setRecentAnalysis(null);
         setError(null);
 
         // Sync or establish current active job context so the Active Job Context banner displays properly
         const incomingJob = location.state?.jobContext;
-        const jobTitle = incomingJob?.title || cleanRole;
+        const jobTitle = incomingRole || incomingJob?.title || 'Target Role';
         const jobCompany = incomingJob?.company || (isFromAnalyzer ? 'Target Opportunity' : '');
-        const jobSkills = incomingJob?.skills && incomingJob.skills.length > 0 
-          ? incomingJob.skills 
-          : (skillsText ? skillsText.split(', ') : []);
+        const jobSkills = incomingSkills ? incomingSkills.split(', ') : (incomingJob?.skills || []);
         const jobDesc = incomingJob?.description || '';
 
         const activeJobPayload = {
@@ -236,16 +295,18 @@ export default function LearningPath() {
         activeJobKeyRef.current = newKey;
         try {
           sessionStorage.setItem('learning_path_active_job_key', newKey);
-          sessionStorage.setItem('learning_path_target_role', cleanRole);
-          if (skillsText) {
-            sessionStorage.setItem('learning_path_skills', skillsText);
+          if (incomingRole) {
+            sessionStorage.setItem('learning_path_target_role', incomingRole);
+          }
+          if (incomingSkills) {
+            sessionStorage.setItem('learning_path_skills', incomingSkills);
           }
         } catch (e) {}
       }
       return;
     }
 
-    // 2. Manage currentActiveJob lifecycle
+    // 2. Manage currentActiveJob lifecycle for job changes outside of direct state navigation
     const currentKey = currentActiveJob 
       ? `${currentActiveJob.title}__${currentActiveJob.company}__${currentActiveJob.selectedAt || 0}` 
       : null;
@@ -262,30 +323,33 @@ export default function LearningPath() {
         }
       } catch (e) {}
 
-      const isCurrentJobDemo = currentActiveJob && (
-        currentActiveJob.title?.toLowerCase().includes('sarvam') ||
-        currentActiveJob.company?.toLowerCase().includes('sarvam') ||
-        currentActiveJob.title?.toLowerCase().includes('glean') ||
-        currentActiveJob.company?.toLowerCase().includes('target organization') ||
-        (!currentActiveJob.source && isDemoRole(currentActiveJob.title))
+      const cleanJobTitle = normalizeIncomingRole(currentActiveJob?.title);
+      const isCurrentJobDemo = !cleanJobTitle || (
+        currentActiveJob && (
+          currentActiveJob.company?.toLowerCase().includes('sarvam') ||
+          currentActiveJob.company?.toLowerCase().includes('target organization') ||
+          (!currentActiveJob.source && isDemoRole(currentActiveJob.title))
+        )
       );
 
       if (currentActiveJob && !isCurrentJobDemo) {
         // Only reset if this is truly a newly selected job, not a restoration of active job
         const hasSavedRoadmap = !!sessionStorage.getItem('learning_path_roadmap');
         if (!hasSavedRoadmap || prevKey !== null) {
-          // Job changed: replace target role with current active job
-          setTargetRole(currentActiveJob.title);
-          userEditedRoleRef.current = false;
+          // Job changed: replace target role with current active job if user hasn't explicitly typed their own
+          if (!userEditedRoleRef.current && cleanJobTitle) {
+            setTargetRole(cleanJobTitle);
+          }
 
           // Replace target skills strictly with current job's skills - CLEAN REPLACE, NEVER MERGE
-          if (currentActiveJob.skills && currentActiveJob.skills.length > 0) {
-            const cleanSkills = currentActiveJob.skills.filter(s => typeof s === 'string' && !isDemoSkills(s));
-            setSkillsStr(cleanSkills.join(', '));
-          } else {
-            setSkillsStr('');
+          if (!userEditedSkillsRef.current) {
+            if (currentActiveJob.skills && currentActiveJob.skills.length > 0) {
+              const cleanSkills = normalizeIncomingSkills(currentActiveJob.skills);
+              setSkillsStr(cleanSkills);
+            } else {
+              setSkillsStr('');
+            }
           }
-          userEditedSkillsRef.current = false;
 
           // Clear any old roadmap generated for a previous job
           setRoadmap(null);
@@ -294,13 +358,11 @@ export default function LearningPath() {
         }
       } else if (!currentActiveJob && prevKey !== null) {
         // Active job context was explicitly cleared by user action
-        setTargetRole('');
-        setSkillsStr('');
+        if (!userEditedRoleRef.current) setTargetRole('');
+        if (!userEditedSkillsRef.current) setSkillsStr('');
         setRoadmap(null);
         setRecentAnalysis(null);
         setError(null);
-        userEditedRoleRef.current = false;
-        userEditedSkillsRef.current = false;
       }
     }
   }, [location.key, location.state, currentActiveJob]);
@@ -342,6 +404,37 @@ export default function LearningPath() {
 
   // Check recent analysis so user has the option to click "Load Analysis Gaps", without auto-filling
   useEffect(() => {
+    // 1. First check local session for recent analyzer evaluation result
+    try {
+      const storedAnalyzer = sessionStorage.getItem('resume_analyzer_result');
+      if (storedAnalyzer) {
+        const parsed = JSON.parse(storedAnalyzer);
+        const cleanRole = normalizeIncomingRole(parsed?.targetRole || parsed?.role);
+        const cleanSkills = normalizeIncomingSkills(parsed?.missingKeywords);
+        if (cleanSkills) {
+          setRecentAnalysis({
+            ...parsed,
+            missingKeywords: cleanSkills.split(', '),
+            detectedRole: cleanRole
+          });
+          return;
+        }
+      }
+      const analyzerCtx = sessionStorage.getItem('learning_path_analyzer_context');
+      if (analyzerCtx) {
+        const parsed = JSON.parse(analyzerCtx);
+        const cleanRole = normalizeIncomingRole(parsed?.targetRole);
+        const cleanSkills = normalizeIncomingSkills(parsed?.missingSkills || parsed?.targetSkills);
+        if (cleanSkills) {
+          setRecentAnalysis({
+            missingKeywords: cleanSkills.split(', '),
+            detectedRole: cleanRole
+          });
+          return;
+        }
+      }
+    } catch (e) {}
+
     if (!user?.uid) return;
     const fetchRecentAnalysis = async () => {
       try {
@@ -564,12 +657,18 @@ export default function LearningPath() {
                     <button 
                       onClick={() => {
                         if (recentAnalysis.missingKeywords) {
-                          setSkillsStr(recentAnalysis.missingKeywords.join(', '));
-                          userEditedSkillsRef.current = true;
+                          const clean = normalizeIncomingSkills(recentAnalysis.missingKeywords);
+                          if (clean) {
+                            setSkillsStr(clean);
+                            userEditedSkillsRef.current = true;
+                          }
                         }
                         if (recentAnalysis.detectedRole && !targetRole) {
-                          setTargetRole(recentAnalysis.detectedRole);
-                          userEditedRoleRef.current = true;
+                          const cleanRole = normalizeIncomingRole(recentAnalysis.detectedRole);
+                          if (cleanRole) {
+                            setTargetRole(cleanRole);
+                            userEditedRoleRef.current = true;
+                          }
                         }
                       }}
                       className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"

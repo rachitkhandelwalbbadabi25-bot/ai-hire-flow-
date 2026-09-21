@@ -358,6 +358,7 @@ export const analyzeResume = async (
 
 Schema:
 {
+  "targetRole": "Candidate target or primary job title (e.g. Senior Frontend Engineer, DevOps Engineer, Full Stack Developer, Product Manager)",
   "score": number,
   "atsCompatibility": "High" | "Moderate" | "Low",
   "summary": "max 30 words",

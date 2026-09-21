@@ -16,7 +16,7 @@ export interface NextStepBridgeCardProps {
   title?: string;
   contextData: string;
   primaryStep: JourneyStepOption;
-  secondaryStep: JourneyStepOption;
+  secondaryStep?: JourneyStepOption;
   onDismiss?: () => void;
   className?: string;
 }
@@ -41,7 +41,7 @@ export default function NextStepBridgeCard({
   };
 
   const PrimaryIcon = primaryStep.icon || ArrowRight;
-  const SecondaryIcon = secondaryStep.icon || Compass;
+  const SecondaryIcon = secondaryStep?.icon || Compass;
 
   return (
     <motion.div

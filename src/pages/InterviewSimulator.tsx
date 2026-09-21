@@ -13,7 +13,7 @@ import {
   ShieldCheck, 
   Zap, 
   RotateCcw, 
-  GraduationCap, 
+  Search, 
   Briefcase,
   FileText,
   Sliders,
@@ -1375,18 +1375,18 @@ export default function InterviewSimulator() {
                   title="Interview Practice Complete"
                   contextData={`Overall score: ${totalScore}% across ${questions.length} drilled questions. ${missingPoints.length > 0 ? `Identified growth areas: ${missingPoints.slice(0, 3).join(', ')}.` : 'Strong mastery demonstrated across all technical topics.'}`}
                   primaryStep={{
-                    label: "Close skill gaps in learning path",
-                    icon: GraduationCap,
-                    to: "/learning",
-                    state: {
-                      targetRole: activeTargetRole || "Software Engineer",
-                      missingSkills: missingPoints
-                    }
-                  }}
-                  secondaryStep={{
                     label: "Track active job applications",
                     icon: Briefcase,
                     to: "/jobs"
+                  }}
+                  secondaryStep={{
+                    label: "Explore matched job openings",
+                    icon: Search,
+                    to: "/finder",
+                    state: {
+                      role: activeTargetRole || "Software Engineer",
+                      autoSearch: true
+                    }
                   }}
                 />
               );

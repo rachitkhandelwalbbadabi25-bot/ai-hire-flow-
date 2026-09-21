@@ -19,12 +19,18 @@ import { isDemoRole } from '../utils/demoDataSanitizer';
 import { ActiveJobContext, extractJobSkills } from '../utils/jobContextManager';
 
 interface Job {
+  id?: string;
   title: string;
   company: string;
   location: string;
   link: string;
   description: string;
   datePosted: string;
+  source?: string;
+  retrievedAt?: string;
+  jobType?: string;
+  isRemote?: boolean;
+  tags?: string[];
   matchScore?: number;
   roleTier?: 'safe' | 'stretch' | 'reach' | string;
   matchExplanation?: string;
@@ -164,18 +170,33 @@ export default function JobFinder() {
   };
 
   const handleSelectJob = (targetJob: Job) => {
+    // If clicking an already selected job, toggle clear
+    if (
+      currentActiveJob &&
+      currentActiveJob.title.toLowerCase() === targetJob.title.toLowerCase() &&
+      currentActiveJob.company.toLowerCase() === targetJob.company.toLowerCase()
+    ) {
+      clearCurrentJobContext();
+      return;
+    }
+
     const skills = extractJobSkills(targetJob);
     const activeJob: ActiveJobContext = {
+      id: targetJob.id,
       title: targetJob.title,
       company: targetJob.company,
       location: targetJob.location,
       description: targetJob.description,
       skills,
       datePosted: targetJob.datePosted,
+      retrievedAt: targetJob.retrievedAt || new Date().toISOString(),
+      isRemote: targetJob.isRemote,
+      jobType: targetJob.jobType,
       matchScore: targetJob.matchScore,
       roleTier: targetJob.roleTier,
       link: targetJob.link,
-      source: 'search',
+      provider: targetJob.source || 'External Provider',
+      source: targetJob.source || 'search',
       selectedAt: Date.now()
     };
     setCurrentActiveJob(activeJob);
@@ -296,9 +317,13 @@ export default function JobFinder() {
           </div>
         </div>
         <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Job Finder</h1>
-        <p className="text-ink-dim font-medium text-lg max-w-2xl">
-          Search and match top job opportunities tailored for your engineering profile.
+        <p className="text-ink-dim font-medium text-lg max-w-2xl mb-4">
+          Discover real, verified job vacancies from live external sources with AI-powered candidate compatibility matching.
         </p>
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold">
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>Real Job Listings Only • Verified External Sources</span>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -406,28 +431,28 @@ export default function JobFinder() {
         ) : hasSearched && jobs.length === 0 ? (
           <EmptyState
             icon={Search}
-            title="Expand your job search criteria"
-            targetRole={query || activeTargetRole || "Tech Roles"}
-            description="Try searching with broader location filters or related job titles to discover active, verified job openings."
-            benefitMetric="Searching with related role titles yields 4.5x more relevant job matches"
+            title="No matching live job listings were found"
+            targetRole={query || activeTargetRole || "Current search"}
+            description="No matching live job listings were found for this search from verified external sources. Try another role title, broader location, or alternative keywords."
+            benefitMetric="Real job listings are sourced directly from verified job boards and live career portals"
             primaryAction={{
               label: "Search 'Full Stack Developer'",
               onClick: () => handlePopularSearch("Full Stack Developer"),
               icon: Search
             }}
             secondaryAction={{
-              label: "Analyze your resume first",
-              onClick: () => navigate('/analyzer'),
-              icon: Target
+              label: "Search 'Frontend Developer'",
+              onClick: () => handlePopularSearch("Frontend Developer"),
+              icon: Search
             }}
           />
         ) : !hasSearched ? (
           <EmptyState
             icon={Building2}
-            title="Find matched job openings"
+            title="Find verified job openings"
             targetRole={activeTargetRole || "Engineering & Tech"}
-            description="Search verified listings and compare them directly against your target role profile to see match scores."
-            benefitMetric="Candidates applying to high-match roles receive interviews 2.8x faster"
+            description="Search live job postings from verified external providers and compare them against your profile."
+            benefitMetric="Real job listings are fetched directly from external providers without synthetic generation"
             primaryAction={{
               label: "Search 'Full Stack Developer'",
               onClick: () => handlePopularSearch("Full Stack Developer"),
@@ -443,21 +468,46 @@ export default function JobFinder() {
           <>
             {currentActiveJob && (
               <div className="mb-6 p-4 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse mt-1 sm:mt-0" />
                   <div>
-                    <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Selected Job Context</p>
-                    <p className="text-sm font-bold text-ink">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Selected Real Job</p>
+                      {currentActiveJob.provider && (
+                        <span className="px-2 py-0.5 bg-accent/10 border border-accent/20 rounded-md text-[9px] font-mono font-bold text-accent">
+                          {currentActiveJob.provider}
+                        </span>
+                      )}
+                      {currentActiveJob.isRemote && (
+                        <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[9px] font-mono font-bold text-emerald-400">
+                          Verified Remote
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-ink mt-0.5">
                       {currentActiveJob.title} <span className="text-ink-dim font-normal">at {currentActiveJob.company}</span>
+                      {currentActiveJob.location && (
+                        <span className="text-xs text-ink-dim font-normal ml-2">({currentActiveJob.location})</span>
+                      )}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 self-end sm:self-center">
+                  {currentActiveJob.link && (
+                    <a
+                      href={currentActiveJob.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1 uppercase tracking-wider"
+                    >
+                      Official Posting <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
                   <button
                     onClick={() => clearCurrentJobContext()}
                     className="px-3 py-1.5 text-xs text-ink-dim hover:text-rose-400 font-bold uppercase tracking-wider transition-colors cursor-pointer"
                   >
-                    Clear
+                    Clear Active Job
                   </button>
                 </div>
               </div>
@@ -520,12 +570,28 @@ export default function JobFinder() {
                     <p className="text-sm font-bold text-ink-dim mb-4">{job.company}</p>
 
                     <div className="flex flex-wrap gap-2 mb-4">
-                      <div className="px-3 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
+                      {job.source && (
+                        <div className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                          <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{job.source}</span>
+                        </div>
+                      )}
+                      <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
                         <MapPin className="w-3 h-3 text-ink-dim" />
                         <span className="text-[10px] font-bold text-ink-dim uppercase">{job.location}</span>
                       </div>
+                      {job.isRemote && (
+                        <div className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center">
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase">Remote</span>
+                        </div>
+                      )}
+                      {job.jobType && (
+                        <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center">
+                          <span className="text-[10px] font-bold text-ink-dim uppercase">{job.jobType}</span>
+                        </div>
+                      )}
                       {job.datePosted && (
-                        <div className="px-3 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
+                        <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
                           <Calendar className="w-3 h-3 text-ink-dim" />
                           <span className="text-[10px] font-bold text-ink-dim uppercase">{job.datePosted}</span>
                         </div>
@@ -534,8 +600,11 @@ export default function JobFinder() {
 
                     {job.matchExplanation && (
                       <div className="mb-4 p-3 rounded-2xl bg-accent/5 border border-accent/15 text-xs text-ink-dim font-medium">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
-                          <Sparkles className="w-3 h-3" /> Fit Assessment
+                        <div className="flex items-center justify-between text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
+                          <span className="flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3" /> Fit Assessment
+                          </span>
+                          <span className="text-[9px] text-ink-dim/80 font-normal lowercase tracking-normal">ai match</span>
                         </div>
                         <p className="italic text-ink leading-relaxed">
                           "{job.matchExplanation}"
@@ -546,6 +615,20 @@ export default function JobFinder() {
                     <p className="text-sm text-ink-dim line-clamp-3 mb-4 flex-1 leading-relaxed">
                       "{job.description}"
                     </p>
+
+                    <div className="mb-4 pt-3 border-t border-border/50 flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-ink-dim">
+                        {job.source ? `Source: ${job.source}` : 'External Listing'}
+                      </span>
+                      <a 
+                        href={job.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                      >
+                        Official Job Post <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
 
                     <div className="flex gap-2 mb-3">
                       <button 

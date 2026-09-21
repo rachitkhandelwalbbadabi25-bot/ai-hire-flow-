@@ -39,7 +39,8 @@ import {
   Clock,
   RotateCcw,
   BookOpen,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import AILoadingStepper from '../components/AILoadingStepper';
@@ -1408,23 +1409,45 @@ export default function ResumeAnalyzer() {
                 </div>
 
                 {currentActiveJob && (
-                  <div className="mb-3 p-2.5 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between gap-2">
+                  <div className="mb-3 p-3 bg-accent/10 border border-accent/20 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <Target className="w-3.5 h-3.5 text-accent shrink-0" />
-                      <span className="text-xs text-ink truncate font-sans">
-                        Linked Job: <strong>{currentActiveJob.title}</strong> at {currentActiveJob.company}
-                      </span>
+                      <div className="text-xs text-ink truncate font-sans">
+                        <span>Target Real Job: <strong>{currentActiveJob.title}</strong> at {currentActiveJob.company}</span>
+                        {currentActiveJob.provider && (
+                          <span className="ml-1.5 px-1.5 py-0.5 bg-accent/10 border border-accent/20 rounded text-[9px] font-mono text-accent font-bold">
+                            {currentActiveJob.provider}
+                          </span>
+                        )}
+                        {currentActiveJob.isRemote && (
+                          <span className="ml-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] font-mono text-emerald-400 font-bold">
+                            Remote
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        clearCurrentJobContext();
-                        setJobDesc('');
-                      }}
-                      className="text-[10px] text-ink-dim hover:text-rose-400 underline font-mono shrink-0 cursor-pointer"
-                    >
-                      Clear
-                    </button>
+                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                      {currentActiveJob.link && (
+                        <a
+                          href={currentActiveJob.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-accent hover:underline flex items-center gap-1 font-mono"
+                        >
+                          Official Listing <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearCurrentJobContext();
+                          setJobDesc('');
+                        }}
+                        className="text-[10px] text-ink-dim hover:text-rose-400 underline font-mono cursor-pointer"
+                      >
+                        Clear Active Job
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -1901,6 +1924,14 @@ export default function ResumeAnalyzer() {
                             <AlertCircle className="w-3.5 h-3.5" /> Missing Skill: {item.keyword}
                           </span>
                           <span className={cn(
+                            "px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded-lg border",
+                            item.isInferred 
+                              ? "bg-purple-500/10 text-purple-400 border-purple-500/20" 
+                              : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                          )}>
+                            {item.isInferred ? 'Inferred from Role' : 'Listing Fact: Required in Job Posting'}
+                          </span>
+                          <span className={cn(
                             "px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-lg border",
                             item.confidence_level === 'high' 
                               ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
@@ -1910,11 +1941,6 @@ export default function ResumeAnalyzer() {
                           )}>
                             {item.confidence_level} Confidence
                           </span>
-                          {item.isInferred && (
-                            <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase rounded-lg border border-purple-500/20">
-                              Inferred Gap
-                            </span>
-                          )}
                         </div>
                         <span className="text-[10px] font-bold text-ink-dim uppercase tracking-wider">Gap #{idx + 1}</span>
                       </div>
@@ -1926,15 +1952,25 @@ export default function ResumeAnalyzer() {
                       )}
 
                       <div>
-                        <p className="text-xs font-bold text-accent uppercase tracking-wider mb-1">Why It Matters For THIS Role at THIS Company:</p>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="px-1.5 py-0.5 bg-accent/15 text-accent text-[9px] font-mono font-bold rounded uppercase">
+                            GLM 5.3 Flash Analysis
+                          </span>
+                          <p className="text-xs font-bold text-accent uppercase tracking-wider">Why It Matters For THIS Role at THIS Company:</p>
+                        </div>
                         <p className="text-xs text-ink leading-relaxed font-sans">{item.whyItMatters}</p>
                       </div>
 
                       <div className="bg-surface p-4 rounded-xl border border-border/80">
                         <div className="flex justify-between items-center mb-2">
-                          <p className="text-[10px] font-bold text-success uppercase tracking-widest flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Suggested Metric Bullet Rewrite:
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="px-1.5 py-0.5 bg-success/15 text-success text-[9px] font-mono font-bold rounded uppercase">
+                              GLM Recommendation
+                            </span>
+                            <p className="text-[10px] font-bold text-success uppercase tracking-widest flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Suggested Metric Bullet Rewrite:
+                            </p>
+                          </div>
                           <button
                             onClick={() => navigator.clipboard.writeText(item.suggestedRewrite)}
                             className="text-[9px] font-bold text-ink-dim hover:text-ink flex items-center gap-1 uppercase tracking-wider cursor-pointer"

@@ -24,7 +24,9 @@ import {
   ChevronDown,
   ChevronUp,
   Cpu,
-  BookOpen
+  BookOpen,
+  Target,
+  ExternalLink
 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import { generateInterviewQuestions, evaluateInterviewAnswer } from '../lib/gemini';
@@ -101,7 +103,7 @@ export default function InterviewSimulator() {
   const location = useLocation();
   const { checkAccess, deductCredit, creditWallet, creditCosts, triggerAction } = usePlan();
   const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
-  const { activeTargetRole, trackedJobs } = useSystemOS();
+  const { activeTargetRole, trackedJobs, currentActiveJob, clearCurrentJobContext } = useSystemOS();
 
   const [mode, setMode] = useState<'ai' | 'text_practice'>(() => {
     try {
@@ -213,15 +215,20 @@ export default function InterviewSimulator() {
     } catch {}
   }, [mode, step, currentIdx, userAnswer, questions, evaluations, selectedWeakSkills]);
 
-  // Handle explicit route navigation with parameters (e.g. from a real job card or analysis)
+  // Handle explicit route navigation with parameters or active selected job
   useEffect(() => {
     if (location.state?.jobDescription && !isDemoRole(location.state.jobDescription) && !location.state.jobDescription.toLowerCase().includes('target organization') && !location.state.jobDescription.toLowerCase().includes('sarvam')) {
       setJobDescription(location.state.jobDescription);
     } else if (location.state?.role && !isDemoRole(location.state.role) && !location.state.role.toLowerCase().includes('sarvam')) {
       setJobDescription(`Position: ${location.state.role}${location.state.company ? ` at ${location.state.company}` : ''}\nFocus: Technical interview, system design, and role-specific architecture.`);
+    } else if (!jobDescription && currentActiveJob && !isDemoRole(currentActiveJob.title)) {
+      // Auto-populate from explicitly selected real active job
+      const activeDesc = currentActiveJob.description 
+        ? `${currentActiveJob.title} at ${currentActiveJob.company}\nLocation: ${currentActiveJob.location || (currentActiveJob.isRemote ? 'Remote' : 'Not specified')}\n\n${currentActiveJob.description}`
+        : `Position: ${currentActiveJob.title} at ${currentActiveJob.company}\nLocation: ${currentActiveJob.location || 'Not specified'}\nRemote: ${currentActiveJob.isRemote ? 'Yes' : 'No'}\nRequirements & Skills: ${(currentActiveJob.skills || []).join(', ')}`;
+      setJobDescription(activeDesc);
     }
-    // Note: On clean/fresh app start, fields must remain cleanly empty without prefilling demo roles or "Target Organization"
-  }, [location.state]);
+  }, [location.state, currentActiveJob]);
 
   // Explicit Reset/Clear Handler
   const handleResetInterview = () => {
@@ -240,6 +247,7 @@ export default function InterviewSimulator() {
     setSelfScore(null);
     setSelfNotes('');
     setSelectedWeakSkills([]);
+    clearCurrentJobContext();
     try {
       Object.values(INTERVIEW_STORAGE_KEYS).forEach(k => sessionStorage.removeItem(k));
     } catch {}
@@ -618,7 +626,7 @@ export default function InterviewSimulator() {
                     </span>
                   </div>
                   <p className="text-xs text-ink-dim leading-relaxed font-sans">
-                    Custom-generated questions and automated real-time evaluation powered by Gemini.
+                    Custom-generated questions and automated real-time evaluation powered by Velona (GLM 5.3 Flash).
                   </p>
                 </button>
 
@@ -694,29 +702,74 @@ export default function InterviewSimulator() {
             )}
 
             {/* Job Description / Interview Prompt */}
-            <div>
-              <div className="flex items-center justify-between mb-2 px-1">
-                <label htmlFor="interview-job-desc" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block font-mono">
-                  Target Role / Job Description Focus
-                </label>
-                {jobDescription && (
-                  <button
-                    type="button"
-                    onClick={() => setJobDescription('')}
-                    className="text-[10px] font-mono text-ink-dim hover:text-rose-400 uppercase tracking-wider transition-colors cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                )}
+            <div className="space-y-3">
+              {currentActiveJob && (
+                <div className="p-3.5 bg-accent/10 border border-accent/20 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Target className="w-4 h-4 text-accent shrink-0" />
+                    <div className="text-xs text-ink truncate font-sans">
+                      <span>Targeting Real Job: <strong>{currentActiveJob.title}</strong> at {currentActiveJob.company}</span>
+                      {currentActiveJob.provider && (
+                        <span className="ml-1.5 px-1.5 py-0.5 bg-accent/10 border border-accent/20 rounded text-[9px] font-mono text-accent font-bold">
+                          {currentActiveJob.provider}
+                        </span>
+                      )}
+                      {currentActiveJob.isRemote && (
+                        <span className="ml-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] font-mono text-emerald-400 font-bold">
+                          Remote
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                    {currentActiveJob.link && (
+                      <a
+                        href={currentActiveJob.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-accent hover:underline flex items-center gap-1 font-mono font-bold uppercase tracking-wider"
+                      >
+                        Official Listing <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearCurrentJobContext();
+                        setJobDescription('');
+                      }}
+                      className="text-[10px] text-ink-dim hover:text-rose-400 underline font-mono cursor-pointer"
+                    >
+                      Clear Active Job
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <label htmlFor="interview-job-desc" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block font-mono">
+                    Target Role / Job Description Focus
+                  </label>
+                  {jobDescription && (
+                    <button
+                      type="button"
+                      onClick={() => setJobDescription('')}
+                      className="text-[10px] font-mono text-ink-dim hover:text-rose-400 uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  id="interview-job-desc"
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  placeholder="Paste the target role description, system design requirements, or interview topics..."
+                  aria-label="Job description for interview simulation"
+                  className="w-full h-40 p-4 sm:p-5 bg-background border border-border rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
+                />
               </div>
-              <textarea
-                id="interview-job-desc"
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the target role description, system design requirements, or interview topics..."
-                aria-label="Job description for interview simulation"
-                className="w-full h-40 p-4 sm:p-5 bg-background border border-border rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
-              />
             </div>
 
             {error && (

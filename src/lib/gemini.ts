@@ -618,15 +618,21 @@ ${cleanResume}
 };
 
 // =========================================================================
-// 2. JOB SEARCH & SEMANTIC MATCHING ENGINE
+// 2. JOB SEARCH & SEMANTIC MATCHING ENGINE (REAL EXTERNAL PROVIDERS ONLY)
 // =========================================================================
 export interface JobOpportunity {
+  id?: string;
   title: string;
   company: string;
   location: string;
   link: string;
   description: string;
   datePosted: string;
+  source?: string;
+  retrievedAt?: string;
+  jobType?: string;
+  isRemote?: boolean;
+  tags?: string[];
   matchScore?: number;
   roleTier?: 'safe' | 'stretch' | 'reach' | string;
   matchExplanation?: string;
@@ -634,8 +640,7 @@ export interface JobOpportunity {
 }
 
 /**
- * Validates and normalizes job opportunities returned from the AI engine.
- * Ensures all required fields are present and safe defaults exist for optional fields.
+ * Validates and normalizes job opportunities returned from verified providers.
  */
 export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
   let list: any[] = [];
@@ -649,7 +654,7 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
   }
 
   if (!Array.isArray(list) || list.length === 0) {
-    throw new Error("No job opportunities were returned by the AI engine. Please refine your search query or location.");
+    return [];
   }
 
   const normalized: JobOpportunity[] = [];
@@ -660,33 +665,37 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
     const company = String(item.company || item.employer || '').trim();
     if (!title && !company) continue;
 
-    const location = String(item.location || 'Remote / Worldwide').trim();
-    let link = String(item.link || item.url || item.applyUrl || '').trim();
-    if (!link || !link.startsWith('http')) {
-      link = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent((company ? company + ' ' : '') + (title || 'Software Engineer'))}`;
-    }
-
-    const description = String(item.description || item.summary || 'Core responsibilities and technical deliverables.').trim();
-    const datePosted = String(item.datePosted || item.posted || 'Recent').trim();
+    const location = String(item.location || 'Remote').trim();
+    const link = String(item.link || item.url || item.applyUrl || '#').trim();
+    const description = String(item.description || item.summary || 'Visit official job posting for full details.').trim();
+    const datePosted = String(item.datePosted || item.posted || 'Recently posted').trim();
+    const source = String(item.source || 'Verified Source').trim();
+    const retrievedAt = String(item.retrievedAt || new Date().toISOString());
 
     let matchScore = typeof item.matchScore === 'number' ? Math.round(item.matchScore) : parseInt(String(item.matchScore), 10);
-    if (isNaN(matchScore) || matchScore <= 0 || matchScore > 100) matchScore = 85;
+    if (isNaN(matchScore) || matchScore <= 0 || matchScore > 100) matchScore = 80;
 
     let roleTier = typeof item.roleTier === 'string' ? item.roleTier.toLowerCase().trim() : '';
     if (!['safe', 'stretch', 'reach'].includes(roleTier)) {
       roleTier = matchScore >= 85 ? 'safe' : (matchScore >= 75 ? 'stretch' : 'reach');
     }
 
-    const matchExplanation = String(item.matchExplanation || item.explanation || 'Matches candidate core competencies and background criteria.').trim();
+    const matchExplanation = String(item.matchExplanation || item.explanation || 'Matches your technical skillset and target domain.').trim();
     const isPoorFit = Boolean(item.isPoorFit);
 
     normalized.push({
-      title: title || 'Software Engineer',
-      company: company || 'Tech Company',
+      id: String(item.id || ''),
+      title: title || 'Engineering Role',
+      company: company || 'Hiring Organization',
       location: location || 'Remote',
       link,
       description,
       datePosted,
+      source,
+      retrievedAt,
+      jobType: item.jobType ? String(item.jobType).trim() : undefined,
+      isRemote: Boolean(item.isRemote),
+      tags: Array.isArray(item.tags) ? item.tags : [],
       matchScore,
       roleTier: roleTier as 'safe' | 'stretch' | 'reach',
       matchExplanation,
@@ -694,147 +703,62 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
     });
   }
 
-  if (normalized.length === 0) {
-    throw new Error("Received malformed job items from AI response. Please try again.");
-  }
-
   return normalized;
 }
 
 /**
- * Executes a single controlled batch of job syntheses.
- * Calculates maxTokens dynamically based on job count and reasoning overhead.
+ * Searches and retrieves REAL live job listings from external verified job providers via server API.
+ * Never invents, estimates, or synthesizes fictional job listings.
  */
-async function fetchJobBatch({
-  queryStr,
-  location,
-  candidateSkills,
-  count,
-  batchIndex = 0
-}: {
-  queryStr: string;
-  location: string;
-  candidateSkills: string;
-  count: number;
-  batchIndex?: number;
-}): Promise<JobOpportunity[]> {
-  const cleanQuery = queryStr.trim();
-  const cleanLoc = location.trim() || 'Remote / Worldwide';
-  const isIndianContext = cleanLoc.toLowerCase().includes('india') || 
-                          cleanQuery.toLowerCase().includes('india') ||
-                          cleanLoc.toLowerCase().includes('bangalore') ||
-                          cleanLoc.toLowerCase().includes('bengaluru') ||
-                          cleanQuery.toLowerCase().includes('bengaluru') ||
-                          cleanLoc.toLowerCase().includes('hyderabad') ||
-                          cleanLoc.toLowerCase().includes('pune') ||
-                          cleanQuery.toLowerCase().includes('pune') ||
-                          cleanLoc.toLowerCase().includes('delhi') ||
-                          cleanQuery.toLowerCase().includes('delhi') ||
-                          cleanLoc.toLowerCase().includes('gurugram') ||
-                          cleanLoc.toLowerCase().includes('noida') ||
-                          cleanLoc.toLowerCase().includes('mumbai');
-
-  // Reasoned token calculation:
-  // Base reasoning overhead for GLM 5.3 Flash (~1200-2000 tokens) + ~250 tokens per concise job object
-  // Bounded between 2800 and 3800, providing generous non-truncating headroom.
-  const calculatedMaxTokens = Math.min(3800, Math.max(2800, 2000 + count * 350));
-
-  const prompt = [
-    `Synthesize ${count} realistic, active job opportunities for "${cleanQuery}" in "${cleanLoc}".`,
-    batchIndex > 0 ? `Target distinct companies and listings different from earlier batches.` : '',
-    isIndianContext ? 'Focus on verified employers, tech enterprises, and prominent startups operating in India.' : '',
-    candidateSkills ? `Candidate Core Skills: ${candidateSkills}` : '',
-    '',
-    `Output strictly a compact JSON array of exactly ${count} job objects with these exact keys:`,
-    `- title: string (exact role title)`,
-    `- company: string (exact company name)`,
-    `- location: string (city or Remote)`,
-    `- link: string (official careers page URL)`,
-    `- description: string (concise core duty summary under 15 words)`,
-    `- datePosted: string (e.g. "1d ago", "2d ago", "Just now")`,
-    `- matchScore: number (integer 65-98)`,
-    `- roleTier: "safe" | "stretch" | "reach"`,
-    `- matchExplanation: string (concise fit reason under 10 words)`,
-    `- isPoorFit: boolean (false)`,
-    '',
-    'CRITICAL RULES:',
-    '- Output strictly valid raw JSON array starting with [ and ending with ].',
-    '- No markdown formatting (no ```json or ```).',
-    '- No explanatory preamble, disclaimers, or apologies.',
-    '- Keep all descriptions strictly under 15 words and explanations under 10 words.'
-  ].filter(Boolean).join('\n');
-
-  const results = await executeAICompletion<any>({
-    prompt,
-    systemPrompt: "You are the AI Job Finder matching engine for AI HireFlow. Output strictly a valid, compact raw JSON array of job opportunities. Never output markdown fences, disclaimers, conversational text, or apologies.",
-    jsonMode: true,
-    temperature: 0.15,
-    maxTokens: calculatedMaxTokens,
-    operation: 'job_finder'
-  });
-
-  return validateAndNormalizeJobs(results);
-}
-
 export const findJobs = async (
   queryStr: string,
   location: string = "",
   candidateProfileText: string = "",
-  desiredCount: number = 5
+  desiredCount: number = 10
 ): Promise<JobOpportunity[]> => {
+  const cleanQuery = (queryStr || '').trim();
+  const cleanLoc = (location || '').trim();
   const cleanProfile = (candidateProfileText || '')
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
     .replace(/[ \t]+/g, ' ')
     .trim()
-    .slice(0, 300);
+    .slice(0, 1000);
 
-  // For standard result sets (<= 5 jobs), execute a single controlled request
-  if (desiredCount <= 5) {
-    return await fetchJobBatch({
-      queryStr,
-      location,
-      candidateSkills: cleanProfile,
-      count: desiredCount,
-      batchIndex: 0
-    });
-  }
+  const res = await fetch('/api/jobs/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      query: cleanQuery,
+      location: cleanLoc,
+      candidateProfile: cleanProfile,
+      limit: Math.min(25, Math.max(5, desiredCount))
+    })
+  });
 
-  // If a larger result set (e.g. 10 jobs) is requested, use controlled parallel batching (5 + 5)
-  const batch1Count = Math.ceil(desiredCount / 2);
-  const batch2Count = Math.floor(desiredCount / 2);
-
-  const [res1, res2] = await Promise.allSettled([
-    fetchJobBatch({ queryStr, location, candidateSkills: cleanProfile, count: batch1Count, batchIndex: 0 }),
-    fetchJobBatch({ queryStr, location, candidateSkills: cleanProfile, count: batch2Count, batchIndex: 1 })
-  ]);
-
-  const combined: JobOpportunity[] = [];
-  const seen = new Set<string>();
-
-  const addJobs = (list: JobOpportunity[]) => {
-    for (const job of list) {
-      const key = `${job.company.toLowerCase()}:${job.title.toLowerCase()}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        combined.push(job);
+  if (!res.ok) {
+    let message = 'Real job discovery service is temporarily unavailable. Please try again in a few moments.';
+    try {
+      const errJson = await res.json();
+      if (errJson?.error) {
+        message = errJson.error;
       }
+    } catch {
+      // ignore
     }
-  };
-
-  if (res1.status === 'fulfilled' && Array.isArray(res1.value)) {
-    addJobs(res1.value);
-  }
-  if (res2.status === 'fulfilled' && Array.isArray(res2.value)) {
-    addJobs(res2.value);
+    throw new Error(message);
   }
 
-  if (combined.length === 0) {
-    if (res1.status === 'rejected') throw res1.reason;
-    if (res2.status === 'rejected') throw res2.reason;
-    throw new Error("No job opportunities could be retrieved. Please try again with a refined search.");
+  const data = await res.json();
+  const rawJobs = Array.isArray(data?.jobs) ? data.jobs : [];
+
+  if (rawJobs.length === 0) {
+    return [];
   }
 
-  return combined;
+  return validateAndNormalizeJobs(rawJobs);
 };
 
 export const matchJobsWithProfile = async (userProfileText: string, jobListings: any[]): Promise<JobOpportunity[]> => {

@@ -8,10 +8,14 @@ export interface ActiveJobContext {
   description?: string;
   skills: string[];
   datePosted?: string;
+  retrievedAt?: string;
+  isRemote?: boolean;
+  jobType?: string;
   matchScore?: number;
   roleTier?: string;
   link?: string;
-  source?: 'search' | 'tracker' | 'analyzer' | 'manual';
+  source?: 'search' | 'tracker' | 'analyzer' | 'manual' | string;
+  provider?: string;
   selectedAt: number;
 }
 

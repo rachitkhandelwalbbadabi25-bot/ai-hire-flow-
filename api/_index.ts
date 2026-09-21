@@ -1467,6 +1467,63 @@ app.post(['/api/ocr', '/ocr'], async (req, res, next) => {
   }
 });
 
+// Real Job Discovery & Semantic Matching Endpoint (Verified external sources only)
+app.all(['/api/jobs/search', '/api/jobs'], async (req, res, next) => {
+  try {
+    const isPost = req.method === 'POST';
+    const params = isPost ? (req.body || {}) : (req.query || {});
+    
+    const query = typeof params.query === 'string' ? params.query : (typeof params.q === 'string' ? params.q : '');
+    const location = typeof params.location === 'string' ? params.location : (typeof params.loc === 'string' ? params.loc : '');
+    const candidateProfile = typeof params.candidateProfile === 'string' ? params.candidateProfile : (typeof params.profile === 'string' ? params.profile : '');
+    const limit = Math.min(25, Math.max(1, Number(params.limit) || 10));
+
+    const { searchRealJobs, rankAndScoreJobsWithAI } = await import('./_lib/jobDiscovery.ts');
+
+    let realListings: any[] = [];
+    try {
+      realListings = await searchRealJobs({
+        query: query.trim(),
+        location: location.trim(),
+        limit
+      });
+    } catch (providerErr: any) {
+      console.warn('[RealJobSearch] Provider error:', providerErr.message);
+      return res.status(503).json({
+        error: 'External live job providers are currently unreachable. Please try again in a few moments.',
+        code: 'JOB_PROVIDER_UNAVAILABLE',
+        jobs: []
+      });
+    }
+
+    if (!realListings || realListings.length === 0) {
+      return res.json({
+        success: true,
+        jobs: [],
+        totalCount: 0,
+        message: 'No matching live job listings were found for this search. Try another role, location, or search term.'
+      });
+    }
+
+    // Apply AI semantic matching (Velona GLM 5.3 Flash) strictly to score and rank REAL listings
+    const scoredJobs = await rankAndScoreJobsWithAI({
+      jobs: realListings,
+      candidateProfile: candidateProfile.trim(),
+      callVelona: callVelonaChatCompletion
+    });
+
+    return res.json({
+      success: true,
+      jobs: scoredJobs,
+      totalCount: scoredJobs.length,
+      retrievedAt: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('[RealJobSearch] Unexpected error:', err);
+    next(err);
+  }
+});
+
 // JSON 404 handler for any unmatched /api/* route
 app.all(['/api/*', '/api'], (req, res) => {
   res.status(404).json({

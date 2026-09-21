@@ -5,6 +5,7 @@ import OnboardingTour from './OnboardingTour';
 import { motion } from 'motion/react';
 import { useLocation, Link } from 'react-router-dom';
 import { ReactNode } from 'react';
+import HireFlowLogo from './HireFlowLogo';
 
 interface LayoutProps {
   user: User | null;
@@ -50,9 +51,12 @@ export default function Layout({ user, children }: LayoutProps) {
             <Link to="/career-roadmap" className="hover:text-ink transition-colors">Career Roadmap</Link>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between w-full pt-6 border-t border-border/40 gap-4">
-            <p className="text-ink-dim text-xs font-sans">
-              © 2026 AI HireFlow. Precision engineered for the bold.
-            </p>
+            <div className="flex items-center gap-2.5">
+              <HireFlowLogo className="w-6 h-6" />
+              <p className="text-ink-dim text-xs font-sans">
+                © 2026 AI HireFlow. Precision engineered for the bold.
+              </p>
+            </div>
             <div className="flex gap-6">
               <Link to="/" className="text-ink-dim hover:text-ink text-xs transition-colors">Home</Link>
               <a href="#" className="text-ink-dim hover:text-ink text-xs transition-colors">Privacy</a>

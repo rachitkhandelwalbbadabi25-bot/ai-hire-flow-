@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import PlanBadge from './PlanBadge';
 import HeaderQuickSearch from './HeaderQuickSearch';
 import MobileBottomNav from './MobileBottomNav';
+import HireFlowLogo from './HireFlowLogo';
 import { PUBLIC_SEO_ROUTES } from './Layout';
 import { 
   BarChart3, 
@@ -103,10 +104,8 @@ export default function Navbar({ user }: NavbarProps) {
                   <Menu className="w-6 h-6" aria-hidden="true" />
                 </button>
               )}
-              <Link to={user ? "/dashboard" : "/"} className="min-h-[44px] flex items-center gap-2.5 group" aria-label="AI HireFlow Home">
-                <div className="bg-accent p-2 rounded-xl flex items-center justify-center shadow-lg shadow-accent/25 transition-transform group-hover:scale-105" aria-hidden="true">
-                  <Briefcase className="w-5 h-5 text-white" />
-                </div>
+              <Link to={user ? "/dashboard" : "/"} className="min-h-[44px] flex items-center gap-3 group" aria-label="AI HireFlow Home">
+                <HireFlowLogo className="w-9 h-9 transition-transform group-hover:scale-105" />
                 <div className="flex flex-col">
                   <span className="font-sans font-black text-lg tracking-tight text-ink leading-none">
                     AI HireFlow
@@ -241,11 +240,13 @@ export default function Navbar({ user }: NavbarProps) {
               </div>
 
               <div className="px-6 mb-4">
-                 <div className="flex items-center gap-2 mb-1.5">
-                    <Sparkles className="w-4 h-4 text-accent" />
-                    <span className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.3em]">Navigation</span>
+                 <div className="flex items-center gap-3 mb-2">
+                    <HireFlowLogo className="w-8 h-8" />
+                    <div>
+                      <h2 className="text-sm font-bold text-ink uppercase tracking-wider">AI HireFlow</h2>
+                      <span className="text-[9px] font-bold text-accent uppercase tracking-widest font-mono">Career Platform</span>
+                    </div>
                  </div>
-                 <h2 className="text-sm font-bold text-ink uppercase tracking-widest">All Modules</h2>
               </div>
 
               <div className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">

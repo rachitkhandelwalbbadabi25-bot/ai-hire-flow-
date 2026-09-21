@@ -24,6 +24,7 @@ import { SystemOSProvider } from './context/SystemOSContext';
 import { A11yProvider } from './context/A11yContext';
 import { AIProviderProvider } from './context/AIProviderContext';
 import { Sparkles } from 'lucide-react';
+import HireFlowLogo from './components/HireFlowLogo';
 
 function AppRoutes() {
   const { user, loading: authLoading } = useAuth();
@@ -33,9 +34,7 @@ function AppRoutes() {
       <div className="h-screen w-full flex items-center justify-center bg-[#0a0a0a] transition-all duration-700">
         <div className="flex flex-col items-center gap-6">
           <div className="relative">
-            <div className="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center animate-pulse border border-accent/30 shadow-[0_0_30px_rgba(var(--accent-rgb),0.2)]">
-              <Sparkles className="w-8 h-8 text-accent" />
-            </div>
+            <HireFlowLogo className="w-16 h-16 animate-pulse" />
           </div>
           <div className="flex flex-col items-center gap-2">
             <h2 className="text-white font-sans font-black uppercase tracking-[0.4em] text-sm ml-[0.4em]">AI HireFlow</h2>

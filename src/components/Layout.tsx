@@ -18,7 +18,16 @@ export const PUBLIC_SEO_ROUTES = [
   '/resume-builder',
   '/ai-interview-preparation',
   '/ai-job-search',
-  '/career-roadmap'
+  '/career-roadmap',
+  '/privacy',
+  '/privacy-policy',
+  '/terms',
+  '/terms-and-conditions',
+  '/refund',
+  '/refund-policy',
+  '/refund-and-cancellation',
+  '/contact',
+  '/contact-us'
 ];
 
 export default function Layout({ user, children }: LayoutProps) {
@@ -57,11 +66,12 @@ export default function Layout({ user, children }: LayoutProps) {
                 © 2026 AI HireFlow. Precision engineered for the bold.
               </p>
             </div>
-            <div className="flex gap-6">
+            <div className="flex flex-wrap items-center gap-6">
               <Link to="/" className="text-ink-dim hover:text-ink text-xs transition-colors">Home</Link>
-              <a href="#" className="text-ink-dim hover:text-ink text-xs transition-colors">Privacy</a>
-              <a href="#" className="text-ink-dim hover:text-ink text-xs transition-colors">Terms</a>
-              <a href="#" className="text-ink-dim hover:text-ink text-xs transition-colors">Contact</a>
+              <Link to="/privacy" className="text-ink-dim hover:text-ink text-xs transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="text-ink-dim hover:text-ink text-xs transition-colors">Terms &amp; Conditions</Link>
+              <Link to="/refund" className="text-ink-dim hover:text-ink text-xs transition-colors">Refund &amp; Cancellation</Link>
+              <Link to="/contact" className="text-ink-dim hover:text-ink text-xs transition-colors">Contact Us</Link>
             </div>
           </div>
         </div>

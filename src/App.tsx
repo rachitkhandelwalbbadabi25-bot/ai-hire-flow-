@@ -6,6 +6,10 @@ import ResumeBuilderSEO from './pages/ResumeBuilderSEO';
 import AIInterviewPrepSEO from './pages/AIInterviewPrepSEO';
 import AIJobSearchSEO from './pages/AIJobSearchSEO';
 import CareerRoadmapSEO from './pages/CareerRoadmapSEO';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
+import RefundPolicy from './pages/RefundPolicy';
+import ContactUs from './pages/ContactUs';
 import Dashboard from './pages/Dashboard';
 import ResumeAnalyzer from './pages/ResumeAnalyzer';
 import JobTracker from './pages/JobTracker';
@@ -60,6 +64,17 @@ function AppRoutes() {
           <Route path="/ai-interview-preparation" element={<AIInterviewPrepSEO />} />
           <Route path="/ai-job-search" element={<AIJobSearchSEO />} />
           <Route path="/career-roadmap" element={<CareerRoadmapSEO />} />
+
+          {/* Public Legal & Support Pages (Always accessible) */}
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsAndConditions />} />
+          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+          <Route path="/refund" element={<RefundPolicy />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/refund-and-cancellation" element={<RefundPolicy />} />
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/contact-us" element={<ContactUs />} />
 
           {/* Authenticated Application Routes */}
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" replace />} />

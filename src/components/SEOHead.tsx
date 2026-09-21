@@ -15,7 +15,14 @@ export default function SEOHead({
   ogType = 'website',
   jsonLd
 }: SEOHeadProps) {
-  const canonicalUrl = `https://www.aihireflow.in${canonicalPath ? (canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`) : ''}`;
+  // Normalize canonical URL to strictly use the primary https://www.aihireflow.in domain
+  const cleanPath = !canonicalPath || canonicalPath === '/'
+    ? '/'
+    : canonicalPath.startsWith('/')
+      ? canonicalPath.replace(/\/+$/, '')
+      : `/${canonicalPath.replace(/\/+$/, '')}`;
+
+  const canonicalUrl = `https://www.aihireflow.in${cleanPath}`;
 
   useEffect(() => {
     // 1. Set document title
@@ -39,23 +46,31 @@ export default function SEOHead({
     }
     linkCanonical.setAttribute('href', canonicalUrl);
 
-    // 4. Open Graph Tags
-    const setOgTag = (property: string, content: string) => {
-      let tag = document.querySelector(`meta[property="${property}"]`);
+    // Helper for setting meta tags by property or name
+    const setMetaTag = (attr: 'property' | 'name', key: string, content: string) => {
+      let tag = document.querySelector(`meta[${attr}="${key}"]`);
       if (!tag) {
         tag = document.createElement('meta');
-        tag.setAttribute('property', property);
+        tag.setAttribute(attr, key);
         document.head.appendChild(tag);
       }
       tag.setAttribute('content', content);
     };
 
-    setOgTag('og:title', title);
-    setOgTag('og:description', description);
-    setOgTag('og:url', canonicalUrl);
-    setOgTag('og:type', ogType);
+    // 4. Open Graph Tags
+    setMetaTag('property', 'og:title', title);
+    setMetaTag('property', 'og:description', description);
+    setMetaTag('property', 'og:url', canonicalUrl);
+    setMetaTag('property', 'og:type', ogType);
+    setMetaTag('property', 'og:site_name', 'AI HireFlow');
 
-    // 5. JSON-LD Schema
+    // 5. Twitter Card Tags
+    setMetaTag('name', 'twitter:card', 'summary_large_image');
+    setMetaTag('name', 'twitter:title', title);
+    setMetaTag('name', 'twitter:description', description);
+    setMetaTag('name', 'twitter:url', canonicalUrl);
+
+    // 6. JSON-LD Schema
     const existingScript = document.getElementById('seo-jsonld');
     if (existingScript) {
       existingScript.remove();

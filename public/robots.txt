@@ -15,4 +15,5 @@ Disallow: /campus
 Disallow: /outreach
 
 Sitemap: https://www.aihireflow.in/sitemap.xml
+Host: https://www.aihireflow.in
 

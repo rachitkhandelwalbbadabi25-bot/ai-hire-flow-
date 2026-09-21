@@ -85,10 +85,12 @@ export default function ContactUs() {
     "@context": "https://schema.org",
     "@type": "ContactPage",
     "name": "Contact Us | AI HireFlow",
+    "url": "https://www.aihireflow.in/contact",
     "description": "Contact AI HireFlow support for billing, account assistance, AI diagnostics, credit balances, and data privacy inquiries.",
     "publisher": {
       "@type": "Organization",
-      "name": "AI HireFlow"
+      "name": "AI HireFlow",
+      "url": "https://www.aihireflow.in/"
     }
   };
 

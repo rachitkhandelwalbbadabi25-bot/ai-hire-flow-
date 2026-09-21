@@ -18,10 +18,12 @@ export default function PrivacyPolicy() {
     "@context": "https://schema.org",
     "@type": "WebPage",
     "name": "Privacy Policy | AI HireFlow",
+    "url": "https://www.aihireflow.in/privacy",
     "description": "Privacy Policy for AI HireFlow detailing account security, data usage, AI processing via Velona API, payment processing via Razorpay, and user data rights.",
     "publisher": {
       "@type": "Organization",
-      "name": "AI HireFlow"
+      "name": "AI HireFlow",
+      "url": "https://www.aihireflow.in/"
     }
   };
 

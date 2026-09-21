@@ -28,6 +28,7 @@ export default function ATSResumeCheckerSEO() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "AI HireFlow ATS Resume Checker",
+    "url": "https://www.aihireflow.in/ats-resume-checker",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
     "offers": {

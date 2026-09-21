@@ -17,10 +17,12 @@ export default function RefundPolicy() {
     "@context": "https://schema.org",
     "@type": "WebPage",
     "name": "Refund & Cancellation Policy | AI HireFlow",
+    "url": "https://www.aihireflow.in/refund",
     "description": "Refund and Cancellation Policy for AI HireFlow detailing subscription cancellation, digital credit top-up packs, failed transaction resolution, and support protocols.",
     "publisher": {
       "@type": "Organization",
-      "name": "AI HireFlow"
+      "name": "AI HireFlow",
+      "url": "https://www.aihireflow.in/"
     }
   };
 

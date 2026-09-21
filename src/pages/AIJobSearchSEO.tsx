@@ -28,6 +28,7 @@ export default function AIJobSearchSEO() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "AI HireFlow AI Job Search & Match Engine",
+    "url": "https://www.aihireflow.in/ai-job-search",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
     "offers": {

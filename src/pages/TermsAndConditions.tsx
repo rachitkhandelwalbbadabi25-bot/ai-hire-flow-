@@ -18,10 +18,12 @@ export default function TermsAndConditions() {
     "@context": "https://schema.org",
     "@type": "WebPage",
     "name": "Terms & Conditions | AI HireFlow",
+    "url": "https://www.aihireflow.in/terms",
     "description": "Terms and Conditions governing the use of AI HireFlow, covering account responsibilities, AI usage limitations, credit top-up packs, Razorpay billing, and service terms.",
     "publisher": {
       "@type": "Organization",
-      "name": "AI HireFlow"
+      "name": "AI HireFlow",
+      "url": "https://www.aihireflow.in/"
     }
   };
 

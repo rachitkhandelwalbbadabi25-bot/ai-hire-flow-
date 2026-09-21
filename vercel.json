@@ -6,6 +6,19 @@
       "memory": 1024
     }
   },
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "aihireflow.in"
+        }
+      ],
+      "destination": "https://www.aihireflow.in/:path*",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/sitemap.xml",

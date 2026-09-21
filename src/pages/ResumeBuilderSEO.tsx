@@ -27,6 +27,7 @@ export default function ResumeBuilderSEO() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "AI HireFlow AI Resume Builder",
+    "url": "https://www.aihireflow.in/resume-builder",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
     "offers": {

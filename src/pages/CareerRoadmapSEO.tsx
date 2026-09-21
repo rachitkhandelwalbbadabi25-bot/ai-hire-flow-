@@ -28,6 +28,7 @@ export default function CareerRoadmapSEO() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "AI HireFlow AI Career Roadmap & Learning Path",
+    "url": "https://www.aihireflow.in/career-roadmap",
     "applicationCategory": "EducationalApplication",
     "operatingSystem": "Web",
     "offers": {

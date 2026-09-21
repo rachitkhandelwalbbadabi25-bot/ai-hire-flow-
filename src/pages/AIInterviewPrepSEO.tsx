@@ -28,6 +28,7 @@ export default function AIInterviewPrepSEO() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "AI HireFlow AI Interview Simulator",
+    "url": "https://www.aihireflow.in/ai-interview-preparation",
     "applicationCategory": "EducationalApplication",
     "operatingSystem": "Web",
     "offers": {

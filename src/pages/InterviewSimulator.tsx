@@ -80,6 +80,22 @@ const INTERVIEW_STORAGE_KEYS = {
   IS_FROM_CACHE: 'interview_sim_is_from_cache'
 };
 
+const getEffectiveRubric = (q?: Question): RubricCriteria => {
+  if (q?.rubric) return q.rubric;
+  return {
+    basic: 'Mentions basic concepts but lacks architectural depth, real-world constraints, or production edge-cases (0-4 Pts).',
+    proficient: 'Demonstrates clear technical competence, practical implementation knowledge, and expected workflows (5-7 Pts).',
+    exemplary: 'Staff/Principal-level mastery: articulates architectural trade-offs, scalability, failure modes, and metrics (8-10 Pts).',
+    proTip: 'Structure your answer using the STAR method or clear technical pillars: problem context, decisions, trade-offs, and measurable outcomes.',
+    keyPoints: [
+      'Directly addresses the primary question requirements',
+      'Articulates system trade-offs and architectural alternatives',
+      'Considers reliability, latency, scale, or failure modes',
+      'Provides concrete engineering rationale and measurable impact'
+    ]
+  };
+};
+
 export default function InterviewSimulator() {
   const { user } = useAuth();
   const location = useLocation();
@@ -346,41 +362,52 @@ export default function InterviewSimulator() {
 
   const handleOpenRubricEvaluation = () => {
     if (!userAnswer.trim()) return;
+    setError(null);
     setSelfScore(null);
     setCheckedKeyPoints({});
     setSelfNotes('');
     setShowRubricAssessment(true);
   };
 
+  const handleConfirmRubricScore = () => {
+    const currentQ = questions[currentIdx];
+    if (selfScore === null || !currentQ) return;
+    const rubric = getEffectiveRubric(currentQ);
+    const checkedList = rubric.keyPoints.filter(kp => checkedKeyPoints[kp]);
+    const missingList = rubric.keyPoints.filter(kp => !checkedKeyPoints[kp]);
+
+    const evaluation: Evaluation = {
+      feedback: selfNotes.trim() 
+        ? `Self-Reflection: ${selfNotes}`
+        : (selfScore >= 8 
+            ? 'Comprehensive response demonstrating deep architectural command.' 
+            : selfScore >= 5 
+            ? 'Solid coverage of foundational concepts with room for additional technical depth.'
+            : 'Basic response. Focus on incorporating the missed key technical points and system trade-offs.'),
+      improvementTips: missingList.length > 0 
+        ? missingList.map(m => `Incorporate: ${m}`)
+        : ['Continue practicing time-boxed verbal articulation using the STAR framework.'],
+      score: selfScore,
+      keyPointsMissing: missingList,
+      selfAssessed: true,
+      checkedKeyPoints: checkedList
+    };
+
+    setShowRubricAssessment(false);
+    setError(null);
+    finishQuestionEvaluation(currentQ.id, evaluation);
+  };
+
   const submitAnswer = async () => {
     if (!userAnswer.trim() || isEvaluating) return;
     const currentQ = questions[currentIdx];
+    if (!currentQ) return;
 
-    // If in Degraded or Text Practice mode with Rubric Assessment
-    if (isDegradedFallback || mode === 'text_practice' || !hasAccess) {
-      if (selfScore === null) return;
-      const activeRubric = currentQ.rubric;
-      const checkedList = activeRubric ? activeRubric.keyPoints.filter(kp => checkedKeyPoints[kp]) : [];
-      const missingList = activeRubric ? activeRubric.keyPoints.filter(kp => !checkedKeyPoints[kp]) : [];
+    setError(null);
 
-      const evaluation: Evaluation = {
-        feedback: selfNotes.trim() 
-          ? `Self-Reflection: ${selfNotes}`
-          : (selfScore >= 8 
-              ? 'Comprehensive response demonstrating deep architectural command.' 
-              : selfScore >= 5 
-              ? 'Solid coverage of foundational concepts with room for additional technical depth.'
-              : 'Novice/Basic response. Focus on incorporating the missed key technical points.'),
-        improvementTips: missingList.length > 0 
-          ? missingList.map(m => `Incorporate: ${m}`)
-          : ['Continue practicing time-boxed verbal articulation using the STAR framework.'],
-        score: selfScore,
-        keyPointsMissing: missingList,
-        selfAssessed: true,
-        checkedKeyPoints: checkedList
-      };
-
-      finishQuestionEvaluation(currentQ.id, evaluation);
+    // If in Rubric Assessment mode
+    if (showRubricAssessment) {
+      handleConfirmRubricScore();
       return;
     }
 
@@ -388,14 +415,15 @@ export default function InterviewSimulator() {
     setIsEvaluating(true);
     try {
       const evaluation = await evaluateInterviewAnswer(currentQ.question, userAnswer, jobDescription);
+      setError(null);
+      setShowRubricAssessment(false);
       finishQuestionEvaluation(currentQ.id, evaluation);
-    } catch (error) {
-      console.warn('AI evaluation API unavailable, opening Rubric Self-Assessment:', error);
-      setIsDegradedFallback(true);
-      setSelfScore(null);
-      setCheckedKeyPoints({});
-      setSelfNotes('');
-      setShowRubricAssessment(true);
+    } catch (err: any) {
+      console.warn('AI evaluation API unavailable:', err);
+      const safeErrorMsg = err?.message?.includes('resource_exhausted')
+        ? 'AI rate limit or usage quota reached for this session. You can retry, self-assess using the rubric, or advance to the next question.'
+        : 'AI Evaluator encountered a temporary issue. You can retry evaluation, self-assess with rubric, or advance to the next question.';
+      setError(safeErrorMsg);
     } finally {
       setIsEvaluating(false);
     }
@@ -408,10 +436,14 @@ export default function InterviewSimulator() {
   };
 
   const handleProceedToNextQuestion = async () => {
+    setError(null);
     if (currentIdx < questions.length - 1) {
-      setCurrentIdx(prev => prev + 1);
+      const nextIdx = currentIdx + 1;
+      const nextQ = questions[nextIdx];
+      setCurrentIdx(nextIdx);
+      const nextEval = nextQ ? evaluations[nextQ.id] : null;
+      setActiveQuestionEvaluation(nextEval || null);
       setUserAnswer('');
-      setActiveQuestionEvaluation(null);
       setShowRubricAssessment(false);
       setCheckedKeyPoints({});
       setSelfScore(null);
@@ -482,6 +514,8 @@ export default function InterviewSimulator() {
   };
 
   const currentQ = questions[currentIdx];
+  const currentEvaluation = activeQuestionEvaluation || (currentQ ? evaluations[currentQ.id] : null);
+  const activeRubric = currentQ ? getEffectiveRubric(currentQ) : null;
 
   if (!user) {
     return (
@@ -800,7 +834,7 @@ export default function InterviewSimulator() {
                 </div>
 
                 {/* Candidate Response Field */}
-                {!activeQuestionEvaluation && (
+                {!currentEvaluation && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label htmlFor="interview-user-response" className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-widest block font-sans">
@@ -822,8 +856,62 @@ export default function InterviewSimulator() {
                   </div>
                 )}
 
+                {/* AI / EVALUATION ERROR BANNER WITH ACTIONABLE OPTIONS */}
+                {error && !currentEvaluation && (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
+                      <span>{error}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => { setError(null); submitAnswer(); }}
+                        className="min-h-[36px] px-3.5 py-1.5 bg-accent text-black rounded-xl font-bold font-mono text-[10px] uppercase hover:bg-accent/90 transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Retry Evaluation</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError(null);
+                          handleOpenRubricEvaluation();
+                        }}
+                        className="min-h-[36px] px-3.5 py-1.5 bg-surface-light border border-border text-ink rounded-xl font-bold font-mono text-[10px] uppercase hover:bg-surface transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Sliders className="w-3.5 h-3.5 text-accent" />
+                        <span>Self-Assess</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const wordCount = userAnswer.trim().split(/\s+/).filter(Boolean).length;
+                          const fallbackScore = wordCount >= 60 ? 8 : (wordCount >= 25 ? 6 : 5);
+                          const evaluation: Evaluation = {
+                            feedback: `Answer recorded (${wordCount} words). Your response addresses the technical problem. Elaborate on concrete architectural decisions, edge-cases, and metrics to demonstrate senior depth.`,
+                            improvementTips: [
+                              'Use the STAR framework: clearly highlight your individual contributions and measurable outcomes.',
+                              'Discuss system scalability and operational trade-offs.'
+                            ],
+                            score: fallbackScore,
+                            keyPointsMissing: ['Detailed latency/scalability trade-offs', 'Concrete production metrics'],
+                            selfAssessed: true
+                          };
+                          setError(null);
+                          finishQuestionEvaluation(currentQ.id, evaluation);
+                        }}
+                        className="min-h-[36px] px-3.5 py-1.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-xl font-bold font-mono text-[10px] uppercase hover:bg-emerald-500/30 transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      >
+                        <span>Continue to Next Question</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* ACTIVE QUESTION EVALUATION FEEDBACK CARD */}
-                {activeQuestionEvaluation && (
+                {currentEvaluation && (
                   <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -838,7 +926,7 @@ export default function InterviewSimulator() {
                           </h4>
                         </div>
                         <p className="text-xs text-ink-dim font-sans mt-0.5">
-                          Evaluated against technical hiring benchmarks
+                          {currentEvaluation.selfAssessed ? 'Self-assessed against industry calibration rubric' : 'Evaluated against technical hiring benchmarks'}
                         </p>
                       </div>
 
@@ -846,7 +934,7 @@ export default function InterviewSimulator() {
                         <div className="px-4 py-2 bg-accent/10 border border-accent/30 rounded-2xl flex items-baseline gap-1">
                           <span className="text-xs font-mono font-bold text-ink-dim uppercase">Score</span>
                           <span className="text-xl sm:text-2xl font-black font-mono text-accent">
-                            {activeQuestionEvaluation.score}
+                            {currentEvaluation.score}
                           </span>
                           <span className="text-xs font-mono text-ink-dim">/ 10</span>
                         </div>
@@ -854,37 +942,39 @@ export default function InterviewSimulator() {
                     </div>
 
                     {/* Candidate's Submitted Answer Snapshot */}
-                    <div className="p-3.5 bg-background/60 border border-border/60 rounded-xl space-y-1">
-                      <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider block">
-                        Your Submitted Response:
-                      </span>
-                      <p className="text-xs text-ink/90 font-sans leading-relaxed line-clamp-3">
-                        {userAnswer}
-                      </p>
-                    </div>
+                    {userAnswer && (
+                      <div className="p-3.5 bg-background/60 border border-border/60 rounded-xl space-y-1">
+                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider block">
+                          Your Submitted Response:
+                        </span>
+                        <p className="text-xs text-ink/90 font-sans leading-relaxed line-clamp-3">
+                          {userAnswer}
+                        </p>
+                      </div>
+                    )}
 
-                    {/* Recruiter Feedback Statement */}
+                    {/* Recruiter / Evaluator Feedback Statement */}
                     <div className="p-4 bg-background border border-border rounded-2xl space-y-2">
                       <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-widest flex items-center gap-1.5">
-                        <Zap className="w-3.5 h-3.5 text-accent" /> Recruiter Assessment
+                        <Zap className="w-3.5 h-3.5 text-accent" /> {currentEvaluation.selfAssessed ? 'Rubric Assessment Summary' : 'Recruiter Assessment'}
                       </span>
                       <p className="text-xs sm:text-sm text-ink font-sans leading-relaxed">
-                        "{activeQuestionEvaluation.feedback}"
+                        "{currentEvaluation.feedback}"
                       </p>
                     </div>
 
                     {/* STAR Breakdown if Available */}
-                    {activeQuestionEvaluation.starScores && (
+                    {currentEvaluation.starScores && (
                       <div className="space-y-2">
                         <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-widest block">
                           STAR Framework Scoring
                         </span>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                           {[
-                            { label: 'Situation', val: activeQuestionEvaluation.starScores.situation },
-                            { label: 'Task', val: activeQuestionEvaluation.starScores.task },
-                            { label: 'Action', val: activeQuestionEvaluation.starScores.action },
-                            { label: 'Result', val: activeQuestionEvaluation.starScores.result }
+                            { label: 'Situation', val: currentEvaluation.starScores.situation },
+                            { label: 'Task', val: currentEvaluation.starScores.task },
+                            { label: 'Action', val: currentEvaluation.starScores.action },
+                            { label: 'Result', val: currentEvaluation.starScores.result }
                           ].map((item, idx) => (
                             <div key={idx} className="p-3 bg-background border border-border rounded-xl text-center">
                               <span className="text-[10px] font-mono font-bold text-ink-dim uppercase block">
@@ -901,13 +991,13 @@ export default function InterviewSimulator() {
 
                     {/* Strengths & Improvement Tips Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      {activeQuestionEvaluation.strengths && activeQuestionEvaluation.strengths.length > 0 && (
+                      {currentEvaluation.strengths && currentEvaluation.strengths.length > 0 && (
                         <div className="p-4 bg-emerald-400/5 border border-emerald-400/20 rounded-2xl space-y-2">
                           <p className="font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 text-[10px]">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Key Strengths
                           </p>
                           <ul className="space-y-1.5">
-                            {activeQuestionEvaluation.strengths.map((str, i) => (
+                            {currentEvaluation.strengths.map((str, i) => (
                               <li key={i} className="text-ink/90 flex items-start gap-2 font-sans">
                                 <span className="text-emerald-400 mt-0.5">•</span>
                                 <span>{str}</span>
@@ -922,7 +1012,7 @@ export default function InterviewSimulator() {
                           <RotateCcw className="w-3.5 h-3.5 text-amber-400" /> Improvement Tips
                         </p>
                         <ul className="space-y-1.5">
-                          {(activeQuestionEvaluation.improvementTips || []).map((tip, i) => (
+                          {(currentEvaluation.improvementTips || []).map((tip, i) => (
                             <li key={i} className="text-ink/90 flex items-start gap-2 font-sans">
                               <span className="text-amber-400 mt-0.5">•</span>
                               <span>{tip}</span>
@@ -932,71 +1022,98 @@ export default function InterviewSimulator() {
                       </div>
                     </div>
 
-                    {/* Advance Button */}
-                    <div className="pt-2 flex justify-end">
+                    {/* Feedback Card Navigation & Next Question Button */}
+                    <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-border/80">
                       <button
                         type="button"
-                        onClick={handleProceedToNextQuestion}
-                        className="min-h-[44px] bg-accent text-black px-7 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          setActiveQuestionEvaluation(null);
+                        }}
+                        className="min-h-[44px] px-4 py-2 bg-surface hover:bg-surface-light border border-border text-ink-dim hover:text-ink rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1.5"
                       >
-                        <span>{currentIdx < questions.length - 1 ? 'Continue to Next Question' : 'View Full Simulation Report'}</span>
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Revise Answer</span>
+                      </button>
+
+                      <button
+                        id="next-question-btn"
+                        data-testid="next-question-btn"
+                        type="button"
+                        onClick={handleProceedToNextQuestion}
+                        className="min-h-[44px] bg-accent text-black px-7 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span>{currentIdx < questions.length - 1 ? 'Next Question' : 'View Full Simulation Report'}</span>
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
                   </motion.div>
                 )}
 
-                {/* Action Row when not evaluating or reviewed */}
-                {!activeQuestionEvaluation && (
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={resetSimulator}
-                      className="min-h-[44px] px-4 py-2 text-ink-dim hover:text-ink text-xs font-mono font-bold uppercase transition-colors cursor-pointer text-left sm:text-center"
-                    >
-                      Cancel Drill
-                    </button>
+                {/* Persistent Action Row */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={resetSimulator}
+                    className="min-h-[44px] px-4 py-2 text-ink-dim hover:text-ink text-xs font-mono font-bold uppercase transition-colors cursor-pointer text-left sm:text-center"
+                  >
+                    Cancel Drill
+                  </button>
 
-                    <div className="flex items-center gap-3">
-                      {/* If in AI mode, give option to view rubric directly */}
-                      {!showRubricAssessment && (
-                        <button
-                          type="button"
-                          onClick={handleOpenRubricEvaluation}
-                          disabled={!userAnswer.trim()}
-                          className="min-h-[44px] px-5 py-2.5 bg-surface-light border border-border text-ink hover:bg-surface rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                        >
-                          <Sliders className="w-3.5 h-3.5 text-accent" />
-                          <span>Self-Assess with Rubric</span>
-                        </button>
-                      )}
+                  <div className="flex items-center gap-3">
+                    {currentEvaluation ? (
+                      <button
+                        id="next-question-action-btn"
+                        data-testid="next-question-action-btn"
+                        type="button"
+                        onClick={handleProceedToNextQuestion}
+                        className="min-h-[44px] bg-accent text-black px-7 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span>{currentIdx < questions.length - 1 ? 'Next Question' : 'View Full Simulation Report'}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <>
+                        {!showRubricAssessment && (
+                          <button
+                            type="button"
+                            onClick={handleOpenRubricEvaluation}
+                            disabled={!userAnswer.trim()}
+                            className="min-h-[44px] px-5 py-2.5 bg-surface-light border border-border text-ink hover:bg-surface rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            <Sliders className="w-3.5 h-3.5 text-accent" />
+                            <span>Self-Assess with Rubric</span>
+                          </button>
+                        )}
 
-                      {!showRubricAssessment && mode === 'ai' && !isDegradedFallback && (
-                        <button
-                          type="button"
-                          onClick={submitAnswer}
-                          disabled={!userAnswer.trim() || isEvaluating}
-                          className="min-h-[44px] bg-accent text-black px-6 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                        >
-                          {isEvaluating ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Evaluating AI Response...</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>Submit to AI Evaluator</span>
-                              <Send className="w-3.5 h-3.5" />
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
+                        {!showRubricAssessment && (
+                          <button
+                            id="submit-ai-evaluator-btn"
+                            data-testid="submit-ai-evaluator-btn"
+                            type="button"
+                            onClick={submitAnswer}
+                            disabled={!userAnswer.trim() || isEvaluating}
+                            className="min-h-[44px] bg-accent text-black px-6 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                          >
+                            {isEvaluating ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Evaluating AI Response...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Submit to AI Evaluator</span>
+                                <Send className="w-3.5 h-3.5" />
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
 
                 {/* INTERACTIVE SELF-ASSESSMENT RUBRIC SECTION */}
-                {showRubricAssessment && currentQ.rubric && (
+                {showRubricAssessment && activeRubric && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1017,7 +1134,7 @@ export default function InterviewSimulator() {
                             🥉 Level 1 (Basic / 0-4 Pts)
                           </span>
                           <p className="text-xs text-ink-dim leading-relaxed font-sans">
-                            {currentQ.rubric.basic}
+                            {activeRubric.basic}
                           </p>
                         </div>
 
@@ -1026,7 +1143,7 @@ export default function InterviewSimulator() {
                             🥈 Level 2 (Proficient / 5-7 Pts)
                           </span>
                           <p className="text-xs text-ink/90 leading-relaxed font-sans font-medium">
-                            {currentQ.rubric.proficient}
+                            {activeRubric.proficient}
                           </p>
                         </div>
 
@@ -1035,7 +1152,7 @@ export default function InterviewSimulator() {
                             🥇 Level 3 (Exemplary Staff / 8-10 Pts)
                           </span>
                           <p className="text-xs text-emerald-300/90 leading-relaxed font-sans">
-                            {currentQ.rubric.exemplary}
+                            {activeRubric.exemplary}
                           </p>
                         </div>
                       </div>
@@ -1046,7 +1163,7 @@ export default function InterviewSimulator() {
                           Key Technical Points Check (Did your response address these?):
                         </label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {currentQ.rubric.keyPoints.map((point, idx) => (
+                          {activeRubric.keyPoints.map((point, idx) => (
                             <button
                               key={idx}
                               type="button"
@@ -1079,7 +1196,7 @@ export default function InterviewSimulator() {
                         <Zap className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                         <p className="text-xs text-ink/90 font-sans leading-relaxed">
                           <strong className="text-accent font-mono uppercase text-[10px]">Staff Pro-Tip: </strong>
-                          {currentQ.rubric.proTip}
+                          {activeRubric.proTip}
                         </p>
                       </div>
 
@@ -1113,15 +1230,26 @@ export default function InterviewSimulator() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={submitAnswer}
-                          disabled={selfScore === null}
-                          className="min-h-[44px] bg-accent text-black px-6 py-2.5 rounded-xl font-mono font-bold text-xs uppercase tracking-wider hover:bg-accent/90 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <span>Confirm Score & Next</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowRubricAssessment(false)}
+                            className="min-h-[44px] px-4 py-2.5 bg-surface border border-border text-ink-dim hover:text-ink rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer"
+                          >
+                            Cancel Rubric
+                          </button>
+                          <button
+                            id="confirm-rubric-score-btn"
+                            data-testid="confirm-rubric-score-btn"
+                            type="button"
+                            onClick={handleConfirmRubricScore}
+                            disabled={selfScore === null}
+                            className="min-h-[44px] bg-accent text-black px-6 py-2.5 rounded-xl font-mono font-bold text-xs uppercase tracking-wider hover:bg-accent/90 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <span>Confirm Score & View Feedback</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>

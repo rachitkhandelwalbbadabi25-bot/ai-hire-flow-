@@ -21,8 +21,10 @@ export interface RealJobListing {
   location: string;
   link: string;
   description: string;
+  skills?: string[];
   datePosted: string;
   source: string;
+  provider?: string;
   retrievedAt: string;
   jobType?: string;
   isRemote?: boolean;
@@ -103,6 +105,63 @@ export function formatRelativeDate(input: string | number | undefined): string {
 }
 
 /**
+ * Extracts normalized skill keywords from job title, description, and source tags
+ */
+export function extractSkillsFromText(title: string, description: string, tags: string[] = []): string[] {
+  const skillsSet = new Set<string>();
+
+  // Add source tags directly if valid
+  for (const t of tags) {
+    if (typeof t === 'string' && t.trim().length > 1 && t.trim().length < 25) {
+      skillsSet.add(t.trim());
+    }
+  }
+
+  const textToScan = `${title} ${description}`.toLowerCase();
+  const KNOWN_PATTERNS: { pattern: RegExp; skill: string }[] = [
+    { pattern: /\b(react|reactjs|react\.js)\b/i, skill: 'React' },
+    { pattern: /\b(typescript|ts)\b/i, skill: 'TypeScript' },
+    { pattern: /\b(javascript|js|es6)\b/i, skill: 'JavaScript' },
+    { pattern: /\b(nextjs|next\.js)\b/i, skill: 'Next.js' },
+    { pattern: /\b(vue|vuejs)\b/i, skill: 'Vue.js' },
+    { pattern: /\b(angular)\b/i, skill: 'Angular' },
+    { pattern: /\b(tailwind|tailwindcss)\b/i, skill: 'Tailwind CSS' },
+    { pattern: /\b(python)\b/i, skill: 'Python' },
+    { pattern: /\b(node|nodejs|node\.js)\b/i, skill: 'Node.js' },
+    { pattern: /\b(express|expressjs)\b/i, skill: 'Express' },
+    { pattern: /\b(golang|go)\b/i, skill: 'Go' },
+    { pattern: /\b(rust)\b/i, skill: 'Rust' },
+    { pattern: /\b(java)\b/i, skill: 'Java' },
+    { pattern: /\b(c\+\+|cpp)\b/i, skill: 'C++' },
+    { pattern: /\b(c#|\.net)\b/i, skill: '.NET' },
+    { pattern: /\b(ruby|rails)\b/i, skill: 'Ruby on Rails' },
+    { pattern: /\b(sql|postgres|postgresql|mysql)\b/i, skill: 'SQL' },
+    { pattern: /\b(mongodb|nosql)\b/i, skill: 'MongoDB' },
+    { pattern: /\b(docker)\b/i, skill: 'Docker' },
+    { pattern: /\b(kubernetes|k8s)\b/i, skill: 'Kubernetes' },
+    { pattern: /\b(aws|amazon web services)\b/i, skill: 'AWS' },
+    { pattern: /\b(gcp|google cloud)\b/i, skill: 'GCP' },
+    { pattern: /\b(azure)\b/i, skill: 'Azure' },
+    { pattern: /\b(graphql)\b/i, skill: 'GraphQL' },
+    { pattern: /\b(rest|restful|api)\b/i, skill: 'REST APIs' },
+    { pattern: /\b(llm|llms|rag|genai)\b/i, skill: 'Generative AI' },
+    { pattern: /\b(machine learning|deep learning|pytorch|tensorflow)\b/i, skill: 'Machine Learning' }
+  ];
+
+  for (const item of KNOWN_PATTERNS) {
+    if (item.pattern.test(textToScan)) {
+      skillsSet.add(item.skill);
+    }
+  }
+
+  const list = Array.from(skillsSet);
+  if (list.length === 0) {
+    return ['Software Engineering', 'System Architecture', 'Problem Solving'];
+  }
+  return list.slice(0, 8);
+}
+
+/**
  * Fetches real job listings from Arbeitnow API
  */
 async function fetchArbeitnowJobs(): Promise<RealJobListing[]> {
@@ -139,6 +198,9 @@ async function fetchArbeitnowJobs(): Promise<RealJobListing[]> {
       const loc = item.location ? item.location.trim() : (isRemote ? 'Remote' : 'Location not specified');
       const jobTypes = Array.isArray(item.job_types) ? item.job_types.join(', ') : undefined;
 
+      const rawTags = Array.isArray(item.tags) ? item.tags : [];
+      const derivedSkills = extractSkillsFromText(item.title || '', fullDesc, rawTags);
+
       return {
         id: `arbeitnow-${item.slug || Math.random().toString(36).slice(2)}`,
         title: (item.title || 'Software Engineer').trim(),
@@ -146,12 +208,14 @@ async function fetchArbeitnowJobs(): Promise<RealJobListing[]> {
         location: loc,
         link: item.url || 'https://www.arbeitnow.com/',
         description: fullDesc,
+        skills: derivedSkills,
         datePosted: formatRelativeDate(item.created_at),
         source: 'Arbeitnow',
+        provider: 'Arbeitnow',
         retrievedAt,
         jobType: jobTypes,
         isRemote,
-        tags: Array.isArray(item.tags) ? item.tags : []
+        tags: rawTags
       };
     }).filter(j => j.title && j.link);
 
@@ -197,6 +261,8 @@ async function fetchRemoteOKJobs(): Promise<RealJobListing[]> {
         ? (plainDesc.length > 5000 ? plainDesc.slice(0, 5000) + '...' : plainDesc)
         : 'No job description was provided by the source listing. Refer to the official posting link for full requirements.';
       const directUrl = item.apply_url || item.url || (item.slug ? `https://remoteok.com/remote-jobs/${item.slug}` : '');
+      const rawTags = Array.isArray(item.tags) ? item.tags : [];
+      const derivedSkills = extractSkillsFromText(item.position || 'Software Engineer', fullDesc, rawTags);
 
       return {
         id: `remoteok-${item.id || item.slug || Math.random().toString(36).slice(2)}`,
@@ -205,12 +271,14 @@ async function fetchRemoteOKJobs(): Promise<RealJobListing[]> {
         location: (item.location || 'Remote / Worldwide').trim(),
         link: directUrl || 'https://remoteok.com/',
         description: fullDesc,
+        skills: derivedSkills,
         datePosted: formatRelativeDate(item.epoch || item.date),
         source: 'RemoteOK',
+        provider: 'RemoteOK',
         retrievedAt,
         jobType: 'Full-time',
         isRemote: true,
-        tags: Array.isArray(item.tags) ? item.tags : []
+        tags: rawTags
       };
     }).filter(j => j.title && j.link);
 
@@ -262,6 +330,9 @@ async function fetchRemotiveJobs(query?: string): Promise<RealJobListing[]> {
       const loc = item.candidate_required_location ? item.candidate_required_location.trim() : 'Remote / Worldwide';
       const jobType = item.job_type ? item.job_type.replace(/_/g, ' ') : 'Full-time';
 
+      const rawTags = Array.isArray(item.tags) ? item.tags : [];
+      const derivedSkills = extractSkillsFromText(item.title || 'Developer', fullDesc, rawTags);
+
       return {
         id: `remotive-${item.id || Math.random().toString(36).slice(2)}`,
         title: (item.title || 'Developer').trim(),
@@ -269,12 +340,14 @@ async function fetchRemotiveJobs(query?: string): Promise<RealJobListing[]> {
         location: loc,
         link: item.url || 'https://remotive.com/',
         description: fullDesc,
+        skills: derivedSkills,
         datePosted: formatRelativeDate(item.publication_date),
         source: 'Remotive',
+        provider: 'Remotive',
         retrievedAt,
         jobType,
         isRemote: true,
-        tags: Array.isArray(item.tags) ? item.tags : []
+        tags: rawTags
       };
     }).filter(j => j.title && j.link);
 

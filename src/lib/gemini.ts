@@ -812,8 +812,8 @@ export const generateInterviewQuestions = async (jobDescription: string, resumeT
     - If the role is in India, include questions typical of Indian Campus Placements (Aptitude, OOPS, DBMS, OS for MNCs like TCS/Infosys).
     - If it's for a high-growth startup, focus on ownership, distributed systems, and rapid delivery culture.
     
-    Job Description: ${(jobDescription || 'Senior Software Engineer / Full Stack Developer').slice(0, 1000)}
-    Candidate Resume: ${(resumeText || 'Candidate with full-stack engineering background').slice(0, 1500)}
+    Job Description: ${(jobDescription || 'Senior Software Engineer / Full Stack Developer').slice(0, 4000)}
+    Candidate Resume: ${(resumeText || 'Candidate with full-stack engineering background').slice(0, 3000)}
     
     Return a JSON array where each item is:
     - id: string (unique e.g. "q1", "q2")

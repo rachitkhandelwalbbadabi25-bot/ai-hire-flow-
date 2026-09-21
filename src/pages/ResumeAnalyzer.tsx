@@ -546,14 +546,24 @@ export default function ResumeAnalyzer() {
     }
 
     // 2. Set current active job in system OS context
-    setCurrentActiveJob({
-      title: cleanRole,
-      company: ctx.company || 'Target Opportunity',
-      skills: cleanSkills,
-      description: jobDesc,
-      source: 'analyzer',
-      selectedAt: Date.now()
-    });
+    if (currentActiveJob && (currentActiveJob.title.toLowerCase() === cleanRole.toLowerCase() || !isDemoRole(currentActiveJob.title))) {
+      // Preserve the real job metadata intact
+      setCurrentActiveJob({
+        ...currentActiveJob,
+        skills: cleanSkills.length > 0 ? cleanSkills : currentActiveJob.skills,
+        description: jobDesc || currentActiveJob.description,
+        selectedAt: Date.now()
+      });
+    } else {
+      setCurrentActiveJob({
+        title: cleanRole,
+        company: ctx.company || 'Target Opportunity',
+        skills: cleanSkills,
+        description: jobDesc,
+        source: 'analyzer',
+        selectedAt: Date.now()
+      });
+    }
 
     // 3. React Router navigation with explicit state payload
     navigate('/learning', {
@@ -568,7 +578,11 @@ export default function ResumeAnalyzer() {
           company: ctx.company || 'Target Opportunity',
           skills: cleanSkills,
           description: jobDesc,
-          source: 'analyzer'
+          source: currentActiveJob?.source || 'analyzer',
+          provider: currentActiveJob?.provider,
+          link: currentActiveJob?.link,
+          isRemote: currentActiveJob?.isRemote,
+          location: currentActiveJob?.location
         }
       }
     });

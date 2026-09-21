@@ -277,16 +277,26 @@ export default function LearningPath() {
         // Sync or establish current active job context so the Active Job Context banner displays properly
         const incomingJob = location.state?.jobContext;
         const jobTitle = incomingRole || incomingJob?.title || 'Target Role';
-        const jobCompany = incomingJob?.company || (isFromAnalyzer ? 'Target Opportunity' : '');
-        const jobSkills = incomingSkills ? incomingSkills.split(', ') : (incomingJob?.skills || []);
-        const jobDesc = incomingJob?.description || '';
+        const jobCompany = incomingJob?.company || currentActiveJob?.company || (isFromAnalyzer ? 'Target Opportunity' : '');
+        const jobSkills = incomingSkills ? incomingSkills.split(', ') : (incomingJob?.skills || currentActiveJob?.skills || []);
+        const jobDesc = incomingJob?.description || currentActiveJob?.description || '';
 
         const activeJobPayload = {
+          id: incomingJob?.id || currentActiveJob?.id,
           title: jobTitle,
           company: jobCompany,
-          skills: jobSkills,
+          location: incomingJob?.location || currentActiveJob?.location,
           description: jobDesc,
-          source: (isFromAnalyzer ? 'analyzer' : 'manual') as 'analyzer' | 'manual',
+          skills: jobSkills,
+          datePosted: incomingJob?.datePosted || currentActiveJob?.datePosted,
+          retrievedAt: incomingJob?.retrievedAt || currentActiveJob?.retrievedAt,
+          isRemote: incomingJob?.isRemote ?? currentActiveJob?.isRemote,
+          jobType: incomingJob?.jobType || currentActiveJob?.jobType,
+          matchScore: incomingJob?.matchScore ?? currentActiveJob?.matchScore,
+          roleTier: incomingJob?.roleTier || currentActiveJob?.roleTier,
+          link: incomingJob?.link || currentActiveJob?.link,
+          provider: incomingJob?.provider || currentActiveJob?.provider || (isFromAnalyzer ? 'Analyzer Context' : 'Manual'),
+          source: (incomingJob?.source || currentActiveJob?.source || (isFromAnalyzer ? 'analyzer' : 'manual')) as any,
           selectedAt: Date.now()
         };
 
@@ -582,20 +592,45 @@ export default function LearningPath() {
       {/* Active Job Context Banner */}
       {currentActiveJob && (currentActiveJob.source || !isDemoRole(currentActiveJob.title)) && !currentActiveJob.title?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('target organization') && (
         <div className="mb-6 p-4 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse mt-1 sm:mt-0" />
             <div>
-              <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Job Context Applied</p>
-              <p className="text-sm font-bold text-ink">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Selected Real Job</p>
+                {currentActiveJob.provider && (
+                  <span className="px-2 py-0.5 bg-accent/10 border border-accent/20 rounded-md text-[9px] font-mono font-bold text-accent">
+                    {currentActiveJob.provider}
+                  </span>
+                )}
+                {currentActiveJob.isRemote && (
+                  <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[9px] font-mono font-bold text-emerald-400">
+                    Verified Remote
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-bold text-ink mt-0.5">
                 {currentActiveJob.title} <span className="text-ink-dim font-normal">at {currentActiveJob.company}</span>
+                {currentActiveJob.location && (
+                  <span className="text-xs text-ink-dim font-normal ml-2">({currentActiveJob.location})</span>
+                )}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 self-end sm:self-center">
             {currentActiveJob.skills && currentActiveJob.skills.length > 0 && (
               <span className="text-[10px] font-bold bg-surface px-2.5 py-1 rounded-full text-ink-dim border border-border">
                 {currentActiveJob.skills.length} skills from job
               </span>
+            )}
+            {currentActiveJob.link && (
+              <a
+                href={currentActiveJob.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1 uppercase tracking-wider font-mono"
+              >
+                Official Posting <ExternalLink className="w-3 h-3" />
+              </a>
             )}
             <button
               onClick={handleResetLearningPath}

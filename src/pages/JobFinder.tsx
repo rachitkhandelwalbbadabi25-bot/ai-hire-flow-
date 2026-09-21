@@ -25,8 +25,10 @@ interface Job {
   location: string;
   link: string;
   description: string;
+  skills?: string[];
   datePosted: string;
   source?: string;
+  provider?: string;
   retrievedAt?: string;
   jobType?: string;
   isRemote?: boolean;
@@ -180,7 +182,9 @@ export default function JobFinder() {
       return;
     }
 
-    const skills = extractJobSkills(targetJob);
+    const skills = targetJob.skills && targetJob.skills.length > 0 
+      ? targetJob.skills 
+      : extractJobSkills(targetJob);
     const activeJob: ActiveJobContext = {
       id: targetJob.id,
       title: targetJob.title,
@@ -195,7 +199,7 @@ export default function JobFinder() {
       matchScore: targetJob.matchScore,
       roleTier: targetJob.roleTier,
       link: targetJob.link,
-      provider: targetJob.source || 'External Provider',
+      provider: targetJob.provider || targetJob.source || 'External Provider',
       source: targetJob.source || 'search',
       selectedAt: Date.now()
     };

@@ -16,13 +16,27 @@
 
 export interface RealJobListing {
   id: string;
+  sourceJobId?: string;
   title: string;
   company: string;
   location: string;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
   link: string;
+  applyUrl?: string;
   description: string;
   skills?: string[];
   datePosted: string;
+  postedAt?: string | null;
+  expiresAt?: string | null;
+  salary?: {
+    min?: number | null;
+    max?: number | null;
+    currency?: string | null;
+    period?: string | null;
+    rawText?: string | null;
+  } | null;
   source: string;
   provider?: string;
   retrievedAt: string;
@@ -32,7 +46,10 @@ export interface RealJobListing {
   matchScore?: number;
   roleTier?: 'safe' | 'stretch' | 'reach' | string;
   matchExplanation?: string;
+  relevanceCategory?: 'exact' | 'related';
   relevanceLabel?: 'Exact Match' | 'Strong Match' | 'Related Match' | string;
+  locationMatch?: string;
+  missingCriteria?: string[];
   isPoorFit?: boolean;
 }
 
@@ -369,8 +386,183 @@ export interface ParsedQueryIntent {
   isInternship: boolean;
   seniority?: 'intern' | 'junior' | 'mid' | 'senior' | 'lead';
   primaryDomain: 'ai_ml' | 'data' | 'frontend' | 'backend' | 'fullstack' | 'devops' | 'mobile' | 'product' | 'qa' | 'general_swe';
+  requiredFunction?: 'developer' | 'data_analyst' | 'product' | 'qa' | 'devops' | 'general';
+  isAgentSpecific: boolean;
   keyTerms: string[];
   roleKeywords: string[];
+}
+
+export const INDIA_LOCATIONS = new Set([
+  'india', 'bharat', 'ind',
+  'bengaluru', 'bangalore',
+  'mumbai', 'bombay',
+  'delhi', 'new delhi', 'ncr', 'delhi ncr',
+  'hyderabad', 'secunderabad',
+  'pune',
+  'chennai', 'madras',
+  'gurugram', 'gurgaon',
+  'noida', 'greater noida',
+  'kolkata', 'calcutta',
+  'ahmedabad',
+  'jaipur',
+  'kochi', 'cochin', 'kerala',
+  'chandigarh',
+  'indore',
+  'bhopal',
+  'lucknow',
+  'mysuru', 'mysore',
+  'coimbatore',
+  'visakhapatnam', 'vizag',
+  'surat',
+  'nagpur',
+  'vadodara',
+  'thiruvananthapuram', 'trivandrum',
+  'bhubaneswar', 'patna', 'dehradun'
+]);
+
+export interface LocationClassificationResult {
+  isCompatible: boolean;
+  isExact: boolean;
+  classification: 'India Match' | 'Remote — India Eligible' | 'Exact Location Match' | 'Remote — Location Eligible' | 'Related Location' | 'Location Not Confirmed' | 'Incompatible Location';
+  locationBadge: string;
+  explanation: string;
+}
+
+/**
+ * Evaluates geographic compatibility strictly.
+ * When a user specifies a location (e.g. India), incompatible regional roles are strictly rejected.
+ * Worldwide-only roles are treated as Related/Unconfirmed, NEVER as exact India matches.
+ */
+export function classifyJobLocation(
+  job: RealJobListing,
+  targetLoc: string
+): LocationClassificationResult {
+  const cleanTarget = (targetLoc || '').trim().toLowerCase();
+  const locLower = (job.location || '').toLowerCase();
+  const descLower = (job.description || '').toLowerCase();
+
+  // If no target location was entered by user, all locations are compatible
+  if (!cleanTarget) {
+    return {
+      isCompatible: true,
+      isExact: true,
+      classification: job.isRemote ? 'Related Location' : 'Exact Location Match',
+      locationBadge: job.isRemote ? 'Remote' : (job.location || 'Location Open'),
+      explanation: 'No specific location constraint was specified.'
+    };
+  }
+
+  const isTargetIndia = cleanTarget === 'india' || cleanTarget.includes('india') || Array.from(INDIA_LOCATIONS).some(k => {
+    const r = new RegExp(`\\b${k}\\b`, 'i');
+    return r.test(cleanTarget);
+  });
+
+  if (isTargetIndia) {
+    // 1. Check if the job specifically mentions India or an Indian city in location or description
+    const hasIndiaInLoc = locLower.includes('india') || Array.from(INDIA_LOCATIONS).some(k => {
+      const regex = new RegExp(`\\b${k}\\b`, 'i');
+      return regex.test(locLower);
+    });
+
+    const hasIndiaInDesc = /\b(based in india|office in (bengaluru|bangalore|mumbai|delhi|hyderabad|pune|chennai|gurugram|noida)|candidates in india|hiring in india|work from india)\b/i.test(descLower);
+
+    if (hasIndiaInLoc || hasIndiaInDesc) {
+      return {
+        isCompatible: true,
+        isExact: true,
+        classification: 'India Match',
+        locationBadge: 'India Match',
+        explanation: 'Verified position based in or hiring directly within India.'
+      };
+    }
+
+    // 2. Check for explicit geographic exclusions or purely on-site roles in other countries
+    const isExcludedRegion = /\b(usa? only|us only|united states only|north america only|canada only|europe only|eu only|uk only|latin america|latam only|apac only|germany only)\b/i.test(locLower) ||
+      /\b(must reside in (the )?(us|usa|united states|canada|europe|uk|germany)|only (us|usa|united states|uk|eu) citizens|authorized to work in (the )?(us|usa|united states)|must be based in (the )?(us|usa|europe|uk))\b/i.test(descLower);
+
+    const isExplicitOtherCountry = /\b(germany|deutschland|berlin|munich|hamburg|frankfurt|london|united kingdom|uk|france|paris|spain|madrid|barcelona|poland|warsaw|netherlands|amsterdam|canada|toronto|vancouver|australia|sydney|singapore|japan|tokyo|austin|san francisco|california|new york|chicago|seattle)\b/i.test(locLower);
+
+    if (!job.isRemote && isExplicitOtherCountry) {
+      return {
+        isCompatible: false,
+        isExact: false,
+        classification: 'Incompatible Location',
+        locationBadge: 'Incompatible Location',
+        explanation: `Position is located in ${job.location}, incompatible with India search.`
+      };
+    }
+
+    if (isExcludedRegion && !locLower.includes('worldwide') && !locLower.includes('anywhere')) {
+      return {
+        isCompatible: false,
+        isExact: false,
+        classification: 'Incompatible Location',
+        locationBadge: 'Incompatible Location',
+        explanation: 'Job restricts hiring eligibility to candidates outside of India.'
+      };
+    }
+
+    // 3. Check for Remote / Worldwide roles
+    const isWorldwideRemote = job.isRemote || locLower.includes('remote') || locLower.includes('worldwide') || locLower.includes('anywhere');
+    if (isWorldwideRemote) {
+      return {
+        isCompatible: true,
+        isExact: false, // Per strict user instructions: worldwide remote is NOT an exact India match!
+        classification: 'Location Not Confirmed',
+        locationBadge: 'Worldwide Remote — India Unconfirmed',
+        explanation: 'Global remote opening; India-specific employment eligibility is not explicitly confirmed by the provider.'
+      };
+    }
+
+    return {
+      isCompatible: false,
+      isExact: false,
+      classification: 'Incompatible Location',
+      locationBadge: 'Incompatible Location',
+      explanation: `Location (${job.location}) does not match India.`
+    };
+  }
+
+  // Non-India specific location query (e.g. "Germany", "London", "San Francisco", "Remote")
+  if (cleanTarget.includes('remote') || cleanTarget.includes('worldwide')) {
+    if (job.isRemote || locLower.includes('remote') || locLower.includes('worldwide')) {
+      return {
+        isCompatible: true,
+        isExact: true,
+        classification: 'Exact Location Match',
+        locationBadge: 'Remote',
+        explanation: 'Verified remote opportunity.'
+      };
+    }
+  }
+
+  if (locLower.includes(cleanTarget)) {
+    return {
+      isCompatible: true,
+      isExact: true,
+      classification: 'Exact Location Match',
+      locationBadge: `${job.location} Match`,
+      explanation: `Position based in requested location: ${job.location}.`
+    };
+  }
+
+  if (job.isRemote || locLower.includes('remote') || locLower.includes('worldwide')) {
+    return {
+      isCompatible: true,
+      isExact: false,
+      classification: 'Related Location',
+      locationBadge: 'Remote / Worldwide',
+      explanation: `Remote opportunity; specific eligibility for ${targetLoc} unconfirmed.`
+    };
+  }
+
+  return {
+    isCompatible: false,
+    isExact: false,
+    classification: 'Incompatible Location',
+    locationBadge: 'Incompatible Location',
+    explanation: `Position based in ${job.location}, incompatible with ${targetLoc}.`
+  };
 }
 
 /**
@@ -378,12 +570,12 @@ export interface ParsedQueryIntent {
  * - Primary role keywords
  * - Seniority level
  * - Internship/full-time status
- * - Technical domain
+ * - Technical domain & required function
  */
 export function parseQueryIntent(rawQuery: string): ParsedQueryIntent {
   const norm = (rawQuery || '').trim().toLowerCase();
   
-  const isInternship = /\b(intern|internship|trainee|apprentice)\b/i.test(norm);
+  const isInternship = /\b(intern|internship|trainee|apprentice|co-op)\b/i.test(norm);
   let seniority: 'intern' | 'junior' | 'mid' | 'senior' | 'lead' | undefined = undefined;
   if (isInternship) {
     seniority = 'intern';
@@ -393,6 +585,21 @@ export function parseQueryIntent(rawQuery: string): ParsedQueryIntent {
     seniority = 'lead';
   } else if (/\b(senior|sr)\b/i.test(norm)) {
     seniority = 'senior';
+  }
+
+  const isAgentSpecific = /\b(agent|agents|agentic|ai agent)\b/i.test(norm);
+
+  let requiredFunction: ParsedQueryIntent['requiredFunction'] = 'general';
+  if (/\b(developer|engineer|engineering|programmer|coder|swe|sde|architect)\b/i.test(norm)) {
+    requiredFunction = 'developer';
+  } else if (/\b(data analyst|analytics|business intelligence|bi analyst)\b/i.test(norm)) {
+    requiredFunction = 'data_analyst';
+  } else if (/\b(product manager|product owner|product engineer)\b/i.test(norm)) {
+    requiredFunction = 'product';
+  } else if (/\b(qa|quality assurance|tester|test automation|sdet)\b/i.test(norm)) {
+    requiredFunction = 'qa';
+  } else if (/\b(devops|sre|site reliability|cloud engineer|platform engineer)\b/i.test(norm)) {
+    requiredFunction = 'devops';
   }
 
   let primaryDomain: ParsedQueryIntent['primaryDomain'] = 'general_swe';
@@ -432,6 +639,8 @@ export function parseQueryIntent(rawQuery: string): ParsedQueryIntent {
     isInternship,
     seniority,
     primaryDomain,
+    requiredFunction,
+    isAgentSpecific,
     keyTerms,
     roleKeywords: keyTerms.filter(t => !['intern', 'internship', 'trainee', 'senior', 'junior', 'lead', 'staff'].includes(t))
   };
@@ -439,7 +648,11 @@ export function parseQueryIntent(rawQuery: string): ParsedQueryIntent {
 
 /**
  * Deterministically evaluates job relevance against user intent.
- * Enforces hard constraints (e.g. internship status, technical domain compatibility).
+ * Enforces hard constraints:
+ * - Strict location filtering (e.g. India)
+ * - Strict internship / seniority constraints
+ * - Role function filtering (e.g. Developer vs Graphic Designer vs Talent Acquisition)
+ * - Technical domain compatibility
  */
 export function evaluateJobRelevance(
   job: RealJobListing,
@@ -448,46 +661,103 @@ export function evaluateJobRelevance(
 ): {
   isRelevant: boolean;
   score: number;
+  relevanceCategory: 'exact' | 'related';
   relevanceLabel: 'Exact Match' | 'Strong Match' | 'Related Match';
+  locationMatch: string;
+  missingCriteria: string[];
   explanation: string;
 } {
   const titleLower = job.title.toLowerCase();
   const descLower = job.description.toLowerCase();
   const tagsLower = (job.tags || []).map(t => t.toLowerCase());
-  const locLower = job.location.toLowerCase();
 
-  const jobIsIntern = /\b(intern|internship|trainee|apprentice)\b/i.test(titleLower) ||
-    tagsLower.some(t => /\b(intern|internship)\b/i.test(t)) ||
-    /\b(intern|internship|trainee)\b/i.test(descLower.slice(0, 400));
+  // 1. HARD LOCATION FILTERING
+  const locResult = classifyJobLocation(job, cleanLoc);
+  if (!locResult.isCompatible) {
+    return {
+      isRelevant: false,
+      score: 0,
+      relevanceCategory: 'related',
+      relevanceLabel: 'Related Match',
+      locationMatch: locResult.locationBadge,
+      missingCriteria: ['Incompatible Location'],
+      explanation: locResult.explanation
+    };
+  }
 
-  const jobIsSenior = /\b(senior|sr|lead|principal|staff|director|head of|architect)\b/i.test(titleLower);
+  // 2. HARD ROLE FUNCTION FILTERING
+  // If user searched for developer/engineer/programmer, reject non-engineering roles:
+  if (intent.requiredFunction === 'developer') {
+    const isNonEngRole = /\b(kundenservice|customer support|customer service|copywriter|writer|marketing|sales|talent acquisition|recruiter|human resources|hr |bartender|care navigator|decorator|online bidder|virtual assistant|venture development|business development|gtm academy|product designer|grafikdesigner|graphic designer|brand designer|office assistant|inbound)\b/i.test(titleLower);
+    if (isNonEngRole) {
+      return {
+        isRelevant: false,
+        score: 0,
+        relevanceCategory: 'related',
+        relevanceLabel: 'Related Match',
+        locationMatch: locResult.locationBadge,
+        missingCriteria: ['Non-engineering position'],
+        explanation: `Non-engineering role (${job.title}) incompatible with developer search.`
+      };
+    }
+  }
 
-  // 1. HARD DOMAIN COMPATIBILITY FILTERING
+  // 3. HARD DOMAIN FILTERING
   if (intent.primaryDomain === 'ai_ml') {
     const hasAiInTitle = /\b(ai|ml|machine learning|deep learning|llm|llms|nlp|agent|data science|applied ai|generative ai)\b/i.test(titleLower);
-    const hasAiInTags = tagsLower.some(t => /\b(ai|ml|machine learning|deep learning|llm|genai|nlp)\b/i.test(t));
-    const hasAiInDesc = /\b(machine learning|artificial intelligence|large language model|llm|deep learning|neural network|genai)\b/i.test(descLower);
-    const hasProductInTitle = /\b(product)\b/i.test(titleLower);
+    const hasAiInTags = tagsLower.some(t => /\b(ai|ml|machine learning|deep learning|llm|genai|nlp|agent)\b/i.test(t));
+    const hasAiInDesc = /\b(machine learning|artificial intelligence|large language model|llm|deep learning|neural network|genai|ai agent|autonomous agent)\b/i.test(descLower);
 
-    // Reject non-technical or completely unrelated roles
-    const isUnrelatedRole = /\b(kundenservice|customer support|copywriter|writer|marketing|sales|shopify|office assistant|service desk|inbound)\b/i.test(titleLower);
-    if (isUnrelatedRole) {
-      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'Unrelated role' };
+    // Must have meaningful AI connection
+    if (!hasAiInTitle && !hasAiInTags && !hasAiInDesc) {
+      return {
+        isRelevant: false,
+        score: 0,
+        relevanceCategory: 'related',
+        relevanceLabel: 'Related Match',
+        locationMatch: locResult.locationBadge,
+        missingCriteria: ['No AI/ML requirement'],
+        explanation: 'Position does not involve AI, ML, or agentic development.'
+      };
     }
 
-    // Must have meaningful AI/ML connection in title, tags, or description
-    if (!hasAiInTitle && !hasAiInTags && (!hasAiInDesc || !hasProductInTitle)) {
-      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'No meaningful AI connection' };
+    // If query specifically asked for "agent", ensure it's not an unrelated generic software role
+    if (intent.isAgentSpecific && !titleLower.includes('agent') && !descLower.includes('agent') && !tagsLower.some(t => t.includes('agent')) && !descLower.includes('llm') && !descLower.includes('genai')) {
+      return {
+        isRelevant: false,
+        score: 0,
+        relevanceCategory: 'related',
+        relevanceLabel: 'Related Match',
+        locationMatch: locResult.locationBadge,
+        missingCriteria: ['Not agent-focused'],
+        explanation: 'Role does not focus on AI agents or LLM systems.'
+      };
     }
   } else if (intent.primaryDomain === 'data') {
     const hasDataInTitle = /\b(data|analytics|analyst|bi|business intelligence|scientist|sql)\b/i.test(titleLower);
     const hasDataInTags = tagsLower.some(t => /\b(data|analytics|sql|bi)\b/i.test(t));
     if (!hasDataInTitle && !hasDataInTags) {
-      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'No data or analytics role alignment' };
+      return {
+        isRelevant: false,
+        score: 0,
+        relevanceCategory: 'related',
+        relevanceLabel: 'Related Match',
+        locationMatch: locResult.locationBadge,
+        missingCriteria: ['No data analytics alignment'],
+        explanation: 'Role does not align with data analysis or analytics.'
+      };
     }
     // Reject generic software engineer / devops / frontend roles
-    if (/\b(frontend|react|devops|full[- ]stack|rails|shopify|kundenservice|writer)\b/i.test(titleLower) && !hasDataInTitle) {
-      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'Unrelated engineering role for data query' };
+    if (/\b(frontend|react|devops|full[- ]stack|rails|shopify)\b/i.test(titleLower) && !hasDataInTitle) {
+      return {
+        isRelevant: false,
+        score: 0,
+        relevanceCategory: 'related',
+        relevanceLabel: 'Related Match',
+        locationMatch: locResult.locationBadge,
+        missingCriteria: ['Unrelated software engineering'],
+        explanation: 'Generic software engineering role does not match data analyst query.'
+      };
     }
   } else if (intent.normalizedQuery.includes('react')) {
     const hasReactInTitle = /\b(react|reactjs|react\.js)\b/i.test(titleLower);
@@ -495,103 +765,121 @@ export function evaluateJobRelevance(
     const hasReactInTags = tagsLower.some(t => t.includes('react'));
     const hasReactInDesc = /\b(react|reactjs|react\.js)\b/i.test(descLower);
     if (!hasReactInTitle && !hasReactInSkills && !hasReactInTags && !hasReactInDesc) {
-      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'Does not require React' };
+      return {
+        isRelevant: false,
+        score: 0,
+        relevanceCategory: 'related',
+        relevanceLabel: 'Related Match',
+        locationMatch: locResult.locationBadge,
+        missingCriteria: ['No React requirement'],
+        explanation: 'Role does not require React.'
+      };
     }
   }
 
-  // 2. HARD SENIORITY & INTERNSHIP CONSTRAINT
-  if (intent.isInternship) {
-    if (jobIsSenior) {
-      // User explicitly asked for an intern position. Senior/Lead roles are strictly filtered.
-      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'Senior role incompatible with internship search' };
-    }
+  // 4. HARD SENIORITY & INTERNSHIP FILTERING
+  const jobIsIntern = /\b(intern|internship|trainee|apprentice|co-op)\b/i.test(titleLower) ||
+    tagsLower.some(t => /\b(intern|internship)\b/i.test(t)) ||
+    /\b(intern|internship|trainee)\b/i.test(descLower.slice(0, 400));
+
+  const jobIsSenior = /\b(senior|sr|lead|principal|staff|director|head of|architect)\b/i.test(titleLower);
+
+  if (intent.isInternship && jobIsSenior) {
+    // Senior/Lead role is strictly incompatible with internship search!
+    return {
+      isRelevant: false,
+      score: 0,
+      relevanceCategory: 'related',
+      relevanceLabel: 'Related Match',
+      locationMatch: locResult.locationBadge,
+      missingCriteria: ['Senior role incompatible with internship'],
+      explanation: 'Senior or lead role is incompatible with an internship search.'
+    };
   }
 
-  // 3. SCORING COMPUTATION
-  let baseScore = 60;
+  // 5. EVALUATE EXACT TITLE & KEYWORD MATCH
+  let baseScore = 65;
   let exactTitleMatch = false;
 
-  // Exact phrase match in title
   if (titleLower.includes(intent.normalizedQuery)) {
     baseScore += 30;
     exactTitleMatch = true;
   } else {
-    // Check keyword coverage
     const matchedKeywords = intent.roleKeywords.filter(k => titleLower.includes(k));
     if (intent.roleKeywords.length > 0) {
       const ratio = matchedKeywords.length / intent.roleKeywords.length;
-      baseScore += ratio * 25;
+      baseScore += ratio * 24;
       if (ratio >= 0.75) exactTitleMatch = true;
     }
   }
 
-  // Tags & Skills
   for (const k of intent.roleKeywords) {
-    if (tagsLower.some(t => t.includes(k))) baseScore += 6;
-    if ((job.skills || []).some(s => s.toLowerCase().includes(k))) baseScore += 6;
+    if (tagsLower.some(t => t.includes(k))) baseScore += 4;
+    if ((job.skills || []).some(s => s.toLowerCase().includes(k))) baseScore += 4;
   }
-
-  // Description reinforcement
   if (intent.roleKeywords.some(k => descLower.includes(k))) {
-    baseScore += 5;
+    baseScore += 3;
   }
 
-  // Location / Remote scoring
-  if (cleanLoc) {
-    const isRemoteReq = cleanLoc.includes('remote') || cleanLoc.includes('worldwide');
-    if (isRemoteReq) {
-      if (job.isRemote || locLower.includes('remote') || locLower.includes('worldwide')) {
-        baseScore += 10;
-      }
-    } else {
-      if (locLower.includes(cleanLoc)) {
-        baseScore += 12;
-      } else if (!job.isRemote && !locLower.includes('remote')) {
-        baseScore -= 15;
-      }
-    }
+  // 6. COMPILE MISSING CRITERIA AND DETERMINE EXACT VS RELATED
+  const missingCriteria: string[] = [];
+
+  // Check location requirement
+  if (cleanLoc && !locResult.isExact) {
+    missingCriteria.push(locResult.locationBadge);
   }
 
-  // Determine Relevance Label & Calibrate Scores
-  let relevanceLabel: 'Exact Match' | 'Strong Match' | 'Related Match' = 'Related Match';
+  // Check internship requirement
+  if (intent.isInternship && !jobIsIntern) {
+    missingCriteria.push('Full-Time (Not Internship)');
+  }
+
+  // Check seniority match for non-internship queries
+  if (!intent.isInternship && intent.seniority === 'senior' && !jobIsSenior) {
+    missingCriteria.push('Mid-Level (Not Senior)');
+  }
+
+  let relevanceCategory: 'exact' | 'related' = 'exact';
+  let relevanceLabel: 'Exact Match' | 'Strong Match' | 'Related Match' = 'Exact Match';
   let explanation = '';
 
-  if (intent.isInternship) {
-    if (jobIsIntern && exactTitleMatch) {
+  if (missingCriteria.length === 0) {
+    // Perfectly matches all constraints
+    relevanceCategory = 'exact';
+    if (exactTitleMatch) {
       relevanceLabel = 'Exact Match';
-      baseScore = Math.min(96, Math.max(90, baseScore));
-      explanation = `Verified ${job.title} internship matching your search.`;
-    } else if (jobIsIntern) {
+      baseScore = Math.min(97, Math.max(90, baseScore));
+      explanation = `Verified ${job.title} meeting your exact search criteria.`;
+    } else {
       relevanceLabel = 'Strong Match';
       baseScore = Math.min(88, Math.max(82, baseScore));
-      explanation = `Verified internship position in ${job.title}.`;
-    } else {
-      // Full-time role in the target domain (when no active internship opening found)
-      relevanceLabel = 'Related Match';
-      baseScore = Math.min(78, Math.max(68, Math.round(baseScore * 0.85)));
-      explanation = `Verified full-time role in ${job.title} (no active internship opening found).`;
+      explanation = `Strong technical alignment with ${job.title}.`;
     }
   } else {
-    // Regular search
-    if (exactTitleMatch && (!intent.seniority || (intent.seniority === 'senior' && jobIsSenior) || (intent.seniority !== 'senior' && !jobIsSenior))) {
-      relevanceLabel = 'Exact Match';
-      baseScore = Math.min(97, Math.max(88, baseScore));
-      explanation = `Exact title and domain match for ${job.title}.`;
-    } else if (baseScore >= 75) {
-      relevanceLabel = 'Strong Match';
-      baseScore = Math.min(87, Math.max(80, baseScore));
-      explanation = `Strong alignment with ${job.title} and technical domain.`;
+    // Missing one or more criteria -> Classified as Related Match
+    relevanceCategory = 'related';
+    relevanceLabel = 'Related Match';
+    baseScore = Math.min(74, Math.max(60, Math.round(baseScore * 0.75)));
+
+    const criteriaText = missingCriteria.join(', ');
+    if (intent.isInternship && !jobIsIntern && !locResult.isExact) {
+      explanation = `Verified full-time ${job.title} role; global remote (internship not specified, India unconfirmed).`;
+    } else if (intent.isInternship && !jobIsIntern) {
+      explanation = `Verified full-time role in ${job.title} (no active internship opening found).`;
+    } else if (!locResult.isExact) {
+      explanation = `Verified ${job.title} opening; remote worldwide (${locResult.locationBadge}).`;
     } else {
-      relevanceLabel = 'Related Match';
-      baseScore = Math.min(76, Math.max(65, baseScore));
-      explanation = `Related opportunity in ${job.title} from verified external listings.`;
+      explanation = `Related opportunity in ${job.title} (${criteriaText}).`;
     }
   }
 
   return {
     isRelevant: true,
-    score: Math.min(99, Math.max(50, Math.round(baseScore))),
+    score: Math.min(98, Math.max(50, Math.round(baseScore))),
+    relevanceCategory,
     relevanceLabel,
+    locationMatch: locResult.locationBadge,
+    missingCriteria,
     explanation
   };
 }
@@ -688,22 +976,132 @@ async function fetchRemotiveJobs(query?: string): Promise<RealJobListing[]> {
   }
 }
 
+export interface SearchRealJobsParams {
+  query: string;
+  location?: string;
+  limit?: number;
+  employmentType?: string;
+  isRemote?: boolean;
+  datePosted?: 'all' | 'today' | '3days' | 'week' | 'month';
+  allowFallback?: boolean;
+}
+
+export interface SearchRealJobsResponse {
+  jobs: RealJobListing[];
+  provider: string;
+  isConfigured: boolean;
+  totalFound: number;
+  cached?: boolean;
+  errorCode?: string;
+  error?: string;
+}
+
 /**
- * Searches and scores REAL jobs from all verified external sources
+ * Searches and scores REAL jobs from OpenWeb Ninja JSearch API (primary) or verified feeds
  */
 export async function searchRealJobs({
   query,
   location = '',
-  limit = 12
-}: {
-  query: string;
-  location?: string;
-  limit?: number;
-}): Promise<RealJobListing[]> {
+  limit = 12,
+  employmentType,
+  isRemote,
+  datePosted,
+  allowFallback = false
+}: SearchRealJobsParams): Promise<SearchRealJobsResponse> {
   const cleanQuery = (query || '').trim();
   const cleanLoc = (location || '').trim();
 
-  // Concurrent fetch from verified real feeds
+  const { queryOpenWebNinjaJSearch, isJSearchConfigured } = await import('./jsearch.ts');
+
+  // Primary: OpenWeb Ninja JSearch API
+  if (isJSearchConfigured()) {
+    const jsearchRes = await queryOpenWebNinjaJSearch({
+      query: cleanQuery,
+      location: cleanLoc,
+      employmentType,
+      isRemote,
+      datePosted,
+      limit
+    });
+
+    if (!jsearchRes.success) {
+      return {
+        jobs: [],
+        provider: 'OpenWeb Ninja JSearch',
+        isConfigured: true,
+        totalFound: 0,
+        errorCode: jsearchRes.errorCode,
+        error: jsearchRes.error
+      };
+    }
+
+    if (jsearchRes.jobs.length === 0) {
+      return {
+        jobs: [],
+        provider: 'OpenWeb Ninja JSearch',
+        isConfigured: true,
+        totalFound: 0,
+        cached: jsearchRes.cached
+      };
+    }
+
+    // Extract query intent and evaluate relevance (Exact vs Related match)
+    const intent = parseQueryIntent(cleanQuery);
+    const qualifiedJobs: RealJobListing[] = [];
+
+    for (const job of jsearchRes.jobs) {
+      const evalResult = evaluateJobRelevance(job, intent, cleanLoc);
+      qualifiedJobs.push({
+        ...job,
+        matchScore: evalResult.score,
+        relevanceCategory: evalResult.relevanceCategory,
+        relevanceLabel: evalResult.relevanceLabel,
+        locationMatch: evalResult.locationMatch,
+        missingCriteria: evalResult.missingCriteria,
+        roleTier: evalResult.score >= 85 ? 'safe' : (evalResult.score >= 75 ? 'stretch' : 'reach'),
+        matchExplanation: evalResult.explanation
+      });
+    }
+
+    // Sort: Exact Matches first, then Related Matches, and by score descending
+    qualifiedJobs.sort((a, b) => {
+      const aIsExact = a.relevanceCategory === 'exact' ? 1 : 0;
+      const bIsExact = b.relevanceCategory === 'exact' ? 1 : 0;
+      if (bIsExact !== aIsExact) return bIsExact - aIsExact;
+
+      const tierPriority = (label?: string) => {
+        if (!label) return 0;
+        if (label.includes('Exact')) return 3;
+        if (label.includes('Strong')) return 2;
+        return 1;
+      };
+      const tierDiff = tierPriority(b.relevanceLabel) - tierPriority(a.relevanceLabel);
+      if (tierDiff !== 0) return tierDiff;
+      return (b.matchScore || 0) - (a.matchScore || 0);
+    });
+
+    return {
+      jobs: qualifiedJobs.slice(0, limit),
+      provider: 'OpenWeb Ninja JSearch',
+      isConfigured: true,
+      totalFound: jsearchRes.totalFound,
+      cached: jsearchRes.cached
+    };
+  }
+
+  // If OPENWEB_NINJA_API_KEY is not configured and fallback not requested:
+  if (!allowFallback) {
+    return {
+      jobs: [],
+      provider: 'OpenWeb Ninja JSearch',
+      isConfigured: false,
+      totalFound: 0,
+      errorCode: 'MISSING_KEY',
+      error: 'OpenWeb Ninja JSearch API key is not configured. Please add OPENWEB_NINJA_API_KEY to your environment variables to enable live job discovery.'
+    };
+  }
+
+  // Concurrent fetch from verified real feeds (Public fallback)
   const [arbeitnowRes, remoteokRes, remotiveRes] = await Promise.allSettled([
     fetchArbeitnowJobs(),
     fetchRemoteOKJobs(),
@@ -716,27 +1114,38 @@ export async function searchRealJobs({
   if (remotiveRes.status === 'fulfilled') rawJobs.push(...remotiveRes.value);
 
   if (rawJobs.length === 0) {
-    throw new Error('Real job providers are currently unreachable. Please try again in a moment.');
+    return {
+      jobs: [],
+      provider: 'Verified Feeds (Fallback)',
+      isConfigured: false,
+      totalFound: 0,
+      errorCode: 'PROVIDERS_UNREACHABLE',
+      error: 'Public job feeds are currently unreachable. Please try again in a moment.'
+    };
   }
 
-  // 1. Cross-provider strict deduplication
+  // Cross-provider strict deduplication
   const dedupedJobs = deduplicateJobs(rawJobs);
 
-  // If no query string was entered, return latest verified live listings
   if (!cleanQuery) {
-    return dedupedJobs.slice(0, limit).map(j => ({
-      ...j,
-      relevanceLabel: 'Related Match' as const,
-      matchScore: 80,
-      roleTier: 'stretch' as const,
-      matchExplanation: `Verified live opening at ${j.company} from ${j.source}.`
-    }));
+    return {
+      jobs: dedupedJobs.slice(0, limit).map(j => ({
+        ...j,
+        relevanceCategory: 'related' as const,
+        relevanceLabel: 'Related Match' as const,
+        locationMatch: j.isRemote ? 'Remote' : (j.location || 'Location Open'),
+        missingCriteria: [],
+        matchScore: 80,
+        roleTier: 'stretch' as const,
+        matchExplanation: `Verified live opening at ${j.company} from ${j.source}.`
+      })),
+      provider: 'Verified Feeds (Fallback)',
+      isConfigured: false,
+      totalFound: dedupedJobs.length
+    };
   }
 
-  // 2. Structured query intent extraction
   const intent = parseQueryIntent(cleanQuery);
-
-  // 3. Deterministic filtering and scoring
   const qualifiedJobs: RealJobListing[] = [];
 
   for (const job of dedupedJobs) {
@@ -748,14 +1157,20 @@ export async function searchRealJobs({
     qualifiedJobs.push({
       ...job,
       matchScore: evalResult.score,
+      relevanceCategory: evalResult.relevanceCategory,
       relevanceLabel: evalResult.relevanceLabel,
+      locationMatch: evalResult.locationMatch,
+      missingCriteria: evalResult.missingCriteria,
       roleTier: evalResult.score >= 85 ? 'safe' : (evalResult.score >= 75 ? 'stretch' : 'reach'),
       matchExplanation: evalResult.explanation
     });
   }
 
-  // Sort qualified jobs: Exact Match first, then Strong Match, then Related Match, and by score descending
   qualifiedJobs.sort((a, b) => {
+    const aIsExact = a.relevanceCategory === 'exact' ? 1 : 0;
+    const bIsExact = b.relevanceCategory === 'exact' ? 1 : 0;
+    if (bIsExact !== aIsExact) return bIsExact - aIsExact;
+
     const tierPriority = (label?: string) => {
       if (!label) return 0;
       if (label.includes('Exact')) return 3;
@@ -767,7 +1182,12 @@ export async function searchRealJobs({
     return (b.matchScore || 0) - (a.matchScore || 0);
   });
 
-  return qualifiedJobs.slice(0, limit);
+  return {
+    jobs: qualifiedJobs.slice(0, limit),
+    provider: 'Verified Feeds (Fallback)',
+    isConfigured: false,
+    totalFound: qualifiedJobs.length
+  };
 }
 
 /**
@@ -789,8 +1209,8 @@ export function applySingleHeuristicScore(job: RealJobListing, profileText?: str
 
   // Cap score if this is a Related Match to prevent violating hard constraints
   let maxCap = 96;
-  if (job.relevanceLabel === 'Related Match') {
-    maxCap = 78;
+  if (job.relevanceCategory === 'related' || job.relevanceLabel === 'Related Match') {
+    maxCap = 75;
   }
 
   const score = Math.min(maxCap, Math.max(55, matchPoints));
@@ -803,7 +1223,11 @@ export function applySingleHeuristicScore(job: RealJobListing, profileText?: str
     ...job,
     matchScore: score,
     roleTier,
-    matchExplanation: explanation
+    matchExplanation: explanation,
+    relevanceCategory: job.relevanceCategory,
+    relevanceLabel: job.relevanceLabel,
+    locationMatch: job.locationMatch,
+    missingCriteria: job.missingCriteria
   };
 }
 
@@ -836,7 +1260,10 @@ export async function rankAndScoreJobsWithAI({
       title: j.title,
       company: j.company,
       location: j.location,
+      relevanceCategory: j.relevanceCategory,
       relevanceLabel: j.relevanceLabel,
+      locationMatch: j.locationMatch,
+      missingCriteria: j.missingCriteria || [],
       tags: j.tags?.slice(0, 5) || []
     }));
 
@@ -851,7 +1278,7 @@ ${JSON.stringify(jobSummaries, null, 2)}
 
 Instructions:
 1. For each job, evaluate how candidate skills align with the role.
-2. If relevanceLabel is "Related Match", do NOT give a matchScore above 78.
+2. If relevanceCategory is "related" or relevanceLabel is "Related Match", do NOT give a matchScore above 75, as this job does not satisfy all primary constraints.
 3. Output a JSON array with one object per job:
 [
   {
@@ -887,8 +1314,8 @@ IMPORTANT: Return raw JSON only. Do NOT modify or output job titles, companies, 
       const aiScore = scoreMap.get(idx);
       if (aiScore) {
         let maxCap = 98;
-        if (job.relevanceLabel === 'Related Match') {
-          maxCap = 78;
+        if (job.relevanceCategory === 'related' || job.relevanceLabel === 'Related Match') {
+          maxCap = 75;
         }
 
         const rawScore = typeof aiScore.matchScore === 'number' ? Math.round(aiScore.matchScore) : (job.matchScore || 80);
@@ -903,7 +1330,10 @@ IMPORTANT: Return raw JSON only. Do NOT modify or output job titles, companies, 
           matchScore: score,
           roleTier: tier,
           matchExplanation: explanation,
-          relevanceLabel: job.relevanceLabel
+          relevanceCategory: job.relevanceCategory,
+          relevanceLabel: job.relevanceLabel,
+          locationMatch: job.locationMatch,
+          missingCriteria: job.missingCriteria
         };
       }
 

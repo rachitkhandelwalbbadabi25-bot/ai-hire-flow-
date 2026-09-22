@@ -140,15 +140,17 @@ export async function callVelonaChatCompletion({
     }
   }
 
-  // Safe bounded max_tokens for GLM-5.3-Flash
-  const safeMaxTokens = maxTokens ? Math.min(Math.max(300, maxTokens), 4096) : 2400;
+  const isJob = (operation || '').includes('job');
+  const isLearningPath = operation === 'learning_path';
+
+  // Safe bounded max_tokens for GLM-5.3-Flash based on operation
+  const defaultTokens = isJob ? 2400 : (isLearningPath ? 2000 : 1600);
+  const safeMaxTokens = maxTokens ? Math.min(Math.max(300, maxTokens), 4096) : defaultTokens;
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.1, Math.min(1.0, temperature))
     : 0.7;
 
   const velonaStart = Date.now();
-  const isJob = (operation || '').includes('job');
-  const isLearningPath = operation === 'learning_path';
   // Avoid duplicate retries for learning_path to stay well within Vercel's 60-second execution window
   const maxRetries = (isLearningPath || !isJob) ? 0 : 1;
   const maxTotalBudgetMs = isJob ? 180000 : 50000;
@@ -188,7 +190,8 @@ export async function callVelonaChatCompletion({
       temperature: safeTemperature,
       stream: false,
       max_tokens: safeMaxTokens,
-      enable_thinking: false
+      enable_thinking: false,
+      thinking: { type: 'disabled' }
     };
 
     if (jsonMode && !attempt) {
@@ -322,7 +325,7 @@ export async function callVelonaChatCompletion({
       const totalElapsed = Date.now() - velonaStart;
 
       // Safe diagnostics: strictly operational metrics without sensitive user prompt/resume content
-      console.log(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(velonaStart).toISOString()}, http_status=200, model=${modelId}, total_duration_ms=${totalElapsed}, velona_duration_ms=${attemptDuration}, velona_status=${response.status}, timeout_stage=none, error_category=none, message=ok`);
+      console.log(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(velonaStart).toISOString()}, http_status=200, model=${modelId}, total_duration_ms=${totalElapsed}, velona_duration_ms=${attemptDuration}, velona_status=${response.status}, status=success, message=ok`);
 
       let cleanText = content;
       if (jsonMode && typeof cleanText === 'string') {
@@ -477,7 +480,7 @@ app.post([
         }
       } catch (enfErr: any) {
         // Safe fail-open for enforcement in case of transient database connection issue
-        console.warn(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=200, model=${modelId}, duration_ms=${Date.now() - requestStart}, velona_status=N/A, error_category=ENFORCEMENT_FAILOPEN, message=Allowed with fallback`);
+        console.log(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, http_status=200, model=${modelId}, duration_ms=${Date.now() - requestStart}, velona_status=N/A, status=fallback_allowed, message=Allowed with fallback`);
       }
     }
 
@@ -1467,7 +1470,23 @@ app.post(['/api/ocr', '/ocr'], async (req, res, next) => {
   }
 });
 
-// Real Job Discovery & Semantic Matching Endpoint (Verified external sources only)
+// Check OpenWeb Ninja JSearch provider configuration and status
+app.get('/api/jobs/provider-status', (req, res) => {
+  const hasKey = Boolean(process.env.OPENWEB_NINJA_API_KEY || process.env.JSEARCH_API_KEY || process.env.RAPIDAPI_KEY);
+  res.json({
+    provider: 'OpenWeb Ninja JSearch',
+    configured: hasKey,
+    plan: 'Pay As You Go',
+    endpoint: hasKey ? 'https://api.openwebninja.com/jsearch/search' : null,
+    costProtection: {
+      maxPagesPerQuery: 1,
+      cacheTtlMinutes: 15,
+      requestDeduplication: true
+    }
+  });
+});
+
+// Real Job Discovery & Semantic Matching Endpoint (OpenWeb Ninja JSearch Primary)
 app.all(['/api/jobs/search', '/api/jobs'], async (req, res, next) => {
   try {
     const isPost = req.method === 'POST';
@@ -1476,32 +1495,58 @@ app.all(['/api/jobs/search', '/api/jobs'], async (req, res, next) => {
     const query = typeof params.query === 'string' ? params.query : (typeof params.q === 'string' ? params.q : '');
     const location = typeof params.location === 'string' ? params.location : (typeof params.loc === 'string' ? params.loc : '');
     const candidateProfile = typeof params.candidateProfile === 'string' ? params.candidateProfile : (typeof params.profile === 'string' ? params.profile : '');
-    const limit = Math.min(25, Math.max(1, Number(params.limit) || 10));
+    const employmentType = typeof params.employmentType === 'string' ? params.employmentType : undefined;
+    const isRemote = params.isRemote === true || params.isRemote === 'true';
+    const datePosted = typeof params.datePosted === 'string' ? (params.datePosted as any) : undefined;
+    const allowFallback = params.allowFallback === true || params.allowFallback === 'true';
+    const limit = Math.min(25, Math.max(1, Number(params.limit) || 12));
 
     const { searchRealJobs, rankAndScoreJobsWithAI } = await import('./_lib/jobDiscovery.ts');
 
-    let realListings: any[] = [];
-    try {
-      realListings = await searchRealJobs({
-        query: query.trim(),
-        location: location.trim(),
-        limit
-      });
-    } catch (providerErr: any) {
-      console.warn('[RealJobSearch] Provider error:', providerErr.message);
-      return res.status(503).json({
-        error: 'External live job providers are currently unreachable. Please try again in a few moments.',
-        code: 'JOB_PROVIDER_UNAVAILABLE',
-        jobs: []
+    const searchResult = await searchRealJobs({
+      query: query.trim(),
+      location: location.trim(),
+      limit,
+      employmentType,
+      isRemote,
+      datePosted,
+      allowFallback
+    });
+
+    if (searchResult.errorCode) {
+      return res.status(200).json({
+        success: false,
+        isConfigured: searchResult.isConfigured,
+        provider: searchResult.provider,
+        errorCode: searchResult.errorCode,
+        error: searchResult.error,
+        requiresKey: searchResult.errorCode === 'MISSING_KEY',
+        jobs: [],
+        exactMatches: [],
+        relatedMatches: [],
+        exactCount: 0,
+        relatedCount: 0,
+        totalCount: 0,
+        retrievedAt: new Date().toISOString()
       });
     }
 
-    if (!realListings || realListings.length === 0) {
+    const realListings = searchResult.jobs || [];
+
+    if (realListings.length === 0) {
       return res.json({
         success: true,
+        isConfigured: searchResult.isConfigured,
+        provider: searchResult.provider,
         jobs: [],
+        exactMatches: [],
+        relatedMatches: [],
+        exactCount: 0,
+        relatedCount: 0,
         totalCount: 0,
-        message: 'No matching live job listings were found for this search. Try another role, location, or search term.'
+        cached: searchResult.cached,
+        message: 'No live job listings were found matching your search criteria. Try adjusting role keywords or location filters.',
+        retrievedAt: new Date().toISOString()
       });
     }
 
@@ -1512,10 +1557,27 @@ app.all(['/api/jobs/search', '/api/jobs'], async (req, res, next) => {
       callVelona: callVelonaChatCompletion
     });
 
+    const exactMatches = scoredJobs.filter(j => j.relevanceCategory === 'exact');
+    const relatedMatches = scoredJobs.filter(j => j.relevanceCategory !== 'exact');
+
     return res.json({
       success: true,
+      isConfigured: searchResult.isConfigured,
+      provider: searchResult.provider,
       jobs: scoredJobs,
+      exactMatches,
+      relatedMatches,
+      exactCount: exactMatches.length,
+      relatedCount: relatedMatches.length,
       totalCount: scoredJobs.length,
+      cached: searchResult.cached,
+      query: query.trim(),
+      location: location.trim(),
+      message: exactMatches.length === 0 && relatedMatches.length > 0
+        ? (location.trim().toLowerCase().includes('india')
+            ? 'No verified exact internships in India were found for this query in this search batch. Below are verified related opportunities with noted differences.'
+            : 'No exact live openings matching all criteria were found. Below are verified related opportunities from live feeds.')
+        : undefined,
       retrievedAt: new Date().toISOString()
     });
   } catch (err: any) {

@@ -13,6 +13,10 @@ export interface ActiveJobContext {
   jobType?: string;
   matchScore?: number;
   roleTier?: string;
+  relevanceCategory?: 'exact' | 'related';
+  relevanceLabel?: string;
+  locationMatch?: string;
+  missingCriteria?: string[];
   link?: string;
   source?: 'search' | 'tracker' | 'analyzer' | 'manual' | string;
   provider?: string;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Loader2, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target, RotateCcw, X } from 'lucide-react';
-import { findJobs } from '../lib/gemini';
+import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Loader2, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target, RotateCcw, X, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { findJobsDetailed, JobSearchResult } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../lib/firebase';
@@ -36,7 +36,10 @@ interface Job {
   matchScore?: number;
   roleTier?: 'safe' | 'stretch' | 'reach' | string;
   matchExplanation?: string;
+  relevanceCategory?: 'exact' | 'related';
   relevanceLabel?: 'Exact Match' | 'Strong Match' | 'Related Match' | string;
+  locationMatch?: string;
+  missingCriteria?: string[];
   isPoorFit?: boolean;
 }
 
@@ -77,6 +80,13 @@ export default function JobFinder() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchNotice, setSearchNotice] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem('job_finder_search_notice') || null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [hasSearched, setHasSearched] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem('job_finder_has_searched') === 'true';
@@ -86,6 +96,11 @@ export default function JobFinder() {
   });
   const [isFromCache, setIsFromCache] = useState(false);
   const [candidateProfile, setCandidateProfile] = useState('');
+  const [providerStatus, setProviderStatus] = useState<{
+    provider: string;
+    configured: boolean;
+    plan: string;
+  } | null>(null);
   const navigate = useNavigate();
   const locationState = useLocation();
 
@@ -93,6 +108,18 @@ export default function JobFinder() {
   const hasAutoSearchedRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const searchSequenceRef = useRef<number>(0);
+
+  // Check OpenWeb Ninja JSearch provider configuration on mount
+  useEffect(() => {
+    fetch('/api/jobs/provider-status')
+      .then(r => r.json())
+      .then(data => {
+        if (data && typeof data.configured === 'boolean') {
+          setProviderStatus(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Synchronize query when navigated with explicit route state, ignoring any legacy demo roles
   useEffect(() => {
@@ -201,6 +228,10 @@ export default function JobFinder() {
       jobType: targetJob.jobType,
       matchScore: targetJob.matchScore,
       roleTier: targetJob.roleTier,
+      relevanceCategory: targetJob.relevanceCategory,
+      relevanceLabel: targetJob.relevanceLabel,
+      locationMatch: targetJob.locationMatch,
+      missingCriteria: targetJob.missingCriteria,
       link: targetJob.link,
       provider: targetJob.provider || targetJob.source || 'External Provider',
       source: targetJob.source || 'search',
@@ -221,26 +252,35 @@ export default function JobFinder() {
     setQuery('');
     setLocation('');
 
-    // 3. Clear results and statuses
+    // 3. Clear results, search notice, and statuses
     setJobs([]);
     setLoading(false);
     setError(null);
+    setSearchNotice(null);
     setHasSearched(false);
     setIsFromCache(false);
 
-    // 4. Remove session storage keys (pure search state only)
+    // 4. Complete Reset: clear active selected job so user starts completely fresh
+    clearCurrentJobContext();
+
+    // 5. Remove session storage keys
     try {
       sessionStorage.removeItem('job_finder_user_query');
       sessionStorage.removeItem('job_finder_user_location');
       sessionStorage.removeItem('job_finder_search_results');
+      sessionStorage.removeItem('job_finder_search_notice');
       sessionStorage.removeItem('job_finder_has_searched');
     } catch (e) {
       console.warn('Failed to clear sessionStorage for job finder:', e);
     }
-    // Note: currentActiveJob is retained so user does not lose application context unless explicitly clicking "Clear Active Job"
   };
 
-  const handleSearchWithQuery = async (searchQuery: string, searchLoc: string, e?: FormEvent) => {
+  const handleSearchWithQuery = async (
+    searchQuery: string,
+    searchLoc: string,
+    e?: FormEvent,
+    allowFallback: boolean = false
+  ) => {
     if (e) e.preventDefault();
     if (!searchQuery || !searchQuery.trim()) return;
 
@@ -259,29 +299,37 @@ export default function JobFinder() {
     setJobs([]);
     setLoading(true);
     setError(null);
+    setSearchNotice(null);
     setHasSearched(true);
     setIsFromCache(false);
 
     try {
-      const cacheKey = cacheManager.generateJobKey(trimmedQuery, trimmedLoc);
+      const cacheKey = cacheManager.generateJobKey(trimmedQuery, trimmedLoc + (allowFallback ? '_fb' : ''));
       
-      let cached = null;
+      let cached: any = null;
       try {
-        cached = cacheManager.get<Job[]>(cacheKey);
+        cached = cacheManager.get<any>(cacheKey);
       } catch (err) {
         console.warn('Cache access failure:', err);
       }
 
-      if (cached && Array.isArray(cached) && cached.length > 0) {
-        if (currentSeq !== searchSequenceRef.current) return;
-        setJobs(cached);
-        try {
-          sessionStorage.setItem('job_finder_search_results', JSON.stringify(cached));
-          sessionStorage.setItem('job_finder_has_searched', 'true');
-        } catch (e) {}
-        setIsFromCache(true);
-        setLoading(false);
-        return;
+      if (cached) {
+        const cachedJobs = Array.isArray(cached) ? cached : (cached.jobs || []);
+        const cachedNotice = !Array.isArray(cached) && cached.notice ? cached.notice : null;
+        if (cachedJobs.length > 0) {
+          if (currentSeq !== searchSequenceRef.current) return;
+          setJobs(cachedJobs);
+          setSearchNotice(cachedNotice);
+          try {
+            sessionStorage.setItem('job_finder_search_results', JSON.stringify(cachedJobs));
+            if (cachedNotice) sessionStorage.setItem('job_finder_search_notice', cachedNotice);
+            else sessionStorage.removeItem('job_finder_search_notice');
+            sessionStorage.setItem('job_finder_has_searched', 'true');
+          } catch (e) {}
+          setIsFromCache(true);
+          setLoading(false);
+          return;
+        }
       }
 
       if (!hasAccess) {
@@ -292,16 +340,49 @@ export default function JobFinder() {
       }
 
       await deductCredit('jobSearches');
-      const results = await findJobs(trimmedQuery, trimmedLoc, candidateProfile, 12, controller.signal);
+      const searchResult: JobSearchResult = await findJobsDetailed(
+        trimmedQuery,
+        trimmedLoc,
+        candidateProfile,
+        12,
+        controller.signal,
+        allowFallback
+      );
 
       if (currentSeq !== searchSequenceRef.current) return;
-      setJobs(results);
+
+      if (searchResult.errorCode) {
+        if (searchResult.errorCode === 'MISSING_KEY' || searchResult.requiresKey) {
+          setError(
+            'OpenWeb Ninja JSearch API key is not configured. Please add OPENWEB_NINJA_API_KEY in environment variables to retrieve real vacancies from LinkedIn, Indeed, Glassdoor, and Google for Jobs.'
+          );
+        } else if (searchResult.errorCode === 'AUTH_ERROR') {
+          setError(
+            'Authentication failed for OpenWeb Ninja JSearch API. Please verify that OPENWEB_NINJA_API_KEY is active and valid.'
+          );
+        } else if (searchResult.errorCode === 'RATE_LIMIT') {
+          setError(
+            'OpenWeb Ninja JSearch credit limit or rate quota reached. Please check your Pay As You Go plan balance on OpenWeb Ninja.'
+          );
+        } else if (searchResult.errorCode === 'TIMEOUT') {
+          setError('OpenWeb Ninja JSearch request timed out after 12 seconds. Please retry.');
+        } else {
+          setError(searchResult.error || 'Failed to retrieve job listings. Please try again.');
+        }
+        setJobs([]);
+        return;
+      }
+
+      setJobs(searchResult.jobs);
+      setSearchNotice(searchResult.message || null);
       try {
-        sessionStorage.setItem('job_finder_search_results', JSON.stringify(results));
+        sessionStorage.setItem('job_finder_search_results', JSON.stringify(searchResult.jobs));
+        if (searchResult.message) sessionStorage.setItem('job_finder_search_notice', searchResult.message);
+        else sessionStorage.removeItem('job_finder_search_notice');
         sessionStorage.setItem('job_finder_has_searched', 'true');
       } catch (e) {}
       
-      cacheManager.set(cacheKey, results, 30 * 60 * 1000);
+      cacheManager.set(cacheKey, { jobs: searchResult.jobs, notice: searchResult.message }, 30 * 60 * 1000);
     } catch (err: any) {
       if (err.name === 'AbortError' || currentSeq !== searchSequenceRef.current) {
         // Intentional abort or superseded by a newer search/reset
@@ -373,11 +454,48 @@ export default function JobFinder() {
         <p className="text-ink-dim font-medium text-lg max-w-2xl mb-4">
           Discover real, verified job vacancies from live external sources with AI-powered candidate compatibility matching.
         </p>
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Real Job Listings Only • Verified External Sources</span>
+        <div className="flex items-center gap-3 flex-wrap mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>OpenWeb Ninja JSearch • Live Jobs from LinkedIn, Indeed, Glassdoor & Google for Jobs</span>
+          </div>
+          {providerStatus?.configured && (
+            <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-bold">
+              Pay As You Go Active
+            </span>
+          )}
         </div>
       </div>
+
+      {/* Setup Notice if OpenWeb Ninja API Key is not set in environment */}
+      {providerStatus && !providerStatus.configured && (
+        <div className="mb-6 p-5 rounded-3xl bg-amber-500/10 border border-amber-500/25 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-500/20 rounded-xl text-amber-400 shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
+                OpenWeb Ninja JSearch API Key Setup
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                  Pay As You Go
+                </span>
+              </h4>
+              <p className="text-xs text-ink-dim mt-1 max-w-2xl leading-relaxed">
+                Connect your OpenWeb Ninja Pay As You Go API key by adding <code className="text-accent bg-accent/10 px-1 py-0.5 rounded font-mono text-[11px]">OPENWEB_NINJA_API_KEY</code> to your environment variables to retrieve live vacancies directly from LinkedIn, Indeed, Glassdoor, and Google for Jobs.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSearchWithQuery(query.trim() || 'Software Engineer', location, undefined, true)}
+            className="shrink-0 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Test with Public Feeds
+          </button>
+        </div>
+      )}
 
       {/* Search Bar */}
       <div className="glass-panel mb-12 p-8 rounded-3xl border border-border bg-surface">
@@ -527,7 +645,7 @@ export default function JobFinder() {
             <p className="text-rose-400/80 text-sm mb-6">
               {error}
             </p>
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <button 
                 id="retry-search-button"
                 onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location)}
@@ -535,6 +653,16 @@ export default function JobFinder() {
               >
                 Retry Search
               </button>
+              {(error.includes('OPENWEB_NINJA_API_KEY') || !providerStatus?.configured) && (
+                <button 
+                  id="fallback-search-button"
+                  onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location, undefined, true)}
+                  className="px-4 py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Test with Public Feeds
+                </button>
+              )}
               <button 
                 onClick={handleResetSearch}
                 className="px-4 py-2.5 bg-surface-light hover:bg-surface-light/80 text-ink-dim hover:text-ink border border-border rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
@@ -545,23 +673,46 @@ export default function JobFinder() {
             </div>
           </div>
         ) : hasSearched && jobs.length === 0 ? (
-          <EmptyState
-            icon={Search}
-            title="No matching live job listings were found"
-            targetRole={query || activeTargetRole || "Current search"}
-            description="No matching live job listings were found for this search from verified external sources. Try another role title, broader location, or alternative keywords."
-            benefitMetric="Real job listings are sourced directly from verified job boards and live career portals"
-            primaryAction={{
-              label: "Reset & Clear Search",
-              onClick: handleResetSearch,
-              icon: RotateCcw
-            }}
-            secondaryAction={{
-              label: "Search 'Full Stack Developer'",
-              onClick: () => handlePopularSearch("Full Stack Developer"),
-              icon: Search
-            }}
-          />
+          (() => {
+            const isIndiaSearch = (location && location.toLowerCase().includes('india')) || (query && query.toLowerCase().includes('india'));
+            return (
+              <EmptyState
+                icon={Search}
+                title={isIndiaSearch ? "No sufficiently relevant live job listings found in India" : "No matching live job listings were found"}
+                targetRole={query || activeTargetRole || "Current search"}
+                description={
+                  isIndiaSearch 
+                    ? `No live postings from verified external feeds currently match "${query}" with strict India eligibility. Worldwide or incompatible location roles were filtered out to protect relevance.`
+                    : "No matching live job listings were found for this search from verified external sources. Try another role title, broader location, or alternative keywords."
+                }
+                benefitMetric={
+                  isIndiaSearch
+                    ? "Strict location enforcement ensures only genuine local or India-eligible openings are shown"
+                    : "Real job listings are sourced directly from verified job boards and live career portals"
+                }
+                primaryAction={{
+                  label: "Reset & Clear Search",
+                  onClick: handleResetSearch,
+                  icon: RotateCcw
+                }}
+                secondaryAction={
+                  isIndiaSearch ? {
+                    label: "Search 'AI Engineer' Remote",
+                    onClick: () => {
+                      setQuery("AI Engineer");
+                      setLocation("Remote");
+                      handleSearchWithQuery("AI Engineer", "Remote");
+                    },
+                    icon: Search
+                  } : {
+                    label: "Search 'Full Stack Developer'",
+                    onClick: () => handlePopularSearch("Full Stack Developer"),
+                    icon: Search
+                  }
+                }
+              />
+            );
+          })()
         ) : !hasSearched ? (
           <EmptyState
             icon={Building2}
@@ -589,6 +740,15 @@ export default function JobFinder() {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Selected Real Job</p>
+                      {currentActiveJob.relevanceLabel && (
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-mono font-bold border ${
+                          currentActiveJob.relevanceLabel.toLowerCase().includes('exact')
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {currentActiveJob.relevanceLabel}
+                        </span>
+                      )}
                       {currentActiveJob.provider && (
                         <span className="px-2 py-0.5 bg-accent/10 border border-accent/20 rounded-md text-[9px] font-mono font-bold text-accent">
                           {currentActiveJob.provider}
@@ -625,181 +785,149 @@ export default function JobFinder() {
                   >
                     Clear Active Job
                   </button>
+                  <button
+                    onClick={handleResetSearch}
+                    className="px-3 py-1.5 text-xs text-ink-dim hover:text-ink font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 border border-border rounded-xl bg-surface-light hover:border-accent/40"
+                    title="Complete Job Search Reset"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Reset Search
+                  </button>
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <AnimatePresence>
-                {(jobs || []).map((job, index) => {
-                  const isSelected = Boolean(
-                    currentActiveJob &&
-                    currentActiveJob.title.toLowerCase() === job.title.toLowerCase() &&
-                    currentActiveJob.company.toLowerCase() === job.company.toLowerCase()
-                  );
+            {(() => {
+              const exactMatches = (jobs || []).filter(j => j.relevanceCategory === 'exact');
+              const relatedMatches = (jobs || []).filter(j => j.relevanceCategory !== 'exact');
 
-                  return (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`glass-card p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group ${
-                      isSelected ? 'border-accent ring-1 ring-accent/30' : ''
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="bg-background/80 p-3 rounded-2xl border border-border">
-                        <Building2 className="w-6 h-6 text-accent" />
+              return (
+                <>
+                  {/* Results Summary and Reset Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-border/70">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-accent/10 text-accent">
+                        <Briefcase className="w-4 h-4" />
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap justify-end">
-                        {job.relevanceLabel && (
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                            job.relevanceLabel.toLowerCase().includes('exact') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                            job.relevanceLabel.toLowerCase().includes('strong') ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                            'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                          }`}>
-                            {job.relevanceLabel}
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-ink uppercase tracking-wider">
+                          {jobs.length} Real Vacanc{jobs.length === 1 ? 'y' : 'ies'} Found
+                        </span>
+                        {query && (
+                          <span className="text-xs text-ink-dim">
+                            for &ldquo;<strong className="text-ink font-semibold">{query}</strong>&rdquo;{location ? ` in ${location}` : ''}
                           </span>
                         )}
-                        {job.matchScore !== undefined && (
-                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
-                            job.matchScore >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                            job.matchScore >= 60 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                            'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                          }`}>
-                            {job.matchScore}% FIT
-                          </span>
-                        )}
-                        {job.roleTier && (
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                            job.roleTier.toLowerCase() === 'safe' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                            job.roleTier.toLowerCase() === 'stretch' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                            'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                          }`}>
-                            {job.roleTier} ROLE
-                          </span>
-                        )}
-                        <a 
-                          href={job.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-ink-dim hover:text-accent transition-colors p-1"
-                        >
-                          <ExternalLink className="w-5 h-5" />
-                        </a>
                       </div>
                     </div>
-
-                    <h3 className="text-lg font-bold text-ink group-hover:text-accent transition-colors mb-1 leading-tight">{job.title}</h3>
-                    <p className="text-sm font-bold text-ink-dim mb-4">{job.company}</p>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {job.source && (
-                        <div className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                          <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{job.source}</span>
+                    <button
+                      type="button"
+                      id="reset-search-results-button"
+                      onClick={handleResetSearch}
+                      className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl border border-border hover:border-accent/40 bg-surface-light text-ink-dim hover:text-ink text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Reset Search
+                    </button>
+                  </div>
+                  {/* Honest notice if no exact matches found but related listings exist */}
+                  {exactMatches.length === 0 && relatedMatches.length > 0 && (
+                    <div className="mb-8 p-6 rounded-3xl bg-amber-500/10 border border-amber-500/25">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-amber-500/20 rounded-2xl border border-amber-500/30 text-amber-400 shrink-0">
+                          <AlertTriangle className="w-6 h-6" />
                         </div>
-                      )}
-                      <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 text-ink-dim" />
-                        <span className="text-[10px] font-bold text-ink-dim uppercase">{job.location}</span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest px-2.5 py-0.5 bg-amber-500/20 rounded-full border border-amber-500/30">
+                              Strict Constraint Enforcement
+                            </span>
+                            <span className="text-xs font-mono text-ink-dim">0 Exact Matches</span>
+                          </div>
+                          <h3 className="text-base font-bold text-ink mb-1">
+                            {searchNotice || `No sufficiently relevant live job listings were found for this role${location ? ` in ${location}` : ''}.`}
+                          </h3>
+                          <p className="text-xs text-ink-dim leading-relaxed">
+                            Verified live feeds do not currently have openings that satisfy every specified constraint (such as strict India eligibility or internship level).
+                            To protect you from misleading fit scores, all listings below are categorized as <strong>Related Matches</strong> with their specific differences highlighted.
+                          </p>
+                        </div>
                       </div>
-                      {job.isRemote && (
-                        <div className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center">
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase">Remote</span>
-                        </div>
-                      )}
-                      {job.jobType && (
-                        <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center">
-                          <span className="text-[10px] font-bold text-ink-dim uppercase">{job.jobType}</span>
-                        </div>
-                      )}
-                      {job.datePosted && (
-                        <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
-                          <Calendar className="w-3 h-3 text-ink-dim" />
-                          <span className="text-[10px] font-bold text-ink-dim uppercase">{job.datePosted}</span>
-                        </div>
-                      )}
                     </div>
+                  )}
 
-                    {job.matchExplanation && (
-                      <div className="mb-4 p-3 rounded-2xl bg-accent/5 border border-accent/15 text-xs text-ink-dim font-medium">
-                        <div className="flex items-center justify-between text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
-                          <span className="flex items-center gap-1.5">
-                            <Sparkles className="w-3 h-3" /> Fit Assessment
-                          </span>
-                          <span className="text-[9px] text-ink-dim/80 font-normal lowercase tracking-normal">ai match</span>
+                  {/* Section 1: Exact Matches */}
+                  {exactMatches.length > 0 && (
+                    <div className="mb-10">
+                      <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <h2 className="text-lg font-bold text-ink uppercase tracking-wider flex items-center gap-2">
+                            Exact Matches
+                            <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              {exactMatches.length}
+                            </span>
+                          </h2>
                         </div>
-                        <p className="italic text-ink leading-relaxed">
-                          "{job.matchExplanation}"
-                        </p>
+                        <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                          Satisfies Role, Seniority & Location Criteria
+                        </span>
                       </div>
-                    )}
-
-                    <p className="text-sm text-ink-dim line-clamp-3 mb-4 flex-1 leading-relaxed">
-                      "{job.description}"
-                    </p>
-
-                    <div className="mb-4 pt-3 border-t border-border/50 flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-ink-dim">
-                        {job.source ? `Source: ${job.source}` : 'External Listing'}
-                      </span>
-                      <a 
-                        href={job.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
-                      >
-                        Official Job Post <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-
-                    <div className="flex gap-2 mb-3">
-                      <button 
-                        onClick={() => handleSelectJob(job)}
-                        className={`w-full py-2.5 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          isSelected 
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
-                            : 'bg-surface hover:bg-accent/10 text-ink-dim hover:text-accent border border-border'
-                        }`}
-                      >
-                        {isSelected ? (
-                          <>
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                            Active Selected Job
-                          </>
-                        ) : (
-                          <>
-                            <Target className="w-3.5 h-3.5" />
-                            Select As Active Job
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {isSelected && (
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => alignResume(job)}
-                          className="flex-1 bg-accent/10 border border-accent/20 text-accent font-bold text-[10px] uppercase tracking-widest py-3 rounded-xl hover:bg-accent/20 transition-all flex items-center justify-center gap-2"
-                        >
-                          Analyze Compatibility <ChevronRight className="w-3 h-3" />
-                        </button>
-                        <button 
-                          onClick={() => trackJob(job)}
-                          className="px-4 bg-surface border border-border text-ink-dim hover:border-ink hover:text-ink py-3 rounded-xl transition-all"
-                          title="Add to Pipeline"
-                        >
-                          <Briefcase className="w-4 h-4" />
-                        </button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <AnimatePresence>
+                          {exactMatches.map((job, index) => (
+                            <JobListingCard
+                              key={job.id || `${job.title}-${job.company}-${index}`}
+                              job={job}
+                              index={index}
+                              currentActiveJob={currentActiveJob}
+                              onSelect={handleSelectJob}
+                              onAlignResume={alignResume}
+                              onTrackJob={trackJob}
+                            />
+                          ))}
+                        </AnimatePresence>
                       </div>
-                    )}
-                  </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
+                    </div>
+                  )}
+
+                  {/* Section 2: Related Matches */}
+                  {relatedMatches.length > 0 && (
+                    <div className="mb-10">
+                      <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                          <h2 className="text-lg font-bold text-ink uppercase tracking-wider flex items-center gap-2">
+                            Related Live Opportunities
+                            <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              {relatedMatches.length}
+                            </span>
+                          </h2>
+                        </div>
+                        <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                          {exactMatches.length === 0 ? 'Verified Feed Alternatives (Differences Noted)' : 'Broader / Worldwide Openings'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <AnimatePresence>
+                          {relatedMatches.map((job, index) => (
+                            <JobListingCard
+                              key={job.id || `${job.title}-${job.company}-${index}`}
+                              job={job}
+                              index={index}
+                              currentActiveJob={currentActiveJob}
+                              onSelect={handleSelectJob}
+                              onAlignResume={alignResume}
+                              onTrackJob={trackJob}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {currentActiveJob && (
               <NextStepBridgeCard
@@ -879,5 +1007,242 @@ function TargetIcon(props: any) {
       <circle cx="12" cy="12" r="6" />
       <circle cx="12" cy="12" r="2" />
     </svg>
+  );
+}
+
+function JobListingCard({
+  job,
+  index,
+  currentActiveJob,
+  onSelect,
+  onAlignResume,
+  onTrackJob,
+}: {
+  job: Job;
+  index: number;
+  currentActiveJob: ActiveJobContext | null;
+  onSelect: (job: Job) => void;
+  onAlignResume: (job: Job) => void;
+  onTrackJob: (job: Job) => void;
+}) {
+  const isSelected = Boolean(
+    currentActiveJob &&
+    currentActiveJob.title.toLowerCase() === job.title.toLowerCase() &&
+    currentActiveJob.company.toLowerCase() === job.company.toLowerCase()
+  );
+
+  const isExact = job.relevanceCategory === 'exact' || (job.relevanceLabel && job.relevanceLabel.toLowerCase().includes('exact'));
+
+  const getLocationBadgeClass = (locMatch?: string) => {
+    if (!locMatch) return 'bg-surface-light text-ink-dim border-border';
+    const l = locMatch.toLowerCase();
+    if (l.includes('india match') || l.includes('verified local')) {
+      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25';
+    }
+    if (l.includes('incompatible')) {
+      return 'bg-rose-500/10 text-rose-400 border-rose-500/25';
+    }
+    if (l.includes('worldwide') || l.includes('remote')) {
+      return 'bg-amber-500/10 text-amber-400 border-amber-500/25';
+    }
+    return 'bg-surface-light text-ink-dim border-border';
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.04, 0.4) }}
+      className={`glass-card p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group ${
+        isSelected ? 'border-accent ring-1 ring-accent/30' : ''
+      }`}
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="bg-background/80 p-3 rounded-2xl border border-border">
+          <Building2 className="w-6 h-6 text-accent" />
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {/* Relevance Badge */}
+          <span
+            className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+              isExact
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+            }`}
+          >
+            {job.relevanceLabel || (isExact ? 'Exact Match' : 'Related Match')}
+          </span>
+
+          {/* Location Match Badge */}
+          {job.locationMatch && (
+            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${getLocationBadgeClass(job.locationMatch)}`}>
+              {job.locationMatch}
+            </span>
+          )}
+
+          {/* Fit Score */}
+          {job.matchScore !== undefined && (
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                job.matchScore >= 80
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : job.matchScore >= 60
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+              }`}
+            >
+              {job.matchScore}% FIT
+            </span>
+          )}
+
+          {/* Role Tier */}
+          {job.roleTier && (
+            <span
+              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                job.roleTier.toLowerCase() === 'safe'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : job.roleTier.toLowerCase() === 'stretch'
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+              }`}
+            >
+              {job.roleTier} ROLE
+            </span>
+          )}
+
+          <a
+            href={job.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-ink-dim hover:text-accent transition-colors p-1"
+            title="Open official job post"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        </div>
+      </div>
+
+      <h3 className="text-lg font-bold text-ink group-hover:text-accent transition-colors mb-1 leading-tight">
+        {job.title}
+      </h3>
+      <p className="text-sm font-bold text-ink-dim mb-3">{job.company}</p>
+
+      <div className="flex flex-wrap gap-2 mb-3">
+        {job.source && (
+          <div className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{job.source}</span>
+          </div>
+        )}
+        <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
+          <MapPin className="w-3 h-3 text-ink-dim" />
+          <span className="text-[10px] font-bold text-ink-dim uppercase">{job.location}</span>
+        </div>
+        {job.isRemote && (
+          <div className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center">
+            <span className="text-[10px] font-bold text-emerald-400 uppercase">Remote</span>
+          </div>
+        )}
+        {job.jobType && (
+          <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center">
+            <span className="text-[10px] font-bold text-ink-dim uppercase">{job.jobType}</span>
+          </div>
+        )}
+        {job.datePosted && (
+          <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
+            <Calendar className="w-3 h-3 text-ink-dim" />
+            <span className="text-[10px] font-bold text-ink-dim uppercase">{job.datePosted}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Honest Differences Callout if present */}
+      {job.missingCriteria && job.missingCriteria.length > 0 && (
+        <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
+          <div className="flex items-center gap-1.5 text-amber-400 font-bold uppercase tracking-wider text-[10px] mb-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            Requirement Differences
+          </div>
+          <ul className="space-y-1 text-[11px] text-amber-300/90 list-disc list-inside">
+            {job.missingCriteria.map((diff, dIdx) => (
+              <li key={dIdx} className="leading-snug">{diff}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {job.matchExplanation && (
+        <div className="mb-4 p-3 rounded-2xl bg-accent/5 border border-accent/15 text-xs text-ink-dim font-medium">
+          <div className="flex items-center justify-between text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3" /> Fit Assessment
+            </span>
+            <span className="text-[9px] text-ink-dim/80 font-normal lowercase tracking-normal">ai match</span>
+          </div>
+          <p className="italic text-ink leading-relaxed">
+            "{job.matchExplanation}"
+          </p>
+        </div>
+      )}
+
+      <p className="text-sm text-ink-dim line-clamp-3 mb-4 flex-1 leading-relaxed">
+        "{job.description}"
+      </p>
+
+      <div className="mb-4 pt-3 border-t border-border/50 flex items-center justify-between">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-dim">
+          {job.source ? `Source: ${job.source}` : 'External Listing'}
+        </span>
+        <a 
+          href={job.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+        >
+          Official Job Post <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+
+      <div className="flex gap-2 mb-3">
+        <button 
+          onClick={() => onSelect(job)}
+          className={`w-full py-2.5 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            isSelected 
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
+              : 'bg-surface hover:bg-accent/10 text-ink-dim hover:text-accent border border-border'
+          }`}
+        >
+          {isSelected ? (
+            <>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Active Selected Job
+            </>
+          ) : (
+            <>
+              <Target className="w-3.5 h-3.5" />
+              Select As Active Job
+            </>
+          )}
+        </button>
+      </div>
+
+      {isSelected && (
+        <div className="flex gap-2">
+          <button 
+            onClick={() => onAlignResume(job)}
+            className="flex-1 bg-accent/10 border border-accent/20 text-accent font-bold text-[10px] uppercase tracking-widest py-3 rounded-xl hover:bg-accent/20 transition-all flex items-center justify-center gap-2"
+          >
+            Analyze Compatibility <ChevronRight className="w-3 h-3" />
+          </button>
+          <button 
+            onClick={() => onTrackJob(job)}
+            className="px-4 bg-surface border border-border text-ink-dim hover:border-ink hover:text-ink py-3 rounded-xl transition-all"
+            title="Add to Pipeline"
+          >
+            <Briefcase className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </motion.div>
   );
 }

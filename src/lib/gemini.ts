@@ -638,8 +638,27 @@ export interface JobOpportunity {
   matchScore?: number;
   roleTier?: 'safe' | 'stretch' | 'reach' | string;
   matchExplanation?: string;
+  relevanceCategory?: 'exact' | 'related';
   relevanceLabel?: 'Exact Match' | 'Strong Match' | 'Related Match' | string;
+  locationMatch?: string;
+  missingCriteria?: string[];
   isPoorFit?: boolean;
+}
+
+export interface JobSearchResult {
+  jobs: JobOpportunity[];
+  exactMatches: JobOpportunity[];
+  relatedMatches: JobOpportunity[];
+  exactCount: number;
+  relatedCount: number;
+  totalCount: number;
+  message?: string;
+  provider?: string;
+  isConfigured?: boolean;
+  errorCode?: string;
+  error?: string;
+  requiresKey?: boolean;
+  cached?: boolean;
 }
 
 /**
@@ -686,7 +705,10 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
 
     const matchExplanation = String(item.matchExplanation || item.explanation || 'Matches your technical skillset and target domain.').trim();
     const isPoorFit = Boolean(item.isPoorFit);
+    const relevanceCategory = item.relevanceCategory === 'exact' ? 'exact' : (item.relevanceCategory === 'related' ? 'related' : undefined);
     const relevanceLabel = item.relevanceLabel ? String(item.relevanceLabel) : undefined;
+    const locationMatch = item.locationMatch ? String(item.locationMatch) : undefined;
+    const missingCriteria = Array.isArray(item.missingCriteria) ? item.missingCriteria : undefined;
 
     normalized.push({
       id: String(item.id || ''),
@@ -706,7 +728,10 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
       matchScore,
       roleTier: roleTier as 'safe' | 'stretch' | 'reach',
       matchExplanation,
+      relevanceCategory,
       relevanceLabel,
+      locationMatch,
+      missingCriteria,
       isPoorFit
     });
   }
@@ -725,6 +750,21 @@ export const findJobs = async (
   desiredCount: number = 10,
   signal?: AbortSignal
 ): Promise<JobOpportunity[]> => {
+  const result = await findJobsDetailed(queryStr, location, candidateProfileText, desiredCount, signal);
+  return result.jobs;
+};
+
+/**
+ * Detailed real job discovery returning categorized exact vs related matches and provider feedback.
+ */
+export const findJobsDetailed = async (
+  queryStr: string,
+  location: string = "",
+  candidateProfileText: string = "",
+  desiredCount: number = 10,
+  signal?: AbortSignal,
+  allowFallback: boolean = false
+): Promise<JobSearchResult> => {
   const cleanQuery = (queryStr || '').trim();
   const cleanLoc = (location || '').trim();
   const cleanProfile = (candidateProfileText || '')
@@ -744,7 +784,8 @@ export const findJobs = async (
       query: cleanQuery,
       location: cleanLoc,
       candidateProfile: cleanProfile,
-      limit: Math.min(25, Math.max(5, desiredCount))
+      limit: Math.min(25, Math.max(5, desiredCount)),
+      allowFallback
     })
   });
 
@@ -762,13 +803,39 @@ export const findJobs = async (
   }
 
   const data = await res.json();
-  const rawJobs = Array.isArray(data?.jobs) ? data.jobs : [];
 
-  if (rawJobs.length === 0) {
-    return [];
+  if (data?.errorCode) {
+    return {
+      jobs: [],
+      exactMatches: [],
+      relatedMatches: [],
+      exactCount: 0,
+      relatedCount: 0,
+      totalCount: 0,
+      provider: data.provider,
+      isConfigured: data.isConfigured,
+      errorCode: data.errorCode,
+      error: data.error,
+      requiresKey: Boolean(data.requiresKey)
+    };
   }
 
-  return validateAndNormalizeJobs(rawJobs);
+  const normalizedAll = validateAndNormalizeJobs(data?.jobs || []);
+  const exactList = normalizedAll.filter(j => j.relevanceCategory === 'exact');
+  const relatedList = normalizedAll.filter(j => j.relevanceCategory !== 'exact');
+
+  return {
+    jobs: normalizedAll,
+    exactMatches: exactList,
+    relatedMatches: relatedList,
+    exactCount: exactList.length,
+    relatedCount: relatedList.length,
+    totalCount: normalizedAll.length,
+    provider: data?.provider || 'OpenWeb Ninja JSearch',
+    isConfigured: data?.isConfigured,
+    message: data?.message,
+    cached: data?.cached
+  };
 };
 
 export const matchJobsWithProfile = async (userProfileText: string, jobListings: any[]): Promise<JobOpportunity[]> => {

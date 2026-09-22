@@ -627,8 +627,10 @@ export interface JobOpportunity {
   location: string;
   link: string;
   description: string;
+  skills?: string[];
   datePosted: string;
   source?: string;
+  provider?: string;
   retrievedAt?: string;
   jobType?: string;
   isRemote?: boolean;
@@ -636,6 +638,7 @@ export interface JobOpportunity {
   matchScore?: number;
   roleTier?: 'safe' | 'stretch' | 'reach' | string;
   matchExplanation?: string;
+  relevanceLabel?: 'Exact Match' | 'Strong Match' | 'Related Match' | string;
   isPoorFit?: boolean;
 }
 
@@ -670,6 +673,7 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
     const description = String(item.description || item.summary || 'Visit official job posting for full details.').trim();
     const datePosted = String(item.datePosted || item.posted || 'Recently posted').trim();
     const source = String(item.source || 'Verified Source').trim();
+    const provider = String(item.provider || item.source || source).trim();
     const retrievedAt = String(item.retrievedAt || new Date().toISOString());
 
     let matchScore = typeof item.matchScore === 'number' ? Math.round(item.matchScore) : parseInt(String(item.matchScore), 10);
@@ -682,6 +686,7 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
 
     const matchExplanation = String(item.matchExplanation || item.explanation || 'Matches your technical skillset and target domain.').trim();
     const isPoorFit = Boolean(item.isPoorFit);
+    const relevanceLabel = item.relevanceLabel ? String(item.relevanceLabel) : undefined;
 
     normalized.push({
       id: String(item.id || ''),
@@ -690,8 +695,10 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
       location: location || 'Remote',
       link,
       description,
+      skills: Array.isArray(item.skills) ? item.skills : undefined,
       datePosted,
       source,
+      provider,
       retrievedAt,
       jobType: item.jobType ? String(item.jobType).trim() : undefined,
       isRemote: Boolean(item.isRemote),
@@ -699,6 +706,7 @@ export function validateAndNormalizeJobs(rawJobs: any): JobOpportunity[] {
       matchScore,
       roleTier: roleTier as 'safe' | 'stretch' | 'reach',
       matchExplanation,
+      relevanceLabel,
       isPoorFit
     });
   }
@@ -714,7 +722,8 @@ export const findJobs = async (
   queryStr: string,
   location: string = "",
   candidateProfileText: string = "",
-  desiredCount: number = 10
+  desiredCount: number = 10,
+  signal?: AbortSignal
 ): Promise<JobOpportunity[]> => {
   const cleanQuery = (queryStr || '').trim();
   const cleanLoc = (location || '').trim();
@@ -730,6 +739,7 @@ export const findJobs = async (
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     },
+    signal,
     body: JSON.stringify({
       query: cleanQuery,
       location: cleanLoc,

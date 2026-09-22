@@ -59,8 +59,17 @@ class CacheManager {
     return `resume_${rPart}_${jPart}`;
   }
 
-  generateJobKey = (role: string, location: string): string => {
-    return `job_${(role || '').toLowerCase().trim()}_${(location || '').toLowerCase().trim()}`;
+  generateJobKey = (
+    role: string, 
+    location: string = '', 
+    extra?: { isRemote?: boolean; employmentType?: string; seniority?: string }
+  ): string => {
+    const rPart = (role || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '_');
+    const lPart = (location || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '_');
+    const remotePart = extra?.isRemote ? 'rem' : 'all';
+    const empPart = extra?.employmentType ? extra.employmentType.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_') : 'all';
+    const senPart = extra?.seniority ? extra.seniority.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_') : 'all';
+    return `job_${rPart}_${lPart}_${remotePart}_${empPart}_${senPart}`;
   }
 
   generateInterviewKey = (role: string, difficulty: string = 'standard'): string => {

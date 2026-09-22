@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Loader2, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target } from 'lucide-react';
+import { Search, MapPin, ExternalLink, Sparkles, Building2, Calendar, LoaderCircle, Loader2, Briefcase, ChevronRight, Zap, AlertCircle, ShieldCheck, TrendingUp, Target, RotateCcw, X } from 'lucide-react';
 import { findJobs } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -36,6 +36,7 @@ interface Job {
   matchScore?: number;
   roleTier?: 'safe' | 'stretch' | 'reach' | string;
   matchExplanation?: string;
+  relevanceLabel?: 'Exact Match' | 'Strong Match' | 'Related Match' | string;
   isPoorFit?: boolean;
 }
 
@@ -90,6 +91,8 @@ export default function JobFinder() {
 
   const { activeTargetRole, currentActiveJob, setCurrentActiveJob, clearCurrentJobContext } = useSystemOS();
   const hasAutoSearchedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const searchSequenceRef = useRef<number>(0);
 
   // Synchronize query when navigated with explicit route state, ignoring any legacy demo roles
   useEffect(() => {
@@ -206,16 +209,54 @@ export default function JobFinder() {
     setCurrentActiveJob(activeJob);
   };
 
+  const handleResetSearch = () => {
+    // 1. Abort any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    searchSequenceRef.current++;
+
+    // 2. Clear user input fields
+    setQuery('');
+    setLocation('');
+
+    // 3. Clear results and statuses
+    setJobs([]);
+    setLoading(false);
+    setError(null);
+    setHasSearched(false);
+    setIsFromCache(false);
+
+    // 4. Remove session storage keys (pure search state only)
+    try {
+      sessionStorage.removeItem('job_finder_user_query');
+      sessionStorage.removeItem('job_finder_user_location');
+      sessionStorage.removeItem('job_finder_search_results');
+      sessionStorage.removeItem('job_finder_has_searched');
+    } catch (e) {
+      console.warn('Failed to clear sessionStorage for job finder:', e);
+    }
+    // Note: currentActiveJob is retained so user does not lose application context unless explicitly clicking "Clear Active Job"
+  };
+
   const handleSearchWithQuery = async (searchQuery: string, searchLoc: string, e?: FormEvent) => {
     if (e) e.preventDefault();
-    if (loading || !searchQuery || !searchQuery.trim()) return;
+    if (!searchQuery || !searchQuery.trim()) return;
+
+    // Abort previous in-flight request if one exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const currentSeq = ++searchSequenceRef.current;
 
     const trimmedQuery = searchQuery.trim();
     const trimmedLoc = searchLoc ? searchLoc.trim() : '';
 
     // Search results are for pure discovery - do NOT mutate or clear active job context
     setJobs([]);
-
     setLoading(true);
     setError(null);
     setHasSearched(true);
@@ -232,38 +273,46 @@ export default function JobFinder() {
       }
 
       if (cached && Array.isArray(cached) && cached.length > 0) {
+        if (currentSeq !== searchSequenceRef.current) return;
         setJobs(cached);
         try {
           sessionStorage.setItem('job_finder_search_results', JSON.stringify(cached));
           sessionStorage.setItem('job_finder_has_searched', 'true');
         } catch (e) {}
         setIsFromCache(true);
-        // Do NOT auto-select cached results. Selection must be explicit.
         setLoading(false);
         return;
       }
 
       if (!hasAccess) {
+        if (currentSeq !== searchSequenceRef.current) return;
         setError(`Search limit reached. Upgrade your wallet to unlock extra job scans.`);
         setLoading(false);
         return;
       }
 
       await deductCredit('jobSearches');
-      const results = await findJobs(trimmedQuery, trimmedLoc, candidateProfile);
+      const results = await findJobs(trimmedQuery, trimmedLoc, candidateProfile, 12, controller.signal);
+
+      if (currentSeq !== searchSequenceRef.current) return;
       setJobs(results);
       try {
         sessionStorage.setItem('job_finder_search_results', JSON.stringify(results));
         sessionStorage.setItem('job_finder_has_searched', 'true');
       } catch (e) {}
-      // Do NOT auto-select first result. Selection must be explicit.
       
       cacheManager.set(cacheKey, results, 30 * 60 * 1000);
     } catch (err: any) {
+      if (err.name === 'AbortError' || currentSeq !== searchSequenceRef.current) {
+        // Intentional abort or superseded by a newer search/reset
+        return;
+      }
       console.error('Search failed:', err);
       setError(err.message || "Failed to retrieve job listings. Please try again.");
     } finally {
-      setLoading(false);
+      if (currentSeq === searchSequenceRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -334,41 +383,83 @@ export default function JobFinder() {
       <div className="glass-panel mb-12 p-8 rounded-3xl border border-border bg-surface">
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
           <div className="md:col-span-5">
-            <label htmlFor="job-role-input" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Job Role / Title</label>
+            <div className="flex items-center justify-between mb-3 px-1">
+              <label htmlFor="job-role-input" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block">Job Role / Title</label>
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => handleQueryChange('')}
+                  className="text-[10px] text-ink-dim hover:text-accent font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <X className="w-3 h-3" /> Clear
+                </button>
+              )}
+            </div>
             <div className="relative group">
               <input 
                 id="job-role-input"
                 required
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
-                placeholder="e.g. Senior Frontend Engineer"
+                className="w-full pl-12 pr-10 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
+                placeholder="e.g. AI Product Engineer Intern"
                 aria-label="Job Role or Title"
               />
               <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" aria-hidden="true" />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => handleQueryChange('')}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-ink-dim hover:text-ink rounded-lg transition-colors cursor-pointer"
+                  aria-label="Clear job role"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
           
-          <div className="md:col-span-4">
-            <label htmlFor="job-location-input" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Location / Remote</label>
+          <div className="md:col-span-3">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <label htmlFor="job-location-input" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block">Location / Remote</label>
+              {location && (
+                <button
+                  type="button"
+                  onClick={() => handleLocationChange('')}
+                  className="text-[10px] text-ink-dim hover:text-accent font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <X className="w-3 h-3" /> Clear
+                </button>
+              )}
+            </div>
             <div className="relative group">
               <input 
                 id="job-location-input"
                 value={location}
                 onChange={(e) => handleLocationChange(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
-                placeholder="e.g. San Francisco or Remote"
+                className="w-full pl-12 pr-10 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
+                placeholder="e.g. Remote or Worldwide"
                 aria-label="Job Location or Remote"
               />
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" aria-hidden="true" />
+              {location && (
+                <button
+                  type="button"
+                  onClick={() => handleLocationChange('')}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-ink-dim hover:text-ink rounded-lg transition-colors cursor-pointer"
+                  aria-label="Clear location"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="md:col-span-3">
+          <div className="md:col-span-4 flex items-center gap-2">
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 cursor-pointer"
+              className="flex-1 bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -380,6 +471,18 @@ export default function JobFinder() {
                   <Search className="w-4 h-4" /> Search Jobs
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              id="reset-search-button"
+              onClick={handleResetSearch}
+              title="Reset and clear search"
+              aria-label="Reset Search"
+              className="px-4 py-4 bg-background hover:bg-surface-light text-ink-dim hover:text-ink border border-border hover:border-accent/40 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span className="hidden sm:inline">Reset</span>
             </button>
           </div>
         </form>
@@ -424,13 +527,22 @@ export default function JobFinder() {
             <p className="text-rose-400/80 text-sm mb-6">
               {error}
             </p>
-            <button 
-              id="retry-search-button"
-              onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location)}
-              className="px-6 py-2.5 bg-accent text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:opacity-90 transition-all cursor-pointer"
-            >
-              Retry Search
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              <button 
+                id="retry-search-button"
+                onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location)}
+                className="px-6 py-2.5 bg-accent text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:opacity-90 transition-all cursor-pointer"
+              >
+                Retry Search
+              </button>
+              <button 
+                onClick={handleResetSearch}
+                className="px-4 py-2.5 bg-surface-light hover:bg-surface-light/80 text-ink-dim hover:text-ink border border-border rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
+              </button>
+            </div>
           </div>
         ) : hasSearched && jobs.length === 0 ? (
           <EmptyState
@@ -440,13 +552,13 @@ export default function JobFinder() {
             description="No matching live job listings were found for this search from verified external sources. Try another role title, broader location, or alternative keywords."
             benefitMetric="Real job listings are sourced directly from verified job boards and live career portals"
             primaryAction={{
-              label: "Search 'Full Stack Developer'",
-              onClick: () => handlePopularSearch("Full Stack Developer"),
-              icon: Search
+              label: "Reset & Clear Search",
+              onClick: handleResetSearch,
+              icon: RotateCcw
             }}
             secondaryAction={{
-              label: "Search 'Frontend Developer'",
-              onClick: () => handlePopularSearch("Frontend Developer"),
+              label: "Search 'Full Stack Developer'",
+              onClick: () => handlePopularSearch("Full Stack Developer"),
               icon: Search
             }}
           />
@@ -540,7 +652,16 @@ export default function JobFinder() {
                       <div className="bg-background/80 p-3 rounded-2xl border border-border">
                         <Building2 className="w-6 h-6 text-accent" />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {job.relevanceLabel && (
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                            job.relevanceLabel.toLowerCase().includes('exact') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            job.relevanceLabel.toLowerCase().includes('strong') ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                            'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          }`}>
+                            {job.relevanceLabel}
+                          </span>
+                        )}
                         {job.matchScore !== undefined && (
                           <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
                             job.matchScore >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :

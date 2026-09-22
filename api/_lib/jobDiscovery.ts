@@ -32,6 +32,7 @@ export interface RealJobListing {
   matchScore?: number;
   roleTier?: 'safe' | 'stretch' | 'reach' | string;
   matchExplanation?: string;
+  relevanceLabel?: 'Exact Match' | 'Strong Match' | 'Related Match' | string;
   isPoorFit?: boolean;
 }
 
@@ -44,7 +45,7 @@ interface ProviderCache {
 const CACHE_TTL_MS = 10 * 60 * 1000;
 let arbeitnowCache: ProviderCache | null = null;
 let remoteokCache: ProviderCache | null = null;
-let remotiveCache: ProviderCache | null = null;
+const remotiveQueryCache = new Map<string, ProviderCache>();
 
 const USER_AGENT = 'AIHireFlow-JobDiscovery/1.0 (+https://www.aihireflow.in; contact@aihireflow.in)';
 
@@ -291,20 +292,345 @@ async function fetchRemoteOKJobs(): Promise<RealJobListing[]> {
 }
 
 /**
- * Fetches real job listings from Remotive API
+ * Canonicalizes a job URL by removing tracking params, trailing slashes, and normalizing protocol.
+ */
+export function canonicalizeUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  try {
+    const url = new URL(rawUrl.trim());
+    const trackingParams = [
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+      'ref', 'source', 'fbclid', 'gclid', 'twclid', 'yclid', 'msclkid',
+      '_ga', '_gl', 'session_id'
+    ];
+    for (const p of trackingParams) {
+      url.searchParams.delete(p);
+    }
+    let path = url.pathname.replace(/\/+$/, '');
+    if (!path) path = '/';
+    url.pathname = path;
+    url.hash = '';
+    if (url.protocol === 'http:') {
+      url.protocol = 'https:';
+    }
+    return url.toString().toLowerCase();
+  } catch {
+    return rawUrl.trim().toLowerCase().split('?')[0].replace(/\/+$/, '');
+  }
+}
+
+/**
+ * Deduplicates job listings across providers using:
+ * 1. Provider + Source Job ID
+ * 2. Canonicalized original URL
+ * 3. Normalized Title + Company + Location
+ */
+export function deduplicateJobs(jobs: RealJobListing[]): RealJobListing[] {
+  const seenIds = new Set<string>();
+  const seenUrls = new Set<string>();
+  const seenNormalizedKeys = new Set<string>();
+  const deduped: RealJobListing[] = [];
+
+  for (const job of jobs) {
+    if (!job || !job.title || !job.link) continue;
+
+    // 1. Prefer provider + source job ID when available
+    const provider = (job.provider || job.source || 'job').toLowerCase().trim();
+    if (job.id && job.id.trim()) {
+      const idKey = `${provider}:${job.id.trim().toLowerCase()}`;
+      if (seenIds.has(idKey)) continue;
+      seenIds.add(idKey);
+    }
+
+    // 2. Canonicalized original URL
+    const canonUrl = canonicalizeUrl(job.link);
+    if (canonUrl && canonUrl.length > 5) {
+      if (seenUrls.has(canonUrl)) continue;
+      seenUrls.add(canonUrl);
+    }
+
+    // 3. Normalized combination of title + company + location
+    const normTitle = job.title.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    const normCompany = job.company.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    const normLoc = job.location.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    const textKey = `${normTitle}|${normCompany}|${normLoc}`;
+    if (seenNormalizedKeys.has(textKey)) continue;
+    seenNormalizedKeys.add(textKey);
+
+    deduped.push(job);
+  }
+
+  return deduped;
+}
+
+export interface ParsedQueryIntent {
+  rawQuery: string;
+  normalizedQuery: string;
+  isInternship: boolean;
+  seniority?: 'intern' | 'junior' | 'mid' | 'senior' | 'lead';
+  primaryDomain: 'ai_ml' | 'data' | 'frontend' | 'backend' | 'fullstack' | 'devops' | 'mobile' | 'product' | 'qa' | 'general_swe';
+  keyTerms: string[];
+  roleKeywords: string[];
+}
+
+/**
+ * Extracts structured search intent from user query:
+ * - Primary role keywords
+ * - Seniority level
+ * - Internship/full-time status
+ * - Technical domain
+ */
+export function parseQueryIntent(rawQuery: string): ParsedQueryIntent {
+  const norm = (rawQuery || '').trim().toLowerCase();
+  
+  const isInternship = /\b(intern|internship|trainee|apprentice)\b/i.test(norm);
+  let seniority: 'intern' | 'junior' | 'mid' | 'senior' | 'lead' | undefined = undefined;
+  if (isInternship) {
+    seniority = 'intern';
+  } else if (/\b(junior|jr|entry[ -]?level|associate)\b/i.test(norm)) {
+    seniority = 'junior';
+  } else if (/\b(lead|principal|staff|director|head of|architect)\b/i.test(norm)) {
+    seniority = 'lead';
+  } else if (/\b(senior|sr)\b/i.test(norm)) {
+    seniority = 'senior';
+  }
+
+  let primaryDomain: ParsedQueryIntent['primaryDomain'] = 'general_swe';
+  if (/\b(ai|artificial intelligence|ml|machine learning|deep learning|llm|llms|nlp|computer vision|genai|agent|applied ai)\b/i.test(norm)) {
+    primaryDomain = 'ai_ml';
+  } else if (/\b(data analyst|data analytics|analytics|bi analyst|business intelligence|data scientist|data engineer|sql)\b/i.test(norm)) {
+    primaryDomain = 'data';
+  } else if (/\b(product engineer|product engineering|product manager|product management|pm|product owner)\b/i.test(norm)) {
+    primaryDomain = 'product';
+  } else if (/\b(frontend|front-end|react|vue|angular|ui developer|web developer)\b/i.test(norm)) {
+    primaryDomain = 'frontend';
+  } else if (/\b(backend|back-end|node|express|django|flask|spring|ruby|rails|golang|rust)\b/i.test(norm)) {
+    primaryDomain = 'backend';
+  } else if (/\b(fullstack|full-stack|full stack)\b/i.test(norm)) {
+    primaryDomain = 'fullstack';
+  } else if (/\b(devops|sre|site reliability|cloud engineer|platform engineer|infrastructure|kubernetes)\b/i.test(norm)) {
+    primaryDomain = 'devops';
+  } else if (/\b(mobile|ios|android|flutter|react native)\b/i.test(norm)) {
+    primaryDomain = 'mobile';
+  } else if (/\b(qa|quality assurance|tester|test automation|sdet)\b/i.test(norm)) {
+    primaryDomain = 'qa';
+  }
+
+  const stopWords = new Set([
+    'and', 'or', 'the', 'in', 'at', 'for', 'with', 'to', 'of', 'a', 'an',
+    'role', 'roles', 'job', 'jobs', 'position', 'positions', 'career', 'opportunity',
+    'hiring', 'looking', 'wanted', 'need', 'needed'
+  ]);
+  const keyTerms = norm
+    .split(/[\s,/\-_]+/)
+    .map(t => t.trim())
+    .filter(t => t.length > 1 && !stopWords.has(t));
+
+  return {
+    rawQuery,
+    normalizedQuery: norm,
+    isInternship,
+    seniority,
+    primaryDomain,
+    keyTerms,
+    roleKeywords: keyTerms.filter(t => !['intern', 'internship', 'trainee', 'senior', 'junior', 'lead', 'staff'].includes(t))
+  };
+}
+
+/**
+ * Deterministically evaluates job relevance against user intent.
+ * Enforces hard constraints (e.g. internship status, technical domain compatibility).
+ */
+export function evaluateJobRelevance(
+  job: RealJobListing,
+  intent: ParsedQueryIntent,
+  cleanLoc: string
+): {
+  isRelevant: boolean;
+  score: number;
+  relevanceLabel: 'Exact Match' | 'Strong Match' | 'Related Match';
+  explanation: string;
+} {
+  const titleLower = job.title.toLowerCase();
+  const descLower = job.description.toLowerCase();
+  const tagsLower = (job.tags || []).map(t => t.toLowerCase());
+  const locLower = job.location.toLowerCase();
+
+  const jobIsIntern = /\b(intern|internship|trainee|apprentice)\b/i.test(titleLower) ||
+    tagsLower.some(t => /\b(intern|internship)\b/i.test(t)) ||
+    /\b(intern|internship|trainee)\b/i.test(descLower.slice(0, 400));
+
+  const jobIsSenior = /\b(senior|sr|lead|principal|staff|director|head of|architect)\b/i.test(titleLower);
+
+  // 1. HARD DOMAIN COMPATIBILITY FILTERING
+  if (intent.primaryDomain === 'ai_ml') {
+    const hasAiInTitle = /\b(ai|ml|machine learning|deep learning|llm|llms|nlp|agent|data science|applied ai|generative ai)\b/i.test(titleLower);
+    const hasAiInTags = tagsLower.some(t => /\b(ai|ml|machine learning|deep learning|llm|genai|nlp)\b/i.test(t));
+    const hasAiInDesc = /\b(machine learning|artificial intelligence|large language model|llm|deep learning|neural network|genai)\b/i.test(descLower);
+    const hasProductInTitle = /\b(product)\b/i.test(titleLower);
+
+    // Reject non-technical or completely unrelated roles
+    const isUnrelatedRole = /\b(kundenservice|customer support|copywriter|writer|marketing|sales|shopify|office assistant|service desk|inbound)\b/i.test(titleLower);
+    if (isUnrelatedRole) {
+      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'Unrelated role' };
+    }
+
+    // Must have meaningful AI/ML connection in title, tags, or description
+    if (!hasAiInTitle && !hasAiInTags && (!hasAiInDesc || !hasProductInTitle)) {
+      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'No meaningful AI connection' };
+    }
+  } else if (intent.primaryDomain === 'data') {
+    const hasDataInTitle = /\b(data|analytics|analyst|bi|business intelligence|scientist|sql)\b/i.test(titleLower);
+    const hasDataInTags = tagsLower.some(t => /\b(data|analytics|sql|bi)\b/i.test(t));
+    if (!hasDataInTitle && !hasDataInTags) {
+      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'No data or analytics role alignment' };
+    }
+    // Reject generic software engineer / devops / frontend roles
+    if (/\b(frontend|react|devops|full[- ]stack|rails|shopify|kundenservice|writer)\b/i.test(titleLower) && !hasDataInTitle) {
+      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'Unrelated engineering role for data query' };
+    }
+  } else if (intent.normalizedQuery.includes('react')) {
+    const hasReactInTitle = /\b(react|reactjs|react\.js)\b/i.test(titleLower);
+    const hasReactInSkills = (job.skills || []).some(s => s.toLowerCase().includes('react'));
+    const hasReactInTags = tagsLower.some(t => t.includes('react'));
+    const hasReactInDesc = /\b(react|reactjs|react\.js)\b/i.test(descLower);
+    if (!hasReactInTitle && !hasReactInSkills && !hasReactInTags && !hasReactInDesc) {
+      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'Does not require React' };
+    }
+  }
+
+  // 2. HARD SENIORITY & INTERNSHIP CONSTRAINT
+  if (intent.isInternship) {
+    if (jobIsSenior) {
+      // User explicitly asked for an intern position. Senior/Lead roles are strictly filtered.
+      return { isRelevant: false, score: 0, relevanceLabel: 'Related Match', explanation: 'Senior role incompatible with internship search' };
+    }
+  }
+
+  // 3. SCORING COMPUTATION
+  let baseScore = 60;
+  let exactTitleMatch = false;
+
+  // Exact phrase match in title
+  if (titleLower.includes(intent.normalizedQuery)) {
+    baseScore += 30;
+    exactTitleMatch = true;
+  } else {
+    // Check keyword coverage
+    const matchedKeywords = intent.roleKeywords.filter(k => titleLower.includes(k));
+    if (intent.roleKeywords.length > 0) {
+      const ratio = matchedKeywords.length / intent.roleKeywords.length;
+      baseScore += ratio * 25;
+      if (ratio >= 0.75) exactTitleMatch = true;
+    }
+  }
+
+  // Tags & Skills
+  for (const k of intent.roleKeywords) {
+    if (tagsLower.some(t => t.includes(k))) baseScore += 6;
+    if ((job.skills || []).some(s => s.toLowerCase().includes(k))) baseScore += 6;
+  }
+
+  // Description reinforcement
+  if (intent.roleKeywords.some(k => descLower.includes(k))) {
+    baseScore += 5;
+  }
+
+  // Location / Remote scoring
+  if (cleanLoc) {
+    const isRemoteReq = cleanLoc.includes('remote') || cleanLoc.includes('worldwide');
+    if (isRemoteReq) {
+      if (job.isRemote || locLower.includes('remote') || locLower.includes('worldwide')) {
+        baseScore += 10;
+      }
+    } else {
+      if (locLower.includes(cleanLoc)) {
+        baseScore += 12;
+      } else if (!job.isRemote && !locLower.includes('remote')) {
+        baseScore -= 15;
+      }
+    }
+  }
+
+  // Determine Relevance Label & Calibrate Scores
+  let relevanceLabel: 'Exact Match' | 'Strong Match' | 'Related Match' = 'Related Match';
+  let explanation = '';
+
+  if (intent.isInternship) {
+    if (jobIsIntern && exactTitleMatch) {
+      relevanceLabel = 'Exact Match';
+      baseScore = Math.min(96, Math.max(90, baseScore));
+      explanation = `Verified ${job.title} internship matching your search.`;
+    } else if (jobIsIntern) {
+      relevanceLabel = 'Strong Match';
+      baseScore = Math.min(88, Math.max(82, baseScore));
+      explanation = `Verified internship position in ${job.title}.`;
+    } else {
+      // Full-time role in the target domain (when no active internship opening found)
+      relevanceLabel = 'Related Match';
+      baseScore = Math.min(78, Math.max(68, Math.round(baseScore * 0.85)));
+      explanation = `Verified full-time role in ${job.title} (no active internship opening found).`;
+    }
+  } else {
+    // Regular search
+    if (exactTitleMatch && (!intent.seniority || (intent.seniority === 'senior' && jobIsSenior) || (intent.seniority !== 'senior' && !jobIsSenior))) {
+      relevanceLabel = 'Exact Match';
+      baseScore = Math.min(97, Math.max(88, baseScore));
+      explanation = `Exact title and domain match for ${job.title}.`;
+    } else if (baseScore >= 75) {
+      relevanceLabel = 'Strong Match';
+      baseScore = Math.min(87, Math.max(80, baseScore));
+      explanation = `Strong alignment with ${job.title} and technical domain.`;
+    } else {
+      relevanceLabel = 'Related Match';
+      baseScore = Math.min(76, Math.max(65, baseScore));
+      explanation = `Related opportunity in ${job.title} from verified external listings.`;
+    }
+  }
+
+  return {
+    isRelevant: true,
+    score: Math.min(99, Math.max(50, Math.round(baseScore))),
+    relevanceLabel,
+    explanation
+  };
+}
+
+/**
+ * Fetches real job listings from Remotive API with query-aware caching
  */
 async function fetchRemotiveJobs(query?: string): Promise<RealJobListing[]> {
+  const cleanQ = (query || '').trim().toLowerCase();
+  const cacheKey = cleanQ || '__all__';
   const now = Date.now();
-  if (remotiveCache && (now - remotiveCache.timestamp < CACHE_TTL_MS)) {
-    return remotiveCache.jobs;
+
+  const cached = remotiveQueryCache.get(cacheKey);
+  if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+    return cached.jobs;
   }
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
 
-    const url = query 
-      ? `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(query)}&limit=40`
+    // Determine targeted search keyword for Remotive
+    let searchParam = cleanQ;
+    if (/\b(ai|ml|agent)\b/i.test(cleanQ)) {
+      searchParam = 'ai';
+    } else if (/\b(data)\b/i.test(cleanQ)) {
+      searchParam = 'data';
+    } else if (/\b(react)\b/i.test(cleanQ)) {
+      searchParam = 'react';
+    } else if (/\b(frontend|front-end)\b/i.test(cleanQ)) {
+      searchParam = 'frontend';
+    } else if (/\b(backend|back-end)\b/i.test(cleanQ)) {
+      searchParam = 'backend';
+    } else if (/\b(intern|internship)\b/i.test(cleanQ)) {
+      searchParam = 'intern';
+    }
+
+    const url = searchParam 
+      ? `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(searchParam)}&limit=50`
       : 'https://remotive.com/api/remote-jobs?limit=50';
 
     const res = await fetch(url, {
@@ -315,7 +641,7 @@ async function fetchRemotiveJobs(query?: string): Promise<RealJobListing[]> {
 
     if (!res.ok) {
       console.warn(`[JobDiscovery] Remotive returned status ${res.status}`);
-      return remotiveCache?.jobs || [];
+      return cached?.jobs || [];
     }
 
     const data: any = await res.json();
@@ -351,11 +677,14 @@ async function fetchRemotiveJobs(query?: string): Promise<RealJobListing[]> {
       };
     }).filter(j => j.title && j.link);
 
-    remotiveCache = { jobs: normalized, timestamp: now };
+    if (remotiveQueryCache.size > 30) {
+      remotiveQueryCache.clear();
+    }
+    remotiveQueryCache.set(cacheKey, { jobs: normalized, timestamp: now });
     return normalized;
   } catch (err: any) {
     console.warn('[JobDiscovery] Failed to fetch Remotive:', err.message);
-    return remotiveCache?.jobs || [];
+    return cached?.jobs || [];
   }
 }
 
@@ -371,8 +700,8 @@ export async function searchRealJobs({
   location?: string;
   limit?: number;
 }): Promise<RealJobListing[]> {
-  const cleanQuery = (query || '').trim().toLowerCase();
-  const cleanLoc = (location || '').trim().toLowerCase();
+  const cleanQuery = (query || '').trim();
+  const cleanLoc = (location || '').trim();
 
   // Concurrent fetch from verified real feeds
   const [arbeitnowRes, remoteokRes, remotiveRes] = await Promise.allSettled([
@@ -381,127 +710,64 @@ export async function searchRealJobs({
     fetchRemotiveJobs(cleanQuery || undefined)
   ]);
 
-  const allJobs: RealJobListing[] = [];
-  if (arbeitnowRes.status === 'fulfilled') allJobs.push(...arbeitnowRes.value);
-  if (remoteokRes.status === 'fulfilled') allJobs.push(...remoteokRes.value);
-  if (remotiveRes.status === 'fulfilled') allJobs.push(...remotiveRes.value);
+  const rawJobs: RealJobListing[] = [];
+  if (arbeitnowRes.status === 'fulfilled') rawJobs.push(...arbeitnowRes.value);
+  if (remoteokRes.status === 'fulfilled') rawJobs.push(...remoteokRes.value);
+  if (remotiveRes.status === 'fulfilled') rawJobs.push(...remotiveRes.value);
 
-  if (allJobs.length === 0) {
-    // If all providers failed or were empty, throw explicit provider error
+  if (rawJobs.length === 0) {
     throw new Error('Real job providers are currently unreachable. Please try again in a moment.');
   }
 
-  // Common stop words and generic filler words to exclude from token matching
-  const stopWords = new Set([
-    'and', 'or', 'the', 'in', 'at', 'for', 'with', 'to', 'of', 'a', 'an',
-    'role', 'roles', 'job', 'jobs', 'position', 'positions', 'career', 'opportunity', 'opportunities',
-    'hiring', 'looking', 'wanted', 'need', 'needed'
-  ]);
-  const queryTokens = cleanQuery
-    .split(/[\s,/\-_]+/)
-    .map(t => t.trim())
-    .filter(t => t.length > 1 && !stopWords.has(t));
+  // 1. Cross-provider strict deduplication
+  const dedupedJobs = deduplicateJobs(rawJobs);
 
-  const isRemoteRequested = cleanLoc.includes('remote') || cleanLoc.includes('worldwide') || cleanLoc.includes('anywhere');
-
-  // Score each REAL job based on query and location matching
-  const scoredJobs: Array<{ job: RealJobListing; score: number }> = [];
-  const seenUrls = new Set<string>();
-  const seenTitles = new Set<string>();
-
-  for (const job of allJobs) {
-    // Deduplication by URL
-    if (job.link && seenUrls.has(job.link.toLowerCase())) continue;
-    seenUrls.add(job.link.toLowerCase());
-
-    // Deduplication by normalized company + title
-    const key = `${job.company.toLowerCase()}:${job.title.toLowerCase()}`;
-    if (seenTitles.has(key)) continue;
-    seenTitles.add(key);
-
-    const titleLower = job.title.toLowerCase();
-    const descLower = job.description.toLowerCase();
-    const companyLower = job.company.toLowerCase();
-    const jobLocLower = job.location.toLowerCase();
-    const tagsLower = (job.tags || []).map(t => t.toLowerCase());
-
-    let score = 0;
-
-    // 1. Title Scoring
-    if (cleanQuery && titleLower.includes(cleanQuery)) {
-      score += 120; // Exact phrase match in title
-    } else if (queryTokens.length > 0) {
-      const matchedTokensInTitle = queryTokens.filter(token => titleLower.includes(token));
-      if (matchedTokensInTitle.length === queryTokens.length) {
-        score += 80; // All tokens present in title
-      } else {
-        score += matchedTokensInTitle.length * 25;
-      }
-    }
-
-    // 2. Tags Scoring
-    if (queryTokens.length > 0) {
-      for (const token of queryTokens) {
-        if (tagsLower.some(t => t.includes(token))) {
-          score += 15;
-        }
-      }
-    }
-
-    // 3. Company Scoring
-    if (cleanQuery && companyLower.includes(cleanQuery)) {
-      score += 20;
-    }
-
-    // 4. Description Scoring
-    if (queryTokens.length > 0) {
-      for (const token of queryTokens) {
-        if (descLower.includes(token)) {
-          score += 5;
-        }
-      }
-    }
-
-    // 5. Location Scoring & Filtering
-    if (cleanLoc) {
-      if (isRemoteRequested) {
-        if (job.isRemote || jobLocLower.includes('remote') || jobLocLower.includes('worldwide')) {
-          score += 35;
-        }
-      } else {
-        const locTokens = cleanLoc
-          .split(/[\s,/\-_]+/)
-          .map(t => t.trim())
-          .filter(t => t.length > 2 && !stopWords.has(t));
-
-        let locMatched = false;
-        for (const locToken of locTokens) {
-          if (jobLocLower.includes(locToken)) {
-            score += 40;
-            locMatched = true;
-          }
-        }
-        // If user searched for a specific country or city and job has an explicit, non-remote location that doesn't match, penalize
-        if (!locMatched && !job.isRemote && !jobLocLower.includes('remote')) {
-          score -= 30;
-        }
-      }
-    }
-
-    // If a query was specified, ensure meaningful relevance (score >= 15 ensures at least tag or title alignment)
-    if (queryTokens.length > 0 && score < 15) {
-      continue;
-    } else if (cleanQuery && score <= 0) {
-      continue;
-    }
-
-    scoredJobs.push({ job, score });
+  // If no query string was entered, return latest verified live listings
+  if (!cleanQuery) {
+    return dedupedJobs.slice(0, limit).map(j => ({
+      ...j,
+      relevanceLabel: 'Related Match' as const,
+      matchScore: 80,
+      roleTier: 'stretch' as const,
+      matchExplanation: `Verified live opening at ${j.company} from ${j.source}.`
+    }));
   }
 
-  // Sort by score descending
-  scoredJobs.sort((a, b) => b.score - a.score);
+  // 2. Structured query intent extraction
+  const intent = parseQueryIntent(cleanQuery);
 
-  return scoredJobs.slice(0, limit).map(item => item.job);
+  // 3. Deterministic filtering and scoring
+  const qualifiedJobs: RealJobListing[] = [];
+
+  for (const job of dedupedJobs) {
+    const evalResult = evaluateJobRelevance(job, intent, cleanLoc);
+    if (!evalResult.isRelevant) {
+      continue;
+    }
+
+    qualifiedJobs.push({
+      ...job,
+      matchScore: evalResult.score,
+      relevanceLabel: evalResult.relevanceLabel,
+      roleTier: evalResult.score >= 85 ? 'safe' : (evalResult.score >= 75 ? 'stretch' : 'reach'),
+      matchExplanation: evalResult.explanation
+    });
+  }
+
+  // Sort qualified jobs: Exact Match first, then Strong Match, then Related Match, and by score descending
+  qualifiedJobs.sort((a, b) => {
+    const tierPriority = (label?: string) => {
+      if (!label) return 0;
+      if (label.includes('Exact')) return 3;
+      if (label.includes('Strong')) return 2;
+      return 1;
+    };
+    const tierDiff = tierPriority(b.relevanceLabel) - tierPriority(a.relevanceLabel);
+    if (tierDiff !== 0) return tierDiff;
+    return (b.matchScore || 0) - (a.matchScore || 0);
+  });
+
+  return qualifiedJobs.slice(0, limit);
 }
 
 /**
@@ -510,22 +776,28 @@ export async function searchRealJobs({
 export function applySingleHeuristicScore(job: RealJobListing, profileText?: string): RealJobListing {
   const profileLower = (profileText || '').toLowerCase();
   const titleWords = job.title.toLowerCase().split(/[\s,/\-_]+/).filter(w => w.length > 2);
-  let matchPoints = 72;
+  let matchPoints = job.matchScore || 72;
 
   if (profileLower) {
     for (const w of titleWords) {
-      if (profileLower.includes(w)) matchPoints += 5;
+      if (profileLower.includes(w)) matchPoints += 4;
     }
     for (const t of job.tags || []) {
-      if (profileLower.includes(t.toLowerCase())) matchPoints += 4;
+      if (profileLower.includes(t.toLowerCase())) matchPoints += 3;
     }
   }
 
-  const score = Math.min(96, Math.max(62, matchPoints));
+  // Cap score if this is a Related Match to prevent violating hard constraints
+  let maxCap = 96;
+  if (job.relevanceLabel === 'Related Match') {
+    maxCap = 78;
+  }
+
+  const score = Math.min(maxCap, Math.max(55, matchPoints));
   const roleTier = score >= 85 ? 'safe' : (score >= 75 ? 'stretch' : 'reach');
-  const explanation = profileText 
+  const explanation = job.matchExplanation || (profileText 
     ? `Verified opening matching your background in ${job.tags?.[0] || job.title.split(' ')[0] || 'technology'}.`
-    : `Verified live opening at ${job.company} from ${job.source}.`;
+    : `Verified live opening at ${job.company} from ${job.source}.`);
 
   return {
     ...job,
@@ -542,6 +814,7 @@ export function applyHeuristicScores(jobs: RealJobListing[], profileText?: strin
 /**
  * Uses Velona (z-ai/glm-5.3-flash) strictly as a semantic matching layer to score and rank REAL jobs.
  * Velona does NOT invent or alter titles, companies, links, or locations.
+ * Velona does NOT override hard constraints or turn Related Matches into Exact Matches.
  */
 export async function rankAndScoreJobsWithAI({
   jobs,
@@ -563,6 +836,7 @@ export async function rankAndScoreJobsWithAI({
       title: j.title,
       company: j.company,
       location: j.location,
+      relevanceLabel: j.relevanceLabel,
       tags: j.tags?.slice(0, 5) || []
     }));
 
@@ -577,7 +851,8 @@ ${JSON.stringify(jobSummaries, null, 2)}
 
 Instructions:
 1. For each job, evaluate how candidate skills align with the role.
-2. Output a JSON array with one object per job:
+2. If relevanceLabel is "Related Match", do NOT give a matchScore above 78.
+3. Output a JSON array with one object per job:
 [
   {
     "index": 0,
@@ -611,17 +886,24 @@ IMPORTANT: Return raw JSON only. Do NOT modify or output job titles, companies, 
     return jobs.map((job, idx) => {
       const aiScore = scoreMap.get(idx);
       if (aiScore) {
-        const score = typeof aiScore.matchScore === 'number' ? Math.max(50, Math.min(99, Math.round(aiScore.matchScore))) : 80;
+        let maxCap = 98;
+        if (job.relevanceLabel === 'Related Match') {
+          maxCap = 78;
+        }
+
+        const rawScore = typeof aiScore.matchScore === 'number' ? Math.round(aiScore.matchScore) : (job.matchScore || 80);
+        const score = Math.max(50, Math.min(maxCap, rawScore));
         const tier = ['safe', 'stretch', 'reach'].includes(aiScore.roleTier) ? aiScore.roleTier : (score >= 85 ? 'safe' : score >= 75 ? 'stretch' : 'reach');
         const explanation = typeof aiScore.matchExplanation === 'string' && aiScore.matchExplanation.trim()
           ? aiScore.matchExplanation.trim()
-          : `Verified opening at ${job.company} matching candidate skillset.`;
+          : (job.matchExplanation || `Verified opening at ${job.company} matching candidate skillset.`);
 
         return {
           ...job,
           matchScore: score,
           roleTier: tier,
-          matchExplanation: explanation
+          matchExplanation: explanation,
+          relevanceLabel: job.relevanceLabel
         };
       }
 

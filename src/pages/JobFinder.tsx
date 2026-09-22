@@ -185,11 +185,11 @@ export default function JobFinder() {
   }, [user]);
 
   const popularSearches = [
+    'AI Product Intern',
     'Frontend Developer',
     'Full Stack Engineer',
     'Data Analyst',
-    'Backend Engineer',
-    'DevOps Engineer',
+    'AI Engineer',
     'Product Manager',
   ];
 
@@ -529,7 +529,7 @@ export default function JobFinder() {
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 className="w-full pl-12 pr-10 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
-                placeholder="e.g. Software Engineer or Data Analyst"
+                placeholder="e.g. AI Product Intern at Mumbai, Software Engineer"
                 aria-label="Job Role or Title"
               />
               <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" aria-hidden="true" />

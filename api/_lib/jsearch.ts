@@ -427,8 +427,21 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
     };
   }
 
-  const cleanQuery = (options.query || '').trim();
-  const cleanLoc = (options.location || '').trim();
+  let cleanQuery = (options.query || '').trim();
+  let cleanLoc = (options.location || '').trim();
+
+  // Smart query extraction for natural language queries like "AI product intern role at mumbai"
+  const locMatch = cleanQuery.match(/\s+(?:role\s+at|jobs?\s+at|openings?\s+at|internship\s+at|role\s+in|jobs?\s+in|openings?\s+in|internship\s+in|in|at)\s+([a-zA-Z\s]+)$/i);
+  if (locMatch && locMatch[1]) {
+    const extractedLoc = locMatch[1].trim();
+    if (!cleanLoc) {
+      cleanLoc = extractedLoc;
+    }
+    cleanQuery = cleanQuery.slice(0, locMatch.index).trim();
+  }
+
+  // Clean trailing filler words like "role", "roles", "jobs", "openings"
+  cleanQuery = cleanQuery.replace(/\s+(?:roles?|jobs?|openings?|vacanc(?:y|ies))\s*$/i, '').trim() || (options.query || '').trim();
 
   if (!cleanQuery) {
     return {
@@ -453,9 +466,9 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
     fallback: Boolean(options.allowAllDateFallback)
   });
 
-  // Check 15-min cache to protect user's Pay As You Go budget
+  // Check 15-min cache to protect user's Pay As You Go budget (only if non-empty)
   const cached = queryCache.get(cacheKey);
-  if (cached && (Date.now() - cached.timestamp < QUERY_CACHE_TTL_MS)) {
+  if (cached && cached.jobs?.length > 0 && (Date.now() - cached.timestamp < QUERY_CACHE_TTL_MS)) {
     return {
       success: true,
       jobs: cached.jobs,
@@ -504,8 +517,7 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
         }
       };
 
-      // Requirement 3: If fewer than 5 jobs are returned, automatically make only ONE fallback request using the officially supported 3-day date filter.
-      // Requirement 9: Maximum one fallback search.
+      // Requirement 3: If fewer than 5 jobs are returned, automatically fallback to 3-day filter
       if (aggregatedJobs.length < 5 && initialDateFilter === 'today') {
         const fallback3DaysResult = await executeSingleJSearchQuery(
           options,
@@ -519,8 +531,10 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
           mergeUniqueJobs(fallback3DaysResult.jobs);
           totalFound = Math.max(totalFound, aggregatedJobs.length);
         }
-      } else if (aggregatedJobs.length < 5 && initialDateFilter === '3days' && options.allowAllDateFallback) {
-        // Requirement 4: If fewer than 5 jobs are still available, use the all-date filter only when necessary.
+      }
+
+      // Requirement 4: If fewer than 5 jobs are still available, use the all-date filter to discover real opportunities
+      if (aggregatedJobs.length < 5 && options.allowAllDateFallback !== false) {
         const fallbackAllResult = await executeSingleJSearchQuery(
           options,
           'all',
@@ -532,6 +546,31 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
         if (fallbackAllResult.success) {
           mergeUniqueJobs(fallbackAllResult.jobs);
           totalFound = Math.max(totalFound, aggregatedJobs.length);
+        }
+      }
+
+      // If still 0 jobs found for a multi-word niche query (e.g. "AI Product Intern"),
+      // perform a broader search on the core role to discover closely matching openings
+      if (aggregatedJobs.length === 0 && cleanQuery.split(/\s+/).length > 2) {
+        const words = cleanQuery.split(/\s+/);
+        const broaderQueries = [
+          words.slice(1).join(' '), // e.g. "Product Intern"
+          [words[0], words[words.length - 1]].join(' ') // e.g. "AI Intern"
+        ].filter(q => q.trim().length > 3);
+
+        for (const broaderQ of broaderQueries) {
+          if (aggregatedJobs.length >= 5) break;
+          const broaderRes = await executeSingleJSearchQuery(
+            options,
+            'all',
+            apiKey,
+            broaderQ,
+            cleanLoc
+          );
+          if (broaderRes.success && broaderRes.jobs.length > 0) {
+            mergeUniqueJobs(broaderRes.jobs);
+            totalFound = Math.max(totalFound, aggregatedJobs.length);
+          }
         }
       }
 

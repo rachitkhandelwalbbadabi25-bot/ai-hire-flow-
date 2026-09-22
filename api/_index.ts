@@ -1,8 +1,16 @@
 import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
+import dns from 'dns';
 import { enforceSubscriptionAndCredits } from './_lib/subscriptionEnforcement.ts';
 import { CREDIT_PACKS, getCreditPackById } from './_lib/creditPacks.ts';
+
+// Prioritize IPv4 to avoid Cloudflare/carrier IPv6 connect timeouts on Node.js
+try {
+  dns.setDefaultResultOrder?.('ipv4first');
+} catch {
+  // ignore
+}
 
 // Guard serverless runtime against unhandled async exceptions
 process.on('unhandledRejection', (reason) => {
@@ -143,22 +151,21 @@ export async function callVelonaChatCompletion({
   const isJob = (operation || '').includes('job');
   const isLearningPath = operation === 'learning_path';
 
-  // Safe bounded max_tokens for GLM-5.3-Flash based on operation
-  const defaultTokens = isJob ? 2400 : (isLearningPath ? 2000 : 1600);
-  const safeMaxTokens = maxTokens ? Math.min(Math.max(300, maxTokens), 4096) : defaultTokens;
+  // For Z.ai GLM-5.3-Flash, reasoning tokens count towards max_tokens.
+  // We allocate safe, generous headroom (at least 3500 up to 4096) so reasoning tokens never starve output content.
+  const safeMaxTokens = Math.min(4096, Math.max(3500, maxTokens || 3500));
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.1, Math.min(1.0, temperature))
     : 0.7;
 
   const velonaStart = Date.now();
-  // Avoid duplicate retries for learning_path to stay well within Vercel's 60-second execution window
-  const maxRetries = (isLearningPath || !isJob) ? 0 : 1;
-  const maxTotalBudgetMs = isJob ? 180000 : 50000;
-  const perAttemptTimeoutMs = isJob ? 110000 : (isLearningPath ? 38000 : 42000);
+  const maxRetries = 1;
+  const maxTotalBudgetMs = isJob ? 180000 : 55000;
+  const perAttemptTimeoutMs = isJob ? 90000 : (isLearningPath ? 35000 : 38000);
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 15000)) {
+    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 12000)) {
       break;
     }
 
@@ -177,7 +184,7 @@ export async function callVelonaChatCompletion({
         currentMessages = [
           {
             role: 'user',
-            content: `[System Instructions: ${mergedSystem}]\n\n${firstUser.content}`
+            content: `[System Instructions: ${mergedSystem}]\n\n${firstUser.content}\n\nIMPORTANT: Be extremely concise. Output strictly the requested content immediately.`
           },
           ...nonSystemParts.slice(1)
         ];
@@ -187,11 +194,12 @@ export async function callVelonaChatCompletion({
     const payload: any = {
       model: modelId,
       messages: currentMessages,
-      temperature: safeTemperature,
+      temperature: attempt > 0 ? 0.2 : safeTemperature,
       stream: false,
-      max_tokens: safeMaxTokens,
-      enable_thinking: false,
-      thinking: { type: 'disabled' }
+      max_tokens: attempt > 0 ? 4096 : safeMaxTokens,
+      // Z.ai GLM-5.3-Flash Deep Thinking: 'low' reasoning effort significantly speeds up generation
+      // and minimizes reasoning token consumption, guaranteeing that completion content fits comfortably.
+      reasoning_effort: 'low'
     };
 
     if (jsonMode && !attempt) {
@@ -200,7 +208,7 @@ export async function callVelonaChatCompletion({
 
     try {
       if (attempt > 0) {
-        const backoffMs = Math.min(2000, 400 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 200));
+        const backoffMs = Math.min(1500, 300 * Math.pow(2, attempt - 1));
         await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
 
@@ -252,7 +260,7 @@ export async function callVelonaChatCompletion({
           err.code = 'VELONA_API_ERROR';
         }
 
-        if (isTransient && attempt < maxRetries && (Date.now() - velonaStart) < (maxTotalBudgetMs - 15000)) {
+        if (isTransient && attempt < maxRetries && (Date.now() - velonaStart) < (maxTotalBudgetMs - 12000)) {
           lastError = err;
           continue;
         }
@@ -304,19 +312,59 @@ export async function callVelonaChatCompletion({
       }
 
       const choice = data.choices?.[0];
-      const content = (typeof choice?.message?.content === 'string' && choice.message.content.trim())
-        ? choice.message.content
-        : (typeof choice?.text === 'string' && choice.text.trim())
-          ? choice.text
-          : (typeof choice?.message?.reasoning_content === 'string' && choice.message.reasoning_content.trim())
-            ? choice.message.reasoning_content
-            : null;
+      let content: string | null = null;
+
+      if (typeof choice?.message?.content === 'string' && choice.message.content.trim()) {
+        content = choice.message.content;
+      } else if (Array.isArray(choice?.message?.content)) {
+        const joined = choice.message.content
+          .map((part: any) => (typeof part === 'string' ? part : (part?.text || part?.content || '')))
+          .join('')
+          .trim();
+        if (joined) content = joined;
+      } else if (choice?.message?.content && typeof choice.message.content === 'object') {
+        try {
+          content = JSON.stringify(choice.message.content);
+        } catch {
+          // ignore
+        }
+      }
+
+      // Comprehensive fallback inspection across OpenAI, GLM, DeepSeek and custom gateway properties
+      if (!content) {
+        if (typeof choice?.text === 'string' && choice.text.trim()) {
+          content = choice.text;
+        } else if (typeof choice?.message?.reasoning_content === 'string' && choice.message.reasoning_content.trim()) {
+          content = choice.message.reasoning_content;
+        } else if (typeof choice?.message?.reasoning === 'string' && choice.message.reasoning.trim()) {
+          content = choice.message.reasoning;
+        } else if (typeof choice?.reasoning === 'string' && choice.reasoning.trim()) {
+          content = choice.reasoning;
+        } else if (typeof choice?.message?.thought === 'string' && choice.message.thought.trim()) {
+          content = choice.message.thought;
+        } else if (typeof choice?.delta?.content === 'string' && choice.delta.content.trim()) {
+          content = choice.delta.content;
+        } else if (typeof choice?.message?.tool_calls?.[0]?.function?.arguments === 'string' && choice.message.tool_calls[0].function.arguments.trim()) {
+          content = choice.message.tool_calls[0].function.arguments;
+        } else if (typeof data?.response === 'string' && data.response.trim()) {
+          content = data.response;
+        } else if (typeof data?.output === 'string' && data.output.trim()) {
+          content = data.output;
+        } else if (typeof data?.text === 'string' && data.text.trim()) {
+          content = data.text;
+        }
+      }
 
       if (!content) {
-        const err: any = new Error('Velona API response did not contain completion content.');
+        const isLengthExhaustion = choice?.finish_reason === 'length';
+        const err: any = new Error(
+          isLengthExhaustion
+            ? 'Velona AI token limit reached during reasoning. Please retry.'
+            : 'Velona API response did not contain completion content.'
+        );
         err.status = 502;
         err.velonaStatus = response.status;
-        err.code = 'MALFORMED_UPSTREAM_RESPONSE';
+        err.code = isLengthExhaustion ? 'TOKEN_LIMIT_EXCEEDED' : 'MALFORMED_UPSTREAM_RESPONSE';
         err.attemptDuration = attemptDuration;
         throw err;
       }
@@ -379,7 +427,20 @@ export async function callVelonaChatCompletion({
       }
 
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
-      if (attempt < maxRetries && timeRemaining > 20000 && (err.name === 'FetchError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT')) {
+      if (
+        attempt < maxRetries &&
+        timeRemaining > 12000 &&
+        (
+          err.name === 'FetchError' ||
+          err.code === 'ECONNRESET' ||
+          err.code === 'ETIMEDOUT' ||
+          err.code === 'MALFORMED_UPSTREAM_RESPONSE' ||
+          err.code === 'TOKEN_LIMIT_EXCEEDED' ||
+          err.status === 502 ||
+          err.status === 503 ||
+          err.status === 504
+        )
+      ) {
         continue;
       }
 

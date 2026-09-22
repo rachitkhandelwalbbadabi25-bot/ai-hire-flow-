@@ -16,7 +16,7 @@
  * 4. Honest error reporting without secrets exposure.
  */
 
-import { RealJobListing, stripHtml, formatRelativeDate, extractSkillsFromText } from './jobDiscovery.ts';
+import { RealJobListing, stripHtml, formatRelativeDate, extractSkillsFromText, sortJobsByPostingDateNewestFirst } from './jobDiscovery.ts';
 
 export interface JSearchQueryOptions {
   query: string;
@@ -24,6 +24,7 @@ export interface JSearchQueryOptions {
   employmentType?: 'FULLTIME' | 'INTERN' | 'CONTRACTOR' | 'PARTTIME' | string;
   isRemote?: boolean;
   datePosted?: 'all' | 'today' | '3days' | 'week' | 'month';
+  allowAllDateFallback?: boolean;
   limit?: number;
 }
 
@@ -206,6 +207,11 @@ export function normalizeJSearchJob(item: JSearchRawJob, fallbackLoc?: string): 
     };
   }
 
+  // Parse authentic postedAt timestamp/ISO
+  const parsedPostedAt = item.job_posted_at_datetime_utc 
+    ? item.job_posted_at_datetime_utc 
+    : (typeof item.job_posted_at_timestamp === 'number' ? new Date(item.job_posted_at_timestamp * 1000).toISOString() : null);
+
   return {
     id: `jsearch-${item.job_id || Math.random().toString(36).slice(2)}`,
     title: cleanTitle,
@@ -215,6 +221,7 @@ export function normalizeJSearchJob(item: JSearchRawJob, fallbackLoc?: string): 
     description: plainDesc || 'Please refer to the official job posting for complete role requirements.',
     skills: derivedSkills.slice(0, 8),
     datePosted: formatRelativeDate(item.job_posted_at_datetime_utc || item.job_posted_at_timestamp),
+    postedAt: parsedPostedAt,
     source: publisher,
     provider: 'OpenWeb Ninja JSearch',
     retrievedAt,
@@ -231,8 +238,179 @@ export function normalizeJSearchJob(item: JSearchRawJob, fallbackLoc?: string): 
 }
 
 /**
- * Executes a live search via the OpenWeb Ninja JSearch API.
- * Strict cost control: Only 1 page is requested per search.
+ * Executes a single HTTP query to OpenWeb Ninja JSearch for a given date_posted filter.
+ */
+async function executeSingleJSearchQuery(
+  options: JSearchQueryOptions,
+  dateFilter: string,
+  apiKey: string,
+  cleanQuery: string,
+  cleanLoc: string
+): Promise<JSearchResult> {
+  // Requirement 8: country: in (default or mapped from location)
+  const countryCode = cleanLoc ? mapCountryToCode(cleanLoc) : 'in';
+  const targetCountry = countryCode || 'in';
+
+  // Build effective search query for JSearch (e.g. "Data Analyst" or "Data Analyst in Bangalore")
+  // Keep country out of the query string when the country parameter is explicitly set,
+  // preventing upstream Google for Jobs query parser timeouts.
+  let effectiveQuery = cleanQuery;
+  if (cleanLoc && !/^(india|in|usa|us|united states|uk|united kingdom)$/i.test(cleanLoc.trim())) {
+    if (!cleanQuery.toLowerCase().includes(cleanLoc.toLowerCase())) {
+      effectiveQuery = `${cleanQuery} in ${cleanLoc}`;
+    }
+  }
+
+  // Detect endpoint:
+  // Direct OpenWeb Ninja: https://api.openwebninja.com/jsearch/search with x-api-key
+  // RapidAPI fallback: if key looks like rapidapi key
+  const isRapidApi = Boolean(process.env.RAPIDAPI_KEY) || (apiKey.length === 50 && /^[a-f0-9]+$/i.test(apiKey));
+  
+  const baseUrl = isRapidApi 
+    ? 'https://jsearch.p.rapidapi.com/search' 
+    : 'https://api.openwebninja.com/jsearch/search';
+
+  const url = new URL(baseUrl);
+  url.searchParams.set('query', effectiveQuery.slice(0, 150));
+  url.searchParams.set('page', '1');
+  url.searchParams.set('num_pages', '1'); // Requirement 8: num_pages: 1 initially
+  url.searchParams.set('date_posted', dateFilter); // Requirement 2 & 3: officially supported date_posted
+  url.searchParams.set('country', targetCountry); // Requirement 8: country: in
+  url.searchParams.set('language', 'en'); // Requirement 8: language: en
+
+  // Requirement 8: work_from_home: omitted unless the user selects remote jobs
+  if (options.isRemote) {
+    url.searchParams.set('work_from_home', 'true');
+    url.searchParams.set('remote_jobs_only', 'true');
+  }
+
+  if (options.employmentType) {
+    const emp = options.employmentType.toUpperCase();
+    if (['FULLTIME', 'INTERN', 'CONTRACTOR', 'PARTTIME'].includes(emp)) {
+      url.searchParams.set('employment_types', emp);
+    }
+  }
+
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    'User-Agent': 'AIHireFlow/1.0 (+https://aihireflow.in)'
+  };
+
+  if (isRapidApi) {
+    headers['X-RapidAPI-Key'] = apiKey;
+    headers['X-RapidAPI-Host'] = 'jsearch.p.rapidapi.com';
+  } else {
+    headers['x-api-key'] = apiKey;
+  }
+
+  // 50-second timeout to allow upstream search scraping and residential proxy routing to complete
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 50000);
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    // Handle specific HTTP error status codes honestly
+    if (!response.ok) {
+      const status = response.status;
+      let errMessage = `OpenWeb Ninja JSearch returned HTTP ${status}`;
+      try {
+        const errBody = await response.json();
+        if (errBody?.message) errMessage = errBody.message;
+      } catch {
+        // ignore
+      }
+
+      if (status === 401 || status === 403) {
+        return {
+          success: false,
+          jobs: [],
+          totalFound: 0,
+          cached: false,
+          provider: 'OpenWeb Ninja JSearch',
+          errorCode: 'AUTH_ERROR',
+          error: 'Authentication failed for OpenWeb Ninja JSearch API. Please check your OPENWEB_NINJA_API_KEY in environment variables.'
+        };
+      }
+
+      if (status === 429) {
+        return {
+          success: false,
+          jobs: [],
+          totalFound: 0,
+          cached: false,
+          provider: 'OpenWeb Ninja JSearch',
+          errorCode: 'RATE_LIMIT',
+          error: 'OpenWeb Ninja JSearch API request limit or credit quota exceeded. Please check your OpenWeb Ninja Pay As You Go balance.'
+        };
+      }
+
+      return {
+        success: false,
+        jobs: [],
+        totalFound: 0,
+        cached: false,
+        provider: 'OpenWeb Ninja JSearch',
+        errorCode: 'API_ERROR',
+        error: `OpenWeb Ninja JSearch API error: ${errMessage}`
+      };
+    }
+
+    const rawData: any = await response.json();
+    const rawJobList: JSearchRawJob[] = Array.isArray(rawData?.data) ? rawData.data : [];
+
+    const normalizedJobs = rawJobList.map(item => normalizeJSearchJob(item, cleanLoc));
+
+    return {
+      success: true,
+      jobs: normalizedJobs,
+      totalFound: rawJobList.length,
+      cached: false,
+      provider: 'OpenWeb Ninja JSearch'
+    };
+  } catch (fetchErr: any) {
+    clearTimeout(timeoutId);
+    if (fetchErr.name === 'AbortError') {
+      return {
+        success: false,
+        jobs: [],
+        totalFound: 0,
+        cached: false,
+        provider: 'OpenWeb Ninja JSearch',
+        errorCode: 'TIMEOUT',
+        error: 'OpenWeb Ninja JSearch request timed out. Please try again.'
+      };
+    }
+    return {
+      success: false,
+      jobs: [],
+      totalFound: 0,
+      cached: false,
+      provider: 'OpenWeb Ninja JSearch',
+      errorCode: 'NETWORK_ERROR',
+      error: `Network error connecting to OpenWeb Ninja JSearch: ${fetchErr.message || 'Connection failed'}`
+    };
+  }
+}
+
+/**
+ * Executes live search via OpenWeb Ninja JSearch API with smart, single-fallback logic.
+ * Requirements:
+ * 1. OpenWeb Ninja JSearch API
+ * 2. Search for jobs posted today first (date_posted: 'today')
+ * 3. If < 5 jobs returned, automatically make only ONE fallback request with date_posted: '3days'
+ * 4. If < 5 jobs still available, use all-date filter only when requested/necessary
+ * 5. Display 5-6 real jobs whenever available (never fake/AI jobs)
+ * 6. Sort by actual posting date, newest first (never invent or modify dates)
+ * 7. Do not use jobs[0], results[0], slice(0,1)
+ * 8. country: in, language: en, num_pages: 1 initially, work_from_home omitted unless remote
+ * 9. Maximum one fallback search, no infinite retries
+ * 10. API key kept server-side
  */
 export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Promise<JSearchResult> {
   const apiKey = getOpenWebNinjaApiKey();
@@ -262,13 +440,17 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
     };
   }
 
+  // Requirement 2: First search for jobs posted today using officially supported date_posted value
+  const initialDateFilter = options.datePosted || 'today';
+
   // Cache key based on sanitized inputs
   const cacheKey = JSON.stringify({
     q: cleanQuery.toLowerCase(),
     loc: cleanLoc.toLowerCase(),
     emp: (options.employmentType || '').toUpperCase(),
     rem: Boolean(options.isRemote),
-    date: options.datePosted || 'all'
+    date: initialDateFilter,
+    fallback: Boolean(options.allowAllDateFallback)
   });
 
   // Check 15-min cache to protect user's Pay As You Go budget
@@ -291,167 +473,86 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
 
   const searchPromise = (async (): Promise<JSearchResult> => {
     try {
-      // Build effective search query for JSearch (e.g. "Data Analyst Intern in India")
-      let effectiveQuery = cleanQuery;
-      if (cleanLoc && !cleanQuery.toLowerCase().includes(cleanLoc.toLowerCase())) {
-        effectiveQuery = `${cleanQuery} in ${cleanLoc}`;
+      // Step 1: Initial request (date_posted: 'today' by default)
+      const initialResult = await executeSingleJSearchQuery(
+        options,
+        initialDateFilter,
+        apiKey,
+        cleanQuery,
+        cleanLoc
+      );
+
+      // If initial request failed with an authentication or network error, return honestly
+      if (!initialResult.success) {
+        return initialResult;
       }
 
-      // Detect endpoint:
-      // Direct OpenWeb Ninja: https://api.openwebninja.com/jsearch/search with x-api-key
-      // RapidAPI fallback: if key looks like rapidapi key (e.g., contains rapidapi header or user sets RAPIDAPI_KEY)
-      const isRapidApi = Boolean(process.env.RAPIDAPI_KEY) || (apiKey.length === 50 && /^[a-f0-9]+$/i.test(apiKey));
-      
-      const baseUrl = isRapidApi 
-        ? 'https://jsearch.p.rapidapi.com/search' 
-        : 'https://api.openwebninja.com/jsearch/search';
+      let aggregatedJobs: RealJobListing[] = [...initialResult.jobs];
+      let totalFound = initialResult.totalFound;
 
-      const url = new URL(baseUrl);
-      url.searchParams.set('query', effectiveQuery.slice(0, 150));
-      url.searchParams.set('page', '1');
-      url.searchParams.set('num_pages', '1'); // CRITICAL COST SAFEGUARD: exactly 1 page
-      url.searchParams.set('date_posted', options.datePosted || 'all');
-
-      if (options.isRemote) {
-        url.searchParams.set('remote_jobs_only', 'true');
-      }
-
-      if (options.employmentType) {
-        const emp = options.employmentType.toUpperCase();
-        if (['FULLTIME', 'INTERN', 'CONTRACTOR', 'PARTTIME'].includes(emp)) {
-          url.searchParams.set('employment_types', emp);
+      // Helper to merge and deduplicate jobs
+      const mergeUniqueJobs = (newJobs: RealJobListing[]) => {
+        const seenKeys = new Set(
+          aggregatedJobs.map(j => (j.id || `${j.title.trim().toLowerCase()}--${j.company.trim().toLowerCase()}`))
+        );
+        for (const job of newJobs) {
+          const key = (job.id || `${job.title.trim().toLowerCase()}--${job.company.trim().toLowerCase()}`);
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            aggregatedJobs.push(job);
+          }
         }
-      }
-
-      const countryCode = cleanLoc ? mapCountryToCode(cleanLoc) : undefined;
-      if (countryCode) {
-        url.searchParams.set('country', countryCode);
-      }
-
-      const headers: Record<string, string> = {
-        'Accept': 'application/json',
-        'User-Agent': 'AIHireFlow/1.0 (+https://aihireflow.in)'
       };
 
-      if (isRapidApi) {
-        headers['X-RapidAPI-Key'] = apiKey;
-        headers['X-RapidAPI-Host'] = 'jsearch.p.rapidapi.com';
-      } else {
-        headers['x-api-key'] = apiKey;
+      // Requirement 3: If fewer than 5 jobs are returned, automatically make only ONE fallback request using the officially supported 3-day date filter.
+      // Requirement 9: Maximum one fallback search.
+      if (aggregatedJobs.length < 5 && initialDateFilter === 'today') {
+        const fallback3DaysResult = await executeSingleJSearchQuery(
+          options,
+          '3days',
+          apiKey,
+          cleanQuery,
+          cleanLoc
+        );
+
+        if (fallback3DaysResult.success) {
+          mergeUniqueJobs(fallback3DaysResult.jobs);
+          totalFound = Math.max(totalFound, aggregatedJobs.length);
+        }
+      } else if (aggregatedJobs.length < 5 && initialDateFilter === '3days' && options.allowAllDateFallback) {
+        // Requirement 4: If fewer than 5 jobs are still available, use the all-date filter only when necessary.
+        const fallbackAllResult = await executeSingleJSearchQuery(
+          options,
+          'all',
+          apiKey,
+          cleanQuery,
+          cleanLoc
+        );
+
+        if (fallbackAllResult.success) {
+          mergeUniqueJobs(fallbackAllResult.jobs);
+          totalFound = Math.max(totalFound, aggregatedJobs.length);
+        }
       }
 
-      // Fetch with 12s timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      // Requirement 6: Sort jobs by their actual posting date, newest first. Never invent or modify posting dates.
+      aggregatedJobs = sortJobsByPostingDateNewestFirst(aggregatedJobs);
 
-      let response: Response;
-      try {
-        response = await fetch(url.toString(), {
-          method: 'GET',
-          headers,
-          signal: controller.signal
-        });
-      } catch (fetchErr: any) {
-        clearTimeout(timeoutId);
-        if (fetchErr.name === 'AbortError') {
-          return {
-            success: false,
-            jobs: [],
-            totalFound: 0,
-            cached: false,
-            provider: 'OpenWeb Ninja JSearch',
-            errorCode: 'TIMEOUT',
-            error: 'OpenWeb Ninja JSearch request timed out after 12 seconds. Please try again.'
-          };
-        }
-        return {
-          success: false,
-          jobs: [],
-          totalFound: 0,
-          cached: false,
-          provider: 'OpenWeb Ninja JSearch',
-          errorCode: 'NETWORK_ERROR',
-          error: `Network error connecting to OpenWeb Ninja JSearch: ${fetchErr.message || 'Connection failed'}`
-        };
-      }
-      clearTimeout(timeoutId);
-
-      // Handle specific HTTP error status codes honestly
-      if (!response.ok) {
-        const status = response.status;
-        let errMessage = `OpenWeb Ninja JSearch returned HTTP ${status}`;
-        try {
-          const errBody = await response.json();
-          if (errBody?.message) errMessage = errBody.message;
-        } catch {
-          // ignore
-        }
-
-        if (status === 401 || status === 403) {
-          return {
-            success: false,
-            jobs: [],
-            totalFound: 0,
-            cached: false,
-            provider: 'OpenWeb Ninja JSearch',
-            errorCode: 'AUTH_ERROR',
-            error: 'Authentication failed for OpenWeb Ninja JSearch API. Please check your OPENWEB_NINJA_API_KEY in environment variables.'
-          };
-        }
-
-        if (status === 429) {
-          return {
-            success: false,
-            jobs: [],
-            totalFound: 0,
-            cached: false,
-            provider: 'OpenWeb Ninja JSearch',
-            errorCode: 'RATE_LIMIT',
-            error: 'OpenWeb Ninja JSearch API request limit or credit quota exceeded. Please check your OpenWeb Ninja Pay As You Go balance.'
-          };
-        }
-
-        return {
-          success: false,
-          jobs: [],
-          totalFound: 0,
-          cached: false,
-          provider: 'OpenWeb Ninja JSearch',
-          errorCode: 'API_ERROR',
-          error: `OpenWeb Ninja JSearch API error: ${errMessage}`
-        };
-      }
-
-      const rawData: any = await response.json();
-      const rawJobList: JSearchRawJob[] = Array.isArray(rawData?.data) ? rawData.data : [];
-
-      if (rawJobList.length === 0) {
-        return {
-          success: true,
-          jobs: [],
-          totalFound: 0,
-          cached: false,
-          provider: 'OpenWeb Ninja JSearch'
-        };
-      }
-
-      // Normalize real job listings
-      const normalizedJobs = rawJobList.map(item => normalizeJSearchJob(item, cleanLoc));
-
-      // Limit results safely
-      const finalJobs = normalizedJobs.slice(0, options.limit || 15);
+      // Requirement 5 & 7: Render all valid jobs (never fake/AI jobs, never slice down to 1)
+      const maxLimit = Math.max(15, options.limit || 15);
+      const finalJobs = aggregatedJobs.slice(0, maxLimit);
 
       // Store in query cache to protect credit consumption
       queryCache.set(cacheKey, {
         jobs: finalJobs,
-        totalFound: rawJobList.length,
+        totalFound: aggregatedJobs.length,
         timestamp: Date.now()
       });
 
       return {
         success: true,
         jobs: finalJobs,
-        totalFound: rawJobList.length,
+        totalFound: aggregatedJobs.length,
         cached: false,
         provider: 'OpenWeb Ninja JSearch'
       };

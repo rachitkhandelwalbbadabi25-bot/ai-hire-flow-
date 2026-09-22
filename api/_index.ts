@@ -1562,7 +1562,7 @@ app.all(['/api/jobs/search', '/api/jobs'], async (req, res, next) => {
     const allowFallback = params.allowFallback === true || params.allowFallback === 'true';
     const limit = Math.min(25, Math.max(1, Number(params.limit) || 12));
 
-    const { searchRealJobs, rankAndScoreJobsWithAI } = await import('./_lib/jobDiscovery.ts');
+    const { searchRealJobs, rankAndScoreJobsWithAI, sortJobsByPostingDateNewestFirst } = await import('./_lib/jobDiscovery.ts');
 
     const searchResult = await searchRealJobs({
       query: query.trim(),
@@ -1618,19 +1618,22 @@ app.all(['/api/jobs/search', '/api/jobs'], async (req, res, next) => {
       callVelona: callVelonaChatCompletion
     });
 
-    const exactMatches = scoredJobs.filter(j => j.relevanceCategory === 'exact');
-    const relatedMatches = scoredJobs.filter(j => j.relevanceCategory !== 'exact');
+    // Requirement 6: Sort jobs by their actual posting date, newest first.
+    const sortedJobs = sortJobsByPostingDateNewestFirst(scoredJobs);
+
+    const exactMatches = sortedJobs.filter(j => j.relevanceCategory === 'exact');
+    const relatedMatches = sortedJobs.filter(j => j.relevanceCategory !== 'exact');
 
     return res.json({
       success: true,
       isConfigured: searchResult.isConfigured,
       provider: searchResult.provider,
-      jobs: scoredJobs,
+      jobs: sortedJobs,
       exactMatches,
       relatedMatches,
       exactCount: exactMatches.length,
       relatedCount: relatedMatches.length,
-      totalCount: scoredJobs.length,
+      totalCount: sortedJobs.length,
       cached: searchResult.cached,
       query: query.trim(),
       location: location.trim(),

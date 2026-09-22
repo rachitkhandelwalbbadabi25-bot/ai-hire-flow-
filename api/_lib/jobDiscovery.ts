@@ -123,6 +123,49 @@ export function formatRelativeDate(input: string | number | undefined): string {
 }
 
 /**
+ * Extracts numeric timestamp in milliseconds from date string, ISO, or relative text.
+ * Never invents or fabricates dates.
+ */
+export function parsePostingTimestamp(dateVal?: string | number | null): number {
+  if (!dateVal) return 0;
+  if (typeof dateVal === 'number') {
+    return dateVal > 1e11 ? dateVal : dateVal * 1000;
+  }
+  const parsed = Date.parse(dateVal);
+  if (!isNaN(parsed)) return parsed;
+
+  const m = String(dateVal).trim().match(/^(\d+)\s*([mhdwo])\b/i);
+  if (m) {
+    const val = parseInt(m[1], 10);
+    const unit = m[2].toLowerCase();
+    const now = Date.now();
+    if (unit === 'm') return now - val * 60 * 1000;
+    if (unit === 'h') return now - val * 3600 * 1000;
+    if (unit === 'd') return now - val * 86400 * 1000;
+    if (unit === 'w') return now - val * 7 * 86400 * 1000;
+    if (unit === 'o') return now - val * 30 * 86400 * 1000;
+  }
+  return 0;
+}
+
+/**
+ * Sorts jobs by their actual posting date, newest first.
+ * Strictly adheres to requirement: Never invent or modify posting dates.
+ */
+export function sortJobsByPostingDateNewestFirst<T extends { postedAt?: string | null; datePosted?: string; matchScore?: number }>(jobs: T[]): T[] {
+  return [...jobs].sort((a, b) => {
+    const timeA = parsePostingTimestamp(a.postedAt) || parsePostingTimestamp(a.datePosted);
+    const timeB = parsePostingTimestamp(b.postedAt) || parsePostingTimestamp(b.datePosted);
+    if (timeA !== timeB && timeA > 0 && timeB > 0) {
+      return timeB - timeA; // Newest first
+    }
+    if (timeB > 0 && timeA === 0) return 1;
+    if (timeA > 0 && timeB === 0) return -1;
+    return (b.matchScore || 0) - (a.matchScore || 0);
+  });
+}
+
+/**
  * Extracts normalized skill keywords from job title, description, and source tags
  */
 export function extractSkillsFromText(title: string, description: string, tags: string[] = []): string[] {
@@ -1063,25 +1106,11 @@ export async function searchRealJobs({
       });
     }
 
-    // Sort: Exact Matches first, then Related Matches, and by score descending
-    qualifiedJobs.sort((a, b) => {
-      const aIsExact = a.relevanceCategory === 'exact' ? 1 : 0;
-      const bIsExact = b.relevanceCategory === 'exact' ? 1 : 0;
-      if (bIsExact !== aIsExact) return bIsExact - aIsExact;
-
-      const tierPriority = (label?: string) => {
-        if (!label) return 0;
-        if (label.includes('Exact')) return 3;
-        if (label.includes('Strong')) return 2;
-        return 1;
-      };
-      const tierDiff = tierPriority(b.relevanceLabel) - tierPriority(a.relevanceLabel);
-      if (tierDiff !== 0) return tierDiff;
-      return (b.matchScore || 0) - (a.matchScore || 0);
-    });
+    // Requirement 6: Sort jobs by their actual posting date, newest first. Never invent or modify posting dates.
+    const sortedJobs = sortJobsByPostingDateNewestFirst(qualifiedJobs);
 
     return {
-      jobs: qualifiedJobs.slice(0, limit),
+      jobs: sortedJobs.slice(0, Math.max(15, limit)),
       provider: 'OpenWeb Ninja JSearch',
       isConfigured: true,
       totalFound: jsearchRes.totalFound,
@@ -1290,13 +1319,19 @@ Instructions:
 ]
 IMPORTANT: Return raw JSON only. Do NOT modify or output job titles, companies, or links.`;
 
-    const velonaResponse = await callVelona({
+    const aiTimeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+    const velonaCallPromise = callVelona({
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
       jsonMode: true,
       maxTokens: 800,
       operation: 'job_match'
     });
+    const velonaResponse = await Promise.race([velonaCallPromise, aiTimeoutPromise]);
+    if (!velonaResponse) {
+      console.warn('[JobDiscovery] Velona semantic scoring timed out after 5s; falling back to instant heuristic scoring.');
+      return applyHeuristicScores(jobs, candidateProfile);
+    }
 
     const rawContent = velonaResponse?.content || velonaResponse?.text || '';
     const cleaned = rawContent.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();

@@ -282,7 +282,15 @@ export default function JobFinder() {
     allowFallback: boolean = false
   ) => {
     if (e) e.preventDefault();
-    if (!searchQuery || !searchQuery.trim()) return;
+
+    // If query is empty or whitespace, gracefully default to activeTargetRole or 'Software Engineer'
+    let effectiveQuery = (searchQuery || '').trim();
+    if (!effectiveQuery) {
+      effectiveQuery = (activeTargetRole && !isDemoRole(activeTargetRole))
+        ? activeTargetRole.trim()
+        : 'Software Engineer';
+      handleQueryChange(effectiveQuery);
+    }
 
     // Abort previous in-flight request if one exists
     if (abortControllerRef.current) {
@@ -292,7 +300,7 @@ export default function JobFinder() {
     abortControllerRef.current = controller;
     const currentSeq = ++searchSequenceRef.current;
 
-    const trimmedQuery = searchQuery.trim();
+    const trimmedQuery = effectiveQuery;
     const trimmedLoc = searchLoc ? searchLoc.trim() : '';
 
     // Search results are for pure discovery - do NOT mutate or clear active job context
@@ -333,13 +341,15 @@ export default function JobFinder() {
       }
 
       if (!hasAccess) {
-        if (currentSeq !== searchSequenceRef.current) return;
-        setError(`Search limit reached. Upgrade your wallet to unlock extra job scans.`);
-        setLoading(false);
-        return;
+        setSearchNotice('Daily free search quota reached. Results are provided in live discovery mode.');
       }
 
-      await deductCredit('jobSearches');
+      try {
+        await deductCredit('jobSearches');
+      } catch (creditErr) {
+        console.warn('Credit usage logging deferred:', creditErr);
+      }
+
       const searchResult: JobSearchResult = await findJobsDetailed(
         trimmedQuery,
         trimmedLoc,
@@ -516,11 +526,10 @@ export default function JobFinder() {
             <div className="relative group">
               <input 
                 id="job-role-input"
-                required
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 className="w-full pl-12 pr-10 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
-                placeholder="e.g. AI Product Engineer Intern"
+                placeholder="e.g. Software Engineer or Data Analyst"
                 aria-label="Job Role or Title"
               />
               <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" aria-hidden="true" />

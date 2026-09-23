@@ -170,13 +170,45 @@ class AnalysisJobService {
     });
 
     if (!startRes.ok) {
-      const errData = await startRes.json().catch(() => ({}));
+      let friendlyError = `Failed to initiate analysis job (HTTP ${startRes.status})`;
+      try {
+        const errText = await startRes.text();
+        if (errText.includes('520') || errText.includes('Cloudflare') || errText.includes('<!DOCTYPE') || errText.includes('<html')) {
+          friendlyError = 'The AI audit service is currently experiencing upstream network latency or a gateway connection issue. Please click Run Audit to retry.';
+        } else {
+          try {
+            const errData = JSON.parse(errText);
+            friendlyError = errData.error || friendlyError;
+          } catch {
+            friendlyError = errText.slice(0, 150).replace(/<[^>]*>/g, '').trim() || friendlyError;
+          }
+        }
+      } catch {
+        // fallback
+      }
       this.clearActiveJobId();
-      throw new Error(errData.error || `Failed to initiate analysis job (HTTP ${startRes.status})`);
+      throw new Error(friendlyError);
     }
 
     const startData = await startRes.json();
     const effectiveJobId = startData.analysisId || analysisId;
+
+    // Fast-path: When server executes and returns the completed analysis directly in the POST response
+    if (startData.status === 'completed' && startData.result) {
+      this.clearActiveJobId();
+      if (userId && db) {
+        try {
+          const jobDocRef = doc(db, 'users', userId, 'analysisJobs', effectiveJobId);
+          await updateDoc(jobDocRef, {
+            status: 'completed',
+            updatedAt: new Date().toISOString()
+          });
+        } catch (e) {
+          // Ignore doc update error
+        }
+      }
+      return startData.result;
+    }
 
     // Polling loop: every 2 seconds check job status until completed or failed
     const maxPolls = 60; // 60 polls * 2000ms = 120 seconds max polling ceiling

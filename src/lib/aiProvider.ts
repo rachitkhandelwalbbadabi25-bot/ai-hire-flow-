@@ -49,9 +49,17 @@ async function parseJsonResponse(res: Response, endpointDescription: string): Pr
   const contentType = res.headers.get('content-type') || '';
   const text = await res.text();
 
+  // Intercept Cloudflare / upstream HTML error pages
+  if (text.includes('520') || text.includes('Cloudflare') || text.includes('<!DOCTYPE') || text.includes('<html')) {
+    throw new Error('The AI service connection was interrupted by an upstream network or origin gateway issue (HTTP 520). Please try again in a moment.');
+  }
+
   if (!contentType.includes('application/json') && !text.trim().startsWith('{') && !text.trim().startsWith('[')) {
-    const preview = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+    const preview = text.slice(0, 120).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     if (!res.ok) {
+      if (res.status === 502 || res.status === 504) {
+        throw new Error('The AI service is temporarily unavailable or timed out. Please retry in a moment.');
+      }
       throw new Error(`Server returned HTTP ${res.status} (${res.statusText || 'Error'}) from ${endpointDescription}. Preview: ${preview || '(empty)'}`);
     }
     throw new Error(`Expected JSON response from ${endpointDescription} but received HTML/Text (HTTP ${res.status}): ${preview}`);
@@ -60,7 +68,7 @@ async function parseJsonResponse(res: Response, endpointDescription: string): Pr
   try {
     return JSON.parse(text);
   } catch (err: any) {
-    const preview = text.slice(0, 100).replace(/\s+/g, ' ').trim();
+    const preview = text.slice(0, 100).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     throw new Error(`Invalid JSON returned by ${endpointDescription} (HTTP ${res.status}): ${preview}`);
   }
 }

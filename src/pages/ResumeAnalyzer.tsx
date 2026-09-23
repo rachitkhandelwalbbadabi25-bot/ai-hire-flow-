@@ -1146,10 +1146,15 @@ export default function ResumeAnalyzer() {
 
     } catch (err: any) {
       console.error('[ResumeAnalyzer] Analysis error:', err);
-      setError(err.message || "Resume analysis failed. Please try again.");
+      let userFriendlyMsg = err.message || "Resume analysis failed. Please try again.";
+      if (userFriendlyMsg.includes('520') || userFriendlyMsg.includes('Cloudflare') || userFriendlyMsg.includes('<!DOCTYPE')) {
+        userFriendlyMsg = "The AI audit service is currently experiencing upstream network latency or a temporary gateway issue. Please click Run Audit to retry.";
+      }
+      setError(userFriendlyMsg);
     } finally {
       isAnalyzingRef.current = false;
       setIsAnalyzing(false);
+      setAnalysisStatus('');
     }
   };
 

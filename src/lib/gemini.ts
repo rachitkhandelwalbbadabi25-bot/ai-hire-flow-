@@ -431,10 +431,15 @@ ${cleanResume}
     });
 
     if (startRes.ok) {
+      const startData = await startRes.json().catch(() => ({}));
+      if (startData.status === 'completed' && startData.result) {
+        return startData.result;
+      }
+      const effectiveId = startData.analysisId || analysisId;
       const maxPolls = 60;
       for (let i = 0; i < maxPolls; i++) {
         await new Promise(r => setTimeout(r, 2000));
-        const checkRes = await fetch(`/api/resume/analyze-job/${analysisId}`);
+        const checkRes = await fetch(`/api/resume/analyze-job/${effectiveId}`);
         if (checkRes.ok) {
           const job = await checkRes.json();
           if (job.status === 'completed' && job.result) {

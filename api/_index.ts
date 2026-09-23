@@ -77,10 +77,26 @@ export function getVelonaApiKey(): string | undefined {
   return sanitized || undefined;
 }
 
+export function sanitizeHttpStatus(status: any): number {
+  const num = typeof status === 'number' ? status : Number(status);
+  if (isNaN(num) || num < 400 || num >= 600) return 500;
+  // Cloudflare-proprietary 520 must never be emitted as our origin web server response status
+  if (num === 520) return 502;
+  return num;
+}
+
 export function sanitizeSafeErrorMessage(rawMessage: any): string {
   if (!rawMessage) return 'An unexpected error occurred during AI generation.';
   const str = typeof rawMessage === 'string' ? rawMessage : (rawMessage.message || String(rawMessage));
+
+  // Detect Cloudflare / Upstream HTML error pages
+  if (str.includes('520') || str.includes('Cloudflare') || str.includes('<!DOCTYPE') || str.includes('<html')) {
+    return 'The AI audit service is currently experiencing upstream network latency or a gateway connection issue (HTTP 520). Please retry in a moment.';
+  }
+
   let safe = str
+    // Strip HTML tags if any
+    .replace(/<[^>]*>/g, ' ')
     .replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, 'Bearer [REDACTED]')
     .replace(/[a-zA-Z0-9_\-]{32,}/g, '[REDACTED_KEY]')
     .replace(/\s+/g, ' ')
@@ -151,21 +167,24 @@ export async function callVelonaChatCompletion({
   const isJob = (operation || '').includes('job');
   const isLearningPath = operation === 'learning_path';
 
-  // For Z.ai GLM-5.3-Flash, reasoning tokens count towards max_tokens.
-  // We allocate safe, generous headroom (at least 3500 up to 4096) so reasoning tokens never starve output content.
-  const safeMaxTokens = Math.min(4096, Math.max(3500, maxTokens || 3500));
+  // For Z.ai GLM-5.3-Flash: Allocate safe tokens (2200-3000) so reasoning and response fit comfortably
+  // without risking Vercel 60s timeout ceiling.
+  const safeMaxTokens = Math.min(3200, Math.max(2000, maxTokens || 2600));
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.1, Math.min(1.0, temperature))
-    : 0.7;
+    : 0.2;
 
   const velonaStart = Date.now();
   const maxRetries = 1;
-  const maxTotalBudgetMs = isJob ? 180000 : 55000;
-  const perAttemptTimeoutMs = isJob ? 90000 : (isLearningPath ? 35000 : 38000);
+  // Strict timeout management: Vercel serverless has a 60s maximum duration ceiling.
+  // We keep the total budget at 50s and per-attempt at 42s so our code always cleans up
+  // and returns a structured JSON error before Vercel or Cloudflare abruptly terminates with Error 520.
+  const maxTotalBudgetMs = 50000;
+  const perAttemptTimeoutMs = isJob ? 42000 : (isLearningPath ? 30000 : 35000);
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 12000)) {
+    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 15000)) {
       break;
     }
 
@@ -191,24 +210,19 @@ export async function callVelonaChatCompletion({
       }
     }
 
+    // Clean payload for Velona GLM 5.3 Flash:
+    // Omit reasoning_effort and response_format, which cause GLM 5.3 Flash on Velona upstream to exceed 60s.
     const payload: any = {
       model: modelId,
       messages: currentMessages,
-      temperature: attempt > 0 ? 0.2 : safeTemperature,
+      temperature: attempt > 0 ? 0.1 : safeTemperature,
       stream: false,
-      max_tokens: attempt > 0 ? 4096 : safeMaxTokens,
-      // Z.ai GLM-5.3-Flash Deep Thinking: 'low' reasoning effort significantly speeds up generation
-      // and minimizes reasoning token consumption, guaranteeing that completion content fits comfortably.
-      reasoning_effort: 'low'
+      max_tokens: attempt > 0 ? 2500 : safeMaxTokens
     };
-
-    if (jsonMode && !attempt) {
-      payload.response_format = { type: 'json_object' };
-    }
 
     try {
       if (attempt > 0) {
-        const backoffMs = Math.min(1500, 300 * Math.pow(2, attempt - 1));
+        const backoffMs = Math.min(1500, 400 * Math.pow(2, attempt - 1));
         await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
 
@@ -231,20 +245,26 @@ export async function callVelonaChatCompletion({
         let errorDetails = '';
         try {
           const errorBody = await response.text();
-          try {
-            const errJson = JSON.parse(errorBody);
-            errorDetails = errJson.error?.message || errJson.message || errorBody;
-          } catch {
-            errorDetails = errorBody;
+          if (errorBody.includes('520') || errorBody.includes('Cloudflare') || errorBody.includes('<!DOCTYPE') || errorBody.includes('<html')) {
+            errorDetails = 'Velona upstream server returned an unexpected Cloudflare gateway error (HTTP 520).';
+          } else {
+            try {
+              const errJson = JSON.parse(errorBody);
+              errorDetails = errJson.error?.message || errJson.message || errorBody;
+            } catch {
+              errorDetails = errorBody;
+            }
           }
         } catch {
           errorDetails = `HTTP status ${response.status}`;
         }
 
         const safeDetails = sanitizeSafeErrorMessage(errorDetails);
-        const isTransient = [500, 502, 503, 504].includes(response.status);
+        // Include 520 as a transient status for one controlled retry
+        const isTransient = [500, 502, 503, 504, 520].includes(response.status);
+        const effectiveStatus = response.status === 520 ? 502 : response.status;
         const err: any = new Error(safeDetails || `Velona API responded with HTTP status ${response.status}`);
-        err.status = response.status;
+        err.status = effectiveStatus;
         err.velonaStatus = response.status;
         err.attemptDuration = attemptDuration;
 
@@ -260,7 +280,7 @@ export async function callVelonaChatCompletion({
           err.code = 'VELONA_API_ERROR';
         }
 
-        if (isTransient && attempt < maxRetries && (Date.now() - velonaStart) < (maxTotalBudgetMs - 12000)) {
+        if (isTransient && attempt < maxRetries && (Date.now() - velonaStart) < (maxTotalBudgetMs - 15000)) {
           lastError = err;
           continue;
         }
@@ -429,7 +449,7 @@ export async function callVelonaChatCompletion({
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
       if (
         attempt < maxRetries &&
-        timeRemaining > 12000 &&
+        timeRemaining > 15000 &&
         (
           err.name === 'FetchError' ||
           err.code === 'ECONNRESET' ||
@@ -438,7 +458,9 @@ export async function callVelonaChatCompletion({
           err.code === 'TOKEN_LIMIT_EXCEEDED' ||
           err.status === 502 ||
           err.status === 503 ||
-          err.status === 504
+          err.status === 504 ||
+          err.status === 520 ||
+          err.velonaStatus === 520
         )
       ) {
         continue;
@@ -587,7 +609,7 @@ app.post([
     });
   } catch (err: any) {
     const totalDuration = Date.now() - requestStart;
-    const rawStatus = (typeof err.status === 'number' && err.status >= 400 && err.status < 600) ? err.status : 500;
+    const rawStatus = sanitizeHttpStatus((typeof err.status === 'number' && err.status >= 400 && err.status < 600) ? err.status : 500);
     const safeMsg = sanitizeSafeErrorMessage(err.message || 'Internal AI generation error');
     const errorCode = err.code || 'AI_GENERATION_FAILED';
     const velonaStatus = err.velonaStatus || (rawStatus !== 500 ? rawStatus : 'N/A');
@@ -1065,7 +1087,7 @@ CANDIDATE RESUME:
 ${cleanResume}
 `;
 
-    // 4. Call Velona with optimized parameters (safe maxTokens: 3800 prevents premature length truncation)
+    // 4. Call Velona with optimized parameters (safe maxTokens: 2600 for fast GLM-5.3-Flash inference)
     let velonaResult = await callVelonaChatCompletion({
       messages: [
         { role: 'system', content: 'You are an ATS scoring API for AI HireFlow. Output raw valid JSON only. Keep explanations concise and adhere to schema limits.' },
@@ -1073,7 +1095,7 @@ ${cleanResume}
       ],
       temperature: 0.2,
       jsonMode: true,
-      maxTokens: 3800,
+      maxTokens: 2600,
       requestId: job.analysisId,
       operation: 'resume_analysis_job',
       meta: {
@@ -1097,7 +1119,7 @@ ${cleanResume}
       console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] First JSON parse attempt failed (${firstParseErr.message}), finish_reason=${velonaResult.finishReason}.`);
     }
 
-    // Requirement 12: Controlled Single Response Recovery if first response is malformed/truncated
+    // Controlled Single Response Recovery if first response is malformed/truncated
     if (!parsed) {
       console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] Executing ONE controlled internal retry for malformed response...`);
       didRetry = true;
@@ -1110,7 +1132,7 @@ ${cleanResume}
         ],
         temperature: 0.1,
         jsonMode: true,
-        maxTokens: 3800,
+        maxTokens: 2500,
         requestId: `${job.analysisId}_retry`,
         operation: 'resume_analysis_job_recovery'
       });
@@ -1166,21 +1188,22 @@ ${cleanResume}
     job.updatedAt = Date.now();
 
     const isTimeout = err.code === 'TIMEOUT' || err.status === 504 || (err.message && err.message.toLowerCase().includes('time'));
+    const safeErrorMsg = sanitizeSafeErrorMessage(err.message || 'Resume analysis failed. Please try again.');
     job.error = isTimeout 
       ? 'Analysis is taking longer than expected. Please retry in a moment.' 
-      : (err.message || 'Resume analysis failed. Please try again.');
+      : safeErrorMsg;
     job.diagnostics = {
       totalDurationMs: Date.now() - jobStart,
       parseResult: 'ERROR',
       finishReason: lastFinishReason,
       model: lastModel,
-      httpStatus: lastHttpStatus,
+      httpStatus: sanitizeHttpStatus(err.status || lastHttpStatus || 500),
       sample: err.rawSample || lastRawSample
     };
   }
 }
 
-// 1. Initiate or reconnect to an asynchronous analysis job
+// 1. Initiate or reconnect to an analysis job
 app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) => {
   try {
     const body = req.body || {};
@@ -1225,18 +1248,19 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
     // Deduplication check: if job already exists and is active, return current status
     const existing = analysisJobs.get(analysisId);
     if (existing) {
+      if (existing.status === 'completed' && existing.result) {
+        return res.status(200).json({
+          analysisId: existing.analysisId,
+          status: 'completed',
+          result: existing.result,
+          diagnostics: existing.diagnostics
+        });
+      }
       if (existing.status === 'processing' || existing.status === 'queued') {
         return res.status(200).json({
           analysisId: existing.analysisId,
           status: existing.status,
           message: 'Analysis job is already in progress'
-        });
-      }
-      if (existing.status === 'completed') {
-        return res.status(200).json({
-          analysisId: existing.analysisId,
-          status: 'completed',
-          result: existing.result
         });
       }
     }
@@ -1251,21 +1275,33 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
 
     analysisJobs.set(analysisId, job);
 
-    // Immediate acknowledgment: browser does not hang waiting on the AI completion
-    res.status(202).json({
-      analysisId,
-      status: 'processing',
-      message: 'Analysis job started successfully'
-    });
+    // In serverless / Vercel, un-awaited promises terminate when the response returns.
+    // We execute the analysis job and return the completed result in the response.
+    await processResumeAnalysisJob(job, resumeText, jobDescription, fileType);
 
-    // Launch background asynchronous execution
-    processResumeAnalysisJob(job, resumeText, jobDescription, fileType).catch((err) => {
-      console.error(`[AI HireFlow][ResumeJob:${analysisId}] Unhandled async worker error:`, err);
+    if (job.status === 'completed' && job.result) {
+      return res.status(200).json({
+        analysisId: job.analysisId,
+        status: 'completed',
+        result: job.result,
+        diagnostics: job.diagnostics
+      });
+    }
+
+    const failureStatus = sanitizeHttpStatus(job.diagnostics?.httpStatus || 502);
+    return res.status(failureStatus).json({
+      analysisId: job.analysisId,
+      status: 'failed',
+      error: job.error || 'Resume analysis failed. Please try again.',
+      code: 'ANALYSIS_FAILED',
+      diagnostics: job.diagnostics
     });
   } catch (err: any) {
     console.error('Failed to create resume analysis job:', err);
-    res.status(500).json({
-      error: err.message || 'Failed to initialize analysis job',
+    const safeError = sanitizeSafeErrorMessage(err.message || 'Failed to initialize analysis job');
+    const safeStatus = sanitizeHttpStatus(err.status || 500);
+    res.status(safeStatus).json({
+      error: safeError,
       code: 'JOB_INIT_FAILED'
     });
   }
@@ -1660,9 +1696,10 @@ app.all(['/api/*', '/api'], (req, res) => {
 
 // Global Error Handler for API
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const status = (typeof err.status === 'number' && err.status >= 400 && err.status < 600) 
+  const rawStatus = (typeof err.status === 'number' && err.status >= 400 && err.status < 600) 
     ? err.status 
     : ((typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600) ? err.statusCode : 500);
+  const status = sanitizeHttpStatus(rawStatus);
   const safeMsg = sanitizeSafeErrorMessage(err.message || 'Internal Server Error');
   console.error(`[AI HireFlow][Diagnostics] endpoint=${req.path || '/api'}, http_status=${status}, model=${getVelonaModel()}, duration_ms=0, velona_status=N/A, error_category=${err.code || 'INTERNAL_ERROR'}, message=${safeMsg}`);
   

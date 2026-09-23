@@ -363,8 +363,9 @@ export default function JobFinder() {
 
       if (searchResult.errorCode) {
         if (searchResult.errorCode === 'MISSING_KEY' || searchResult.requiresKey) {
+          setProviderStatus(prev => prev ? { ...prev, configured: false } : { provider: 'OpenWeb Ninja JSearch', configured: false, plan: 'Pay As You Go' });
           setError(
-            'OpenWeb Ninja JSearch API key is not configured. Please add OPENWEB_NINJA_API_KEY in environment variables to retrieve real vacancies from LinkedIn, Indeed, Glassdoor, and Google for Jobs.'
+            'OpenWeb Ninja JSearch API key is not configured in this hosting environment. Add OPENWEB_NINJA_API_KEY in your hosting settings (e.g. Vercel/Cloud Run environment variables) or click "Test with Public Feeds" below.'
           );
         } else if (searchResult.errorCode === 'AUTH_ERROR') {
           setError(
@@ -375,12 +376,16 @@ export default function JobFinder() {
             'OpenWeb Ninja JSearch credit limit or rate quota reached. Please check your Pay As You Go plan balance on OpenWeb Ninja.'
           );
         } else if (searchResult.errorCode === 'TIMEOUT') {
-          setError('OpenWeb Ninja JSearch request timed out after 12 seconds. Please retry.');
+          setError('OpenWeb Ninja JSearch request timed out. Please retry.');
         } else {
           setError(searchResult.error || 'Failed to retrieve job listings. Please try again.');
         }
         setJobs([]);
         return;
+      }
+
+      if (searchResult.isConfigured !== undefined) {
+        setProviderStatus(prev => prev ? { ...prev, configured: Boolean(searchResult.isConfigured) } : null);
       }
 
       setJobs(searchResult.jobs);
@@ -464,17 +469,6 @@ export default function JobFinder() {
         <p className="text-ink-dim font-medium text-lg max-w-2xl mb-4">
           Discover real, verified job vacancies from live external sources with AI-powered candidate compatibility matching.
         </p>
-        <div className="flex items-center gap-3 flex-wrap mb-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>OpenWeb Ninja JSearch • Live Jobs from LinkedIn, Indeed, Glassdoor & Google for Jobs</span>
-          </div>
-          {providerStatus?.configured && (
-            <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-bold">
-              Pay As You Go Active
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Setup Notice if OpenWeb Ninja API Key is not set in environment */}

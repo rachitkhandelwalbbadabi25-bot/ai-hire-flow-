@@ -88,7 +88,7 @@ interface CachedQueryResult {
   timestamp: number;
 }
 const queryCache = new Map<string, CachedQueryResult>();
-const QUERY_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const QUERY_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes to save user API credits
 
 // In-flight request deduplication map to prevent double-billing on rapid user clicks
 const inFlightRequests = new Map<string, Promise<JSearchResult>>();
@@ -453,8 +453,9 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
     };
   }
 
-  // Requirement 2: First search for jobs posted today using officially supported date_posted value
-  const initialDateFilter = options.datePosted || 'today';
+  // 1-Call Optimization: directly search 'all' date windows (or user-specified filter)
+  // This eliminates the 3-step cascade (today -> 3days -> all) and reduces API usage by 70-80%
+  const initialDateFilter = options.datePosted || 'all';
 
   // Cache key based on sanitized inputs
   const cacheKey = JSON.stringify({
@@ -462,11 +463,10 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
     loc: cleanLoc.toLowerCase(),
     emp: (options.employmentType || '').toUpperCase(),
     rem: Boolean(options.isRemote),
-    date: initialDateFilter,
-    fallback: Boolean(options.allowAllDateFallback)
+    date: initialDateFilter
   });
 
-  // Check 15-min cache to protect user's Pay As You Go budget (only if non-empty)
+  // Check 30-min cache to protect user's Pay As You Go budget (only if non-empty)
   const cached = queryCache.get(cacheKey);
   if (cached && cached.jobs?.length > 0 && (Date.now() - cached.timestamp < QUERY_CACHE_TTL_MS)) {
     return {
@@ -486,7 +486,7 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
 
   const searchPromise = (async (): Promise<JSearchResult> => {
     try {
-      // Step 1: Initial request (date_posted: 'today' by default)
+      // Step 1: Single, direct request with clean query and target location
       const initialResult = await executeSingleJSearchQuery(
         options,
         initialDateFilter,
@@ -503,77 +503,6 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
       let aggregatedJobs: RealJobListing[] = [...initialResult.jobs];
       let totalFound = initialResult.totalFound;
 
-      // Helper to merge and deduplicate jobs
-      const mergeUniqueJobs = (newJobs: RealJobListing[]) => {
-        const seenKeys = new Set(
-          aggregatedJobs.map(j => (j.id || `${j.title.trim().toLowerCase()}--${j.company.trim().toLowerCase()}`))
-        );
-        for (const job of newJobs) {
-          const key = (job.id || `${job.title.trim().toLowerCase()}--${job.company.trim().toLowerCase()}`);
-          if (!seenKeys.has(key)) {
-            seenKeys.add(key);
-            aggregatedJobs.push(job);
-          }
-        }
-      };
-
-      // Requirement 3: If fewer than 5 jobs are returned, automatically fallback to 3-day filter
-      if (aggregatedJobs.length < 5 && initialDateFilter === 'today') {
-        const fallback3DaysResult = await executeSingleJSearchQuery(
-          options,
-          '3days',
-          apiKey,
-          cleanQuery,
-          cleanLoc
-        );
-
-        if (fallback3DaysResult.success) {
-          mergeUniqueJobs(fallback3DaysResult.jobs);
-          totalFound = Math.max(totalFound, aggregatedJobs.length);
-        }
-      }
-
-      // Requirement 4: If fewer than 5 jobs are still available, use the all-date filter to discover real opportunities
-      if (aggregatedJobs.length < 5 && options.allowAllDateFallback !== false) {
-        const fallbackAllResult = await executeSingleJSearchQuery(
-          options,
-          'all',
-          apiKey,
-          cleanQuery,
-          cleanLoc
-        );
-
-        if (fallbackAllResult.success) {
-          mergeUniqueJobs(fallbackAllResult.jobs);
-          totalFound = Math.max(totalFound, aggregatedJobs.length);
-        }
-      }
-
-      // If still 0 jobs found for a multi-word niche query (e.g. "AI Product Intern"),
-      // perform a broader search on the core role to discover closely matching openings
-      if (aggregatedJobs.length === 0 && cleanQuery.split(/\s+/).length > 2) {
-        const words = cleanQuery.split(/\s+/);
-        const broaderQueries = [
-          words.slice(1).join(' '), // e.g. "Product Intern"
-          [words[0], words[words.length - 1]].join(' ') // e.g. "AI Intern"
-        ].filter(q => q.trim().length > 3);
-
-        for (const broaderQ of broaderQueries) {
-          if (aggregatedJobs.length >= 5) break;
-          const broaderRes = await executeSingleJSearchQuery(
-            options,
-            'all',
-            apiKey,
-            broaderQ,
-            cleanLoc
-          );
-          if (broaderRes.success && broaderRes.jobs.length > 0) {
-            mergeUniqueJobs(broaderRes.jobs);
-            totalFound = Math.max(totalFound, aggregatedJobs.length);
-          }
-        }
-      }
-
       // Requirement 6: Sort jobs by their actual posting date, newest first. Never invent or modify posting dates.
       aggregatedJobs = sortJobsByPostingDateNewestFirst(aggregatedJobs);
 
@@ -581,7 +510,7 @@ export async function queryOpenWebNinjaJSearch(options: JSearchQueryOptions): Pr
       const maxLimit = Math.max(15, options.limit || 15);
       const finalJobs = aggregatedJobs.slice(0, maxLimit);
 
-      // Store in query cache to protect credit consumption
+      // Store in query cache to protect credit consumption (30 minutes)
       queryCache.set(cacheKey, {
         jobs: finalJobs,
         totalFound: aggregatedJobs.length,

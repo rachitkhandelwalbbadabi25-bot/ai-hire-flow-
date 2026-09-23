@@ -354,6 +354,7 @@ function normalizeJSearchJob(item, fallbackLoc) {
       period: item.job_salary_period || "YEAR"
     };
   }
+  const parsedPostedAt = item.job_posted_at_datetime_utc ? item.job_posted_at_datetime_utc : typeof item.job_posted_at_timestamp === "number" ? new Date(item.job_posted_at_timestamp * 1e3).toISOString() : null;
   return {
     id: `jsearch-${item.job_id || Math.random().toString(36).slice(2)}`,
     title: cleanTitle,
@@ -363,6 +364,7 @@ function normalizeJSearchJob(item, fallbackLoc) {
     description: plainDesc || "Please refer to the official job posting for complete role requirements.",
     skills: derivedSkills.slice(0, 8),
     datePosted: formatRelativeDate(item.job_posted_at_datetime_utc || item.job_posted_at_timestamp),
+    postedAt: parsedPostedAt,
     source: publisher,
     provider: "OpenWeb Ninja JSearch",
     retrievedAt,
@@ -377,6 +379,127 @@ function normalizeJSearchJob(item, fallbackLoc) {
     ...item.job_offer_expiration_datetime_utc ? { expiresAt: item.job_offer_expiration_datetime_utc } : {}
   };
 }
+async function executeSingleJSearchQuery(options, dateFilter, apiKey, cleanQuery, cleanLoc) {
+  const countryCode = cleanLoc ? mapCountryToCode(cleanLoc) : "in";
+  const targetCountry = countryCode || "in";
+  let effectiveQuery = cleanQuery;
+  if (cleanLoc && !/^(india|in|usa|us|united states|uk|united kingdom)$/i.test(cleanLoc.trim())) {
+    if (!cleanQuery.toLowerCase().includes(cleanLoc.toLowerCase())) {
+      effectiveQuery = `${cleanQuery} in ${cleanLoc}`;
+    }
+  }
+  const isRapidApi = Boolean(process.env.RAPIDAPI_KEY) || apiKey.length === 50 && /^[a-f0-9]+$/i.test(apiKey);
+  const baseUrl = isRapidApi ? "https://jsearch.p.rapidapi.com/search" : "https://api.openwebninja.com/jsearch/search";
+  const url = new URL(baseUrl);
+  url.searchParams.set("query", effectiveQuery.slice(0, 150));
+  url.searchParams.set("page", "1");
+  url.searchParams.set("num_pages", "1");
+  url.searchParams.set("date_posted", dateFilter);
+  url.searchParams.set("country", targetCountry);
+  url.searchParams.set("language", "en");
+  if (options.isRemote) {
+    url.searchParams.set("work_from_home", "true");
+    url.searchParams.set("remote_jobs_only", "true");
+  }
+  if (options.employmentType) {
+    const emp = options.employmentType.toUpperCase();
+    if (["FULLTIME", "INTERN", "CONTRACTOR", "PARTTIME"].includes(emp)) {
+      url.searchParams.set("employment_types", emp);
+    }
+  }
+  const headers = {
+    "Accept": "application/json",
+    "User-Agent": "AIHireFlow/1.0 (+https://aihireflow.in)"
+  };
+  if (isRapidApi) {
+    headers["X-RapidAPI-Key"] = apiKey;
+    headers["X-RapidAPI-Host"] = "jsearch.p.rapidapi.com";
+  } else {
+    headers["x-api-key"] = apiKey;
+  }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5e4);
+  try {
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      const status = response.status;
+      let errMessage = `OpenWeb Ninja JSearch returned HTTP ${status}`;
+      try {
+        const errBody = await response.json();
+        if (errBody?.message) errMessage = errBody.message;
+      } catch {
+      }
+      if (status === 401 || status === 403) {
+        return {
+          success: false,
+          jobs: [],
+          totalFound: 0,
+          cached: false,
+          provider: "OpenWeb Ninja JSearch",
+          errorCode: "AUTH_ERROR",
+          error: "Authentication failed for OpenWeb Ninja JSearch API. Please check your OPENWEB_NINJA_API_KEY in environment variables."
+        };
+      }
+      if (status === 429) {
+        return {
+          success: false,
+          jobs: [],
+          totalFound: 0,
+          cached: false,
+          provider: "OpenWeb Ninja JSearch",
+          errorCode: "RATE_LIMIT",
+          error: "OpenWeb Ninja JSearch API request limit or credit quota exceeded. Please check your OpenWeb Ninja Pay As You Go balance."
+        };
+      }
+      return {
+        success: false,
+        jobs: [],
+        totalFound: 0,
+        cached: false,
+        provider: "OpenWeb Ninja JSearch",
+        errorCode: "API_ERROR",
+        error: `OpenWeb Ninja JSearch API error: ${errMessage}`
+      };
+    }
+    const rawData = await response.json();
+    const rawJobList = Array.isArray(rawData?.data) ? rawData.data : [];
+    const normalizedJobs = rawJobList.map((item) => normalizeJSearchJob(item, cleanLoc));
+    return {
+      success: true,
+      jobs: normalizedJobs,
+      totalFound: rawJobList.length,
+      cached: false,
+      provider: "OpenWeb Ninja JSearch"
+    };
+  } catch (fetchErr) {
+    clearTimeout(timeoutId);
+    if (fetchErr.name === "AbortError") {
+      return {
+        success: false,
+        jobs: [],
+        totalFound: 0,
+        cached: false,
+        provider: "OpenWeb Ninja JSearch",
+        errorCode: "TIMEOUT",
+        error: "OpenWeb Ninja JSearch request timed out. Please try again."
+      };
+    }
+    return {
+      success: false,
+      jobs: [],
+      totalFound: 0,
+      cached: false,
+      provider: "OpenWeb Ninja JSearch",
+      errorCode: "NETWORK_ERROR",
+      error: `Network error connecting to OpenWeb Ninja JSearch: ${fetchErr.message || "Connection failed"}`
+    };
+  }
+}
 async function queryOpenWebNinjaJSearch(options) {
   const apiKey = getOpenWebNinjaApiKey();
   if (!apiKey) {
@@ -390,8 +513,17 @@ async function queryOpenWebNinjaJSearch(options) {
       error: "OpenWeb Ninja JSearch API key is not configured. Please add OPENWEB_NINJA_API_KEY to your environment variables to enable live job discovery."
     };
   }
-  const cleanQuery = (options.query || "").trim();
-  const cleanLoc = (options.location || "").trim();
+  let cleanQuery = (options.query || "").trim();
+  let cleanLoc = (options.location || "").trim();
+  const locMatch = cleanQuery.match(/\s+(?:role\s+at|jobs?\s+at|openings?\s+at|internship\s+at|role\s+in|jobs?\s+in|openings?\s+in|internship\s+in|in|at)\s+([a-zA-Z\s]+)$/i);
+  if (locMatch && locMatch[1]) {
+    const extractedLoc = locMatch[1].trim();
+    if (!cleanLoc) {
+      cleanLoc = extractedLoc;
+    }
+    cleanQuery = cleanQuery.slice(0, locMatch.index).trim();
+  }
+  cleanQuery = cleanQuery.replace(/\s+(?:roles?|jobs?|openings?|vacanc(?:y|ies))\s*$/i, "").trim() || (options.query || "").trim();
   if (!cleanQuery) {
     return {
       success: true,
@@ -401,15 +533,16 @@ async function queryOpenWebNinjaJSearch(options) {
       provider: "OpenWeb Ninja JSearch"
     };
   }
+  const initialDateFilter = options.datePosted || "all";
   const cacheKey = JSON.stringify({
     q: cleanQuery.toLowerCase(),
     loc: cleanLoc.toLowerCase(),
     emp: (options.employmentType || "").toUpperCase(),
     rem: Boolean(options.isRemote),
-    date: options.datePosted || "all"
+    date: initialDateFilter
   });
   const cached = queryCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < QUERY_CACHE_TTL_MS) {
+  if (cached && cached.jobs?.length > 0 && Date.now() - cached.timestamp < QUERY_CACHE_TTL_MS) {
     return {
       success: true,
       jobs: cached.jobs,
@@ -424,135 +557,30 @@ async function queryOpenWebNinjaJSearch(options) {
   }
   const searchPromise = (async () => {
     try {
-      let effectiveQuery = cleanQuery;
-      if (cleanLoc && !cleanQuery.toLowerCase().includes(cleanLoc.toLowerCase())) {
-        effectiveQuery = `${cleanQuery} in ${cleanLoc}`;
+      const initialResult = await executeSingleJSearchQuery(
+        options,
+        initialDateFilter,
+        apiKey,
+        cleanQuery,
+        cleanLoc
+      );
+      if (!initialResult.success) {
+        return initialResult;
       }
-      const isRapidApi = Boolean(process.env.RAPIDAPI_KEY) || apiKey.length === 50 && /^[a-f0-9]+$/i.test(apiKey);
-      const baseUrl = isRapidApi ? "https://jsearch.p.rapidapi.com/search" : "https://api.openwebninja.com/jsearch/search";
-      const url = new URL(baseUrl);
-      url.searchParams.set("query", effectiveQuery.slice(0, 150));
-      url.searchParams.set("page", "1");
-      url.searchParams.set("num_pages", "1");
-      url.searchParams.set("date_posted", options.datePosted || "all");
-      if (options.isRemote) {
-        url.searchParams.set("remote_jobs_only", "true");
-      }
-      if (options.employmentType) {
-        const emp = options.employmentType.toUpperCase();
-        if (["FULLTIME", "INTERN", "CONTRACTOR", "PARTTIME"].includes(emp)) {
-          url.searchParams.set("employment_types", emp);
-        }
-      }
-      const countryCode = cleanLoc ? mapCountryToCode(cleanLoc) : void 0;
-      if (countryCode) {
-        url.searchParams.set("country", countryCode);
-      }
-      const headers = {
-        "Accept": "application/json",
-        "User-Agent": "AIHireFlow/1.0 (+https://aihireflow.in)"
-      };
-      if (isRapidApi) {
-        headers["X-RapidAPI-Key"] = apiKey;
-        headers["X-RapidAPI-Host"] = "jsearch.p.rapidapi.com";
-      } else {
-        headers["x-api-key"] = apiKey;
-      }
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12e3);
-      let response;
-      try {
-        response = await fetch(url.toString(), {
-          method: "GET",
-          headers,
-          signal: controller.signal
-        });
-      } catch (fetchErr) {
-        clearTimeout(timeoutId);
-        if (fetchErr.name === "AbortError") {
-          return {
-            success: false,
-            jobs: [],
-            totalFound: 0,
-            cached: false,
-            provider: "OpenWeb Ninja JSearch",
-            errorCode: "TIMEOUT",
-            error: "OpenWeb Ninja JSearch request timed out after 12 seconds. Please try again."
-          };
-        }
-        return {
-          success: false,
-          jobs: [],
-          totalFound: 0,
-          cached: false,
-          provider: "OpenWeb Ninja JSearch",
-          errorCode: "NETWORK_ERROR",
-          error: `Network error connecting to OpenWeb Ninja JSearch: ${fetchErr.message || "Connection failed"}`
-        };
-      }
-      clearTimeout(timeoutId);
-      if (!response.ok) {
-        const status = response.status;
-        let errMessage = `OpenWeb Ninja JSearch returned HTTP ${status}`;
-        try {
-          const errBody = await response.json();
-          if (errBody?.message) errMessage = errBody.message;
-        } catch {
-        }
-        if (status === 401 || status === 403) {
-          return {
-            success: false,
-            jobs: [],
-            totalFound: 0,
-            cached: false,
-            provider: "OpenWeb Ninja JSearch",
-            errorCode: "AUTH_ERROR",
-            error: "Authentication failed for OpenWeb Ninja JSearch API. Please check your OPENWEB_NINJA_API_KEY in environment variables."
-          };
-        }
-        if (status === 429) {
-          return {
-            success: false,
-            jobs: [],
-            totalFound: 0,
-            cached: false,
-            provider: "OpenWeb Ninja JSearch",
-            errorCode: "RATE_LIMIT",
-            error: "OpenWeb Ninja JSearch API request limit or credit quota exceeded. Please check your OpenWeb Ninja Pay As You Go balance."
-          };
-        }
-        return {
-          success: false,
-          jobs: [],
-          totalFound: 0,
-          cached: false,
-          provider: "OpenWeb Ninja JSearch",
-          errorCode: "API_ERROR",
-          error: `OpenWeb Ninja JSearch API error: ${errMessage}`
-        };
-      }
-      const rawData = await response.json();
-      const rawJobList = Array.isArray(rawData?.data) ? rawData.data : [];
-      if (rawJobList.length === 0) {
-        return {
-          success: true,
-          jobs: [],
-          totalFound: 0,
-          cached: false,
-          provider: "OpenWeb Ninja JSearch"
-        };
-      }
-      const normalizedJobs = rawJobList.map((item) => normalizeJSearchJob(item, cleanLoc));
-      const finalJobs = normalizedJobs.slice(0, options.limit || 15);
+      let aggregatedJobs = [...initialResult.jobs];
+      let totalFound = initialResult.totalFound;
+      aggregatedJobs = sortJobsByPostingDateNewestFirst(aggregatedJobs);
+      const maxLimit = Math.max(15, options.limit || 15);
+      const finalJobs = aggregatedJobs.slice(0, maxLimit);
       queryCache.set(cacheKey, {
         jobs: finalJobs,
-        totalFound: rawJobList.length,
+        totalFound: aggregatedJobs.length,
         timestamp: Date.now()
       });
       return {
         success: true,
         jobs: finalJobs,
-        totalFound: rawJobList.length,
+        totalFound: aggregatedJobs.length,
         cached: false,
         provider: "OpenWeb Ninja JSearch"
       };
@@ -568,7 +596,7 @@ var init_jsearch = __esm({
   "api/_lib/jsearch.ts"() {
     init_jobDiscovery();
     queryCache = /* @__PURE__ */ new Map();
-    QUERY_CACHE_TTL_MS = 15 * 60 * 1e3;
+    QUERY_CACHE_TTL_MS = 30 * 60 * 1e3;
     inFlightRequests = /* @__PURE__ */ new Map();
   }
 });
@@ -585,9 +613,11 @@ __export(jobDiscovery_exports, {
   evaluateJobRelevance: () => evaluateJobRelevance,
   extractSkillsFromText: () => extractSkillsFromText,
   formatRelativeDate: () => formatRelativeDate,
+  parsePostingTimestamp: () => parsePostingTimestamp,
   parseQueryIntent: () => parseQueryIntent,
   rankAndScoreJobsWithAI: () => rankAndScoreJobsWithAI,
   searchRealJobs: () => searchRealJobs,
+  sortJobsByPostingDateNewestFirst: () => sortJobsByPostingDateNewestFirst,
   stripHtml: () => stripHtml
 });
 function stripHtml(raw) {
@@ -616,6 +646,38 @@ function formatRelativeDate(input) {
   } catch {
     return "Recently posted";
   }
+}
+function parsePostingTimestamp(dateVal) {
+  if (!dateVal) return 0;
+  if (typeof dateVal === "number") {
+    return dateVal > 1e11 ? dateVal : dateVal * 1e3;
+  }
+  const parsed = Date.parse(dateVal);
+  if (!isNaN(parsed)) return parsed;
+  const m = String(dateVal).trim().match(/^(\d+)\s*([mhdwo])\b/i);
+  if (m) {
+    const val = parseInt(m[1], 10);
+    const unit = m[2].toLowerCase();
+    const now = Date.now();
+    if (unit === "m") return now - val * 60 * 1e3;
+    if (unit === "h") return now - val * 3600 * 1e3;
+    if (unit === "d") return now - val * 86400 * 1e3;
+    if (unit === "w") return now - val * 7 * 86400 * 1e3;
+    if (unit === "o") return now - val * 30 * 86400 * 1e3;
+  }
+  return 0;
+}
+function sortJobsByPostingDateNewestFirst(jobs) {
+  return [...jobs].sort((a, b) => {
+    const timeA = parsePostingTimestamp(a.postedAt) || parsePostingTimestamp(a.datePosted);
+    const timeB = parsePostingTimestamp(b.postedAt) || parsePostingTimestamp(b.datePosted);
+    if (timeA !== timeB && timeA > 0 && timeB > 0) {
+      return timeB - timeA;
+    }
+    if (timeB > 0 && timeA === 0) return 1;
+    if (timeA > 0 && timeB === 0) return -1;
+    return (b.matchScore || 0) - (a.matchScore || 0);
+  });
 }
 function extractSkillsFromText(title, description, tags = []) {
   const skillsSet = /* @__PURE__ */ new Set();
@@ -1331,22 +1393,9 @@ async function searchRealJobs({
         matchExplanation: evalResult.explanation
       });
     }
-    qualifiedJobs2.sort((a, b) => {
-      const aIsExact = a.relevanceCategory === "exact" ? 1 : 0;
-      const bIsExact = b.relevanceCategory === "exact" ? 1 : 0;
-      if (bIsExact !== aIsExact) return bIsExact - aIsExact;
-      const tierPriority = (label) => {
-        if (!label) return 0;
-        if (label.includes("Exact")) return 3;
-        if (label.includes("Strong")) return 2;
-        return 1;
-      };
-      const tierDiff = tierPriority(b.relevanceLabel) - tierPriority(a.relevanceLabel);
-      if (tierDiff !== 0) return tierDiff;
-      return (b.matchScore || 0) - (a.matchScore || 0);
-    });
+    const sortedJobs = sortJobsByPostingDateNewestFirst(qualifiedJobs2);
     return {
-      jobs: qualifiedJobs2.slice(0, limit),
+      jobs: sortedJobs.slice(0, Math.max(15, limit)),
       provider: "OpenWeb Ninja JSearch",
       isConfigured: true,
       totalFound: jsearchRes.totalFound,
@@ -1515,13 +1564,19 @@ Instructions:
   }
 ]
 IMPORTANT: Return raw JSON only. Do NOT modify or output job titles, companies, or links.`;
-    const velonaResponse = await callVelona({
+    const aiTimeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 5e3));
+    const velonaCallPromise = callVelona({
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
       jsonMode: true,
       maxTokens: 800,
       operation: "job_match"
     });
+    const velonaResponse = await Promise.race([velonaCallPromise, aiTimeoutPromise]);
+    if (!velonaResponse) {
+      console.warn("[JobDiscovery] Velona semantic scoring timed out after 5s; falling back to instant heuristic scoring.");
+      return applyHeuristicScores(jobs, candidateProfile);
+    }
     const rawContent = velonaResponse?.content || velonaResponse?.text || "";
     const cleaned = rawContent.replace(/```json\s*/gi, "").replace(/```\s*$/gi, "").trim();
     const parsed = JSON.parse(cleaned);
@@ -3284,7 +3339,7 @@ app.all(["/api/jobs/search", "/api/jobs"], async (req, res, next) => {
     const datePosted = typeof params.datePosted === "string" ? params.datePosted : void 0;
     const allowFallback = params.allowFallback === true || params.allowFallback === "true";
     const limit = Math.min(25, Math.max(1, Number(params.limit) || 12));
-    const { searchRealJobs: searchRealJobs2, rankAndScoreJobsWithAI: rankAndScoreJobsWithAI2 } = await Promise.resolve().then(() => (init_jobDiscovery(), jobDiscovery_exports));
+    const { searchRealJobs: searchRealJobs2, rankAndScoreJobsWithAI: rankAndScoreJobsWithAI2, sortJobsByPostingDateNewestFirst: sortJobsByPostingDateNewestFirst2 } = await Promise.resolve().then(() => (init_jobDiscovery(), jobDiscovery_exports));
     const searchResult = await searchRealJobs2({
       query: query.trim(),
       location: location.trim(),
@@ -3333,18 +3388,19 @@ app.all(["/api/jobs/search", "/api/jobs"], async (req, res, next) => {
       candidateProfile: candidateProfile.trim(),
       callVelona: callVelonaChatCompletion
     });
-    const exactMatches = scoredJobs.filter((j) => j.relevanceCategory === "exact");
-    const relatedMatches = scoredJobs.filter((j) => j.relevanceCategory !== "exact");
+    const sortedJobs = sortJobsByPostingDateNewestFirst2(scoredJobs);
+    const exactMatches = sortedJobs.filter((j) => j.relevanceCategory === "exact");
+    const relatedMatches = sortedJobs.filter((j) => j.relevanceCategory !== "exact");
     return res.json({
       success: true,
       isConfigured: searchResult.isConfigured,
       provider: searchResult.provider,
-      jobs: scoredJobs,
+      jobs: sortedJobs,
       exactMatches,
       relatedMatches,
       exactCount: exactMatches.length,
       relatedCount: relatedMatches.length,
-      totalCount: scoredJobs.length,
+      totalCount: sortedJobs.length,
       cached: searchResult.cached,
       query: query.trim(),
       location: location.trim(),

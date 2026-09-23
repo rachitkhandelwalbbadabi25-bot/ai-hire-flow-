@@ -363,10 +363,9 @@ export default function JobFinder() {
 
       if (searchResult.errorCode) {
         if (searchResult.errorCode === 'MISSING_KEY' || searchResult.requiresKey) {
-          setProviderStatus(prev => prev ? { ...prev, configured: false } : { provider: 'OpenWeb Ninja JSearch', configured: false, plan: 'Pay As You Go' });
-          setError(
-            'OpenWeb Ninja JSearch API key is not configured in this hosting environment. Add OPENWEB_NINJA_API_KEY in your hosting settings (e.g. Vercel/Cloud Run environment variables) or click "Test with Public Feeds" below.'
-          );
+          // If key is not configured on remote host, auto-fallback to public live feeds seamlessly
+          handleSearchWithQuery(trimmedQuery || activeTargetRole || "Full Stack Developer", trimmedLoc, undefined, true);
+          return;
         } else if (searchResult.errorCode === 'AUTH_ERROR') {
           setError(
             'Authentication failed for OpenWeb Ninja JSearch API. Please verify that OPENWEB_NINJA_API_KEY is active and valid.'
@@ -470,36 +469,6 @@ export default function JobFinder() {
           Discover real, verified job vacancies from live external sources with AI-powered candidate compatibility matching.
         </p>
       </div>
-
-      {/* Setup Notice if OpenWeb Ninja API Key is not set in environment */}
-      {providerStatus && !providerStatus.configured && (
-        <div className="mb-6 p-5 rounded-3xl bg-amber-500/10 border border-amber-500/25 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-amber-500/20 rounded-xl text-amber-400 shrink-0 mt-0.5">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-                OpenWeb Ninja JSearch API Key Setup
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
-                  Pay As You Go
-                </span>
-              </h4>
-              <p className="text-xs text-ink-dim mt-1 max-w-2xl leading-relaxed">
-                Connect your OpenWeb Ninja Pay As You Go API key by adding <code className="text-accent bg-accent/10 px-1 py-0.5 rounded font-mono text-[11px]">OPENWEB_NINJA_API_KEY</code> to your environment variables to retrieve live vacancies directly from LinkedIn, Indeed, Glassdoor, and Google for Jobs.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleSearchWithQuery(query.trim() || 'Software Engineer', location, undefined, true)}
-            className="shrink-0 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Test with Public Feeds
-          </button>
-        </div>
-      )}
 
       {/* Search Bar */}
       <div className="glass-panel mb-12 p-8 rounded-3xl border border-border bg-surface">
@@ -656,16 +625,14 @@ export default function JobFinder() {
               >
                 Retry Search
               </button>
-              {(error.includes('OPENWEB_NINJA_API_KEY') || !providerStatus?.configured) && (
-                <button 
-                  id="fallback-search-button"
-                  onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location, undefined, true)}
-                  className="px-4 py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Test with Public Feeds
-                </button>
-              )}
+              <button 
+                id="fallback-search-button"
+                onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location, undefined, true)}
+                className="px-4 py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Search Public Feeds
+              </button>
               <button 
                 onClick={handleResetSearch}
                 className="px-4 py-2.5 bg-surface-light hover:bg-surface-light/80 text-ink-dim hover:text-ink border border-border rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"

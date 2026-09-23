@@ -1118,18 +1118,7 @@ export async function searchRealJobs({
     };
   }
 
-  // If OPENWEB_NINJA_API_KEY is not configured and fallback not requested:
-  if (!allowFallback) {
-    return {
-      jobs: [],
-      provider: 'OpenWeb Ninja JSearch',
-      isConfigured: false,
-      totalFound: 0,
-      errorCode: 'MISSING_KEY',
-      error: 'OpenWeb Ninja JSearch API key is not configured. Please add OPENWEB_NINJA_API_KEY to your environment variables to enable live job discovery.'
-    };
-  }
-
+  // If OPENWEB_NINJA_API_KEY is not configured, automatically fallback to verified public live feeds
   // Concurrent fetch from verified real feeds (Public fallback)
   const [arbeitnowRes, remoteokRes, remotiveRes] = await Promise.allSettled([
     fetchArbeitnowJobs(),

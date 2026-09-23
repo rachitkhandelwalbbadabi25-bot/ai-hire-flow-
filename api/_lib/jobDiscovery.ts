@@ -1067,58 +1067,42 @@ export async function searchRealJobs({
       limit
     });
 
-    if (!jsearchRes.success) {
-      return {
-        jobs: [],
-        provider: 'OpenWeb Ninja JSearch',
-        isConfigured: true,
-        totalFound: 0,
-        errorCode: jsearchRes.errorCode,
-        error: jsearchRes.error
-      };
-    }
+    if (jsearchRes.success && jsearchRes.jobs.length > 0) {
+      // Extract query intent and evaluate relevance (Exact vs Related match)
+      const intent = parseQueryIntent(cleanQuery);
+      const qualifiedJobs: RealJobListing[] = [];
 
-    if (jsearchRes.jobs.length === 0) {
+      for (const job of jsearchRes.jobs) {
+        const evalResult = evaluateJobRelevance(job, intent, cleanLoc);
+        qualifiedJobs.push({
+          ...job,
+          matchScore: evalResult.score,
+          relevanceCategory: evalResult.relevanceCategory,
+          relevanceLabel: evalResult.relevanceLabel,
+          locationMatch: evalResult.locationMatch,
+          missingCriteria: evalResult.missingCriteria,
+          roleTier: evalResult.score >= 85 ? 'safe' : (evalResult.score >= 75 ? 'stretch' : 'reach'),
+          matchExplanation: evalResult.explanation
+        });
+      }
+
+      // Requirement 6: Sort jobs by their actual posting date, newest first. Never invent or modify posting dates.
+      const sortedJobs = sortJobsByPostingDateNewestFirst(qualifiedJobs);
+
       return {
-        jobs: [],
+        jobs: sortedJobs.slice(0, Math.max(15, limit)),
         provider: 'OpenWeb Ninja JSearch',
         isConfigured: true,
-        totalFound: 0,
+        totalFound: jsearchRes.totalFound,
         cached: jsearchRes.cached
       };
+    } else {
+      console.warn(`[JobDiscovery] JSearch ${!jsearchRes.success ? `error (${jsearchRes.errorCode}): ${jsearchRes.error}` : 'returned 0 vacancies'}. Seamlessly querying verified public live feeds.`);
     }
-
-    // Extract query intent and evaluate relevance (Exact vs Related match)
-    const intent = parseQueryIntent(cleanQuery);
-    const qualifiedJobs: RealJobListing[] = [];
-
-    for (const job of jsearchRes.jobs) {
-      const evalResult = evaluateJobRelevance(job, intent, cleanLoc);
-      qualifiedJobs.push({
-        ...job,
-        matchScore: evalResult.score,
-        relevanceCategory: evalResult.relevanceCategory,
-        relevanceLabel: evalResult.relevanceLabel,
-        locationMatch: evalResult.locationMatch,
-        missingCriteria: evalResult.missingCriteria,
-        roleTier: evalResult.score >= 85 ? 'safe' : (evalResult.score >= 75 ? 'stretch' : 'reach'),
-        matchExplanation: evalResult.explanation
-      });
-    }
-
-    // Requirement 6: Sort jobs by their actual posting date, newest first. Never invent or modify posting dates.
-    const sortedJobs = sortJobsByPostingDateNewestFirst(qualifiedJobs);
-
-    return {
-      jobs: sortedJobs.slice(0, Math.max(15, limit)),
-      provider: 'OpenWeb Ninja JSearch',
-      isConfigured: true,
-      totalFound: jsearchRes.totalFound,
-      cached: jsearchRes.cached
-    };
   }
 
-  // If OPENWEB_NINJA_API_KEY is not configured, automatically fallback to verified public live feeds
+  // Fallback to verified public live feeds (Arbeitnow, RemoteOK, Remotive)
+  // Ensures user never sees a blocking error or missing key banner
   // Concurrent fetch from verified real feeds (Public fallback)
   const [arbeitnowRes, remoteokRes, remotiveRes] = await Promise.allSettled([
     fetchArbeitnowJobs(),

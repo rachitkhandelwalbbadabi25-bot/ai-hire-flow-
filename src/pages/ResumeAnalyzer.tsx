@@ -11,7 +11,7 @@ import { analysisJobService } from '../services/AnalysisJobService';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSystemOS } from '../context/SystemOSContext';
 import { isDemoRole, isDemoSkills } from '../utils/demoDataSanitizer';
-import { extractJobSkills } from '../utils/jobContextManager';
+import { extractJobSkills, getActiveJobKey, formatActiveJobDescription, getStoredActiveJob } from '../utils/jobContextManager';
 import { 
   FileUp, 
   CheckCircle2, 
@@ -101,23 +101,95 @@ interface ExtractedDoc {
   charCount: number;
 }
 
+/**
+ * Resolves the initial state for the Resume Analyzer, ensuring that when a new active job
+ * was selected in Job Finder, stale job descriptions and prior analysis results are not loaded.
+ */
+function getInitialAnalyzerState() {
+  try {
+    const currentStoredJob = getStoredActiveJob();
+    const currentJobKey = getActiveJobKey(currentStoredJob);
+    const savedAnalyzerJobKey = sessionStorage.getItem('resume_analyzer_active_job_key');
+
+    // Case 1: An active job is selected, and it is DIFFERENT from what Analyzer was previously bound to
+    if (currentJobKey && savedAnalyzerJobKey !== currentJobKey) {
+      sessionStorage.removeItem('resume_analyzer_result');
+      sessionStorage.removeItem('resume_analyzer_cover_letter');
+      sessionStorage.removeItem('resume_analyzer_cache_source');
+
+      const newDesc = currentStoredJob ? formatActiveJobDescription(currentStoredJob) : '';
+      sessionStorage.setItem('resume_analyzer_job_desc', newDesc);
+      sessionStorage.setItem('resume_analyzer_active_job_key', currentJobKey);
+
+      return {
+        jobDesc: newDesc,
+        analysis: null,
+        coverLetter: null,
+        cacheSource: null as 'browser' | 'persistent' | null,
+        activeJobKey: currentJobKey
+      };
+    }
+
+    // Case 2: No active job is selected, but analyzer was bound to a previous active job
+    if (!currentJobKey && savedAnalyzerJobKey) {
+      sessionStorage.removeItem('resume_analyzer_active_job_key');
+      sessionStorage.removeItem('resume_analyzer_result');
+      sessionStorage.removeItem('resume_analyzer_cover_letter');
+      sessionStorage.removeItem('resume_analyzer_cache_source');
+      sessionStorage.removeItem('resume_analyzer_job_desc');
+
+      return {
+        jobDesc: '',
+        analysis: null,
+        coverLetter: null,
+        cacheSource: null as 'browser' | 'persistent' | null,
+        activeJobKey: null
+      };
+    }
+
+    // Case 3: Same active job key or preserving custom manual JD input
+    const savedDesc = sessionStorage.getItem('resume_analyzer_job_desc');
+    let effectiveDesc = savedDesc ?? '';
+    if (!effectiveDesc && currentStoredJob) {
+      effectiveDesc = formatActiveJobDescription(currentStoredJob);
+      sessionStorage.setItem('resume_analyzer_job_desc', effectiveDesc);
+    }
+
+    const rawAnalysis = sessionStorage.getItem('resume_analyzer_result');
+    const savedAnalysis = rawAnalysis ? JSON.parse(rawAnalysis) : null;
+    const savedCL = sessionStorage.getItem('resume_analyzer_cover_letter') || null;
+    const savedCache = (sessionStorage.getItem('resume_analyzer_cache_source') as any) || null;
+
+    return {
+      jobDesc: effectiveDesc,
+      analysis: savedAnalysis,
+      coverLetter: savedCL,
+      cacheSource: savedCache,
+      activeJobKey: currentJobKey || savedAnalyzerJobKey || null
+    };
+  } catch (e) {
+    return {
+      jobDesc: '',
+      analysis: null,
+      coverLetter: null,
+      cacheSource: null as 'browser' | 'persistent' | null,
+      activeJobKey: null
+    };
+  }
+}
+
 export default function ResumeAnalyzer() {
   const { user } = useAuth();
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const location = useLocation();
   const navigate = useNavigate();
 
+  const initialAnalyzerState = useMemo(() => getInitialAnalyzerState(), []);
   const [file, setFile] = useState<File | null>(null);
   const [extractedDoc, setExtractedDoc] = useState<ExtractedDoc | null>(null);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [extractionStatus, setExtractionStatus] = useState<string>('');
-  const [jobDesc, setJobDesc] = useState(() => {
-    try {
-      return sessionStorage.getItem('resume_analyzer_job_desc') || '';
-    } catch (e) {
-      return '';
-    }
-  });
+  const [jobDesc, setJobDesc] = useState<string>(initialAnalyzerState.jobDesc);
   const [masterResume, setMasterResume] = useState<MasterResumeData | null>(null);
   const [loadingMaster, setLoadingMaster] = useState(true);
   const [useSavedResume, setUseSavedResume] = useState(false);
@@ -172,39 +244,16 @@ export default function ResumeAnalyzer() {
     fetchMasterResume();
   }, [user?.uid]);
 
-  useEffect(() => {
-    if (location.state?.jobDescription) {
-      setJobDesc(location.state.jobDescription);
-    }
-  }, [location.state]);
-
   const { currentActiveJob, setCurrentActiveJob, clearCurrentJobContext } = useSystemOS();
   const isAnalyzingRef = useRef(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingCL, setIsGeneratingCL] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('Auditing resume against ATS benchmarks...');
-  const [analysis, setAnalysis] = useState<any>(() => {
-    try {
-      const stored = sessionStorage.getItem('resume_analyzer_result');
-      if (stored) return JSON.parse(stored);
-    } catch (e) {}
-    return null;
-  });
-  const [coverLetter, setCoverLetter] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem('resume_analyzer_cover_letter') || null;
-    } catch (e) {
-      return null;
-    }
-  });
+  const [analysis, setAnalysis] = useState<any>(initialAnalyzerState.analysis);
+  const [coverLetter, setCoverLetter] = useState<string | null>(initialAnalyzerState.coverLetter);
   const [error, setError] = useState<string | null>(null);
-  const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(() => {
-    try {
-      return (sessionStorage.getItem('resume_analyzer_cache_source') as any) || null;
-    } catch (e) {
-      return null;
-    }
-  });
+  const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(initialAnalyzerState.cacheSource);
+  const activeJobKeyRef = useRef<string | null>(initialAnalyzerState.activeJobKey);
 
   // Sync state to sessionStorage to preserve across navigation (NAVIGATION != RESET)
   useEffect(() => {
@@ -334,7 +383,9 @@ export default function ResumeAnalyzer() {
     setError(null);
     setCacheSource(null);
     clearCurrentJobContext();
+    activeJobKeyRef.current = null;
     try {
+      sessionStorage.removeItem('resume_analyzer_active_job_key');
       sessionStorage.removeItem('resume_analyzer_result');
       sessionStorage.removeItem('resume_analyzer_cover_letter');
       sessionStorage.removeItem('resume_analyzer_cache_source');
@@ -342,17 +393,79 @@ export default function ResumeAnalyzer() {
     } catch (e) {}
   };
 
-  // Sync active job context from Job Search / SystemOS
+  // Detect active job changes and automatically synchronize Analyzer
+  useEffect(() => {
+    const currentKey = getActiveJobKey(currentActiveJob);
+
+    // If the active job has changed from what Analyzer is currently bound to
+    if (activeJobKeyRef.current !== currentKey) {
+      activeJobKeyRef.current = currentKey;
+
+      // Cancel any running background analysis job from the previous job
+      const activeBackgroundId = analysisJobService.getActiveJobId();
+      if (activeBackgroundId) {
+        analysisJobService.cancelJob(activeBackgroundId, user?.uid);
+        analysisJobService.clearActiveJobId();
+        setIsAnalyzing(false);
+        isAnalyzingRef.current = false;
+      }
+
+      if (currentActiveJob && currentKey) {
+        // Automatically load the NEW active job's title, company, location, and description
+        const newDesc = formatActiveJobDescription(currentActiveJob);
+        setJobDesc(newDesc);
+        // Clear previous job-specific analysis, cover letter, and cache
+        setAnalysis(null);
+        setCoverLetter(null);
+        setCacheSource(null);
+        setError(null);
+
+        try {
+          sessionStorage.setItem('resume_analyzer_active_job_key', currentKey);
+          sessionStorage.setItem('resume_analyzer_job_desc', newDesc);
+          sessionStorage.removeItem('resume_analyzer_result');
+          sessionStorage.removeItem('resume_analyzer_cover_letter');
+          sessionStorage.removeItem('resume_analyzer_cache_source');
+        } catch (e) {}
+      } else {
+        // Active job was unselected / cleared
+        setJobDesc('');
+        setAnalysis(null);
+        setCoverLetter(null);
+        setCacheSource(null);
+        setError(null);
+
+        try {
+          sessionStorage.removeItem('resume_analyzer_active_job_key');
+          sessionStorage.removeItem('resume_analyzer_job_desc');
+          sessionStorage.removeItem('resume_analyzer_result');
+          sessionStorage.removeItem('resume_analyzer_cover_letter');
+          sessionStorage.removeItem('resume_analyzer_cache_source');
+        } catch (e) {}
+      }
+    }
+  }, [currentActiveJob, user?.uid]);
+
+  // Support explicit route navigation (e.g. from "Analyze Compatibility")
   useEffect(() => {
     if (location.state?.jobDescription) {
       setJobDesc(location.state.jobDescription);
-    } else if (!jobDesc && currentActiveJob) {
-      const activeDesc = currentActiveJob.description 
-        ? `${currentActiveJob.title} at ${currentActiveJob.company}\n\n${currentActiveJob.description}`
-        : `Role: ${currentActiveJob.title}\nCompany: ${currentActiveJob.company}`;
-      setJobDesc(activeDesc);
+      try {
+        sessionStorage.setItem('resume_analyzer_job_desc', location.state.jobDescription);
+      } catch (e) {}
+      if (location.state?.forceResetAnalysis) {
+        setAnalysis(null);
+        setCoverLetter(null);
+        setCacheSource(null);
+        setError(null);
+        try {
+          sessionStorage.removeItem('resume_analyzer_result');
+          sessionStorage.removeItem('resume_analyzer_cover_letter');
+          sessionStorage.removeItem('resume_analyzer_cache_source');
+        } catch (e) {}
+      }
     }
-  }, [location.state, currentActiveJob]);
+  }, [location.state]);
 
   // Derive complete Analyzer Job Context for inter-module cross-pollination (Learning Path, Simulator, Tracker)
   const getAnalyzerJobContext = (overrideAnalysis?: any) => {
@@ -1428,6 +1541,11 @@ export default function ResumeAnalyzer() {
                       <Target className="w-3.5 h-3.5 text-accent shrink-0" />
                       <div className="text-xs text-ink truncate font-sans">
                         <span>Target Real Job: <strong>{currentActiveJob.title}</strong> at {currentActiveJob.company}</span>
+                        {currentActiveJob.location && (
+                          <span className="ml-1 text-ink-dim font-normal">
+                            ({currentActiveJob.location})
+                          </span>
+                        )}
                         {currentActiveJob.provider && (
                           <span className="ml-1.5 px-1.5 py-0.5 bg-accent/10 border border-accent/20 rounded text-[9px] font-mono text-accent font-bold">
                             {currentActiveJob.provider}
@@ -1456,6 +1574,17 @@ export default function ResumeAnalyzer() {
                         onClick={() => {
                           clearCurrentJobContext();
                           setJobDesc('');
+                          setAnalysis(null);
+                          setCoverLetter(null);
+                          setCacheSource(null);
+                          activeJobKeyRef.current = null;
+                          try {
+                            sessionStorage.removeItem('resume_analyzer_active_job_key');
+                            sessionStorage.removeItem('resume_analyzer_result');
+                            sessionStorage.removeItem('resume_analyzer_cover_letter');
+                            sessionStorage.removeItem('resume_analyzer_cache_source');
+                            sessionStorage.removeItem('resume_analyzer_job_desc');
+                          } catch (e) {}
                         }}
                         className="text-[10px] text-ink-dim hover:text-rose-400 underline font-mono cursor-pointer"
                       >

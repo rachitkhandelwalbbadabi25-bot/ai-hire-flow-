@@ -856,12 +856,26 @@ export default function PaymentGatewayModal({
                 </p>
               </div>
               <div className="flex justify-center gap-2.5 pt-2">
-                <button
-                  onClick={() => setPhase('checkout')}
-                  className="px-5 py-2.5 bg-teal-500 text-black font-mono font-bold uppercase text-xs rounded-xl hover:bg-teal-400 transition-all cursor-pointer"
-                >
-                  Try Again
-                </button>
+                {errorMessage?.toLowerCase().includes('not configured') ? (
+                  <button
+                    onClick={() => {
+                      setPaymentMode('upi_qr');
+                      setErrorMessage(null);
+                      setPhase('checkout');
+                    }}
+                    className="px-5 py-2.5 bg-teal-500 text-black font-mono font-bold uppercase text-xs rounded-xl hover:bg-teal-400 transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>Pay with UPI QR</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setPhase('checkout')}
+                    className="px-5 py-2.5 bg-teal-500 text-black font-mono font-bold uppercase text-xs rounded-xl hover:bg-teal-400 transition-all cursor-pointer"
+                  >
+                    Try Again
+                  </button>
+                )}
                 <button
                   onClick={onClose}
                   className="px-5 py-2.5 bg-surface-light border border-border text-ink font-mono font-bold uppercase text-xs rounded-xl hover:bg-surface transition-all cursor-pointer"

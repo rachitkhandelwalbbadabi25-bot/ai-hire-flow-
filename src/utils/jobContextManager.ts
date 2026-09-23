@@ -235,3 +235,30 @@ export function clearStoredActiveJob(): void {
     console.warn('Could not clear active job storage:', e);
   }
 }
+
+/**
+ * Generates a stable, unique identifier key for an active job context.
+ * Used for detecting active job switching and syncing modules like Resume Analyzer.
+ */
+export function getActiveJobKey(job: ActiveJobContext | null | undefined): string | null {
+  if (!job || !job.title) return null;
+  const titlePart = String(job.title).trim().toLowerCase();
+  const companyPart = String(job.company || '').trim().toLowerCase();
+  const idPart = job.id ? String(job.id).trim().toLowerCase() : `${titlePart}-${companyPart}`.replace(/[^a-z0-9]+/g, '-');
+  return `${idPart}__${titlePart}__${companyPart}`;
+}
+
+/**
+ * Formats a clean, comprehensive representation of the active job for analysis and target description inputs.
+ */
+export function formatActiveJobDescription(job: ActiveJobContext): string {
+  const metaParts: string[] = [`${job.title} at ${job.company}`];
+  if (job.location) {
+    metaParts.push(`Location: ${job.location}`);
+  }
+  if (job.isRemote) {
+    metaParts.push('Remote');
+  }
+  const header = metaParts.join(' · ');
+  return job.description ? `${header}\n\n${job.description}` : header;
+}

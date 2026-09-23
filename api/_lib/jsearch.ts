@@ -97,8 +97,14 @@ const inFlightRequests = new Map<string, Promise<JSearchResult>>();
  * Gets the OpenWeb Ninja API key from server environment
  */
 export function getOpenWebNinjaApiKey(): string | null {
-  const key = process.env.OPENWEB_NINJA_API_KEY || process.env.JSEARCH_API_KEY || process.env.RAPIDAPI_KEY || '';
-  return key.trim() || null;
+  const rawKey = process.env.OPENWEB_NINJA_API_KEY || 
+                 process.env.OPEN_WEB_NINJA_API_KEY || 
+                 process.env.OPENWEBNINJA_API_KEY || 
+                 process.env.JSEARCH_API_KEY || 
+                 process.env.RAPIDAPI_KEY || 
+                 '';
+  const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '').trim();
+  return cleanKey || null;
 }
 
 /**

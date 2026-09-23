@@ -215,8 +215,9 @@ export default function JobFinder() {
     const skills = targetJob.skills && targetJob.skills.length > 0 
       ? targetJob.skills 
       : extractJobSkills(targetJob);
+    const stableId = targetJob.id || `${targetJob.title}-${targetJob.company}`.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const activeJob: ActiveJobContext = {
-      id: targetJob.id,
+      id: stableId,
       title: targetJob.title,
       company: targetJob.company,
       location: targetJob.location,
@@ -362,14 +363,10 @@ export default function JobFinder() {
       if (currentSeq !== searchSequenceRef.current) return;
 
       if (searchResult.errorCode) {
-        if (searchResult.errorCode === 'MISSING_KEY' || searchResult.requiresKey) {
-          // If key is not configured on remote host, auto-fallback to public live feeds seamlessly
+        if (searchResult.errorCode === 'MISSING_KEY' || searchResult.requiresKey || searchResult.errorCode === 'AUTH_ERROR') {
+          // If key is not configured or auth error, auto-fallback to public live feeds seamlessly
           handleSearchWithQuery(trimmedQuery || activeTargetRole || "Full Stack Developer", trimmedLoc, undefined, true);
           return;
-        } else if (searchResult.errorCode === 'AUTH_ERROR') {
-          setError(
-            'Authentication failed for OpenWeb Ninja JSearch API. Please verify that OPENWEB_NINJA_API_KEY is active and valid.'
-          );
         } else if (searchResult.errorCode === 'RATE_LIMIT') {
           setError(
             'OpenWeb Ninja JSearch credit limit or rate quota reached. Please check your Pay As You Go plan balance on OpenWeb Ninja.'
@@ -433,7 +430,11 @@ export default function JobFinder() {
 
   const alignResume = (job: Job) => {
     handleSelectJob(job);
-    navigate('/analyzer', { state: { jobDescription: `${job.title} at ${job.company}\n\n${job.description}` } });
+    const metaParts: string[] = [`${job.title} at ${job.company}`];
+    if (job.location) metaParts.push(`Location: ${job.location}`);
+    if (job.isRemote) metaParts.push('Remote');
+    const formattedDesc = job.description ? `${metaParts.join(' · ')}\n\n${job.description}` : metaParts.join(' · ');
+    navigate('/analyzer', { state: { jobDescription: formattedDesc, forceResetAnalysis: true } });
   };
 
   if (!user) {

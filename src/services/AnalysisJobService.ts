@@ -170,7 +170,7 @@ class AnalysisJobService {
     });
 
     if (!startRes.ok) {
-      let friendlyError = `Failed to initiate analysis job (HTTP ${startRes.status})`;
+      let friendlyError = `Analysis request failed (HTTP ${startRes.status})`;
       try {
         const errText = await startRes.text();
         if (errText.includes('520') || errText.includes('Cloudflare') || errText.includes('<!DOCTYPE') || errText.includes('<html')) {
@@ -186,6 +186,13 @@ class AnalysisJobService {
       } catch {
         // fallback
       }
+
+      if (startRes.status === 504 || friendlyError.toLowerCase().includes('time')) {
+        friendlyError = 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.';
+      } else if (startRes.status === 502) {
+        friendlyError = 'The AI service encountered a temporary gateway issue. Please click Retry Analysis.';
+      }
+
       this.clearActiveJobId();
       throw new Error(friendlyError);
     }
@@ -274,7 +281,7 @@ class AnalysisJobService {
 
     // Polling limit reached
     this.clearActiveJobId();
-    throw new Error('Analysis is taking longer than expected. Please retry in a moment.');
+    throw new Error('Analysis timed out while awaiting the AI provider response. Please click Retry Analysis to rerun the scan.');
   }
 }
 

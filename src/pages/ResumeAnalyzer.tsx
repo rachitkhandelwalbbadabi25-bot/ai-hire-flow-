@@ -1149,6 +1149,8 @@ export default function ResumeAnalyzer() {
       let userFriendlyMsg = err.message || "Resume analysis failed. Please try again.";
       if (userFriendlyMsg.includes('520') || userFriendlyMsg.includes('Cloudflare') || userFriendlyMsg.includes('<!DOCTYPE')) {
         userFriendlyMsg = "The AI audit service is currently experiencing upstream network latency or a temporary gateway issue. Please click Run Audit to retry.";
+      } else if (userFriendlyMsg.toLowerCase().includes('taking longer than expected') || userFriendlyMsg.toLowerCase().includes('timed out') || userFriendlyMsg.includes('504')) {
+        userFriendlyMsg = "Resume analysis timed out while contacting the AI provider. Please click Retry Analysis to run a fresh audit.";
       }
       setError(userFriendlyMsg);
     } finally {

@@ -167,24 +167,24 @@ export async function callVelonaChatCompletion({
   const isJob = (operation || '').includes('job');
   const isLearningPath = operation === 'learning_path';
 
-  // For Z.ai GLM-5.3-Flash: Allocate safe tokens (2200-3000) so reasoning and response fit comfortably
-  // without risking Vercel 60s timeout ceiling.
-  const safeMaxTokens = Math.min(3200, Math.max(2000, maxTokens || 2600));
+  // For Z.ai GLM-5.3-Flash: Allocate safe tokens (1600-2000) so reasoning and response fit comfortably
+  // without risking Vercel function timeout ceiling.
+  const safeMaxTokens = Math.min(2200, Math.max(1400, maxTokens || 1800));
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.1, Math.min(1.0, temperature))
-    : 0.2;
+    : 0.1;
 
   const velonaStart = Date.now();
   const maxRetries = 1;
-  // Strict timeout management: Vercel serverless has a 60s maximum duration ceiling.
-  // We keep the total budget at 50s and per-attempt at 42s so our code always cleans up
-  // and returns a structured JSON error before Vercel or Cloudflare abruptly terminates with Error 520.
-  const maxTotalBudgetMs = 50000;
-  const perAttemptTimeoutMs = isJob ? 42000 : (isLearningPath ? 30000 : 35000);
+  // Strict timeout management: Vercel serverless functions have execution duration ceilings.
+  // We keep the total budget at 28s and per-attempt at 24s so our code always cleans up
+  // and returns a structured JSON error before Vercel or Cloudflare terminates with Error 520 or 504.
+  const maxTotalBudgetMs = 28000;
+  const perAttemptTimeoutMs = isJob ? 24000 : (isLearningPath ? 18000 : 20000);
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 15000)) {
+    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 12000)) {
       break;
     }
 
@@ -203,7 +203,7 @@ export async function callVelonaChatCompletion({
         currentMessages = [
           {
             role: 'user',
-            content: `[System Instructions: ${mergedSystem}]\n\n${firstUser.content}\n\nIMPORTANT: Be extremely concise. Output strictly the requested content immediately.`
+            content: `[System Instructions: ${mergedSystem}]\n\n${firstUser.content}\n\nIMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
           },
           ...nonSystemParts.slice(1)
         ];
@@ -217,7 +217,7 @@ export async function callVelonaChatCompletion({
       messages: currentMessages,
       temperature: attempt > 0 ? 0.1 : safeTemperature,
       stream: false,
-      max_tokens: attempt > 0 ? 2500 : safeMaxTokens
+      max_tokens: attempt > 0 ? 1600 : safeMaxTokens
     };
 
     try {
@@ -433,7 +433,7 @@ export async function callVelonaChatCompletion({
       
       if (err.name === 'AbortError') {
         const stage = isLearningPath ? 'learning_path_timeout' : (isJob ? 'job_timeout' : `attempt_${attempt}_timeout`);
-        lastError = new Error(isJob ? 'Analysis is taking longer than expected. Please retry in a moment.' : 'AI request timed out. Please try again.');
+        lastError = new Error(isJob ? 'Analysis timed out on AI provider. Please click Retry Analysis.' : 'AI request timed out. Please try again.');
         lastError.status = 504;
         lastError.velonaStatus = 504;
         lastError.code = 'TIMEOUT';
@@ -449,7 +449,7 @@ export async function callVelonaChatCompletion({
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
       if (
         attempt < maxRetries &&
-        timeRemaining > 15000 &&
+        timeRemaining > 11000 &&
         (
           err.name === 'FetchError' ||
           err.code === 'ECONNRESET' ||
@@ -714,7 +714,9 @@ function normalizeAtsAuditResult(rawData: any) {
     { name: 'Structure & ATS Parsability', weight: 15 }
   ];
 
-  const rawBreakdown = Array.isArray(rawData?.scoreBreakdown) ? rawData.scoreBreakdown : [];
+  const rawBreakdown = Array.isArray(rawData?.scoreBreakdown)
+    ? rawData.scoreBreakdown
+    : (Array.isArray(rawData?.score_breakdown) ? rawData.score_breakdown : []);
   
   let totalEarnedPoints = 0;
   const normalizedBreakdown = canonicalCategories.map((canon, idx) => {
@@ -767,10 +769,10 @@ function normalizeAtsAuditResult(rawData: any) {
   const finalScore = Math.min(100, Math.max(0, Math.round(totalEarnedPoints)));
   const atsCompatibility = finalScore >= 80 ? 'High' : (finalScore >= 60 ? 'Moderate' : 'Low');
 
-  const rawKeywords = rawData?.keywordsFound || rawData?.identifiedKeywords || rawData?.keywords || [];
+  const rawKeywords = rawData?.keywordsFound || rawData?.keywords_found || rawData?.identifiedKeywords || rawData?.keywords || [];
   const keywordsFound = Array.isArray(rawKeywords) ? rawKeywords.map(String).filter(Boolean).slice(0, 10) : [];
 
-  const rawMissing = rawData?.missingKeywords || rawData?.missingSkills || rawData?.skillGaps || [];
+  const rawMissing = rawData?.missingKeywords || rawData?.missing_keywords || rawData?.missingSkills || rawData?.skillGaps || [];
   const missingKeywords = Array.isArray(rawMissing) ? rawMissing.map(String).filter(Boolean).slice(0, 6) : [];
 
   const rawStrengths = rawData?.strengths || rawData?.keyStrengths || rawData?.highlights || [];
@@ -1001,7 +1003,7 @@ async function processResumeAnalysisJob(
 
   try {
     const prepStart = Date.now();
-    // 1. Sanitize and compact resume text (bound to 7500 chars, ~1500 words)
+    // 1. Sanitize and compact resume text (bound to 4500 chars, ~900 words of highest-value experience and skills)
     const cleanResume = (resumeText || '')
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
       .replace(/[ \t]+/g, ' ')
@@ -1009,31 +1011,31 @@ async function processResumeAnalysisJob(
       .map(line => line.trim())
       .filter((line, idx, arr) => line.length > 0 && (idx === 0 || line !== arr[idx - 1]))
       .join('\n')
-      .slice(0, 7500);
+      .slice(0, 4500);
 
     if (!cleanResume || cleanResume.length < 25) {
       throw new Error('Resume text is too short or empty for ATS analysis.');
     }
 
-    // 2. Sanitize and compact job description (bound to 2000 chars)
+    // 2. Sanitize and compact job description (bound to 1500 chars)
     const cleanJD = (jobDescription || '')
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
       .replace(/[ \t]+/g, ' ')
       .trim()
-      .slice(0, 2000);
+      .slice(0, 1500);
 
     const prepDurationMs = Date.now() - prepStart;
 
-    // 3. Compact ATS schema prompt with strict limits
+    // 3. Compact ATS schema prompt with strict brevity limits to ensure sub-10s GLM-5.3-Flash inference
     const prompt = `You are an ATS Resume Auditor. Analyze this resume against the target job and output strictly valid JSON.
 
 Schema:
 {
-  "targetRole": "Candidate target or primary job title (e.g. Senior Frontend Engineer, DevOps Engineer, Full Stack Developer, Product Manager)",
+  "targetRole": "Candidate target or primary job title (e.g. Senior Frontend Engineer)",
   "score": number (0-100),
   "atsCompatibility": "High" | "Moderate" | "Low",
-  "summary": "max 30 words",
-  "strengths": ["max 4 items, max 12 words each"],
+  "summary": "max 25 words",
+  "strengths": ["max 3 items, max 10 words each"],
   "weaknesses": [
     { "problem": "max 10 words", "whyItMatters": "max 12 words", "howToFix": "max 12 words" }
   ],
@@ -1074,28 +1076,31 @@ Schema:
   "skillsAnalysis": [
     { "skill": "string", "type": "explicit" | "inferred", "confidence_level": "high" | "medium", "evidence": "max 10 words" }
   ],
-  "keywordsFound": ["max 8 items"],
-  "missingKeywords": ["max 5 items"],
+  "keywordsFound": ["max 6 items"],
+  "missingKeywords": ["max 4 items"],
   "recommendations": ["max 3 items, max 12 words each"]
 }
-Strict Limits: Max 3 items in "weaknesses". Max 5 key skills in "skillsAnalysis". Max 8 keywordsFound, max 5 missingKeywords, max 3 recommendations. Keep all descriptions strictly concise. All JSON brackets must be properly closed.
+STRICT CONSTRAINTS:
+- All 4 categories in scoreBreakdown MUST be present.
+- Keep all explanations, problem statements, and recommendations strictly under 12 words.
+- Output raw valid JSON only without markdown code fences or conversational text.
 
 TARGET JOB:
-${cleanJD || 'General ATS Industry Benchmark for the stated role and level'}
+${cleanJD || 'General ATS Industry Benchmark for candidate profile'}
 
 CANDIDATE RESUME:
 ${cleanResume}
 `;
 
-    // 4. Call Velona with optimized parameters (safe maxTokens: 2600 for fast GLM-5.3-Flash inference)
+    // 4. Call Velona with optimized parameters (safe maxTokens: 1800 for fast GLM-5.3-Flash inference)
     let velonaResult = await callVelonaChatCompletion({
       messages: [
-        { role: 'system', content: 'You are an ATS scoring API for AI HireFlow. Output raw valid JSON only. Keep explanations concise and adhere to schema limits.' },
+        { role: 'system', content: 'You are an ultra-fast ATS scoring engine for AI HireFlow. Output raw valid JSON only. Keep explanations concise and adhere to schema limits.' },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.2,
+      temperature: 0.1,
       jsonMode: true,
-      maxTokens: 2600,
+      maxTokens: 1800,
       requestId: job.analysisId,
       operation: 'resume_analysis_job',
       meta: {
@@ -1132,7 +1137,7 @@ ${cleanResume}
         ],
         temperature: 0.1,
         jsonMode: true,
-        maxTokens: 2500,
+        maxTokens: 1600,
         requestId: `${job.analysisId}_retry`,
         operation: 'resume_analysis_job_recovery'
       });
@@ -1148,7 +1153,7 @@ ${cleanResume}
         console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Recovery retry JSON parse failed:`, retryParseErr.message, 'Sample:', recoveryResult.text?.slice(0, 300));
         const parseError: any = new Error(
           recoveryResult.finishReason === 'length'
-            ? 'Resume analysis output was truncated by token limits. Please retry.'
+            ? 'Resume analysis output exceeded token budget. Please retry.'
             : 'Analysis completed with malformed response. Please retry in a moment.'
         );
         parseError.rawSample = recoveryResult.text?.slice(0, 500);
@@ -1181,7 +1186,7 @@ ${cleanResume}
     };
 
     // Safe operational diagnostics (no private user resume or keys)
-    console.log(`[AI HireFlow][Diagnostics] analysisId=${job.analysisId}, model=${velonaResult.model}, prompt_chars=${cleanResume.length}, prep_ms=${prepDurationMs}, velona_ms=${velonaResult.timing?.velonaDurationMs}ms, total_ms=${job.diagnostics.totalDurationMs}ms, status=completed, finishReason=${velonaResult.finishReason}, parseResult=SUCCESS, retried=${didRetry}`);
+    console.log(`[AI HireFlow][Diagnostics] endpoint=/api/resume/analyze-job, request_start=${new Date(jobStart).toISOString()}, end=${new Date().toISOString()}, duration_ms=${job.diagnostics.totalDurationMs}, model=${velonaResult.model}, http_status=200, status=completed, finishReason=${velonaResult.finishReason}, parseResult=SUCCESS, retried=${didRetry}`);
   } catch (err: any) {
     console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Background analysis failed:`, err.message);
     job.status = 'failed';
@@ -1190,16 +1195,17 @@ ${cleanResume}
     const isTimeout = err.code === 'TIMEOUT' || err.status === 504 || (err.message && err.message.toLowerCase().includes('time'));
     const safeErrorMsg = sanitizeSafeErrorMessage(err.message || 'Resume analysis failed. Please try again.');
     job.error = isTimeout 
-      ? 'Analysis is taking longer than expected. Please retry in a moment.' 
+      ? 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.' 
       : safeErrorMsg;
     job.diagnostics = {
       totalDurationMs: Date.now() - jobStart,
       parseResult: 'ERROR',
       finishReason: lastFinishReason,
       model: lastModel,
-      httpStatus: sanitizeHttpStatus(err.status || lastHttpStatus || 500),
+      httpStatus: isTimeout ? 504 : sanitizeHttpStatus(err.status || lastHttpStatus || 500),
       sample: err.rawSample || lastRawSample
     };
+    console.error(`[AI HireFlow][Diagnostics] endpoint=/api/resume/analyze-job, request_start=${new Date(jobStart).toISOString()}, end=${new Date().toISOString()}, duration_ms=${job.diagnostics.totalDurationMs}, model=${lastModel}, http_status=${job.diagnostics.httpStatus}, status=failed, error=${job.error}`);
   }
 }
 

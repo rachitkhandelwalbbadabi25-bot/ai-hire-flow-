@@ -80,12 +80,14 @@ export async function enforceSubscriptionAndCredits({
   userId,
   userEmail,
   operation,
-  overrideCost
+  overrideCost,
+  deduct = true
 }: {
   userId?: string;
   userEmail?: string;
   operation: string;
   overrideCost?: number;
+  deduct?: boolean;
 }): Promise<EnforcementResult> {
   const normalizedOp = operation ? operation.trim() : 'general';
   const requiredCredits = typeof overrideCost === 'number' 
@@ -279,6 +281,15 @@ export async function enforceSubscriptionAndCredits({
         error: `Insufficient AI credits. This action requires ${requiredCredits} credits, but you have ${currentBalance} available. Please upgrade or top up.`,
         requiredCredits,
         balance: currentBalance
+      };
+    }
+
+    // If deduct is false, this is a pre-flight validation check (do not charge credits before success)
+    if (!deduct) {
+      return {
+        allowed: true,
+        plan: planTier,
+        remainingCredits: wallet.balance
       };
     }
 

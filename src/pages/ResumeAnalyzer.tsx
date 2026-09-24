@@ -246,6 +246,7 @@ export default function ResumeAnalyzer() {
 
   const { currentActiveJob, setCurrentActiveJob, clearCurrentJobContext } = useSystemOS();
   const isAnalyzingRef = useRef(false);
+  const analysisAbortRef = useRef<AbortController | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingCL, setIsGeneratingCL] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('Auditing resume against ATS benchmarks...');
@@ -368,6 +369,10 @@ export default function ResumeAnalyzer() {
 
   // Complete fresh start for Resume Analyzer
   const handleFullReset = () => {
+    if (analysisAbortRef.current) {
+      analysisAbortRef.current.abort();
+      analysisAbortRef.current = null;
+    }
     const activeId = analysisJobService.getActiveJobId();
     if (activeId) {
       analysisJobService.cancelJob(activeId, user?.uid);
@@ -402,6 +407,10 @@ export default function ResumeAnalyzer() {
       activeJobKeyRef.current = currentKey;
 
       // Cancel any running background analysis job from the previous job
+      if (analysisAbortRef.current) {
+        analysisAbortRef.current.abort();
+        analysisAbortRef.current = null;
+      }
       const activeBackgroundId = analysisJobService.getActiveJobId();
       if (activeBackgroundId) {
         analysisJobService.cancelJob(activeBackgroundId, user?.uid);
@@ -971,6 +980,14 @@ export default function ResumeAnalyzer() {
       return;
     }
 
+    // Cancel any previous in-flight request
+    if (analysisAbortRef.current) {
+      analysisAbortRef.current.abort();
+    }
+    const abortController = new AbortController();
+    analysisAbortRef.current = abortController;
+    const requestJobKey = activeJobKeyRef.current;
+
     setIsAnalyzing(true);
     setError(null);
     setCacheSource(null);
@@ -1066,8 +1083,15 @@ export default function ResumeAnalyzer() {
         resumeText: text,
         jobDesc,
         fileType: fileTypeForAnalysis,
-        onProgress: (statusText) => setAnalysisStatus(statusText)
+        onProgress: (statusText) => setAnalysisStatus(statusText),
+        signal: abortController.signal
       });
+
+      // Prevent stale results from overwriting newer active job context:
+      if (activeJobKeyRef.current !== requestJobKey) {
+        console.warn('[ResumeAnalyzer] Active job context changed during analysis; discarding stale result.');
+        return;
+      }
 
       // Deduct credit strictly ONCE upon successful completion of the analysis
       await deductCredit('resumeScans');
@@ -1145,6 +1169,10 @@ export default function ResumeAnalyzer() {
       }
 
     } catch (err: any) {
+      if (abortController.signal.aborted || err?.message === 'Analysis was cancelled.') {
+        console.log('[ResumeAnalyzer] Analysis request aborted or superseded.');
+        return;
+      }
       console.error('[ResumeAnalyzer] Analysis error:', err);
       let userFriendlyMsg = err.message || "Resume analysis failed. Please try again.";
       if (userFriendlyMsg.includes('520') || userFriendlyMsg.includes('Cloudflare') || userFriendlyMsg.includes('<!DOCTYPE')) {
@@ -1154,6 +1182,9 @@ export default function ResumeAnalyzer() {
       }
       setError(userFriendlyMsg);
     } finally {
+      if (analysisAbortRef.current === abortController) {
+        analysisAbortRef.current = null;
+      }
       isAnalyzingRef.current = false;
       setIsAnalyzing(false);
       setAnalysisStatus('');
@@ -1217,10 +1248,11 @@ export default function ResumeAnalyzer() {
             <button
               type="button"
               onClick={handleStartAnalysis}
-              className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-mono text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+              disabled={isAnalyzing}
+              className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-mono text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Retry Analysis
+              {isAnalyzing ? 'Analyzing...' : 'Retry Analysis'}
             </button>
             <button
               type="button"
@@ -1500,10 +1532,11 @@ export default function ResumeAnalyzer() {
                     </div>
                     <button
                       onClick={handleStartAnalysis}
-                      className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors shrink-0 cursor-pointer"
+                      disabled={isAnalyzing}
+                      className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Retry resume analysis"
                     >
-                      Retry Analysis
+                      {isAnalyzing ? 'Analyzing...' : 'Retry Analysis'}
                     </button>
                   </div>
                 )}

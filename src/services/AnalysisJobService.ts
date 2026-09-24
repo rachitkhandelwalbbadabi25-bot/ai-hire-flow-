@@ -149,97 +149,61 @@ class AnalysisJobService {
 
     onProgress?.('Auditing resume against ATS benchmarks with Velona GLM 5.3 Flash...');
 
-    // Kick off the background processing job on the backend
-    const currentUser = auth.currentUser;
-    const startRes = await fetch('/api/resume/analyze-job', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(userId ? { 'x-user-id': userId } : (currentUser?.uid ? { 'x-user-id': currentUser.uid } : {})),
-        ...(currentUser?.email ? { 'x-user-email': currentUser.email } : {})
-      },
-      body: JSON.stringify({
-        analysisId,
-        userId: userId || currentUser?.uid,
-        userEmail: currentUser?.email,
-        resumeText,
-        jobDescription: jobDesc,
-        fileType: fileType || 'pdf'
-      }),
-      signal
-    });
+    try {
+      // Kick off the background processing job on the backend
+      const currentUser = auth.currentUser;
+      const startRes = await fetch('/api/resume/analyze-job', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(userId ? { 'x-user-id': userId } : (currentUser?.uid ? { 'x-user-id': currentUser.uid } : {})),
+          ...(currentUser?.email ? { 'x-user-email': currentUser.email } : {})
+        },
+        body: JSON.stringify({
+          analysisId,
+          userId: userId || currentUser?.uid,
+          userEmail: currentUser?.email,
+          resumeText,
+          jobDescription: jobDesc,
+          fileType: fileType || 'pdf'
+        }),
+        signal
+      });
 
-    if (!startRes.ok) {
-      let friendlyError = `Analysis request failed (HTTP ${startRes.status})`;
-      try {
-        const errText = await startRes.text();
-        if (errText.includes('520') || errText.includes('Cloudflare') || errText.includes('<!DOCTYPE') || errText.includes('<html')) {
-          friendlyError = 'The AI audit service is currently experiencing upstream network latency or a gateway connection issue. Please click Run Audit to retry.';
-        } else {
-          try {
-            const errData = JSON.parse(errText);
-            friendlyError = errData.error || friendlyError;
-          } catch {
-            friendlyError = errText.slice(0, 150).replace(/<[^>]*>/g, '').trim() || friendlyError;
-          }
-        }
-      } catch {
-        // fallback
-      }
-
-      if (startRes.status === 504 || (startRes.status >= 500 && friendlyError.toLowerCase().includes('time'))) {
-        friendlyError = 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.';
-      } else if (startRes.status === 502 && !friendlyError.includes('AI') && !friendlyError.includes('analysis')) {
-        friendlyError = 'The AI service encountered a temporary gateway issue. Please click Retry Analysis.';
-      }
-
-      this.clearActiveJobId();
-      throw new Error(friendlyError);
-    }
-
-    const startData = await startRes.json();
-    const effectiveJobId = startData.analysisId || analysisId;
-
-    // Fast-path: When server executes and returns the completed analysis directly in the POST response
-    if (startData.status === 'completed' && startData.result) {
-      this.clearActiveJobId();
-      if (userId && db) {
+      if (!startRes.ok) {
+        let friendlyError = `Analysis request failed (HTTP ${startRes.status})`;
         try {
-          const jobDocRef = doc(db, 'users', userId, 'analysisJobs', effectiveJobId);
-          await updateDoc(jobDocRef, {
-            status: 'completed',
-            updatedAt: new Date().toISOString()
-          });
-        } catch (e) {
-          // Ignore doc update error
+          const errText = await startRes.text();
+          if (errText.includes('520') || errText.includes('Cloudflare') || errText.includes('<!DOCTYPE') || errText.includes('<html')) {
+            friendlyError = 'The AI audit service is currently experiencing upstream network latency or a gateway connection issue. Please click Run Audit to retry.';
+          } else {
+            try {
+              const errData = JSON.parse(errText);
+              friendlyError = errData.error || friendlyError;
+            } catch {
+              friendlyError = errText.slice(0, 150).replace(/<[^>]*>/g, '').trim() || friendlyError;
+            }
+          }
+        } catch {
+          // fallback
         }
-      }
-      return startData.result;
-    }
 
-    // Polling loop: every 2 seconds check job status until completed or failed
-    const maxPolls = 60; // 60 polls * 2000ms = 120 seconds max polling ceiling
-    const pollIntervalMs = 2000;
+        if (startRes.status === 504 || (startRes.status >= 500 && friendlyError.toLowerCase().includes('time'))) {
+          friendlyError = 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.';
+        } else if (startRes.status === 502 && !friendlyError.includes('AI') && !friendlyError.includes('analysis')) {
+          friendlyError = 'The AI service encountered a temporary gateway issue. Please click Retry Analysis.';
+        }
 
-    for (let poll = 0; poll < maxPolls; poll++) {
-      if (signal?.aborted) {
-        await this.cancelJob(effectiveJobId, userId);
-        throw new Error('Analysis was cancelled.');
-      }
-
-      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
-
-      if (signal?.aborted) {
-        await this.cancelJob(effectiveJobId, userId);
-        throw new Error('Analysis was cancelled.');
-      }
-
-      const statusData = await this.getJobStatus(effectiveJobId);
-
-      if (statusData.status === 'completed' && statusData.result) {
         this.clearActiveJobId();
+        throw new Error(friendlyError);
+      }
 
-        // Update Firestore job document
+      const startData = await startRes.json();
+      const effectiveJobId = startData.analysisId || analysisId;
+
+      // Fast-path: When server executes and returns the completed analysis directly in the POST response
+      if (startData.status === 'completed' && startData.result) {
+        this.clearActiveJobId();
         if (userId && db) {
           try {
             const jobDocRef = doc(db, 'users', userId, 'analysisJobs', effectiveJobId);
@@ -251,37 +215,81 @@ class AnalysisJobService {
             // Ignore doc update error
           }
         }
-
-        return statusData.result;
+        return startData.result;
       }
 
-      if (statusData.status === 'failed') {
-        this.clearActiveJobId();
+      // Polling loop: every 2 seconds check job status until completed or failed
+      const maxPolls = 60; // 60 polls * 2000ms = 120 seconds max polling ceiling
+      const pollIntervalMs = 2000;
 
-        if (userId && db) {
-          try {
-            const jobDocRef = doc(db, 'users', userId, 'analysisJobs', effectiveJobId);
-            await updateDoc(jobDocRef, {
-              status: 'failed',
-              error: statusData.error || 'Analysis failed',
-              updatedAt: new Date().toISOString()
-            });
-          } catch (e) {
-            // Ignore
-          }
+      for (let poll = 0; poll < maxPolls; poll++) {
+        if (signal?.aborted) {
+          await this.cancelJob(effectiveJobId, userId);
+          throw new Error('Analysis was cancelled.');
         }
 
-        const friendlyMsg = statusData.error || 'Analysis is taking longer than expected. Please retry in a moment.';
-        throw new Error(friendlyMsg);
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+
+        if (signal?.aborted) {
+          await this.cancelJob(effectiveJobId, userId);
+          throw new Error('Analysis was cancelled.');
+        }
+
+        const statusData = await this.getJobStatus(effectiveJobId);
+
+        if (statusData.status === 'completed' && statusData.result) {
+          this.clearActiveJobId();
+
+          // Update Firestore job document
+          if (userId && db) {
+            try {
+              const jobDocRef = doc(db, 'users', userId, 'analysisJobs', effectiveJobId);
+              await updateDoc(jobDocRef, {
+                status: 'completed',
+                updatedAt: new Date().toISOString()
+              });
+            } catch (e) {
+              // Ignore doc update error
+            }
+          }
+
+          return statusData.result;
+        }
+
+        if (statusData.status === 'failed') {
+          this.clearActiveJobId();
+
+          if (userId && db) {
+            try {
+              const jobDocRef = doc(db, 'users', userId, 'analysisJobs', effectiveJobId);
+              await updateDoc(jobDocRef, {
+                status: 'failed',
+                error: statusData.error || 'Analysis failed',
+                updatedAt: new Date().toISOString()
+              });
+            } catch (e) {
+              // Ignore
+            }
+          }
+
+          const friendlyMsg = statusData.error || 'Analysis is taking longer than expected. Please retry in a moment.';
+          throw new Error(friendlyMsg);
+        }
+
+        // Still queued or processing
+        onProgress?.('Auditing resume against ATS benchmarks with Velona GLM 5.3 Flash...');
       }
 
-      // Still queued or processing
-      onProgress?.('Auditing resume against ATS benchmarks with Velona GLM 5.3 Flash...');
+      // Polling limit reached
+      this.clearActiveJobId();
+      throw new Error('Analysis timed out while awaiting the AI provider response. Please click Retry Analysis to rerun the scan.');
+    } catch (err: any) {
+      this.clearActiveJobId();
+      if (signal?.aborted || err?.name === 'AbortError') {
+        throw new Error('Analysis was cancelled.');
+      }
+      throw err;
     }
-
-    // Polling limit reached
-    this.clearActiveJobId();
-    throw new Error('Analysis timed out while awaiting the AI provider response. Please click Retry Analysis to rerun the scan.');
   }
 }
 

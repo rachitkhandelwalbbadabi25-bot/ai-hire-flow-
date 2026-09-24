@@ -1769,10 +1769,23 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       };
     }
 
+    // 7. Learning Path: Available for Free users as well (no premium lock or payment requirement)
+    if (feature === 'learningPath') {
+      return {
+        hasAccess: true,
+        remaining: 'Unlimited',
+        limit: 'Unlimited',
+        period: 'unlimited' as const,
+        displayLimit: 'Free Access',
+        hasCredits: true,
+        creditsNeeded: 0
+      };
+    }
+
     // Fallback: credits based check
     let key: keyof CreditCosts = 'resumeScan';
     if (feature === 'coverLetters' || feature === 'coverLetter') key = 'coverLetter';
-    else if (feature === 'careerRoadmap' || feature === 'learningPath') key = 'careerRoadmap';
+    else if (feature === 'careerRoadmap') key = 'careerRoadmap';
     else if (feature in creditCosts) key = feature as keyof CreditCosts;
 
     const cost = creditCosts[key] || 0;
@@ -1806,7 +1819,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       key = 'coverLetter';
     } else if (feature === 'careerAdvisor' || feature === 'careerCoachChat' || feature === 'careerCoach') {
       key = 'careerCoachChat';
-    } else if (feature === 'careerRoadmap' || feature === 'learningPath') {
+    } else if (feature === 'careerRoadmap') {
       key = 'careerRoadmap';
     } else if (feature in creditCosts) {
       key = feature as keyof CreditCosts;

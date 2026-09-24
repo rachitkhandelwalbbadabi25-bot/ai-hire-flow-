@@ -1858,6 +1858,8 @@ var ACTION_CREDIT_COSTS = {
   job_match: 5,
   careerRoadmap: 50,
   career_roadmap: 50,
+  learning_path: 0,
+  learningPath: 0,
   linkedinReview: 20,
   portfolioReview: 30,
   careerCoachChat: 5,
@@ -2050,18 +2052,22 @@ async function enforceSubscriptionAndCredits({
       usage.interviewLabsMonthly = (usage.interviewLabsMonthly || 0) + 1;
     }
     if (isEdit) usage.resumeEditsMonthly = (usage.resumeEditsMonthly || 0) + 1;
-    await updateDoc(userRef, {
-      creditWallet: wallet,
-      subscriptionUsage: usage
-    });
-    await addDoc(collection(firestore, "users", userId, "transactions"), {
-      amount: -requiredCredits,
-      type: "spend",
-      label: `Backend Execution: ${normalizedOp}`,
-      timestamp: now.toISOString()
-    }).catch(() => {
-    });
-    console.log(`[SubscriptionEnforcement] User ${userId} [${planTier}] spent ${requiredCredits} credits for ${normalizedOp}. Remaining: ${wallet.balance}`);
+    if (requiredCredits > 0 || isAdvisor || isAts || isInterview || isEdit || isNewDay) {
+      await updateDoc(userRef, {
+        creditWallet: wallet,
+        subscriptionUsage: usage
+      });
+    }
+    if (requiredCredits > 0) {
+      await addDoc(collection(firestore, "users", userId, "transactions"), {
+        amount: -requiredCredits,
+        type: "spend",
+        label: `Backend Execution: ${normalizedOp}`,
+        timestamp: now.toISOString()
+      }).catch(() => {
+      });
+      console.log(`[SubscriptionEnforcement] User ${userId} [${planTier}] spent ${requiredCredits} credits for ${normalizedOp}. Remaining: ${wallet.balance}`);
+    }
     return {
       allowed: true,
       plan: planTier,

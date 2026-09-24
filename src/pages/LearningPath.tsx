@@ -238,7 +238,6 @@ export default function LearningPath() {
     } catch (e) {}
   };
 
-  const isFree = plan === 'free';
   const isPersonalized = roadmapType === 'personalized';
 
   const getJobTitle = (fullDesc: string) => {
@@ -505,17 +504,16 @@ export default function LearningPath() {
     if (loading) return;
     if (!skillsStr.trim() || !targetRole.trim()) return;
     
-    // Check credits for careerRoadmap
-    const access = checkAccess('careerRoadmap');
+    // Check access for learningPath (available for free users)
+    const access = checkAccess('learningPath');
     if (!access.hasAccess) {
-      openUpgradeModal('careerRoadmap');
+      openUpgradeModal('learningPath');
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      await deductCredit('careerRoadmap');
       const missingSkills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
       const result = await generateLearningPath(missingSkills, targetRole.trim());
       setRoadmap(result);
@@ -659,18 +657,6 @@ export default function LearningPath() {
                   placeholder="e.g. Senior Software Engineer"
                 />
               </div>
-
-              {isFree && (
-                <div className="p-4 bg-accent/5 border border-accent/20 rounded-2xl text-center space-y-3 shadow-sm">
-                  <p className="text-[10px] font-bold text-ink uppercase tracking-wider">Roadmap Generation Locked</p>
-                  <button 
-                    onClick={() => openUpgradeModal('learningPath')}
-                    className="block w-full text-[9px] font-bold text-white bg-accent py-3 rounded-xl uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer"
-                  >
-                    Upgrade to Premium
-                  </button>
-                </div>
-              )}
             </div>
 
             <div>
@@ -692,7 +678,7 @@ export default function LearningPath() {
                     <button 
                       onClick={() => {
                         if (recentAnalysis.missingKeywords) {
-                          const clean = normalizeIncomingSkills(recentAnalysis.missingKeywords);
+                           const clean = normalizeIncomingSkills(recentAnalysis.missingKeywords);
                           if (clean) {
                             setSkillsStr(clean);
                             userEditedSkillsRef.current = true;
@@ -715,20 +701,19 @@ export default function LearningPath() {
               </div>
               <textarea 
                 value={skillsStr}
-                disabled={isFree}
                 onChange={(e) => {
                   setSkillsStr(e.target.value);
                   userEditedSkillsRef.current = true;
                 }}
-                className="w-full h-28 sm:h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed disabled:opacity-50"
-                placeholder={!isFree ? "Enter skills separated by commas (e.g. React, TypeScript, GraphQL)..." : "Upgrade plan to unlock customized roadmaps."}
+                className="w-full h-28 sm:h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed"
+                placeholder="Enter skills separated by commas (e.g. React, TypeScript, GraphQL)..."
               />
             </div>
           </div>
 
           <button 
             onClick={generatePath}
-            disabled={loading || !targetRole.trim() || !skillsStr.trim() || isFree}
+            disabled={loading || !targetRole.trim() || !skillsStr.trim()}
             className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}

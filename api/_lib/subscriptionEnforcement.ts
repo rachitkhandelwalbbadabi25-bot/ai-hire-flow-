@@ -50,6 +50,8 @@ export const ACTION_CREDIT_COSTS: Record<string, number> = {
   job_match: 5,
   careerRoadmap: 50,
   career_roadmap: 50,
+  learning_path: 0,
+  learningPath: 0,
   linkedinReview: 20,
   portfolioReview: 30,
   careerCoachChat: 5,
@@ -311,20 +313,24 @@ export async function enforceSubscriptionAndCredits({
     if (isEdit) usage.resumeEditsMonthly = (usage.resumeEditsMonthly || 0) + 1;
 
     // Persist in Firestore
-    await updateDoc(userRef, {
-      creditWallet: wallet,
-      subscriptionUsage: usage
-    });
+    if (requiredCredits > 0 || isAdvisor || isAts || isInterview || isEdit || isNewDay) {
+      await updateDoc(userRef, {
+        creditWallet: wallet,
+        subscriptionUsage: usage
+      });
+    }
 
-    // Record spend transaction
-    await addDoc(collection(firestore, 'users', userId, 'transactions'), {
-      amount: -requiredCredits,
-      type: 'spend',
-      label: `Backend Execution: ${normalizedOp}`,
-      timestamp: now.toISOString()
-    }).catch(() => {});
+    // Record spend transaction if credits were spent
+    if (requiredCredits > 0) {
+      await addDoc(collection(firestore, 'users', userId, 'transactions'), {
+        amount: -requiredCredits,
+        type: 'spend',
+        label: `Backend Execution: ${normalizedOp}`,
+        timestamp: now.toISOString()
+      }).catch(() => {});
 
-    console.log(`[SubscriptionEnforcement] User ${userId} [${planTier}] spent ${requiredCredits} credits for ${normalizedOp}. Remaining: ${wallet.balance}`);
+      console.log(`[SubscriptionEnforcement] User ${userId} [${planTier}] spent ${requiredCredits} credits for ${normalizedOp}. Remaining: ${wallet.balance}`);
+    }
 
     return {
       allowed: true,

@@ -167,24 +167,27 @@ export async function callVelonaChatCompletion({
   const isJob = (operation || '').includes('job');
   const isLearningPath = operation === 'learning_path';
 
-  // For Z.ai GLM-5.3-Flash: Allocate safe tokens (1600-2000) so reasoning and response fit comfortably
+  // For Z.ai GLM-5.3-Flash: Allocate safe tokens (1200-1600) so reasoning and response fit comfortably
   // without risking Vercel function timeout ceiling.
-  const safeMaxTokens = Math.min(2200, Math.max(1400, maxTokens || 1800));
+  const safeMaxTokens = Math.min(1800, Math.max(1000, maxTokens || 1400));
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
-    ? Math.max(0.1, Math.min(1.0, temperature))
+    ? Math.max(0.0, Math.min(1.0, temperature))
     : 0.1;
 
   const velonaStart = Date.now();
   const maxRetries = 1;
-  // Strict timeout management: Vercel serverless functions have execution duration ceilings.
-  // We keep the total budget at 28s and per-attempt at 24s so our code always cleans up
-  // and returns a structured JSON error before Vercel or Cloudflare terminates with Error 520 or 504.
-  const maxTotalBudgetMs = 28000;
-  const perAttemptTimeoutMs = isJob ? 24000 : (isLearningPath ? 18000 : 20000);
+  // Strict timeout management aligned with Vercel's 60s maxDuration ceiling.
+  // We allocate 50s total budget and 44s for the primary attempt so normal GLM inference (typically 12-30s)
+  // completes without premature aborts, leaving 6-10s for the server to cleanly finalize and return structured JSON.
+  const maxTotalBudgetMs = 50000;
+  const perAttemptTimeoutMs = isJob ? 44000 : (isLearningPath ? 30000 : 35000);
   let lastError: any = null;
 
+  const inputChars = meta?.charCount || formattedMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+  const approxInputTokens = Math.round(inputChars / 4);
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 12000)) {
+    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 20000)) {
       break;
     }
 
@@ -215,9 +218,9 @@ export async function callVelonaChatCompletion({
     const payload: any = {
       model: modelId,
       messages: currentMessages,
-      temperature: attempt > 0 ? 0.1 : safeTemperature,
+      temperature: attempt > 0 ? 0.0 : safeTemperature,
       stream: false,
-      max_tokens: attempt > 0 ? 1600 : safeMaxTokens
+      max_tokens: attempt > 0 ? 1200 : safeMaxTokens
     };
 
     try {
@@ -392,8 +395,8 @@ export async function callVelonaChatCompletion({
       const finishReason = choice?.finish_reason || 'stop';
       const totalElapsed = Date.now() - velonaStart;
 
-      // Safe diagnostics: strictly operational metrics without sensitive user prompt/resume content
-      console.log(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(velonaStart).toISOString()}, http_status=200, model=${modelId}, total_duration_ms=${totalElapsed}, velona_duration_ms=${attemptDuration}, velona_status=${response.status}, status=success, message=ok`);
+      // Safe production diagnostics: strictly operational metrics without sensitive user prompt/resume content
+      console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(attemptStart).toISOString()}, request_id=${requestId || 'unknown'}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${attemptDuration}, provider_status=200, retry_count=${attempt}, response_chars=${content.length}, failure_category=none`);
 
       let cleanText = content;
       if (jsonMode && typeof cleanText === 'string') {
@@ -433,7 +436,7 @@ export async function callVelonaChatCompletion({
       
       if (err.name === 'AbortError') {
         const stage = isLearningPath ? 'learning_path_timeout' : (isJob ? 'job_timeout' : `attempt_${attempt}_timeout`);
-        lastError = new Error(isJob ? 'Analysis timed out on AI provider. Please click Retry Analysis.' : 'AI request timed out. Please try again.');
+        lastError = new Error(isJob ? 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.' : 'AI request timed out. Please try again.');
         lastError.status = 504;
         lastError.velonaStatus = 504;
         lastError.code = 'TIMEOUT';
@@ -449,7 +452,7 @@ export async function callVelonaChatCompletion({
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
       if (
         attempt < maxRetries &&
-        timeRemaining > 11000 &&
+        timeRemaining > 20000 &&
         (
           err.name === 'FetchError' ||
           err.code === 'ECONNRESET' ||
@@ -472,12 +475,12 @@ export async function callVelonaChatCompletion({
 
   const totalElapsed = Date.now() - velonaStart;
   const safeMessage = sanitizeSafeErrorMessage(lastError?.message || 'Velona API request failed.');
-  const errorCategory = lastError?.code || 'AI_GENERATION_FAILED';
+  const errorCategory = lastError?.code || (lastError?.status === 504 ? 'TIMEOUT' : 'AI_GENERATION_FAILED');
   const velonaStatus = lastError?.velonaStatus || lastError?.status || 500;
   const timeoutStage = lastError?.timeoutStage || (errorCategory === 'TIMEOUT' ? 'request_timeout' : 'none');
   const velonaDuration = lastError?.attemptDuration || totalElapsed;
 
-  console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(velonaStart).toISOString()}, http_status=${lastError?.status || 500}, model=${modelId}, total_duration_ms=${totalElapsed}, velona_duration_ms=${velonaDuration}, velona_status=${velonaStatus}, timeout_stage=${timeoutStage}, error_category=${errorCategory}, message=${safeMessage}`);
+  console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || 'unknown'}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, provider_status=${velonaStatus}, retry_count=${maxRetries > 0 ? 1 : 0}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}`);
 
   throw lastError || new Error('Velona API request failed after retries.');
 }
@@ -686,6 +689,7 @@ interface ResumeAnalysisJob {
     parseResult?: string;
     schemaValidation?: string;
     httpStatus?: number;
+    failureCategory?: string;
     sample?: string;
     retried?: boolean;
   };
@@ -1000,10 +1004,13 @@ async function processResumeAnalysisJob(
   let lastModel = VELONA_MODEL_ID;
   let lastHttpStatus = 200;
   let lastRawSample = '';
+  let totalInputChars = (resumeText?.length || 0) + (jobDescription?.length || 0);
+  let approxInputTokens = Math.round(totalInputChars / 4);
+  let didRetry = false;
 
   try {
     const prepStart = Date.now();
-    // 1. Sanitize and compact resume text (bound to 4500 chars, ~900 words of highest-value experience and skills)
+    // 1. Sanitize and compact resume text (bound to 3500 chars, ~700 words of highest-value experience and skills)
     const cleanResume = (resumeText || '')
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
       .replace(/[ \t]+/g, ' ')
@@ -1011,78 +1018,80 @@ async function processResumeAnalysisJob(
       .map(line => line.trim())
       .filter((line, idx, arr) => line.length > 0 && (idx === 0 || line !== arr[idx - 1]))
       .join('\n')
-      .slice(0, 4500);
+      .slice(0, 3500);
 
     if (!cleanResume || cleanResume.length < 25) {
       throw new Error('Resume text is too short or empty for ATS analysis.');
     }
 
-    // 2. Sanitize and compact job description (bound to 1500 chars)
+    // 2. Sanitize and compact job description (bound to 1200 chars)
     const cleanJD = (jobDescription || '')
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
       .replace(/[ \t]+/g, ' ')
       .trim()
-      .slice(0, 1500);
+      .slice(0, 1200);
 
     const prepDurationMs = Date.now() - prepStart;
+    totalInputChars = cleanResume.length + (cleanJD ? cleanJD.length : 0);
+    approxInputTokens = Math.round(totalInputChars / 4);
 
-    // 3. Compact ATS schema prompt with strict brevity limits to ensure sub-10s GLM-5.3-Flash inference
+    // 3. Compact ATS schema prompt with strict brevity limits for fast, deterministic GLM-5.3-Flash inference
     const prompt = `You are an ATS Resume Auditor. Analyze this resume against the target job and output strictly valid JSON.
 
 Schema:
 {
-  "targetRole": "Candidate target or primary job title (e.g. Senior Frontend Engineer)",
+  "targetRole": "Candidate primary job title",
   "score": number (0-100),
   "atsCompatibility": "High" | "Moderate" | "Low",
   "summary": "max 25 words",
-  "strengths": ["max 3 items, max 10 words each"],
+  "strengths": ["max 3 items, max 8 words each"],
   "weaknesses": [
-    { "problem": "max 10 words", "whyItMatters": "max 12 words", "howToFix": "max 12 words" }
+    { "problem": "max 8 words", "whyItMatters": "max 10 words", "howToFix": "max 10 words" }
   ],
   "scoreBreakdown": [
     {
       "category": "Core Technical & Skill Match",
       "weight": 40,
       "score": number,
-      "explanation": "max 12 words",
-      "evidence": "max 10 words",
-      "recommendations": ["max 12 words"]
+      "explanation": "max 10 words",
+      "evidence": "max 8 words",
+      "recommendations": ["max 10 words"]
     },
     {
       "category": "Measurable Impact & Hard Metrics",
       "weight": 25,
       "score": number,
-      "explanation": "max 12 words",
-      "evidence": "max 10 words",
-      "recommendations": ["max 12 words"]
+      "explanation": "max 10 words",
+      "evidence": "max 8 words",
+      "recommendations": ["max 10 words"]
     },
     {
       "category": "Role & Domain Relevance",
       "weight": 20,
       "score": number,
-      "explanation": "max 12 words",
-      "evidence": "max 10 words",
-      "recommendations": ["max 12 words"]
+      "explanation": "max 10 words",
+      "evidence": "max 8 words",
+      "recommendations": ["max 10 words"]
     },
     {
       "category": "Structure & ATS Parsability",
       "weight": 15,
       "score": number,
-      "explanation": "max 12 words",
-      "evidence": "max 10 words",
-      "recommendations": ["max 12 words"]
+      "explanation": "max 10 words",
+      "evidence": "max 8 words",
+      "recommendations": ["max 10 words"]
     }
   ],
   "skillsAnalysis": [
-    { "skill": "string", "type": "explicit" | "inferred", "confidence_level": "high" | "medium", "evidence": "max 10 words" }
+    { "skill": "string", "type": "explicit" | "inferred", "confidence_level": "high" | "medium", "evidence": "max 8 words" }
   ],
   "keywordsFound": ["max 6 items"],
   "missingKeywords": ["max 4 items"],
-  "recommendations": ["max 3 items, max 12 words each"]
+  "recommendations": ["max 3 items, max 10 words each"]
 }
 STRICT CONSTRAINTS:
 - All 4 categories in scoreBreakdown MUST be present.
-- Keep all explanations, problem statements, and recommendations strictly under 12 words.
+- Keep all explanations, problem statements, and recommendations strictly under 10 words.
 - Output raw valid JSON only without markdown code fences or conversational text.
 
 TARGET JOB:
@@ -1092,20 +1101,20 @@ CANDIDATE RESUME:
 ${cleanResume}
 `;
 
-    // 4. Call Velona with optimized parameters (safe maxTokens: 1800 for fast GLM-5.3-Flash inference)
+    // 4. Call Velona with direct scoring instruction and safe tokens (1600 tokens for reasoning + JSON)
     let velonaResult = await callVelonaChatCompletion({
       messages: [
-        { role: 'system', content: 'You are an ultra-fast ATS scoring engine for AI HireFlow. Output raw valid JSON only. Keep explanations concise and adhere to schema limits.' },
+        { role: 'system', content: 'You are a direct ATS scoring rule engine for AI HireFlow. Evaluate immediately without chain-of-thought or lengthy reasoning. Emit raw valid JSON instantly. Adhere strictly to word limits.' },
         { role: 'user', content: prompt }
       ],
       temperature: 0.1,
       jsonMode: true,
-      maxTokens: 1800,
+      maxTokens: 1600,
       requestId: job.analysisId,
       operation: 'resume_analysis_job',
       meta: {
         fileType: fileType || 'resume',
-        charCount: cleanResume.length,
+        charCount: totalInputChars,
         wordCount: cleanResume.split(/\s+/).filter(Boolean).length
       }
     });
@@ -1116,7 +1125,7 @@ ${cleanResume}
 
     // 5. Parse JSON using resilient extractor
     let parsed: any = null;
-    let didRetry = false;
+    didRetry = false;
 
     try {
       parsed = extractAndParseJson(velonaResult.text);
@@ -1135,9 +1144,9 @@ ${cleanResume}
           { role: 'assistant', content: velonaResult.text ? velonaResult.text.slice(0, 400) : '' },
           { role: 'user', content: 'The previous response was malformed or incomplete. Return ONLY valid JSON. No markdown. No code fences. No commentary. Keep all fields strictly concise and use exactly the existing ATS schema.' }
         ],
-        temperature: 0.1,
+        temperature: 0.0,
         jsonMode: true,
-        maxTokens: 1600,
+        maxTokens: 1200,
         requestId: `${job.analysisId}_retry`,
         operation: 'resume_analysis_job_recovery'
       });
@@ -1156,6 +1165,7 @@ ${cleanResume}
             ? 'Resume analysis output exceeded token budget. Please retry.'
             : 'Analysis completed with malformed response. Please retry in a moment.'
         );
+        parseError.code = 'JSON_PARSE_ERROR';
         parseError.rawSample = recoveryResult.text?.slice(0, 500);
         throw parseError;
       }
@@ -1166,7 +1176,9 @@ ${cleanResume}
 
     // Schema sanity check: ensure required core ATS fields exist
     if (typeof normalized.score !== 'number' || !Array.isArray(normalized.scoreBreakdown) || normalized.scoreBreakdown.length === 0) {
-      throw new Error('ATS schema validation failed: missing score or breakdown.');
+      const schemaErr: any = new Error('ATS schema validation failed: missing score or breakdown.');
+      schemaErr.code = 'SCHEMA_VALIDATION_ERROR';
+      throw schemaErr;
     }
 
     job.status = 'completed';
@@ -1186,26 +1198,51 @@ ${cleanResume}
     };
 
     // Safe operational diagnostics (no private user resume or keys)
-    console.log(`[AI HireFlow][Diagnostics] endpoint=/api/resume/analyze-job, request_start=${new Date(jobStart).toISOString()}, end=${new Date().toISOString()}, duration_ms=${job.diagnostics.totalDurationMs}, model=${velonaResult.model}, http_status=200, status=completed, finishReason=${velonaResult.finishReason}, parseResult=SUCCESS, retried=${didRetry}`);
+    console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(jobStart).toISOString()}, request_id=${job.analysisId}, model=${velonaResult.model}, input_chars=${totalInputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=44000, provider_duration_ms=${velonaResult.timing?.velonaDurationMs || job.diagnostics.totalDurationMs}, provider_status=200, retry_count=${didRetry ? 1 : 0}, response_chars=${velonaResult.text?.length || 0}, failure_category=none`);
   } catch (err: any) {
     console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Background analysis failed:`, err.message);
     job.status = 'failed';
     job.updatedAt = Date.now();
 
+    const isAuth = err.status === 401 || err.status === 403 || err.code === 'AUTH_ERROR' || err.code === 'INVALID_API_KEY' || (err.message && err.message.toLowerCase().includes('auth'));
+    const isRateLimit = err.status === 429 || err.code === 'RATE_LIMIT' || (err.message && err.message.toLowerCase().includes('rate'));
     const isTimeout = err.code === 'TIMEOUT' || err.status === 504 || (err.message && err.message.toLowerCase().includes('time'));
-    const safeErrorMsg = sanitizeSafeErrorMessage(err.message || 'Resume analysis failed. Please try again.');
-    job.error = isTimeout 
-      ? 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.' 
-      : safeErrorMsg;
+    const isParse = err.code === 'JSON_PARSE_ERROR' || (err.message && err.message.toLowerCase().includes('parse'));
+
+    let failureCategory = 'UNKNOWN_ERROR';
+    let safeErrorMsg = sanitizeSafeErrorMessage(err.message || 'Resume analysis failed. Please try again.');
+
+    if (isAuth) {
+      failureCategory = 'AUTH_ERROR';
+      safeErrorMsg = 'AI provider authentication failed. Please verify API configuration.';
+    } else if (isRateLimit) {
+      failureCategory = 'RATE_LIMIT';
+      safeErrorMsg = 'AI provider rate limit reached. Please wait a moment and try again.';
+    } else if (isTimeout) {
+      failureCategory = 'TIMEOUT';
+      safeErrorMsg = 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.';
+    } else if (isParse) {
+      failureCategory = 'JSON_PARSE_ERROR';
+      safeErrorMsg = 'Failed to parse AI provider response. Please click Retry Analysis.';
+    } else if (err.status >= 500 && err.status < 600) {
+      failureCategory = 'UPSTREAM_ERROR';
+      safeErrorMsg = 'AI provider server encountered a temporary gateway issue. Please click Retry Analysis.';
+    }
+
+    job.error = safeErrorMsg;
+    const finalHttpStatus = isTimeout ? 504 : isAuth ? 401 : isRateLimit ? 429 : sanitizeHttpStatus(err.status || lastHttpStatus || 500);
+
     job.diagnostics = {
       totalDurationMs: Date.now() - jobStart,
       parseResult: 'ERROR',
       finishReason: lastFinishReason,
       model: lastModel,
-      httpStatus: isTimeout ? 504 : sanitizeHttpStatus(err.status || lastHttpStatus || 500),
+      httpStatus: finalHttpStatus,
+      failureCategory,
       sample: err.rawSample || lastRawSample
     };
-    console.error(`[AI HireFlow][Diagnostics] endpoint=/api/resume/analyze-job, request_start=${new Date(jobStart).toISOString()}, end=${new Date().toISOString()}, duration_ms=${job.diagnostics.totalDurationMs}, model=${lastModel}, http_status=${job.diagnostics.httpStatus}, status=failed, error=${job.error}`);
+
+    console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(jobStart).toISOString()}, request_id=${job.analysisId}, model=${lastModel}, input_chars=${totalInputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=44000, provider_duration_ms=${job.diagnostics.totalDurationMs}, provider_status=${finalHttpStatus}, retry_count=${didRetry ? 1 : 0}, response_chars=${lastRawSample?.length || 0}, failure_category=${failureCategory}`);
   }
 }
 

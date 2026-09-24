@@ -187,9 +187,9 @@ class AnalysisJobService {
         // fallback
       }
 
-      if (startRes.status === 504 || friendlyError.toLowerCase().includes('time')) {
+      if (startRes.status === 504 || (startRes.status >= 500 && friendlyError.toLowerCase().includes('time'))) {
         friendlyError = 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.';
-      } else if (startRes.status === 502) {
+      } else if (startRes.status === 502 && !friendlyError.includes('AI') && !friendlyError.includes('analysis')) {
         friendlyError = 'The AI service encountered a temporary gateway issue. Please click Retry Analysis.';
       }
 

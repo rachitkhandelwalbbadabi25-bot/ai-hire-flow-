@@ -278,8 +278,9 @@ __export(jsearch_exports, {
   queryOpenWebNinjaJSearch: () => queryOpenWebNinjaJSearch
 });
 function getOpenWebNinjaApiKey() {
-  const key = process.env.OPENWEB_NINJA_API_KEY || process.env.JSEARCH_API_KEY || process.env.RAPIDAPI_KEY || "";
-  return key.trim() || null;
+  const rawKey = process.env.OPENWEB_NINJA_API_KEY || process.env.OPEN_WEB_NINJA_API_KEY || process.env.OPENWEBNINJA_API_KEY || process.env.JSEARCH_API_KEY || process.env.RAPIDAPI_KEY || "";
+  const cleanKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
+  return cleanKey || null;
 }
 function isJSearchConfigured() {
   return Boolean(getOpenWebNinjaApiKey());
@@ -1359,58 +1360,33 @@ async function searchRealJobs({
       datePosted,
       limit
     });
-    if (!jsearchRes.success) {
+    if (jsearchRes.success && jsearchRes.jobs.length > 0) {
+      const intent2 = parseQueryIntent(cleanQuery);
+      const qualifiedJobs2 = [];
+      for (const job of jsearchRes.jobs) {
+        const evalResult = evaluateJobRelevance(job, intent2, cleanLoc);
+        qualifiedJobs2.push({
+          ...job,
+          matchScore: evalResult.score,
+          relevanceCategory: evalResult.relevanceCategory,
+          relevanceLabel: evalResult.relevanceLabel,
+          locationMatch: evalResult.locationMatch,
+          missingCriteria: evalResult.missingCriteria,
+          roleTier: evalResult.score >= 85 ? "safe" : evalResult.score >= 75 ? "stretch" : "reach",
+          matchExplanation: evalResult.explanation
+        });
+      }
+      const sortedJobs = sortJobsByPostingDateNewestFirst(qualifiedJobs2);
       return {
-        jobs: [],
+        jobs: sortedJobs.slice(0, Math.max(15, limit)),
         provider: "OpenWeb Ninja JSearch",
         isConfigured: true,
-        totalFound: 0,
-        errorCode: jsearchRes.errorCode,
-        error: jsearchRes.error
-      };
-    }
-    if (jsearchRes.jobs.length === 0) {
-      return {
-        jobs: [],
-        provider: "OpenWeb Ninja JSearch",
-        isConfigured: true,
-        totalFound: 0,
+        totalFound: jsearchRes.totalFound,
         cached: jsearchRes.cached
       };
+    } else {
+      console.warn(`[JobDiscovery] JSearch ${!jsearchRes.success ? `error (${jsearchRes.errorCode}): ${jsearchRes.error}` : "returned 0 vacancies"}. Seamlessly querying verified public live feeds.`);
     }
-    const intent2 = parseQueryIntent(cleanQuery);
-    const qualifiedJobs2 = [];
-    for (const job of jsearchRes.jobs) {
-      const evalResult = evaluateJobRelevance(job, intent2, cleanLoc);
-      qualifiedJobs2.push({
-        ...job,
-        matchScore: evalResult.score,
-        relevanceCategory: evalResult.relevanceCategory,
-        relevanceLabel: evalResult.relevanceLabel,
-        locationMatch: evalResult.locationMatch,
-        missingCriteria: evalResult.missingCriteria,
-        roleTier: evalResult.score >= 85 ? "safe" : evalResult.score >= 75 ? "stretch" : "reach",
-        matchExplanation: evalResult.explanation
-      });
-    }
-    const sortedJobs = sortJobsByPostingDateNewestFirst(qualifiedJobs2);
-    return {
-      jobs: sortedJobs.slice(0, Math.max(15, limit)),
-      provider: "OpenWeb Ninja JSearch",
-      isConfigured: true,
-      totalFound: jsearchRes.totalFound,
-      cached: jsearchRes.cached
-    };
-  }
-  if (!allowFallback) {
-    return {
-      jobs: [],
-      provider: "OpenWeb Ninja JSearch",
-      isConfigured: false,
-      totalFound: 0,
-      errorCode: "MISSING_KEY",
-      error: "OpenWeb Ninja JSearch API key is not configured. Please add OPENWEB_NINJA_API_KEY to your environment variables to enable live job discovery."
-    };
   }
   const [arbeitnowRes, remoteokRes, remotiveRes] = await Promise.allSettled([
     fetchArbeitnowJobs(),
@@ -2203,10 +2179,19 @@ function getVelonaApiKey() {
   const sanitized = raw.replace(/^["']|["']$/g, "").trim();
   return sanitized || void 0;
 }
+function sanitizeHttpStatus(status) {
+  const num = typeof status === "number" ? status : Number(status);
+  if (isNaN(num) || num < 400 || num >= 600) return 500;
+  if (num === 520) return 502;
+  return num;
+}
 function sanitizeSafeErrorMessage(rawMessage) {
   if (!rawMessage) return "An unexpected error occurred during AI generation.";
   const str = typeof rawMessage === "string" ? rawMessage : rawMessage.message || String(rawMessage);
-  let safe = str.replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, "Bearer [REDACTED]").replace(/[a-zA-Z0-9_\-]{32,}/g, "[REDACTED_KEY]").replace(/\s+/g, " ").trim();
+  if (str.includes("520") || str.includes("Cloudflare") || str.includes("<!DOCTYPE") || str.includes("<html")) {
+    return "The AI audit service is currently experiencing upstream network latency or a gateway connection issue (HTTP 520). Please retry in a moment.";
+  }
+  let safe = str.replace(/<[^>]*>/g, " ").replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, "Bearer [REDACTED]").replace(/[a-zA-Z0-9_\-]{32,}/g, "[REDACTED_KEY]").replace(/\s+/g, " ").trim();
   if (safe.length > 250) {
     safe = safe.slice(0, 250) + "...";
   }
@@ -2252,15 +2237,17 @@ IMPORTANT: Output valid, parseable raw JSON only without markdown fences or extr
   }
   const isJob = (operation || "").includes("job");
   const isLearningPath = operation === "learning_path";
-  const safeMaxTokens = Math.min(4096, Math.max(3500, maxTokens || 3500));
-  const safeTemperature = typeof temperature === "number" && !isNaN(temperature) ? Math.max(0.1, Math.min(1, temperature)) : 0.7;
+  const safeMaxTokens = Math.min(1800, Math.max(1e3, maxTokens || 1400));
+  const safeTemperature = typeof temperature === "number" && !isNaN(temperature) ? Math.max(0, Math.min(1, temperature)) : 0.1;
   const velonaStart = Date.now();
   const maxRetries = 1;
-  const maxTotalBudgetMs = isJob ? 18e4 : 55e3;
-  const perAttemptTimeoutMs = isJob ? 9e4 : isLearningPath ? 35e3 : 38e3;
+  const maxTotalBudgetMs = 5e4;
+  const perAttemptTimeoutMs = isJob ? 44e3 : isLearningPath ? 3e4 : 35e3;
   let lastError = null;
+  const inputChars = meta?.charCount || formattedMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+  const approxInputTokens = Math.round(inputChars / 4);
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0 && Date.now() - velonaStart > maxTotalBudgetMs - 12e3) {
+    if (attempt > 0 && Date.now() - velonaStart > maxTotalBudgetMs - 2e4) {
       break;
     }
     const attemptStart = Date.now();
@@ -2280,7 +2267,7 @@ IMPORTANT: Output valid, parseable raw JSON only without markdown fences or extr
 
 ${firstUser.content}
 
-IMPORTANT: Be extremely concise. Output strictly the requested content immediately.`
+IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
           },
           ...nonSystemParts.slice(1)
         ];
@@ -2289,19 +2276,13 @@ IMPORTANT: Be extremely concise. Output strictly the requested content immediate
     const payload = {
       model: modelId,
       messages: currentMessages,
-      temperature: attempt > 0 ? 0.2 : safeTemperature,
+      temperature: attempt > 0 ? 0 : safeTemperature,
       stream: false,
-      max_tokens: attempt > 0 ? 4096 : safeMaxTokens,
-      // Z.ai GLM-5.3-Flash Deep Thinking: 'low' reasoning effort significantly speeds up generation
-      // and minimizes reasoning token consumption, guaranteeing that completion content fits comfortably.
-      reasoning_effort: "low"
+      max_tokens: attempt > 0 ? 1200 : safeMaxTokens
     };
-    if (jsonMode && !attempt) {
-      payload.response_format = { type: "json_object" };
-    }
     try {
       if (attempt > 0) {
-        const backoffMs = Math.min(1500, 300 * Math.pow(2, attempt - 1));
+        const backoffMs = Math.min(1500, 400 * Math.pow(2, attempt - 1));
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
       }
       const response = await fetch(`${VELONA_BASE_URL}/chat/completions`, {
@@ -2321,19 +2302,24 @@ IMPORTANT: Be extremely concise. Output strictly the requested content immediate
         let errorDetails = "";
         try {
           const errorBody = await response.text();
-          try {
-            const errJson = JSON.parse(errorBody);
-            errorDetails = errJson.error?.message || errJson.message || errorBody;
-          } catch {
-            errorDetails = errorBody;
+          if (errorBody.includes("520") || errorBody.includes("Cloudflare") || errorBody.includes("<!DOCTYPE") || errorBody.includes("<html")) {
+            errorDetails = "Velona upstream server returned an unexpected Cloudflare gateway error (HTTP 520).";
+          } else {
+            try {
+              const errJson = JSON.parse(errorBody);
+              errorDetails = errJson.error?.message || errJson.message || errorBody;
+            } catch {
+              errorDetails = errorBody;
+            }
           }
         } catch {
           errorDetails = `HTTP status ${response.status}`;
         }
         const safeDetails = sanitizeSafeErrorMessage(errorDetails);
-        const isTransient = [500, 502, 503, 504].includes(response.status);
+        const isTransient = [500, 502, 503, 504, 520].includes(response.status);
+        const effectiveStatus = response.status === 520 ? 502 : response.status;
         const err = new Error(safeDetails || `Velona API responded with HTTP status ${response.status}`);
-        err.status = response.status;
+        err.status = effectiveStatus;
         err.velonaStatus = response.status;
         err.attemptDuration = attemptDuration;
         if (response.status === 401) {
@@ -2347,7 +2333,7 @@ IMPORTANT: Be extremely concise. Output strictly the requested content immediate
         } else {
           err.code = "VELONA_API_ERROR";
         }
-        if (isTransient && attempt < maxRetries && Date.now() - velonaStart < maxTotalBudgetMs - 12e3) {
+        if (isTransient && attempt < maxRetries && Date.now() - velonaStart < maxTotalBudgetMs - 15e3) {
           lastError = err;
           continue;
         }
@@ -2441,7 +2427,7 @@ IMPORTANT: Be extremely concise. Output strictly the requested content immediate
       }
       const finishReason = choice?.finish_reason || "stop";
       const totalElapsed2 = Date.now() - velonaStart;
-      console.log(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(velonaStart).toISOString()}, http_status=200, model=${modelId}, total_duration_ms=${totalElapsed2}, velona_duration_ms=${attemptDuration}, velona_status=${response.status}, status=success, message=ok`);
+      console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(attemptStart).toISOString()}, request_id=${requestId || "unknown"}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${attemptDuration}, provider_status=200, retry_count=${attempt}, response_chars=${content.length}, failure_category=none`);
       let cleanText = content;
       if (jsonMode && typeof cleanText === "string") {
         cleanText = cleanText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
@@ -2475,7 +2461,7 @@ IMPORTANT: Be extremely concise. Output strictly the requested content immediate
       const attemptDuration = Date.now() - attemptStart;
       if (err.name === "AbortError") {
         const stage = isLearningPath ? "learning_path_timeout" : isJob ? "job_timeout" : `attempt_${attempt}_timeout`;
-        lastError = new Error(isJob ? "Analysis is taking longer than expected. Please retry in a moment." : "AI request timed out. Please try again.");
+        lastError = new Error(isJob ? "Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit." : "AI request timed out. Please try again.");
         lastError.status = 504;
         lastError.velonaStatus = 504;
         lastError.code = "TIMEOUT";
@@ -2488,7 +2474,7 @@ IMPORTANT: Be extremely concise. Output strictly the requested content immediate
         lastError.attemptDuration = attemptDuration;
       }
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
-      if (attempt < maxRetries && timeRemaining > 12e3 && (err.name === "FetchError" || err.code === "ECONNRESET" || err.code === "ETIMEDOUT" || err.code === "MALFORMED_UPSTREAM_RESPONSE" || err.code === "TOKEN_LIMIT_EXCEEDED" || err.status === 502 || err.status === 503 || err.status === 504)) {
+      if (attempt < maxRetries && timeRemaining > 2e4 && (err.name === "FetchError" || err.code === "ECONNRESET" || err.code === "ETIMEDOUT" || err.code === "MALFORMED_UPSTREAM_RESPONSE" || err.code === "TOKEN_LIMIT_EXCEEDED" || err.status === 502 || err.status === 503 || err.status === 504 || err.status === 520 || err.velonaStatus === 520)) {
         continue;
       }
       break;
@@ -2496,11 +2482,11 @@ IMPORTANT: Be extremely concise. Output strictly the requested content immediate
   }
   const totalElapsed = Date.now() - velonaStart;
   const safeMessage = sanitizeSafeErrorMessage(lastError?.message || "Velona API request failed.");
-  const errorCategory = lastError?.code || "AI_GENERATION_FAILED";
+  const errorCategory = lastError?.code || (lastError?.status === 504 ? "TIMEOUT" : "AI_GENERATION_FAILED");
   const velonaStatus = lastError?.velonaStatus || lastError?.status || 500;
   const timeoutStage = lastError?.timeoutStage || (errorCategory === "TIMEOUT" ? "request_timeout" : "none");
   const velonaDuration = lastError?.attemptDuration || totalElapsed;
-  console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(velonaStart).toISOString()}, http_status=${lastError?.status || 500}, model=${modelId}, total_duration_ms=${totalElapsed}, velona_duration_ms=${velonaDuration}, velona_status=${velonaStatus}, timeout_stage=${timeoutStage}, error_category=${errorCategory}, message=${safeMessage}`);
+  console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || "unknown"}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, provider_status=${velonaStatus}, retry_count=${maxRetries > 0 ? 1 : 0}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}`);
   throw lastError || new Error("Velona API request failed after retries.");
 }
 app.get(["/api/ai/providers", "/ai/providers"], (req, res) => {
@@ -2611,7 +2597,7 @@ app.post([
     });
   } catch (err) {
     const totalDuration = Date.now() - requestStart;
-    const rawStatus = typeof err.status === "number" && err.status >= 400 && err.status < 600 ? err.status : 500;
+    const rawStatus = sanitizeHttpStatus(typeof err.status === "number" && err.status >= 400 && err.status < 600 ? err.status : 500);
     const safeMsg = sanitizeSafeErrorMessage(err.message || "Internal AI generation error");
     const errorCode = err.code || "AI_GENERATION_FAILED";
     const velonaStatus = err.velonaStatus || (rawStatus !== 500 ? rawStatus : "N/A");
@@ -2676,7 +2662,7 @@ function normalizeAtsAuditResult(rawData) {
     { name: "Role & Domain Relevance", weight: 20 },
     { name: "Structure & ATS Parsability", weight: 15 }
   ];
-  const rawBreakdown = Array.isArray(rawData?.scoreBreakdown) ? rawData.scoreBreakdown : [];
+  const rawBreakdown = Array.isArray(rawData?.scoreBreakdown) ? rawData.scoreBreakdown : Array.isArray(rawData?.score_breakdown) ? rawData.score_breakdown : [];
   let totalEarnedPoints = 0;
   const normalizedBreakdown = canonicalCategories.map((canon, idx) => {
     const matched = rawBreakdown.find(
@@ -2714,9 +2700,9 @@ function normalizeAtsAuditResult(rawData) {
   });
   const finalScore = Math.min(100, Math.max(0, Math.round(totalEarnedPoints)));
   const atsCompatibility = finalScore >= 80 ? "High" : finalScore >= 60 ? "Moderate" : "Low";
-  const rawKeywords = rawData?.keywordsFound || rawData?.identifiedKeywords || rawData?.keywords || [];
+  const rawKeywords = rawData?.keywordsFound || rawData?.keywords_found || rawData?.identifiedKeywords || rawData?.keywords || [];
   const keywordsFound = Array.isArray(rawKeywords) ? rawKeywords.map(String).filter(Boolean).slice(0, 10) : [];
-  const rawMissing = rawData?.missingKeywords || rawData?.missingSkills || rawData?.skillGaps || [];
+  const rawMissing = rawData?.missingKeywords || rawData?.missing_keywords || rawData?.missingSkills || rawData?.skillGaps || [];
   const missingKeywords = Array.isArray(rawMissing) ? rawMissing.map(String).filter(Boolean).slice(0, 6) : [];
   const rawStrengths = rawData?.strengths || rawData?.keyStrengths || rawData?.highlights || [];
   const strengths = Array.isArray(rawStrengths) ? rawStrengths.map(String).filter(Boolean).slice(0, 4) : [];
@@ -2880,88 +2866,96 @@ async function processResumeAnalysisJob(job, resumeText, jobDescription, fileTyp
   let lastModel = VELONA_MODEL_ID;
   let lastHttpStatus = 200;
   let lastRawSample = "";
+  let totalInputChars = (resumeText?.length || 0) + (jobDescription?.length || 0);
+  let approxInputTokens = Math.round(totalInputChars / 4);
+  let didRetry = false;
   try {
     const prepStart = Date.now();
-    const cleanResume = (resumeText || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "").replace(/[ \t]+/g, " ").split("\n").map((line) => line.trim()).filter((line, idx, arr) => line.length > 0 && (idx === 0 || line !== arr[idx - 1])).join("\n").slice(0, 7500);
+    const cleanResume = (resumeText || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "").replace(/[ \t]+/g, " ").split("\n").map((line) => line.trim()).filter((line, idx, arr) => line.length > 0 && (idx === 0 || line !== arr[idx - 1])).join("\n").slice(0, 3500);
     if (!cleanResume || cleanResume.length < 25) {
       throw new Error("Resume text is too short or empty for ATS analysis.");
     }
-    const cleanJD = (jobDescription || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "").replace(/[ \t]+/g, " ").trim().slice(0, 2e3);
+    const cleanJD = (jobDescription || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "").replace(/[ \t]+/g, " ").trim().slice(0, 1200);
     const prepDurationMs = Date.now() - prepStart;
+    totalInputChars = cleanResume.length + (cleanJD ? cleanJD.length : 0);
+    approxInputTokens = Math.round(totalInputChars / 4);
     const prompt = `You are an ATS Resume Auditor. Analyze this resume against the target job and output strictly valid JSON.
 
 Schema:
 {
-  "targetRole": "Candidate target or primary job title (e.g. Senior Frontend Engineer, DevOps Engineer, Full Stack Developer, Product Manager)",
+  "targetRole": "Candidate primary job title",
   "score": number (0-100),
   "atsCompatibility": "High" | "Moderate" | "Low",
-  "summary": "max 30 words",
-  "strengths": ["max 4 items, max 12 words each"],
+  "summary": "max 25 words",
+  "strengths": ["max 3 items, max 8 words each"],
   "weaknesses": [
-    { "problem": "max 10 words", "whyItMatters": "max 12 words", "howToFix": "max 12 words" }
+    { "problem": "max 8 words", "whyItMatters": "max 10 words", "howToFix": "max 10 words" }
   ],
   "scoreBreakdown": [
     {
       "category": "Core Technical & Skill Match",
       "weight": 40,
       "score": number,
-      "explanation": "max 12 words",
-      "evidence": "max 10 words",
-      "recommendations": ["max 12 words"]
+      "explanation": "max 10 words",
+      "evidence": "max 8 words",
+      "recommendations": ["max 10 words"]
     },
     {
       "category": "Measurable Impact & Hard Metrics",
       "weight": 25,
       "score": number,
-      "explanation": "max 12 words",
-      "evidence": "max 10 words",
-      "recommendations": ["max 12 words"]
+      "explanation": "max 10 words",
+      "evidence": "max 8 words",
+      "recommendations": ["max 10 words"]
     },
     {
       "category": "Role & Domain Relevance",
       "weight": 20,
       "score": number,
-      "explanation": "max 12 words",
-      "evidence": "max 10 words",
-      "recommendations": ["max 12 words"]
+      "explanation": "max 10 words",
+      "evidence": "max 8 words",
+      "recommendations": ["max 10 words"]
     },
     {
       "category": "Structure & ATS Parsability",
       "weight": 15,
       "score": number,
-      "explanation": "max 12 words",
-      "evidence": "max 10 words",
-      "recommendations": ["max 12 words"]
+      "explanation": "max 10 words",
+      "evidence": "max 8 words",
+      "recommendations": ["max 10 words"]
     }
   ],
   "skillsAnalysis": [
-    { "skill": "string", "type": "explicit" | "inferred", "confidence_level": "high" | "medium", "evidence": "max 10 words" }
+    { "skill": "string", "type": "explicit" | "inferred", "confidence_level": "high" | "medium", "evidence": "max 8 words" }
   ],
-  "keywordsFound": ["max 8 items"],
-  "missingKeywords": ["max 5 items"],
-  "recommendations": ["max 3 items, max 12 words each"]
+  "keywordsFound": ["max 6 items"],
+  "missingKeywords": ["max 4 items"],
+  "recommendations": ["max 3 items, max 10 words each"]
 }
-Strict Limits: Max 3 items in "weaknesses". Max 5 key skills in "skillsAnalysis". Max 8 keywordsFound, max 5 missingKeywords, max 3 recommendations. Keep all descriptions strictly concise. All JSON brackets must be properly closed.
+STRICT CONSTRAINTS:
+- All 4 categories in scoreBreakdown MUST be present.
+- Keep all explanations, problem statements, and recommendations strictly under 10 words.
+- Output raw valid JSON only without markdown code fences or conversational text.
 
 TARGET JOB:
-${cleanJD || "General ATS Industry Benchmark for the stated role and level"}
+${cleanJD || "General ATS Industry Benchmark for candidate profile"}
 
 CANDIDATE RESUME:
 ${cleanResume}
 `;
     let velonaResult = await callVelonaChatCompletion({
       messages: [
-        { role: "system", content: "You are an ATS scoring API for AI HireFlow. Output raw valid JSON only. Keep explanations concise and adhere to schema limits." },
+        { role: "system", content: "You are a direct ATS scoring rule engine for AI HireFlow. Evaluate immediately without chain-of-thought or lengthy reasoning. Emit raw valid JSON instantly. Adhere strictly to word limits." },
         { role: "user", content: prompt }
       ],
-      temperature: 0.2,
+      temperature: 0.1,
       jsonMode: true,
-      maxTokens: 3800,
+      maxTokens: 1600,
       requestId: job.analysisId,
       operation: "resume_analysis_job",
       meta: {
         fileType: fileType || "resume",
-        charCount: cleanResume.length,
+        charCount: totalInputChars,
         wordCount: cleanResume.split(/\s+/).filter(Boolean).length
       }
     });
@@ -2969,7 +2963,7 @@ ${cleanResume}
     lastModel = velonaResult.model || VELONA_MODEL_ID;
     lastRawSample = velonaResult.text?.slice(0, 500) || "";
     let parsed = null;
-    let didRetry = false;
+    didRetry = false;
     try {
       parsed = extractAndParseJson(velonaResult.text);
     } catch (firstParseErr) {
@@ -2985,9 +2979,9 @@ ${cleanResume}
           { role: "assistant", content: velonaResult.text ? velonaResult.text.slice(0, 400) : "" },
           { role: "user", content: "The previous response was malformed or incomplete. Return ONLY valid JSON. No markdown. No code fences. No commentary. Keep all fields strictly concise and use exactly the existing ATS schema." }
         ],
-        temperature: 0.1,
+        temperature: 0,
         jsonMode: true,
-        maxTokens: 3800,
+        maxTokens: 1200,
         requestId: `${job.analysisId}_retry`,
         operation: "resume_analysis_job_recovery"
       });
@@ -3000,15 +2994,18 @@ ${cleanResume}
       } catch (retryParseErr) {
         console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Recovery retry JSON parse failed:`, retryParseErr.message, "Sample:", recoveryResult.text?.slice(0, 300));
         const parseError = new Error(
-          recoveryResult.finishReason === "length" ? "Resume analysis output was truncated by token limits. Please retry." : "Analysis completed with malformed response. Please retry in a moment."
+          recoveryResult.finishReason === "length" ? "Resume analysis output exceeded token budget. Please retry." : "Analysis completed with malformed response. Please retry in a moment."
         );
+        parseError.code = "JSON_PARSE_ERROR";
         parseError.rawSample = recoveryResult.text?.slice(0, 500);
         throw parseError;
       }
     }
     const normalized = normalizeAtsAuditResult(parsed);
     if (typeof normalized.score !== "number" || !Array.isArray(normalized.scoreBreakdown) || normalized.scoreBreakdown.length === 0) {
-      throw new Error("ATS schema validation failed: missing score or breakdown.");
+      const schemaErr = new Error("ATS schema validation failed: missing score or breakdown.");
+      schemaErr.code = "SCHEMA_VALIDATION_ERROR";
+      throw schemaErr;
     }
     job.status = "completed";
     job.result = normalized;
@@ -3025,21 +3022,45 @@ ${cleanResume}
       httpStatus: 200,
       retried: didRetry
     };
-    console.log(`[AI HireFlow][Diagnostics] analysisId=${job.analysisId}, model=${velonaResult.model}, prompt_chars=${cleanResume.length}, prep_ms=${prepDurationMs}, velona_ms=${velonaResult.timing?.velonaDurationMs}ms, total_ms=${job.diagnostics.totalDurationMs}ms, status=completed, finishReason=${velonaResult.finishReason}, parseResult=SUCCESS, retried=${didRetry}`);
+    console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(jobStart).toISOString()}, request_id=${job.analysisId}, model=${velonaResult.model}, input_chars=${totalInputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=44000, provider_duration_ms=${velonaResult.timing?.velonaDurationMs || job.diagnostics.totalDurationMs}, provider_status=200, retry_count=${didRetry ? 1 : 0}, response_chars=${velonaResult.text?.length || 0}, failure_category=none`);
   } catch (err) {
     console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Background analysis failed:`, err.message);
     job.status = "failed";
     job.updatedAt = Date.now();
+    const isAuth = err.status === 401 || err.status === 403 || err.code === "AUTH_ERROR" || err.code === "INVALID_API_KEY" || err.message && err.message.toLowerCase().includes("auth");
+    const isRateLimit = err.status === 429 || err.code === "RATE_LIMIT" || err.message && err.message.toLowerCase().includes("rate");
     const isTimeout = err.code === "TIMEOUT" || err.status === 504 || err.message && err.message.toLowerCase().includes("time");
-    job.error = isTimeout ? "Analysis is taking longer than expected. Please retry in a moment." : err.message || "Resume analysis failed. Please try again.";
+    const isParse = err.code === "JSON_PARSE_ERROR" || err.message && err.message.toLowerCase().includes("parse");
+    let failureCategory = "UNKNOWN_ERROR";
+    let safeErrorMsg = sanitizeSafeErrorMessage(err.message || "Resume analysis failed. Please try again.");
+    if (isAuth) {
+      failureCategory = "AUTH_ERROR";
+      safeErrorMsg = "AI provider authentication failed. Please verify API configuration.";
+    } else if (isRateLimit) {
+      failureCategory = "RATE_LIMIT";
+      safeErrorMsg = "AI provider rate limit reached. Please wait a moment and try again.";
+    } else if (isTimeout) {
+      failureCategory = "TIMEOUT";
+      safeErrorMsg = "Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.";
+    } else if (isParse) {
+      failureCategory = "JSON_PARSE_ERROR";
+      safeErrorMsg = "Failed to parse AI provider response. Please click Retry Analysis.";
+    } else if (err.status >= 500 && err.status < 600) {
+      failureCategory = "UPSTREAM_ERROR";
+      safeErrorMsg = "AI provider server encountered a temporary gateway issue. Please click Retry Analysis.";
+    }
+    job.error = safeErrorMsg;
+    const finalHttpStatus = isTimeout ? 504 : isAuth ? 401 : isRateLimit ? 429 : sanitizeHttpStatus(err.status || lastHttpStatus || 500);
     job.diagnostics = {
       totalDurationMs: Date.now() - jobStart,
       parseResult: "ERROR",
       finishReason: lastFinishReason,
       model: lastModel,
-      httpStatus: lastHttpStatus,
+      httpStatus: finalHttpStatus,
+      failureCategory,
       sample: err.rawSample || lastRawSample
     };
+    console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(jobStart).toISOString()}, request_id=${job.analysisId}, model=${lastModel}, input_chars=${totalInputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=44000, provider_duration_ms=${job.diagnostics.totalDurationMs}, provider_status=${finalHttpStatus}, retry_count=${didRetry ? 1 : 0}, response_chars=${lastRawSample?.length || 0}, failure_category=${failureCategory}`);
   }
 }
 app.post(["/api/resume/analyze-job", "/resume/analyze-job"], async (req, res) => {
@@ -3079,18 +3100,19 @@ app.post(["/api/resume/analyze-job", "/resume/analyze-job"], async (req, res) =>
     const analysisId = incomingId || `ats_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const existing = analysisJobs.get(analysisId);
     if (existing) {
+      if (existing.status === "completed" && existing.result) {
+        return res.status(200).json({
+          analysisId: existing.analysisId,
+          status: "completed",
+          result: existing.result,
+          diagnostics: existing.diagnostics
+        });
+      }
       if (existing.status === "processing" || existing.status === "queued") {
         return res.status(200).json({
           analysisId: existing.analysisId,
           status: existing.status,
           message: "Analysis job is already in progress"
-        });
-      }
-      if (existing.status === "completed") {
-        return res.status(200).json({
-          analysisId: existing.analysisId,
-          status: "completed",
-          result: existing.result
         });
       }
     }
@@ -3102,18 +3124,29 @@ app.post(["/api/resume/analyze-job", "/resume/analyze-job"], async (req, res) =>
       updatedAt: Date.now()
     };
     analysisJobs.set(analysisId, job);
-    res.status(202).json({
-      analysisId,
-      status: "processing",
-      message: "Analysis job started successfully"
-    });
-    processResumeAnalysisJob(job, resumeText, jobDescription, fileType).catch((err) => {
-      console.error(`[AI HireFlow][ResumeJob:${analysisId}] Unhandled async worker error:`, err);
+    await processResumeAnalysisJob(job, resumeText, jobDescription, fileType);
+    if (job.status === "completed" && job.result) {
+      return res.status(200).json({
+        analysisId: job.analysisId,
+        status: "completed",
+        result: job.result,
+        diagnostics: job.diagnostics
+      });
+    }
+    const failureStatus = sanitizeHttpStatus(job.diagnostics?.httpStatus || 502);
+    return res.status(failureStatus).json({
+      analysisId: job.analysisId,
+      status: "failed",
+      error: job.error || "Resume analysis failed. Please try again.",
+      code: "ANALYSIS_FAILED",
+      diagnostics: job.diagnostics
     });
   } catch (err) {
     console.error("Failed to create resume analysis job:", err);
-    res.status(500).json({
-      error: err.message || "Failed to initialize analysis job",
+    const safeError = sanitizeSafeErrorMessage(err.message || "Failed to initialize analysis job");
+    const safeStatus = sanitizeHttpStatus(err.status || 500);
+    res.status(safeStatus).json({
+      error: safeError,
       code: "JOB_INIT_FAILED"
     });
   }
@@ -3185,6 +3218,78 @@ async function getRazorpay() {
   return razorpayClient;
 }
 var processedPaymentIds = /* @__PURE__ */ new Set();
+async function checkIsPaymentProcessed(paymentId) {
+  if (!paymentId) return false;
+  if (processedPaymentIds.has(paymentId)) return true;
+  const firestore = getServerFirestore();
+  if (firestore) {
+    try {
+      const { doc: doc2, getDoc: getDoc2 } = await import("firebase/firestore");
+      const docRef = doc2(firestore, "processed_payments", paymentId);
+      const snap = await getDoc2(docRef);
+      if (snap.exists()) {
+        processedPaymentIds.add(paymentId);
+        return true;
+      }
+    } catch (e) {
+      console.warn("[Idempotency] Firestore read check warning:", e.message);
+    }
+  }
+  return false;
+}
+async function reservePaymentIdempotency(paymentId, metadata) {
+  if (!paymentId) {
+    return { success: false, alreadyProcessed: false };
+  }
+  if (processedPaymentIds.has(paymentId)) {
+    return { success: false, alreadyProcessed: true };
+  }
+  const firestore = getServerFirestore();
+  if (!firestore) {
+    processedPaymentIds.add(paymentId);
+    return { success: true, alreadyProcessed: false };
+  }
+  try {
+    const { doc: doc2, runTransaction, getDoc: getDoc2 } = await import("firebase/firestore");
+    const docRef = doc2(firestore, "processed_payments", paymentId);
+    await runTransaction(firestore, async (txn) => {
+      const snap = await txn.get(docRef);
+      if (snap.exists()) {
+        throw new Error("ALREADY_PROCESSED");
+      }
+      txn.set(docRef, {
+        paymentId,
+        orderId: metadata.orderId || "",
+        userId: metadata.userId || "anonymous",
+        amount: metadata.amount || 0,
+        currency: metadata.currency || "INR",
+        item: metadata.item || "",
+        packId: metadata.packId || "",
+        credits: metadata.credits || 0,
+        claimedAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    });
+    processedPaymentIds.add(paymentId);
+    return { success: true, alreadyProcessed: false };
+  } catch (err) {
+    if (err.message === "ALREADY_PROCESSED") {
+      processedPaymentIds.add(paymentId);
+      return { success: false, alreadyProcessed: true };
+    }
+    console.error("[Idempotency] Atomic reservation collision or error:", err.message);
+    try {
+      const { doc: doc2, getDoc: getDoc2 } = await import("firebase/firestore");
+      const docRef = doc2(firestore, "processed_payments", paymentId);
+      const snap = await getDoc2(docRef);
+      if (snap.exists()) {
+        processedPaymentIds.add(paymentId);
+        return { success: false, alreadyProcessed: true };
+      }
+    } catch {
+    }
+    return { success: false, alreadyProcessed: true };
+  }
+}
 app.get(["/api/credits/packs", "/api/credit-packs"], (req, res) => {
   res.json({
     success: true,
@@ -3257,6 +3362,7 @@ app.post(["/api/razorpay/verify-payment", "/api/verify-payment"], async (req, re
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
+      paymentMode,
       userId,
       type,
       item,
@@ -3264,11 +3370,25 @@ app.post(["/api/razorpay/verify-payment", "/api/verify-payment"], async (req, re
       price,
       packId
     } = req.body;
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ error: "Missing required validation fields" });
+    const isUnverifiedSubmission = paymentMode === "upi_qr" || !razorpay_signature || !razorpay_payment_id || !razorpay_order_id || typeof razorpay_signature !== "string" || typeof razorpay_payment_id !== "string" || typeof razorpay_order_id !== "string" || razorpay_signature.startsWith("sig_qr_") || razorpay_signature.startsWith("sig_bank_") || razorpay_signature.startsWith("sig_mock_") || razorpay_signature.startsWith("sig_unverified_") || razorpay_signature === "sig_verified_mock_256" || razorpay_payment_id.startsWith("rzp_qr_") || razorpay_order_id.startsWith("ord_rzp_qr_");
+    if (isUnverifiedSubmission) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        error: "Payment could not be verified yet. Credits will be added after successful payment confirmation."
+      });
     }
-    if (processedPaymentIds.has(razorpay_payment_id)) {
+    if (!userId || typeof userId !== "string" || userId.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        error: "Authenticated user identifier is required for payment verification."
+      });
+    }
+    const alreadyProcessed = await checkIsPaymentProcessed(razorpay_payment_id);
+    if (alreadyProcessed) {
       return res.status(409).json({
+        success: false,
         error: "Duplicate payment claim: Credits for this payment have already been allocated.",
         alreadyAllocated: true
       });
@@ -3276,22 +3396,104 @@ app.post(["/api/razorpay/verify-payment", "/api/verify-payment"], async (req, re
     const keySecret = getRazorpayKeySecret();
     if (!keySecret) {
       return res.status(500).json({
+        success: false,
         error: "Razorpay secret key is not configured on server."
       });
     }
-    const isManualFallback = razorpay_signature && (razorpay_signature.startsWith("sig_qr_") || razorpay_signature.startsWith("sig_bank_") || razorpay_signature === "sig_verified_mock_256");
-    if (!isManualFallback) {
-      const crypto = await import("crypto");
-      const text = razorpay_order_id + "|" + razorpay_payment_id;
-      const generated_signature = crypto.createHmac("sha256", keySecret).update(text).digest("hex");
-      if (generated_signature !== razorpay_signature) {
-        return res.status(400).json({ error: "Cryptographic signature verification failed" });
+    const crypto = await import("crypto");
+    const text = razorpay_order_id + "|" + razorpay_payment_id;
+    const generated_signature = crypto.createHmac("sha256", keySecret).update(text).digest("hex");
+    if (generated_signature !== razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        error: "Payment could not be verified yet. Credits will be added after successful payment confirmation."
+      });
+    }
+    let paymentDetails = null;
+    const client = await getRazorpay();
+    if (client) {
+      try {
+        const payment = await client.payments.fetch(razorpay_payment_id);
+        if (!payment) {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: "Payment could not be verified yet. Credits will be added after successful payment confirmation."
+          });
+        }
+        paymentDetails = payment;
+        let paymentStatus = payment.status;
+        if (paymentStatus === "authorized") {
+          try {
+            const captured = await client.payments.capture(razorpay_payment_id, payment.amount, payment.currency || "INR");
+            if (captured && captured.status === "captured") {
+              paymentStatus = "captured";
+            }
+          } catch (capErr) {
+            console.warn("[Razorpay] Backend capture attempt notice:", capErr?.message);
+          }
+        }
+        if (paymentStatus !== "captured") {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: `Payment status is '${payment.status}'. Credits can only be granted for successfully captured payments.`
+          });
+        }
+        if (payment.order_id && payment.order_id !== razorpay_order_id) {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: "Payment order reference mismatch."
+          });
+        }
+        if (payment.currency && payment.currency !== "INR") {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: "Invalid payment currency. Expected INR."
+          });
+        }
+        const matchedPack2 = getCreditPackById(packId || item);
+        const expectedPaisa = matchedPack2 ? Math.round(matchedPack2.price.INR * 100) : price ? Math.round(Number(price) * 100) : null;
+        if (expectedPaisa && payment.amount < expectedPaisa) {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: "Paid amount does not match package price."
+          });
+        }
+      } catch (fetchErr) {
+        console.error("Razorpay payment fetch error:", fetchErr?.message);
+        if (fetchErr?.statusCode === 400 || fetchErr?.error?.code === "BAD_REQUEST_ERROR") {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: "Payment could not be verified yet. Credits will be added after successful payment confirmation."
+          });
+        }
       }
     }
-    processedPaymentIds.add(razorpay_payment_id);
     const matchedPack = getCreditPackById(packId || item);
     const finalCredits = matchedPack ? matchedPack.credits : parseInt(credits || "0");
     const finalPrice = parseFloat(price || (matchedPack ? matchedPack.price.INR.toString() : "0"));
+    const reservation = await reservePaymentIdempotency(razorpay_payment_id, {
+      orderId: razorpay_order_id,
+      userId: userId.trim(),
+      amount: paymentDetails?.amount || (finalPrice ? Math.round(finalPrice * 100) : 0),
+      currency: paymentDetails?.currency || "INR",
+      item: matchedPack?.name || item || "credits",
+      packId: matchedPack?.id || packId,
+      credits: finalCredits
+    });
+    if (!reservation.success) {
+      return res.status(409).json({
+        success: false,
+        error: "Duplicate payment claim: Credits for this payment have already been allocated.",
+        alreadyAllocated: true
+      });
+    }
     res.json({
       success: true,
       type: type || (matchedPack ? "credits" : "custom"),
@@ -3302,7 +3504,10 @@ app.post(["/api/razorpay/verify-payment", "/api/verify-payment"], async (req, re
     });
   } catch (err) {
     console.error("Razorpay signature verification error:", err);
-    res.status(500).json({ error: "Internal payment verification error" });
+    res.status(500).json({
+      success: false,
+      error: "Internal payment verification error"
+    });
   }
 });
 app.post(["/api/ocr", "/ocr"], async (req, res, next) => {
@@ -3419,7 +3624,8 @@ app.all(["/api/*", "/api"], (req, res) => {
   });
 });
 app.use((err, req, res, next) => {
-  const status = typeof err.status === "number" && err.status >= 400 && err.status < 600 ? err.status : typeof err.statusCode === "number" && err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500;
+  const rawStatus = typeof err.status === "number" && err.status >= 400 && err.status < 600 ? err.status : typeof err.statusCode === "number" && err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500;
+  const status = sanitizeHttpStatus(rawStatus);
   const safeMsg = sanitizeSafeErrorMessage(err.message || "Internal Server Error");
   console.error(`[AI HireFlow][Diagnostics] endpoint=${req.path || "/api"}, http_status=${status}, model=${getVelonaModel()}, duration_ms=0, velona_status=N/A, error_category=${err.code || "INTERNAL_ERROR"}, message=${safeMsg}`);
   if (!res.headersSent) {
@@ -3438,5 +3644,6 @@ export {
   getVelonaApiKey,
   getVelonaModel,
   maxDuration,
+  sanitizeHttpStatus,
   sanitizeSafeErrorMessage
 };

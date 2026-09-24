@@ -249,6 +249,62 @@ export default function PaymentGatewayModal({
     }
   };
 
+  // 1b. Server-authoritative QR payment verification handler
+  const handleVerifyQrPayment = async () => {
+    try {
+      setIsProcessing(true);
+      setErrorMessage(null);
+      setAuthStepMessage('Verifying payment confirmation with banking network...');
+      setPhase('authorizing');
+
+      // Request server-side verification for QR payment
+      const verifyRes = await fetch('/api/razorpay/verify-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentMode: 'upi_qr',
+          razorpay_order_id: '',
+          razorpay_payment_id: '',
+          razorpay_signature: '',
+          userId: user?.uid || 'guest',
+          type: item.type,
+          item: item.title,
+          packId: item.itemId,
+          credits: item.credits,
+          price: finalPrice
+        })
+      });
+
+      const verifyData = await verifyRes.json().catch(() => ({}));
+
+      if (!verifyRes.ok || !verifyData.success) {
+        throw new Error(
+          verifyData.error || 
+          'Payment could not be verified yet. Credits will be added after successful payment confirmation.'
+        );
+      }
+
+      // If backend confirms a verified payment reference
+      if (verifyData.paymentId && verifyData.orderId && verifyData.signature) {
+        await finalizePayment(
+          verifyData.paymentId,
+          'Verified UPI QR Payment',
+          verifyData.orderId,
+          verifyData.signature
+        );
+      }
+    } catch (err: any) {
+      console.warn('QR verification rejection:', err.message);
+      setErrorMessage(
+        err.message || 
+        'Payment could not be verified yet. Credits will be added after successful payment confirmation.'
+      );
+      setPhase('error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // 2. Finalize & Persist Transaction in Firestore
   const finalizePayment = async (
     txId?: string,
@@ -281,9 +337,10 @@ export default function PaymentGatewayModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          razorpay_order_id: razorpayOrderId || `ord_${orderId}`,
+          razorpay_order_id: razorpayOrderId || '',
           razorpay_payment_id: orderId,
-          razorpay_signature: razorpaySignature || (paymentMode === 'upi_qr' ? `sig_qr_${orderId}` : 'sig_verified_mock_256'),
+          razorpay_signature: razorpaySignature || '',
+          paymentMode,
           userId: user?.uid || 'guest',
           type: item.type,
           item: item.title,
@@ -739,17 +796,20 @@ export default function PaymentGatewayModal({
                         {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
+                    {/* Static QR Manual Reconciliation Notice */}
+                    <div className="text-[11px] text-slate-400 bg-surface/80 border border-teal-500/20 rounded-lg p-2.5 text-left leading-relaxed">
+                      <span className="font-semibold text-amber-400 block mb-0.5">ℹ️ Static QR Payment Notice:</span>
+                      Direct UPI transfers to this static QR require manual bank reconciliation. Credits will be allocated once confirmed. For instant automated credit activation in seconds, use <button type="button" onClick={() => setPaymentMode('razorpay')} className="text-teal-400 font-bold underline cursor-pointer hover:text-teal-300">Pay via Razorpay</button> (supports UPI, QR, Google Pay, PhonePe & Cards).
+                    </div>
                   </div>
 
                   {/* "I Have Paid & Verify" button */}
                   <button
                     id="btn-confirm-qr-payment"
                     type="button"
-                    onClick={() => {
-                      const qrTxId = `rzp_qr_${Date.now().toString().slice(-8)}`;
-                      finalizePayment(qrTxId, 'Razorpay Dynamic UPI QR', `ord_${qrTxId}`, `sig_qr_${qrTxId}`);
-                    }}
-                    className="w-full py-3.5 bg-teal-500 text-black font-bold uppercase text-xs font-mono tracking-wider rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-500/20"
+                    disabled={isProcessing}
+                    onClick={handleVerifyQrPayment}
+                    className="w-full py-3.5 bg-teal-500 text-black font-bold uppercase text-xs font-mono tracking-wider rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-500/20 disabled:opacity-60"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>I Have Paid & Verify (₹{finalPrice.toLocaleString()})</span>
@@ -850,13 +910,26 @@ export default function PaymentGatewayModal({
                 <AlertCircle className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-base font-bold text-ink font-sans">Payment Not Completed</h3>
+                <h3 className="text-base font-bold text-ink font-sans">
+                  {errorMessage?.includes('verified yet') ? 'Payment Verification Pending' : 'Payment Not Completed'}
+                </h3>
                 <p className="text-xs text-ink-dim font-sans max-w-sm mx-auto leading-relaxed">
                   {errorMessage || 'Unable to authorize transaction at this time. No funds were debited.'}
                 </p>
               </div>
               <div className="flex justify-center gap-2.5 pt-2">
-                {errorMessage?.toLowerCase().includes('not configured') ? (
+                {errorMessage?.includes('verified yet') ? (
+                  <button
+                    onClick={() => {
+                      setPaymentMode('razorpay');
+                      setErrorMessage(null);
+                      setPhase('checkout');
+                    }}
+                    className="px-5 py-2.5 bg-teal-500 text-black font-mono font-bold uppercase text-xs rounded-xl hover:bg-teal-400 transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-teal-500/20"
+                  >
+                    <span>Switch to Pay via Razorpay (Instant Credits)</span>
+                  </button>
+                ) : errorMessage?.toLowerCase().includes('not configured') ? (
                   <button
                     onClick={() => {
                       setPaymentMode('upi_qr');

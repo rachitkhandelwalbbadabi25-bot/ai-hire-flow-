@@ -25,6 +25,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Processed Payments for persistent atomic server-side payment idempotency
+    match /processed_payments/{paymentId} {
+      allow read, write: if true;
+    }
+
     // Config Collection for Credit Costs and App Settings (Publicly readable, admin writable)
     match /config/{configId} {
       allow read: if true;

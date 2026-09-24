@@ -2,7 +2,7 @@ import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
 import dns from 'dns';
-import { enforceSubscriptionAndCredits } from './_lib/subscriptionEnforcement.ts';
+import { enforceSubscriptionAndCredits, getServerFirestore } from './_lib/subscriptionEnforcement.ts';
 import { CREDIT_PACKS, getCreditPackById } from './_lib/creditPacks.ts';
 
 // Prioritize IPv4 to avoid Cloudflare/carrier IPv6 connect timeouts on Node.js
@@ -1446,8 +1446,98 @@ async function getRazorpay() {
   return razorpayClient;
 }
 
-// Track processed payment IDs in memory to prevent duplicate credit claims
+// Persistent Idempotency Storage using Firestore atomic transactions with an in-memory L1 cache
 const processedPaymentIds = new Set<string>();
+
+async function checkIsPaymentProcessed(paymentId: string): Promise<boolean> {
+  if (!paymentId) return false;
+  if (processedPaymentIds.has(paymentId)) return true;
+  
+  const firestore = getServerFirestore();
+  if (firestore) {
+    try {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const docRef = doc(firestore, 'processed_payments', paymentId);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        processedPaymentIds.add(paymentId);
+        return true;
+      }
+    } catch (e: any) {
+      console.warn('[Idempotency] Firestore read check warning:', e.message);
+    }
+  }
+  return false;
+}
+
+async function reservePaymentIdempotency(paymentId: string, metadata: {
+  orderId: string;
+  userId?: string;
+  amount?: number;
+  currency?: string;
+  item?: string;
+  packId?: string;
+  credits?: number;
+}): Promise<{ success: boolean; alreadyProcessed: boolean }> {
+  if (!paymentId) {
+    return { success: false, alreadyProcessed: false };
+  }
+
+  // Fast L1 in-memory check
+  if (processedPaymentIds.has(paymentId)) {
+    return { success: false, alreadyProcessed: true };
+  }
+
+  const firestore = getServerFirestore();
+  if (!firestore) {
+    processedPaymentIds.add(paymentId);
+    return { success: true, alreadyProcessed: false };
+  }
+
+  try {
+    const { doc, runTransaction, getDoc } = await import('firebase/firestore');
+    const docRef = doc(firestore, 'processed_payments', paymentId);
+
+    await runTransaction(firestore, async (txn) => {
+      const snap = await txn.get(docRef);
+      if (snap.exists()) {
+        throw new Error('ALREADY_PROCESSED');
+      }
+      txn.set(docRef, {
+        paymentId,
+        orderId: metadata.orderId || '',
+        userId: metadata.userId || 'anonymous',
+        amount: metadata.amount || 0,
+        currency: metadata.currency || 'INR',
+        item: metadata.item || '',
+        packId: metadata.packId || '',
+        credits: metadata.credits || 0,
+        claimedAt: new Date().toISOString()
+      });
+    });
+
+    // Successfully committed to persistent Firestore
+    processedPaymentIds.add(paymentId);
+    return { success: true, alreadyProcessed: false };
+  } catch (err: any) {
+    if (err.message === 'ALREADY_PROCESSED') {
+      processedPaymentIds.add(paymentId);
+      return { success: false, alreadyProcessed: true };
+    }
+    console.error('[Idempotency] Atomic reservation collision or error:', err.message);
+    // Double check if document was committed by a concurrent request
+    try {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const docRef = doc(firestore, 'processed_payments', paymentId);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        processedPaymentIds.add(paymentId);
+        return { success: false, alreadyProcessed: true };
+      }
+    } catch {}
+    return { success: false, alreadyProcessed: true };
+  }
+}
 
 app.get(['/api/credits/packs', '/api/credit-packs'], (req, res) => {
   res.json({
@@ -1531,6 +1621,7 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
       razorpay_order_id, 
       razorpay_payment_id, 
       razorpay_signature,
+      paymentMode,
       userId,
       type,
       item,
@@ -1539,52 +1630,180 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
       packId
     } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ error: 'Missing required validation fields' });
+    // 1. Strict Server-Side Check: Reject any unverified QR button submissions or fake fallback tokens
+    const isUnverifiedSubmission = (
+      paymentMode === 'upi_qr' ||
+      !razorpay_signature ||
+      !razorpay_payment_id ||
+      !razorpay_order_id ||
+      typeof razorpay_signature !== 'string' ||
+      typeof razorpay_payment_id !== 'string' ||
+      typeof razorpay_order_id !== 'string' ||
+      razorpay_signature.startsWith('sig_qr_') ||
+      razorpay_signature.startsWith('sig_bank_') ||
+      razorpay_signature.startsWith('sig_mock_') ||
+      razorpay_signature.startsWith('sig_unverified_') ||
+      razorpay_signature === 'sig_verified_mock_256' ||
+      razorpay_payment_id.startsWith('rzp_qr_') ||
+      razorpay_order_id.startsWith('ord_rzp_qr_')
+    );
+
+    if (isUnverifiedSubmission) {
+      return res.status(400).json({ 
+        success: false,
+        verified: false,
+        error: 'Payment could not be verified yet. Credits will be added after successful payment confirmation.'
+      });
     }
 
-    // Check duplicate payment allocation
-    if (processedPaymentIds.has(razorpay_payment_id)) {
+    // Authenticated user check
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        error: 'Authenticated user identifier is required for payment verification.'
+      });
+    }
+
+    // 2. Prevent duplicate credit allocation via persistent server-side idempotency pre-check
+    const alreadyProcessed = await checkIsPaymentProcessed(razorpay_payment_id);
+    if (alreadyProcessed) {
       return res.status(409).json({ 
+        success: false,
         error: 'Duplicate payment claim: Credits for this payment have already been allocated.',
         alreadyAllocated: true
       });
     }
 
+    // 3. Cryptographic HMAC-SHA256 signature verification with secret key
     const keySecret = getRazorpayKeySecret();
     if (!keySecret) {
       return res.status(500).json({ 
+        success: false,
         error: 'Razorpay secret key is not configured on server.' 
       });
     }
 
-    const isManualFallback = (
-      razorpay_signature && (
-        razorpay_signature.startsWith('sig_qr_') || 
-        razorpay_signature.startsWith('sig_bank_') ||
-        razorpay_signature === 'sig_verified_mock_256'
-      )
-    );
+    const crypto = await import('crypto');
+    const text = razorpay_order_id + '|' + razorpay_payment_id;
+    const generated_signature = crypto
+      .createHmac('sha256', keySecret)
+      .update(text)
+      .digest('hex');
 
-    if (!isManualFallback) {
-      const crypto = await import('crypto');
-      const text = razorpay_order_id + '|' + razorpay_payment_id;
-      const generated_signature = crypto
-        .createHmac('sha256', keySecret)
-        .update(text)
-        .digest('hex');
-
-      if (generated_signature !== razorpay_signature) {
-        return res.status(400).json({ error: 'Cryptographic signature verification failed' });
-      }
+    if (generated_signature !== razorpay_signature) {
+      return res.status(400).json({ 
+        success: false,
+        verified: false,
+        error: 'Payment could not be verified yet. Credits will be added after successful payment confirmation.'
+      });
     }
 
-    // Mark payment ID as successfully claimed
-    processedPaymentIds.add(razorpay_payment_id);
+    // 4. Server-side payment status and currency verification against Razorpay REST API
+    let paymentDetails: any = null;
+    const client = await getRazorpay();
+    if (client) {
+      try {
+        const payment = await client.payments.fetch(razorpay_payment_id);
+        if (!payment) {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: 'Payment could not be verified yet. Credits will be added after successful payment confirmation.'
+          });
+        }
+        paymentDetails = payment;
+
+        // Payment status verification: Only captured payments can grant credits
+        let paymentStatus = payment.status;
+        if (paymentStatus === 'authorized') {
+          // Attempt verified backend capture if authorized but not yet captured
+          try {
+            const captured = await client.payments.capture(razorpay_payment_id, payment.amount, payment.currency || 'INR');
+            if (captured && captured.status === 'captured') {
+              paymentStatus = 'captured';
+            }
+          } catch (capErr: any) {
+            console.warn('[Razorpay] Backend capture attempt notice:', capErr?.message);
+          }
+        }
+
+        // Strictly reject uncaptured, failed, refunded, cancelled, or unknown statuses
+        if (paymentStatus !== 'captured') {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: `Payment status is '${payment.status}'. Credits can only be granted for successfully captured payments.`
+          });
+        }
+
+        // Order reference check
+        if (payment.order_id && payment.order_id !== razorpay_order_id) {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: 'Payment order reference mismatch.'
+          });
+        }
+
+        // Currency check: must be INR
+        if (payment.currency && payment.currency !== 'INR') {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: 'Invalid payment currency. Expected INR.'
+          });
+        }
+
+        // Amount verification
+        const matchedPack = getCreditPackById(packId || item);
+        const expectedPaisa = matchedPack 
+          ? Math.round(matchedPack.price.INR * 100) 
+          : (price ? Math.round(Number(price) * 100) : null);
+
+        if (expectedPaisa && payment.amount < expectedPaisa) {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: 'Paid amount does not match package price.'
+          });
+        }
+      } catch (fetchErr: any) {
+        console.error('Razorpay payment fetch error:', fetchErr?.message);
+        // If Razorpay rejected this payment ID as non-existent (400), reject verification
+        if (fetchErr?.statusCode === 400 || fetchErr?.error?.code === 'BAD_REQUEST_ERROR') {
+          return res.status(400).json({
+            success: false,
+            verified: false,
+            error: 'Payment could not be verified yet. Credits will be added after successful payment confirmation.'
+          });
+        }
+      }
+    }
 
     const matchedPack = getCreditPackById(packId || item);
     const finalCredits = matchedPack ? matchedPack.credits : parseInt(credits || '0');
     const finalPrice = parseFloat(price || (matchedPack ? matchedPack.price.INR.toString() : '0'));
+
+    // 5. Persistent Atomic Idempotency Reservation
+    // Do not grant credits until the payment is successfully reserved/recorded exactly once in persistent Firestore
+    const reservation = await reservePaymentIdempotency(razorpay_payment_id, {
+      orderId: razorpay_order_id,
+      userId: userId.trim(),
+      amount: paymentDetails?.amount || (finalPrice ? Math.round(finalPrice * 100) : 0),
+      currency: paymentDetails?.currency || 'INR',
+      item: matchedPack?.name || item || 'credits',
+      packId: matchedPack?.id || packId,
+      credits: finalCredits
+    });
+
+    if (!reservation.success) {
+      return res.status(409).json({ 
+        success: false,
+        error: 'Duplicate payment claim: Credits for this payment have already been allocated.',
+        alreadyAllocated: true
+      });
+    }
 
     res.json({ 
       success: true, 
@@ -1596,7 +1815,10 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
     });
   } catch (err: any) {
     console.error('Razorpay signature verification error:', err);
-    res.status(500).json({ error: 'Internal payment verification error' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Internal payment verification error' 
+    });
   }
 });
 

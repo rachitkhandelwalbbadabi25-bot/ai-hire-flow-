@@ -2,6 +2,7 @@ import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
 import dns from 'dns';
+import { GoogleGenAI } from '@google/genai';
 import { enforceSubscriptionAndCredits, getServerFirestore } from './_lib/subscriptionEnforcement.ts';
 import { CREDIT_PACKS, getCreditPackById } from './_lib/creditPacks.ts';
 
@@ -89,9 +90,9 @@ export function sanitizeSafeErrorMessage(rawMessage: any): string {
   if (!rawMessage) return 'An unexpected error occurred during AI generation.';
   const str = typeof rawMessage === 'string' ? rawMessage : (rawMessage.message || String(rawMessage));
 
-  // Detect Cloudflare / Upstream HTML error pages
-  if (str.includes('520') || str.includes('Cloudflare') || str.includes('<!DOCTYPE') || str.includes('<html')) {
-    return 'The AI audit service is currently experiencing upstream network latency or a gateway connection issue (HTTP 520). Please retry in a moment.';
+  // Detect Cloudflare / Upstream HTML error pages or gateway codes
+  if (str.includes('520') || str.includes('502') || str.includes('Cloudflare') || str.includes('<!DOCTYPE') || str.includes('<!doctype') || str.includes('<html')) {
+    return 'AI provider server encountered a temporary gateway issue. Please click Retry Analysis.';
   }
 
   let safe = str
@@ -105,6 +106,123 @@ export function sanitizeSafeErrorMessage(rawMessage: any): string {
     safe = safe.slice(0, 250) + '...';
   }
   return safe || 'An unexpected error occurred during AI generation.';
+}
+
+/**
+ * Resilient, fast server-side AI completion powered by Google GenAI SDK.
+ * Used as automatic fallback when external gateways experience downtime or HTTP 502/520.
+ */
+export async function callGeminiCompletion({
+  messages,
+  temperature = 0.1,
+  jsonMode = false,
+  maxTokens = 2800,
+  requestId,
+  operation = 'general'
+}: {
+  messages: Array<{ role: string; content: string }>;
+  temperature?: number;
+  jsonMode?: boolean;
+  maxTokens?: number;
+  requestId?: string;
+  operation?: string;
+}) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new Error('GEMINI_API_KEY is not configured in server environment.');
+  }
+
+  const ai = new GoogleGenAI({
+    apiKey: geminiApiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build'
+      }
+    }
+  });
+
+  const systemParts = messages.filter(m => m && m.role === 'system').map(m => m.content);
+  const systemInstruction = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
+  const nonSystemParts = messages.filter(m => m && m.role !== 'system');
+
+  const contents = nonSystemParts.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+
+  if (contents.length === 0) {
+    contents.push({ role: 'user', parts: [{ text: 'Please analyze and respond.' }] });
+  }
+
+  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  let lastGeminiError: any = null;
+
+  for (const model of candidateModels) {
+    try {
+      const startTime = Date.now();
+      const config: any = {
+        temperature: Math.max(0, Math.min(2, temperature))
+      };
+      if (systemInstruction) {
+        config.systemInstruction = systemInstruction;
+      }
+      if (jsonMode) {
+        config.responseMimeType = 'application/json';
+      }
+
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+        config
+      });
+
+      const text = response.text || '';
+      let cleanText = text;
+      if (jsonMode && typeof cleanText === 'string') {
+        cleanText = cleanText
+          .replace(/^```(?:json)?\s*/i, '')
+          .replace(/\s*```\s*$/i, '')
+          .trim();
+        const firstBrace = cleanText.indexOf('{');
+        const firstBracket = cleanText.indexOf('[');
+        let firstJsonChar = -1;
+        if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+          firstJsonChar = firstBrace;
+        } else if (firstBracket !== -1) {
+          firstJsonChar = firstBracket;
+        }
+        if (firstJsonChar > 0) {
+          cleanText = cleanText.slice(firstJsonChar).trim();
+        }
+      }
+
+      const durationMs = Date.now() - startTime;
+      console.log(`[AI HireFlow][GeminiFallback] Successfully executed ${operation} via ${model} in ${durationMs}ms (request_id=${requestId || 'unknown'})`);
+
+      return {
+        text: cleanText,
+        rawText: text,
+        finishReason: 'stop',
+        isTruncated: false,
+        model,
+        provider: 'gemini',
+        usage: {
+          prompt_tokens: Math.round(text.length / 4),
+          completion_tokens: Math.round(cleanText.length / 4),
+          total_tokens: Math.round((text.length + cleanText.length) / 4)
+        },
+        timing: {
+          velonaDurationMs: durationMs,
+          totalDurationMs: durationMs
+        }
+      };
+    } catch (err: any) {
+      console.warn(`[AI HireFlow][GeminiFallback] Model ${model} encountered error (${err.message}). Trying fallback model...`);
+      lastGeminiError = err;
+    }
+  }
+
+  throw lastGeminiError || new Error('All Gemini models were unavailable.');
 }
 
 export async function callVelonaChatCompletion({
@@ -132,6 +250,17 @@ export async function callVelonaChatCompletion({
   const modelId = getVelonaModel();
 
   if (!apiKey) {
+    if (process.env.GEMINI_API_KEY) {
+      console.log(`[AI HireFlow] VELONA_API_KEY not found. Seamlessly executing via Google Gemini...`);
+      return await callGeminiCompletion({
+        messages,
+        temperature,
+        jsonMode,
+        maxTokens,
+        requestId,
+        operation
+      });
+    }
     const error: any = new Error('VELONA_API_KEY is not configured in server environment.');
     error.status = 500;
     error.code = 'MISSING_API_KEY';
@@ -258,8 +387,8 @@ export async function callVelonaChatCompletion({
         let errorDetails = '';
         try {
           const errorBody = await response.text();
-          if (errorBody.includes('520') || errorBody.includes('Cloudflare') || errorBody.includes('<!DOCTYPE') || errorBody.includes('<html')) {
-            errorDetails = 'Velona upstream server returned an unexpected Cloudflare gateway error (HTTP 520).';
+          if (errorBody.includes('520') || errorBody.includes('502') || errorBody.includes('Cloudflare') || errorBody.includes('<!DOCTYPE') || errorBody.includes('<html')) {
+            errorDetails = 'AI provider server encountered a temporary gateway issue. Please click Retry Analysis.';
           } else {
             try {
               const errJson = JSON.parse(errorBody);
@@ -291,6 +420,22 @@ export async function callVelonaChatCompletion({
           throw err;
         } else {
           err.code = 'VELONA_API_ERROR';
+        }
+
+        if (process.env.GEMINI_API_KEY && [500, 502, 503, 504, 520].includes(response.status)) {
+          console.warn(`[AI HireFlow] Upstream Velona returned HTTP ${response.status}. Executing Google Gemini fallback...`);
+          try {
+            return await callGeminiCompletion({
+              messages,
+              temperature: safeTemperature,
+              jsonMode,
+              maxTokens: safeMaxTokens,
+              requestId,
+              operation
+            });
+          } catch (geminiErr: any) {
+            console.error('[AI HireFlow] Gemini fallback error:', geminiErr.message);
+          }
         }
 
         if (isTransient && attempt < maxRetries && (Date.now() - velonaStart) < (maxTotalBudgetMs - 15000)) {
@@ -496,6 +641,22 @@ export async function callVelonaChatCompletion({
 
   console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || 'unknown'}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, provider_status=${velonaStatus}, retry_count=${maxRetries > 0 ? 1 : 0}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}`);
 
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      console.warn(`[AI HireFlow] Upstream provider attempts failed (${lastError?.message}). Executing final Google Gemini fallback...`);
+      return await callGeminiCompletion({
+        messages,
+        temperature: safeTemperature,
+        jsonMode,
+        maxTokens: safeMaxTokens,
+        requestId,
+        operation
+      });
+    } catch (geminiErr: any) {
+      console.error('[AI HireFlow] Gemini fallback also failed:', geminiErr.message);
+    }
+  }
+
   throw lastError || new Error('Velona API request failed after retries.');
 }
 
@@ -607,19 +768,21 @@ app.post([
       messages.push({ role: 'user', content: (prompt as string).trim() });
     }
 
+    const isCoverLetter = operation === 'cover_letter';
+    const requestPurpose = isCoverLetter ? 'COVER_LETTER' : 'GENERAL';
+    const safeReqId = (typeof body.requestId === 'string' && body.requestId.trim()) ? body.requestId.trim() : `gen_${Date.now()}`;
+
     const result = await callVelonaChatCompletion({
       messages,
       temperature,
       jsonMode: Boolean(jsonMode),
       maxTokens,
       operation: typeof operation === 'string' ? operation : 'general',
+      requestId: safeReqId,
       meta
     });
 
     const totalDuration = Date.now() - requestStart;
-    const isCoverLetter = operation === 'cover_letter';
-    const requestPurpose = isCoverLetter ? 'COVER_LETTER' : 'GENERAL';
-    const safeReqId = (typeof body.requestId === 'string' && body.requestId.trim()) ? body.requestId.trim() : `gen_${Date.now()}`;
     console.log(`[AI HireFlow][Diagnostics] request_id=${safeReqId}, request_purpose=${requestPurpose}, endpoint=/api/velona/generate, model=${result.model || modelId}, provider_duration_ms=${result.timing?.velonaDurationMs || totalDuration}, total_duration_ms=${totalDuration}, http_status=200, finish_reason=${result.finishReason || 'stop'}, parse_status=SUCCESS, failure_category=none, request_count=1`);
 
     return res.status(200).json({

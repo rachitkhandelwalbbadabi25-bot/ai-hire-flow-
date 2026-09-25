@@ -309,9 +309,9 @@ async function executeSingleJSearchQuery(
     headers['x-api-key'] = apiKey;
   }
 
-  // 50-second timeout to allow upstream search scraping and residential proxy routing to complete
+  // 14-second timeout to allow upstream search scraping without blocking serverless execution budget
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 50000);
+  const timeoutId = setTimeout(() => controller.abort(), 14000);
 
   try {
     const response = await fetch(url.toString(), {

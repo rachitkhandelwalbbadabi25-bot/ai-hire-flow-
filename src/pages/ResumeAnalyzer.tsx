@@ -1174,13 +1174,23 @@ export default function ResumeAnalyzer() {
         console.log('[ResumeAnalyzer] Analysis request aborted or superseded.');
         return;
       }
-      console.error('[ResumeAnalyzer] Analysis error:', err);
-      let userFriendlyMsg = err.message || "Resume analysis failed. Please try again.";
-      if (userFriendlyMsg.includes('520') || userFriendlyMsg.includes('Cloudflare') || userFriendlyMsg.includes('<!DOCTYPE')) {
-        userFriendlyMsg = "The AI audit service is currently experiencing upstream network latency or a temporary gateway issue. Please click Run Audit to retry.";
-      } else if (userFriendlyMsg.toLowerCase().includes('taking longer than expected') || userFriendlyMsg.toLowerCase().includes('timed out') || userFriendlyMsg.includes('504')) {
+      const rawMsg = typeof err === 'string' ? err : (err?.message || "Resume analysis failed. Please try again.");
+      let userFriendlyMsg = rawMsg;
+      if (
+        rawMsg.includes('Unexpected token') ||
+        rawMsg.includes('is not valid JSON') ||
+        rawMsg.includes('520') ||
+        rawMsg.includes('502') ||
+        rawMsg.includes('Cloudflare') ||
+        rawMsg.includes('<!DOCTYPE') ||
+        rawMsg.includes('<!doctype') ||
+        rawMsg.includes('<html')
+      ) {
+        userFriendlyMsg = "AI provider server encountered a temporary gateway issue. Please click Retry Analysis.";
+      } else if (rawMsg.toLowerCase().includes('taking longer than expected') || rawMsg.toLowerCase().includes('timed out') || rawMsg.includes('504')) {
         userFriendlyMsg = "Resume analysis timed out while contacting the AI provider. Please click Retry Analysis to run a fresh audit.";
       }
+      console.error('[ResumeAnalyzer] Analysis error:', userFriendlyMsg);
       setError(userFriendlyMsg);
     } finally {
       if (analysisAbortRef.current === abortController) {

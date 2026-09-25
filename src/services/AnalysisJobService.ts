@@ -53,6 +53,47 @@ class AnalysisJobService {
   }
 
   /**
+   * Safe parser for analysis responses that guards against HTML gateway error pages
+   */
+  private async parseSafeResponse<T = any>(res: Response, endpointDesc: string): Promise<T> {
+    const text = await res.text();
+    const isHtml = text.includes('<!DOCTYPE') || text.includes('<!doctype') || text.includes('<html') || text.includes('Cloudflare');
+
+    if (isHtml || res.status === 520) {
+      throw new Error('AI provider server encountered a temporary gateway issue. Please click Retry Analysis.');
+    }
+
+    if (!res.ok) {
+      let serverError = '';
+      try {
+        const parsed = JSON.parse(text);
+        serverError = parsed.error || parsed.message || '';
+      } catch {
+        // Not valid JSON
+      }
+
+      if (serverError) {
+        throw new Error(serverError);
+      }
+
+      if (res.status === 502 || res.status === 503) {
+        throw new Error('AI provider server encountered a temporary gateway issue. Please click Retry Analysis.');
+      }
+      if (res.status === 504) {
+        throw new Error('Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.');
+      }
+      const msg = text.slice(0, 150).replace(/<[^>]*>/g, '').trim() || `Request failed (HTTP ${res.status})`;
+      throw new Error(msg);
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error('AI provider server encountered a temporary gateway issue. Please click Retry Analysis.');
+    }
+  }
+
+  /**
    * Query the status of a specific analysis job from the server.
    * This is a read-only endpoint that never invokes Velona or GLM.
    */
@@ -64,17 +105,14 @@ class AnalysisJobService {
     timing?: any;
   }> {
     const res = await fetch(`/api/resume/analyze-job/${encodeURIComponent(analysisId)}`);
-    if (!res.ok) {
-      if (res.status === 404) {
-        return {
-          analysisId,
-          status: 'failed',
-          error: 'Analysis session expired. Please restart analysis.'
-        };
-      }
-      throw new Error(`Failed to check analysis status (HTTP ${res.status})`);
+    if (res.status === 404) {
+      return {
+        analysisId,
+        status: 'failed',
+        error: 'Analysis session expired. Please restart analysis.'
+      };
     }
-    return await res.json();
+    return await this.parseSafeResponse(res, `/api/resume/analyze-job/${analysisId}`);
   }
 
   /**
@@ -170,35 +208,7 @@ class AnalysisJobService {
         signal
       });
 
-      if (!startRes.ok) {
-        let friendlyError = `Analysis request failed (HTTP ${startRes.status})`;
-        try {
-          const errText = await startRes.text();
-          if (errText.includes('520') || errText.includes('Cloudflare') || errText.includes('<!DOCTYPE') || errText.includes('<html')) {
-            friendlyError = 'The AI audit service is currently experiencing upstream network latency or a gateway connection issue. Please click Run Audit to retry.';
-          } else {
-            try {
-              const errData = JSON.parse(errText);
-              friendlyError = errData.error || friendlyError;
-            } catch {
-              friendlyError = errText.slice(0, 150).replace(/<[^>]*>/g, '').trim() || friendlyError;
-            }
-          }
-        } catch {
-          // fallback
-        }
-
-        if (startRes.status === 504 || (startRes.status >= 500 && friendlyError.toLowerCase().includes('time'))) {
-          friendlyError = 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.';
-        } else if (startRes.status === 502 && !friendlyError.includes('AI') && !friendlyError.includes('analysis')) {
-          friendlyError = 'The AI service encountered a temporary gateway issue. Please click Retry Analysis.';
-        }
-
-        this.clearActiveJobId();
-        throw new Error(friendlyError);
-      }
-
-      const startData = await startRes.json();
+      const startData = await this.parseSafeResponse(startRes, '/api/resume/analyze-job');
       const effectiveJobId = startData.analysisId || analysisId;
 
       // Fast-path: When server executes and returns the completed analysis directly in the POST response

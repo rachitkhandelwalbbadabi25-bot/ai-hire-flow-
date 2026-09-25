@@ -2611,7 +2611,7 @@ app.post([
     const isCoverLetter = operation === "cover_letter";
     const requestPurpose = isCoverLetter ? "COVER_LETTER" : "GENERAL";
     const safeReqId = typeof body.requestId === "string" && body.requestId.trim() ? body.requestId.trim() : `gen_${Date.now()}`;
-    console.log(`[AI HireFlow][Diagnostics] request_id=${safeReqId}, request_purpose=${requestPurpose}, endpoint=/api/velona/generate, provider_duration_ms=${result.timing?.velonaDurationMs || totalDuration}, total_duration_ms=${totalDuration}, http_status=200, finish_reason=${result.finishReason || "stop"}, parse_status=SUCCESS, failure_category=none, request_count=1`);
+    console.log(`[AI HireFlow][Diagnostics] request_id=${safeReqId}, request_purpose=${requestPurpose}, endpoint=/api/velona/generate, model=${result.model || modelId}, provider_duration_ms=${result.timing?.velonaDurationMs || totalDuration}, total_duration_ms=${totalDuration}, http_status=200, finish_reason=${result.finishReason || "stop"}, parse_status=SUCCESS, failure_category=none, request_count=1`);
     return res.status(200).json({
       ...result,
       timing: {

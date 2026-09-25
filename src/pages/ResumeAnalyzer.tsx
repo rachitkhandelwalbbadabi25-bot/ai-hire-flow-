@@ -1140,63 +1140,8 @@ export default function ResumeAnalyzer() {
         });
       }
 
-      // Execute optional cover letter asynchronously without blocking primary audit
-      if (jobDesc && canGenCL && !isGeneratingCLRef.current) {
-        isGeneratingCLRef.current = true;
-        setIsGeneratingCL(true);
-        setCoverLetterError(null);
-
-        const autoClRequestId = `cl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-        const autoClStart = Date.now();
-        console.log(`[AI HireFlow][Diagnostics] request_id=${autoClRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, mode=auto_background, status=initiated`);
-
-        generateCoverLetter(text, jobDesc, autoClRequestId)
-          .then(async (clResult) => {
-            const clDuration = Date.now() - autoClStart;
-            if (clResult?.content && clResult.content.trim().length >= 120) {
-              const fullCL = clResult.content.trim();
-              setCoverLetter(fullCL);
-              setCoverLetterError(null);
-              await deductCredit('coverLetters');
-              console.log(`[AI HireFlow][Diagnostics] request_id=${autoClRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=200, finish_reason=stop, parse_status=SUCCESS, failure_category=none, request_count=1`);
-
-              const updatedStore = {
-                analysis: analysisResult,
-                coverLetter: fullCL
-              };
-              cacheManager.set(inMemoryKey, updatedStore, 24 * 60 * 60 * 1000);
-              try {
-                await firestoreCache.setCache(user.uid, text, jobDesc, updatedStore);
-              } catch (e) {
-                console.warn('Failed to update cache with cover letter:', e);
-              }
-            } else {
-              console.warn(`[AI HireFlow][Diagnostics] request_id=${autoClRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=200, finish_reason=truncated, parse_status=INCOMPLETE, failure_category=OUTPUT_TRUNCATED, request_count=1`);
-              setCoverLetterError('Cover letter output was incomplete or truncated. Please click below to generate or retry.');
-            }
-          })
-          .catch((e) => {
-            const clDuration = Date.now() - autoClStart;
-            const isTimeout = e.message?.toLowerCase().includes('timed out') || e.status === 504;
-            const isTruncated = e.code === 'OUTPUT_TRUNCATED' || e.code === 'AI_RESPONSE_TRUNCATED' || e.message?.includes('too large');
-            const failureCategory = isTimeout ? 'TIMEOUT' : isTruncated ? 'OUTPUT_TRUNCATED' : (e.status === 502 || e.status === 520 ? 'UPSTREAM_ERROR' : 'PROVIDER_ERROR');
-            console.warn(`[AI HireFlow][Diagnostics] request_id=${autoClRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=${e.status || 500}, finish_reason=${isTruncated ? 'length' : 'error'}, parse_status=FAILED, failure_category=${failureCategory}, request_count=1`);
-            
-            let friendlyMsg = 'Cover letter generation encountered a temporary issue. Click below to retry.';
-            if (isTimeout) {
-              friendlyMsg = 'Cover letter timed out. Click below to retry.';
-            } else if (isTruncated) {
-              friendlyMsg = 'Cover letter reached token limit. Click below to retry.';
-            } else if (e.status === 502 || e.status === 520 || e.message?.includes('520') || e.message?.includes('Cloudflare')) {
-              friendlyMsg = 'The AI provider experienced a temporary gateway issue. Click below to retry.';
-            }
-            setCoverLetterError(friendlyMsg);
-          })
-          .finally(() => {
-            isGeneratingCLRef.current = false;
-            setIsGeneratingCL(false);
-          });
-      }
+      // Note: Cover letter generation is kept strictly on-demand in the Cover Letter card
+      // to ensure ATS audit completion is completely isolated and never blocked or degraded.
 
       const resultsToStore = {
         analysis: analysisResult,
@@ -1296,7 +1241,19 @@ export default function ResumeAnalyzer() {
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-sm font-bold text-rose-400">Analysis Error</h4>
+              <h4 className="text-sm font-bold text-rose-400">
+                {error.toLowerCase().includes('gateway') || error.toLowerCase().includes('502') || error.toLowerCase().includes('503') || error.toLowerCase().includes('520') || error.toLowerCase().includes('524') || error.toLowerCase().includes('cloudflare')
+                  ? 'Provider Gateway Error'
+                  : error.toLowerCase().includes('time') || error.toLowerCase().includes('504')
+                  ? 'Provider Timeout'
+                  : error.toLowerCase().includes('auth') || error.toLowerCase().includes('api key')
+                  ? 'Authentication Error'
+                  : error.toLowerCase().includes('balance') || error.toLowerCase().includes('credit') || error.toLowerCase().includes('rate')
+                  ? 'Rate Limit / Quota Notice'
+                  : error.toLowerCase().includes('parse') || error.toLowerCase().includes('schema') || error.toLowerCase().includes('truncated')
+                  ? 'Response Parsing Error'
+                  : 'Analysis Error'}
+              </h4>
               <p className="text-xs text-ink-dim mt-0.5">{error}</p>
             </div>
           </div>

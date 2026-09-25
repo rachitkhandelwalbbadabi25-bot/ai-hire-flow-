@@ -59,8 +59,8 @@ class AnalysisJobService {
     const text = await res.text();
     const isHtml = text.includes('<!DOCTYPE') || text.includes('<!doctype') || text.includes('<html') || text.includes('Cloudflare');
 
-    if (isHtml || res.status === 520) {
-      throw new Error('AI provider server encountered a temporary gateway issue. Please click Retry Analysis.');
+    if (isHtml || res.status === 520 || res.status === 502 || res.status === 503 || res.status === 524) {
+      throw new Error('AI provider is temporarily unavailable. Please try again later.');
     }
 
     if (!res.ok) {
@@ -76,8 +76,8 @@ class AnalysisJobService {
         throw new Error(serverError);
       }
 
-      if (res.status === 502 || res.status === 503) {
-        throw new Error('AI provider server encountered a temporary gateway issue. Please click Retry Analysis.');
+      if (res.status === 502 || res.status === 503 || res.status === 520 || res.status === 524) {
+        throw new Error('AI provider is temporarily unavailable. Please try again later.');
       }
       if (res.status === 504) {
         throw new Error('Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.');
@@ -89,7 +89,7 @@ class AnalysisJobService {
     try {
       return JSON.parse(text) as T;
     } catch {
-      throw new Error('AI provider server encountered a temporary gateway issue. Please click Retry Analysis.');
+      throw new Error('AI provider is temporarily unavailable. Please try again later.');
     }
   }
 

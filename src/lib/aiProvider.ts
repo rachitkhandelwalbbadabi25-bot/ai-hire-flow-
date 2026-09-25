@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 
-export type AIProviderId = 'velona' | 'gemini';
+export type AIProviderId = 'velona';
 
 export interface AIProviderInfo {
   id: AIProviderId;
@@ -20,21 +20,13 @@ export interface AIProviderInfo {
 const STORAGE_KEY = 'ai_hireflow_selected_provider';
 
 export function getActiveProvider(): AIProviderId {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'velona') {
-      return saved;
-    }
-  } catch (e) {
-    // LocalStorage unavailable
-  }
   return 'velona';
 }
 
 export function setActiveProvider(provider: AIProviderId): void {
   try {
-    localStorage.setItem(STORAGE_KEY, provider);
-    window.dispatchEvent(new CustomEvent('ai-provider-changed', { detail: provider }));
+    localStorage.setItem(STORAGE_KEY, 'velona');
+    window.dispatchEvent(new CustomEvent('ai-provider-changed', { detail: 'velona' }));
   } catch (e) {
     // LocalStorage unavailable
   }
@@ -50,15 +42,15 @@ async function parseJsonResponse(res: Response, endpointDescription: string): Pr
   const text = await res.text();
 
   // Intercept Cloudflare / upstream HTML error pages
-  if (text.includes('520') || text.includes('Cloudflare') || text.includes('<!DOCTYPE') || text.includes('<html')) {
-    throw new Error('The AI service connection was interrupted by an upstream network or origin gateway issue (HTTP 520). Please try again in a moment.');
+  if (text.includes('520') || text.includes('502') || text.includes('503') || text.includes('504') || text.includes('524') || text.includes('Bad gateway') || text.includes('Cloudflare') || text.includes('<!DOCTYPE') || text.includes('<html')) {
+    throw new Error('AI provider is temporarily unavailable. Please try again later.');
   }
 
   if (!contentType.includes('application/json') && !text.trim().startsWith('{') && !text.trim().startsWith('[')) {
     const preview = text.slice(0, 120).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     if (!res.ok) {
-      if (res.status === 502 || res.status === 504) {
-        throw new Error('The AI service is temporarily unavailable or timed out. Please retry in a moment.');
+      if (res.status === 502 || res.status === 503 || res.status === 504 || res.status === 520 || res.status === 524) {
+        throw new Error('AI provider is temporarily unavailable. Please try again later.');
       }
       throw new Error(`Server returned HTTP ${res.status} (${res.statusText || 'Error'}) from ${endpointDescription}. Preview: ${preview || '(empty)'}`);
     }

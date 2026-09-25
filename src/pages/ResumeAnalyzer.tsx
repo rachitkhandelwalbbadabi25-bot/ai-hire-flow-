@@ -882,8 +882,8 @@ export default function ResumeAnalyzer() {
         friendlyMsg = 'Cover letter generation timed out. Please click Retry Cover Letter.';
       } else if (isTruncated) {
         friendlyMsg = 'Cover letter reached the token limit. Please click Retry Cover Letter.';
-      } else if (e.status === 502 || e.status === 520 || e.message?.includes('520') || e.message?.includes('Cloudflare')) {
-        friendlyMsg = 'The AI provider experienced a temporary gateway issue. Please click Retry Cover Letter.';
+      } else if (e.status === 502 || e.status === 503 || e.status === 520 || e.status === 524 || e.message?.includes('520') || e.message?.includes('502') || e.message?.includes('Cloudflare') || e.message?.includes('temporarily unavailable')) {
+        friendlyMsg = 'AI provider is temporarily unavailable. Please try again later.';
       }
       setCoverLetterError(friendlyMsg);
     } finally {
@@ -1181,12 +1181,16 @@ export default function ResumeAnalyzer() {
         rawMsg.includes('is not valid JSON') ||
         rawMsg.includes('520') ||
         rawMsg.includes('502') ||
+        rawMsg.includes('503') ||
+        rawMsg.includes('524') ||
+        rawMsg.includes('Bad gateway') ||
+        rawMsg.includes('temporarily unavailable') ||
         rawMsg.includes('Cloudflare') ||
         rawMsg.includes('<!DOCTYPE') ||
         rawMsg.includes('<!doctype') ||
         rawMsg.includes('<html')
       ) {
-        userFriendlyMsg = "AI provider server encountered a temporary gateway issue. Please click Retry Analysis.";
+        userFriendlyMsg = "AI provider is temporarily unavailable. Please try again later.";
       } else if (rawMsg.toLowerCase().includes('taking longer than expected') || rawMsg.toLowerCase().includes('timed out') || rawMsg.includes('504')) {
         userFriendlyMsg = "Resume analysis timed out while contacting the AI provider. Please click Retry Analysis to run a fresh audit.";
       }

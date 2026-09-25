@@ -1655,7 +1655,6 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import dns from "dns";
-import { GoogleGenAI } from "@google/genai";
 
 // api/_lib/subscriptionEnforcement.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
@@ -2201,107 +2200,16 @@ function sanitizeHttpStatus(status) {
   return num;
 }
 function sanitizeSafeErrorMessage(rawMessage) {
-  if (!rawMessage) return "An unexpected error occurred during AI generation.";
+  if (!rawMessage) return "AI provider is temporarily unavailable. Please try again later.";
   const str = typeof rawMessage === "string" ? rawMessage : rawMessage.message || String(rawMessage);
-  if (str.includes("520") || str.includes("502") || str.includes("Cloudflare") || str.includes("<!DOCTYPE") || str.includes("<!doctype") || str.includes("<html")) {
-    return "AI provider server encountered a temporary gateway issue. Please click Retry Analysis.";
+  if (str.includes("520") || str.includes("502") || str.includes("503") || str.includes("504") || str.includes("524") || str.includes("Bad gateway") || str.includes("Bad Gateway") || str.includes("gateway") || str.includes("Cloudflare") || str.includes("<!DOCTYPE") || str.includes("<!doctype") || str.includes("<html")) {
+    return "AI provider is temporarily unavailable. Please try again later.";
   }
   let safe = str.replace(/<[^>]*>/g, " ").replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, "Bearer [REDACTED]").replace(/[a-zA-Z0-9_\-]{32,}/g, "[REDACTED_KEY]").replace(/\s+/g, " ").trim();
   if (safe.length > 250) {
     safe = safe.slice(0, 250) + "...";
   }
-  return safe || "An unexpected error occurred during AI generation.";
-}
-async function callGeminiCompletion({
-  messages,
-  temperature = 0.1,
-  jsonMode = false,
-  maxTokens = 2800,
-  requestId,
-  operation = "general"
-}) {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (!geminiApiKey) {
-    throw new Error("GEMINI_API_KEY is not configured in server environment.");
-  }
-  const ai = new GoogleGenAI({
-    apiKey: geminiApiKey,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build"
-      }
-    }
-  });
-  const systemParts = messages.filter((m) => m && m.role === "system").map((m) => m.content);
-  const systemInstruction = systemParts.length > 0 ? systemParts.join("\n\n") : void 0;
-  const nonSystemParts = messages.filter((m) => m && m.role !== "system");
-  const contents = nonSystemParts.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }]
-  }));
-  if (contents.length === 0) {
-    contents.push({ role: "user", parts: [{ text: "Please analyze and respond." }] });
-  }
-  const candidateModels = ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.8-flash"];
-  let lastGeminiError = null;
-  for (const model of candidateModels) {
-    try {
-      const startTime = Date.now();
-      const config = {
-        temperature: Math.max(0, Math.min(2, temperature))
-      };
-      if (systemInstruction) {
-        config.systemInstruction = systemInstruction;
-      }
-      if (jsonMode) {
-        config.responseMimeType = "application/json";
-      }
-      const response = await ai.models.generateContent({
-        model,
-        contents,
-        config
-      });
-      const text = response.text || "";
-      let cleanText = text;
-      if (jsonMode && typeof cleanText === "string") {
-        cleanText = cleanText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
-        const firstBrace = cleanText.indexOf("{");
-        const firstBracket = cleanText.indexOf("[");
-        let firstJsonChar = -1;
-        if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-          firstJsonChar = firstBrace;
-        } else if (firstBracket !== -1) {
-          firstJsonChar = firstBracket;
-        }
-        if (firstJsonChar > 0) {
-          cleanText = cleanText.slice(firstJsonChar).trim();
-        }
-      }
-      const durationMs = Date.now() - startTime;
-      console.log(`[AI HireFlow][GeminiFallback] Successfully executed ${operation} via ${model} in ${durationMs}ms (request_id=${requestId || "unknown"})`);
-      return {
-        text: cleanText,
-        rawText: text,
-        finishReason: "stop",
-        isTruncated: false,
-        model,
-        provider: "gemini",
-        usage: {
-          prompt_tokens: Math.round(text.length / 4),
-          completion_tokens: Math.round(cleanText.length / 4),
-          total_tokens: Math.round((text.length + cleanText.length) / 4)
-        },
-        timing: {
-          velonaDurationMs: durationMs,
-          totalDurationMs: durationMs
-        }
-      };
-    } catch (err) {
-      console.warn(`[AI HireFlow][GeminiFallback] Model ${model} encountered error (${err.message}). Trying fallback model...`);
-      lastGeminiError = err;
-    }
-  }
-  throw lastGeminiError || new Error("All Gemini models were unavailable.");
+  return safe || "AI provider is temporarily unavailable. Please try again later.";
 }
 async function callVelonaChatCompletion({
   messages,
@@ -2315,17 +2223,6 @@ async function callVelonaChatCompletion({
   const apiKey = getVelonaApiKey();
   const modelId = getVelonaModel();
   if (!apiKey) {
-    if (process.env.GEMINI_API_KEY) {
-      console.log(`[AI HireFlow] VELONA_API_KEY not found. Seamlessly executing via Google Gemini...`);
-      return await callGeminiCompletion({
-        messages,
-        temperature,
-        jsonMode,
-        maxTokens,
-        requestId,
-        operation
-      });
-    }
     const error = new Error("VELONA_API_KEY is not configured in server environment.");
     error.status = 500;
     error.code = "MISSING_API_KEY";
@@ -2454,21 +2351,6 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
         } else {
           err.code = "VELONA_API_ERROR";
         }
-        if (process.env.GEMINI_API_KEY && [500, 502, 503, 504, 520].includes(response.status)) {
-          console.warn(`[AI HireFlow] Upstream Velona returned HTTP ${response.status}. Executing Google Gemini fallback...`);
-          try {
-            return await callGeminiCompletion({
-              messages,
-              temperature: safeTemperature,
-              jsonMode,
-              maxTokens: safeMaxTokens,
-              requestId,
-              operation
-            });
-          } catch (geminiErr) {
-            console.error("[AI HireFlow] Gemini fallback error:", geminiErr.message);
-          }
-        }
         if (isTransient && attempt < maxRetries && Date.now() - velonaStart < maxTotalBudgetMs - 15e3) {
           lastError = err;
           continue;
@@ -2579,12 +2461,21 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
           cleanText = cleanText.slice(firstJsonChar).trim();
         }
       }
+      const resolvedProvider = "velona";
+      const resolvedModel = data.model || modelId;
+      if (resolvedProvider !== "velona" || !resolvedModel.includes("glm-5.3-flash") && resolvedModel !== "z-ai/glm-5.3-flash") {
+        const configErr = new Error(`Configuration error: unexpected provider/model response (${resolvedProvider}/${resolvedModel}). Expected Velona z-ai/glm-5.3-flash.`);
+        configErr.code = "INVALID_PROVIDER_MODEL";
+        configErr.status = 500;
+        throw configErr;
+      }
+      console.log(`[AI HireFlow][Diagnostics] endpoint=${VELONA_BASE_URL}/chat/completions, provider=velona, model=z-ai/glm-5.3-flash, http_status=200, provider_duration_ms=${attemptDuration}, total_duration_ms=${totalElapsed2}, request_id=${requestId || "unknown"}, retry_count=${attempt}, parse_status=SUCCESS, failure_category=none`);
       return {
         text: cleanText,
         rawText: content,
         finishReason,
         isTruncated: finishReason === "length",
-        model: data.model || modelId,
+        model: resolvedModel,
         provider: "velona",
         usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         timing: {
@@ -2625,21 +2516,6 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
   const timeoutStage = lastError?.timeoutStage || (errorCategory === "TIMEOUT" ? "request_timeout" : "none");
   const velonaDuration = lastError?.attemptDuration || totalElapsed;
   console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || "unknown"}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, provider_status=${velonaStatus}, retry_count=${maxRetries > 0 ? 1 : 0}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}`);
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      console.warn(`[AI HireFlow] Upstream provider attempts failed (${lastError?.message}). Executing final Google Gemini fallback...`);
-      return await callGeminiCompletion({
-        messages,
-        temperature: safeTemperature,
-        jsonMode,
-        maxTokens: safeMaxTokens,
-        requestId,
-        operation
-      });
-    } catch (geminiErr) {
-      console.error("[AI HireFlow] Gemini fallback also failed:", geminiErr.message);
-    }
-  }
   throw lastError || new Error("Velona API request failed after retries.");
 }
 app.get(["/api/ai/providers", "/ai/providers"], (req, res) => {
@@ -3228,7 +3104,7 @@ ${cleanResume}
       safeErrorMsg = "ATS audit response failed validation. Please click Retry Analysis.";
     } else if (err.status >= 500 && err.status < 600) {
       failureCategory = "UPSTREAM_ERROR";
-      safeErrorMsg = "AI provider server encountered a temporary gateway issue. Please click Retry Analysis.";
+      safeErrorMsg = "AI provider is temporarily unavailable. Please try again later.";
     }
     job.error = safeErrorMsg;
     const finalHttpStatus = isTimeout ? 504 : isAuth ? 401 : isRateLimit ? 429 : sanitizeHttpStatus(err.status || lastHttpStatus || 500);
@@ -3822,7 +3698,6 @@ var index_default = app;
 export {
   VELONA_MODEL_ID,
   app,
-  callGeminiCompletion,
   callVelonaChatCompletion,
   index_default as default,
   getVelonaApiKey,

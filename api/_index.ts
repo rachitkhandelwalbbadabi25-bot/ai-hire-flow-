@@ -165,35 +165,45 @@ export async function callVelonaChatCompletion({
   }
 
   const isJob = (operation || '').includes('job');
+  const isCoverLetter = operation === 'cover_letter';
   const isLearningPath = operation === 'learning_path';
 
   // For Z.ai GLM-5.3-Flash: Allocate sufficient tokens (up to 3200) so reasoning and complete ATS JSON fit comfortably
-  // without risking output truncation (finish_reason=length).
-  const safeMaxTokens = Math.min(3200, Math.max(1000, maxTokens || (isJob ? 2800 : 1600)));
+  // without risking output truncation (finish_reason=length). Cover letter is allocated 2400 to prevent cuts.
+  const safeMaxTokens = Math.min(3200, Math.max(1000, maxTokens || (isJob ? 2800 : (isCoverLetter ? 2400 : 1600))));
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.0, Math.min(1.0, temperature))
-    : 0.1;
+    : (isCoverLetter ? 0.3 : 0.1);
 
   const velonaStart = Date.now();
   const maxRetries = 1;
-  // Production-tuned timeout management:
-  // Background resume jobs are allotted up to 60s per attempt (100s total budget), allowing GLM 5.3 Flash
-  // to complete full ATS scoring without premature client-side aborts.
-  const maxTotalBudgetMs = isJob ? 100000 : 60000;
-  const perAttemptTimeoutMs = isJob ? 60000 : (isLearningPath ? 40000 : 45000);
+  // Vercel Serverless Function Execution Budget:
+  // Vercel platform maxDuration is configured to 60 seconds (60,000ms).
+  // Total overall execution budget is strictly bounded to 48,000ms, ensuring a guaranteed 12,000ms safety
+  // cushion for response serialization, error handling, and socket flushing before Vercel terminates the function.
+  const maxTotalBudgetMs = 48000;
+  // Clamped per-attempt timeout: 42,000ms for ATS job, 38,000ms for Cover Letter
+  const perAttemptTimeoutMs = isJob ? 42000 : (isCoverLetter ? 38000 : (isLearningPath ? 38000 : 40000));
   let lastError: any = null;
 
   const inputChars = meta?.charCount || formattedMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
   const approxInputTokens = Math.round(inputChars / 4);
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0 && (Date.now() - velonaStart) > (maxTotalBudgetMs - 25000)) {
+    const elapsedSoFar = Date.now() - velonaStart;
+    const timeRemaining = maxTotalBudgetMs - elapsedSoFar;
+
+    // Critical Vercel Execution Limit Guard:
+    // Never run a retry when insufficient execution time remains to complete an inference (requires >= 20s).
+    if (attempt > 0 && timeRemaining < 20000) {
       break;
     }
 
+    // Dynamically clamp timeout to remaining overall budget minus 3s safety margin
+    const currentAttemptTimeoutMs = Math.min(perAttemptTimeoutMs, Math.max(10000, timeRemaining - 3000));
     const attemptStart = Date.now();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeoutMs);
+    const timeoutId = setTimeout(() => controller.abort(), currentAttemptTimeoutMs);
 
     let currentMessages = formattedMessages;
     if (attempt > 0) {
@@ -435,8 +445,12 @@ export async function callVelonaChatCompletion({
       const attemptDuration = Date.now() - attemptStart;
       
       if (err.name === 'AbortError') {
-        const stage = isLearningPath ? 'learning_path_timeout' : (isJob ? 'job_timeout' : `attempt_${attempt}_timeout`);
-        lastError = new Error(isJob ? 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.' : 'AI request timed out. Please try again.');
+        const stage = isLearningPath ? 'learning_path_timeout' : (isJob ? 'job_timeout' : (isCoverLetter ? 'cover_letter_timeout' : `attempt_${attempt}_timeout`));
+        lastError = new Error(
+          isJob 
+            ? 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.' 
+            : (isCoverLetter ? 'Cover letter generation timed out. Please click Retry Cover Letter.' : 'AI request timed out. Please try again.')
+        );
         lastError.status = 504;
         lastError.velonaStatus = 504;
         lastError.code = 'TIMEOUT';
@@ -603,6 +617,11 @@ app.post([
     });
 
     const totalDuration = Date.now() - requestStart;
+    const isCoverLetter = operation === 'cover_letter';
+    const requestPurpose = isCoverLetter ? 'COVER_LETTER' : 'GENERAL';
+    const safeReqId = (typeof body.requestId === 'string' && body.requestId.trim()) ? body.requestId.trim() : `gen_${Date.now()}`;
+    console.log(`[AI HireFlow][Diagnostics] request_id=${safeReqId}, request_purpose=${requestPurpose}, endpoint=/api/velona/generate, provider_duration_ms=${result.timing?.velonaDurationMs || totalDuration}, total_duration_ms=${totalDuration}, http_status=200, finish_reason=${result.finishReason || 'stop'}, parse_status=SUCCESS, failure_category=none, request_count=1`);
+
     return res.status(200).json({
       ...result,
       timing: {
@@ -618,7 +637,10 @@ app.post([
     const velonaStatus = err.velonaStatus || (rawStatus !== 500 ? rawStatus : 'N/A');
     const timeoutStage = err.timeoutStage || (errorCode === 'TIMEOUT' ? 'request_timeout' : 'none');
 
-    console.error(`[AI HireFlow][Diagnostics] endpoint=/api/velona/generate, request_start=${new Date(requestStart).toISOString()}, http_status=${rawStatus}, model=${modelId}, total_duration_ms=${totalDuration}, velona_status=${velonaStatus}, timeout_stage=${timeoutStage}, error_category=${errorCode}, message=${safeMsg}`);
+    const isCoverLetter = (req.body && req.body.operation === 'cover_letter');
+    const requestPurpose = isCoverLetter ? 'COVER_LETTER' : 'GENERAL';
+    const safeReqId = (req.body && typeof req.body.requestId === 'string' && req.body.requestId.trim()) ? req.body.requestId.trim() : `gen_${Date.now()}`;
+    console.error(`[AI HireFlow][Diagnostics] request_id=${safeReqId}, request_purpose=${requestPurpose}, endpoint=/api/velona/generate, request_start=${new Date(requestStart).toISOString()}, http_status=${rawStatus}, model=${modelId}, provider_duration_ms=${err.attemptDuration || totalDuration}, total_duration_ms=${totalDuration}, finish_reason=error, parse_status=FAILED, failure_category=${errorCode}, request_count=1`);
 
     return res.status(rawStatus).json({ 
       error: safeMsg,
@@ -1139,18 +1161,23 @@ ${cleanResume}
     // Controlled Single Response Recovery if first response is malformed/truncated
     if (!parsed) {
       const timeSpent = Date.now() - jobStart;
-      if (timeSpent > 70000) {
+      const timeRemaining = 48000 - timeSpent;
+      // Critical Vercel Serverless Limit Guard:
+      // Recovery requires at least 20,000ms remaining in the 48,000ms budget to prevent
+      // background execution from exceeding Vercel 60,000ms maxDuration.
+      if (timeRemaining < 20000) {
+        const isTruncated = velonaResult.finishReason === 'length';
         const err: any = new Error(
-          velonaResult.finishReason === 'length'
-            ? 'Resume analysis output exceeded token budget. Please retry.'
-            : 'Analysis completed with malformed response. Please retry in a moment.'
+          isTruncated
+            ? 'Resume analysis output exceeded token budget. Please click Retry Analysis to run a fresh audit.'
+            : 'Analysis completed with malformed response. Please click Retry Analysis to rerun.'
         );
-        err.code = velonaResult.finishReason === 'length' ? 'OUTPUT_TRUNCATED' : 'JSON_PARSE_ERROR';
+        err.code = isTruncated ? 'OUTPUT_TRUNCATED' : 'JSON_PARSE_ERROR';
         err.rawSample = velonaResult.text?.slice(0, 500);
         throw err;
       }
 
-      console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] Executing ONE controlled internal retry for malformed response...`);
+      console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] Executing ONE controlled internal retry for malformed response (${timeRemaining}ms budget remaining)...`);
       didRetry = true;
       const recoveryResult = await callVelonaChatCompletion({
         messages: [
@@ -1176,8 +1203,8 @@ ${cleanResume}
         console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Recovery retry JSON parse failed:`, retryParseErr.message, 'Sample:', recoveryResult.text?.slice(0, 300));
         const parseError: any = new Error(
           recoveryResult.finishReason === 'length'
-            ? 'Resume analysis output exceeded token budget. Please retry.'
-            : 'Analysis completed with malformed response. Please retry in a moment.'
+            ? 'Resume analysis output exceeded token budget. Please click Retry Analysis to run a fresh audit.'
+            : 'Analysis completed with malformed response. Please click Retry Analysis to rerun.'
         );
         parseError.code = recoveryResult.finishReason === 'length' ? 'OUTPUT_TRUNCATED' : 'JSON_PARSE_ERROR';
         parseError.rawSample = recoveryResult.text?.slice(0, 500);
@@ -1212,7 +1239,7 @@ ${cleanResume}
     };
 
     // Safe operational diagnostics (no private user resume or keys)
-    console.log(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, timestamp=${new Date(jobStart).toISOString()}, model=${velonaResult.model}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, timeout_ms=38000, provider_status=200, provider_duration_ms=${velonaResult.timing?.velonaDurationMs || job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=${didRetry ? 1 : 0}, finish_reason=${velonaResult.finishReason}, response_chars=${velonaResult.text?.length || 0}, failure_category=none`);
+    console.log(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=${velonaResult.model}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=200, provider_duration_ms=${velonaResult.timing?.velonaDurationMs || job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=${didRetry ? 1 : 0}, finish_reason=${velonaResult.finishReason}, parse_status=SUCCESS, failure_category=none, request_count=1`);
   } catch (err: any) {
     console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Background analysis failed:`, err.message);
     job.status = 'failed';
@@ -1263,7 +1290,7 @@ ${cleanResume}
       sample: err.rawSample || lastRawSample
     };
 
-    console.error(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, timestamp=${new Date(jobStart).toISOString()}, model=${lastModel}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, timeout_ms=38000, provider_status=${finalHttpStatus}, provider_duration_ms=${job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=${didRetry ? 1 : 0}, finish_reason=${lastFinishReason}, response_chars=${lastRawSample?.length || 0}, failure_category=${failureCategory}`);
+    console.error(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=${lastModel}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=${finalHttpStatus}, provider_duration_ms=${job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=${didRetry ? 1 : 0}, finish_reason=${lastFinishReason}, parse_status=FAILED, failure_category=${failureCategory}, request_count=1`);
   }
 }
 

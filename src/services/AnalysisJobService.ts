@@ -219,7 +219,8 @@ class AnalysisJobService {
       }
 
       // Polling loop: every 2 seconds check job status until completed or failed
-      const maxPolls = 60; // 60 polls * 2000ms = 120 seconds max polling ceiling
+      // Aligned with backend 48,000ms overall budget (26 polls * 2000ms = 52s)
+      const maxPolls = 26;
       const pollIntervalMs = 2000;
 
       for (let poll = 0; poll < maxPolls; poll++) {

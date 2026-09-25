@@ -249,10 +249,12 @@ export default function ResumeAnalyzer() {
   const analysisAbortRef = useRef<AbortController | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingCL, setIsGeneratingCL] = useState(false);
+  const isGeneratingCLRef = useRef(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('Auditing resume against ATS benchmarks...');
   const [analysis, setAnalysis] = useState<any>(initialAnalyzerState.analysis);
   const [coverLetter, setCoverLetter] = useState<string | null>(initialAnalyzerState.coverLetter);
   const [error, setError] = useState<string | null>(null);
+  const [coverLetterError, setCoverLetterError] = useState<string | null>(null);
   const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(initialAnalyzerState.cacheSource);
   const activeJobKeyRef = useRef<string | null>(initialAnalyzerState.activeJobKey);
 
@@ -812,9 +814,9 @@ export default function ResumeAnalyzer() {
 
   // Dedicated on-demand cover letter generator
   const handleGenerateCoverLetter = async () => {
-    if (isGeneratingCL) return;
+    if (isGeneratingCLRef.current) return;
     if (!canGenCL) {
-      setError(`Cover letter capacity reached: ${clLeft}/${clLimit} remaining.`);
+      setCoverLetterError(`Cover letter capacity reached: ${clLeft}/${clLimit} remaining.`);
       return;
     }
     let text = '';
@@ -825,27 +827,37 @@ export default function ResumeAnalyzer() {
       text = extractedDoc.text;
     }
     if (!text || text.trim().length < 25) {
-      setError('Please upload a resume or select a master profile first.');
+      setCoverLetterError('Please upload a resume or select a master profile first.');
       return;
     }
     if (!jobDesc || jobDesc.trim().length < 10) {
-      setError('Please provide a target job description to generate a tailored cover letter.');
+      setCoverLetterError('Please provide a target job description to generate a tailored cover letter.');
       return;
     }
 
+    isGeneratingCLRef.current = true;
     setIsGeneratingCL(true);
-    setError(null);
+    setCoverLetterError(null);
+
+    const clRequestId = `cl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const clStart = Date.now();
+    console.log(`[AI HireFlow][Diagnostics] request_id=${clRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, status=initiated`);
+
     try {
-      const res = await generateCoverLetter(text, jobDesc);
+      const res = await generateCoverLetter(text, jobDesc, clRequestId);
+      const clDuration = Date.now() - clStart;
       if (res?.content && res.content.trim().length >= 120) {
-        setCoverLetter(res.content.trim());
+        const fullCL = res.content.trim();
+        setCoverLetter(fullCL);
+        setCoverLetterError(null);
         await deductCredit('coverLetters');
+        console.log(`[AI HireFlow][Diagnostics] request_id=${clRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=200, finish_reason=stop, parse_status=SUCCESS, failure_category=none, request_count=1`);
 
         // Update caches and store
         const inMemoryKey = cacheManager.generateResumeKey(text, jobDesc);
         const updatedStore = {
           analysis: analysis,
-          coverLetter: res.content.trim()
+          coverLetter: fullCL
         };
         cacheManager.set(inMemoryKey, updatedStore, 24 * 60 * 60 * 1000);
         try {
@@ -854,12 +866,28 @@ export default function ResumeAnalyzer() {
           console.warn('Failed to update cache with cover letter:', e);
         }
       } else {
-        setError('Cover letter generation did not return a complete letter. Please retry.');
+        const clDuration = Date.now() - clStart;
+        console.warn(`[AI HireFlow][Diagnostics] request_id=${clRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=200, finish_reason=truncated, parse_status=INCOMPLETE, failure_category=OUTPUT_TRUNCATED, request_count=1`);
+        setCoverLetterError('Cover letter output was incomplete or truncated. Please click Retry Cover Letter.');
       }
     } catch (e: any) {
-      console.warn('Cover letter on-demand generation error:', e);
-      setError(e.message || 'Cover letter generation failed.');
+      const clDuration = Date.now() - clStart;
+      const isTimeout = e.message?.toLowerCase().includes('timed out') || e.status === 504;
+      const isTruncated = e.code === 'OUTPUT_TRUNCATED' || e.code === 'AI_RESPONSE_TRUNCATED' || e.message?.includes('too large');
+      const failureCategory = isTimeout ? 'TIMEOUT' : isTruncated ? 'OUTPUT_TRUNCATED' : (e.status === 502 || e.status === 520 ? 'UPSTREAM_ERROR' : 'PROVIDER_ERROR');
+      console.warn(`[AI HireFlow][Diagnostics] request_id=${clRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=${e.status || 500}, finish_reason=${isTruncated ? 'length' : 'error'}, parse_status=FAILED, failure_category=${failureCategory}, request_count=1`);
+      
+      let friendlyMsg = 'Cover letter generation failed. Please click Retry Cover Letter.';
+      if (isTimeout) {
+        friendlyMsg = 'Cover letter generation timed out. Please click Retry Cover Letter.';
+      } else if (isTruncated) {
+        friendlyMsg = 'Cover letter reached the token limit. Please click Retry Cover Letter.';
+      } else if (e.status === 502 || e.status === 520 || e.message?.includes('520') || e.message?.includes('Cloudflare')) {
+        friendlyMsg = 'The AI provider experienced a temporary gateway issue. Please click Retry Cover Letter.';
+      }
+      setCoverLetterError(friendlyMsg);
     } finally {
+      isGeneratingCLRef.current = false;
       setIsGeneratingCL(false);
     }
   };
@@ -1113,14 +1141,24 @@ export default function ResumeAnalyzer() {
       }
 
       // Execute optional cover letter asynchronously without blocking primary audit
-      if (jobDesc && canGenCL) {
+      if (jobDesc && canGenCL && !isGeneratingCLRef.current) {
+        isGeneratingCLRef.current = true;
         setIsGeneratingCL(true);
-        generateCoverLetter(text, jobDesc)
+        setCoverLetterError(null);
+
+        const autoClRequestId = `cl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        const autoClStart = Date.now();
+        console.log(`[AI HireFlow][Diagnostics] request_id=${autoClRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, mode=auto_background, status=initiated`);
+
+        generateCoverLetter(text, jobDesc, autoClRequestId)
           .then(async (clResult) => {
+            const clDuration = Date.now() - autoClStart;
             if (clResult?.content && clResult.content.trim().length >= 120) {
               const fullCL = clResult.content.trim();
               setCoverLetter(fullCL);
+              setCoverLetterError(null);
               await deductCredit('coverLetters');
+              console.log(`[AI HireFlow][Diagnostics] request_id=${autoClRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=200, finish_reason=stop, parse_status=SUCCESS, failure_category=none, request_count=1`);
 
               const updatedStore = {
                 analysis: analysisResult,
@@ -1132,12 +1170,30 @@ export default function ResumeAnalyzer() {
               } catch (e) {
                 console.warn('Failed to update cache with cover letter:', e);
               }
+            } else {
+              console.warn(`[AI HireFlow][Diagnostics] request_id=${autoClRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=200, finish_reason=truncated, parse_status=INCOMPLETE, failure_category=OUTPUT_TRUNCATED, request_count=1`);
+              setCoverLetterError('Cover letter output was incomplete or truncated. Please click below to generate or retry.');
             }
           })
           .catch((e) => {
-            console.warn("Cover letter generation secondary error:", e);
+            const clDuration = Date.now() - autoClStart;
+            const isTimeout = e.message?.toLowerCase().includes('timed out') || e.status === 504;
+            const isTruncated = e.code === 'OUTPUT_TRUNCATED' || e.code === 'AI_RESPONSE_TRUNCATED' || e.message?.includes('too large');
+            const failureCategory = isTimeout ? 'TIMEOUT' : isTruncated ? 'OUTPUT_TRUNCATED' : (e.status === 502 || e.status === 520 ? 'UPSTREAM_ERROR' : 'PROVIDER_ERROR');
+            console.warn(`[AI HireFlow][Diagnostics] request_id=${autoClRequestId}, request_purpose=COVER_LETTER, endpoint=/api/velona/generate, provider_duration_ms=${clDuration}, http_status=${e.status || 500}, finish_reason=${isTruncated ? 'length' : 'error'}, parse_status=FAILED, failure_category=${failureCategory}, request_count=1`);
+            
+            let friendlyMsg = 'Cover letter generation encountered a temporary issue. Click below to retry.';
+            if (isTimeout) {
+              friendlyMsg = 'Cover letter timed out. Click below to retry.';
+            } else if (isTruncated) {
+              friendlyMsg = 'Cover letter reached token limit. Click below to retry.';
+            } else if (e.status === 502 || e.status === 520 || e.message?.includes('520') || e.message?.includes('Cloudflare')) {
+              friendlyMsg = 'The AI provider experienced a temporary gateway issue. Click below to retry.';
+            }
+            setCoverLetterError(friendlyMsg);
           })
           .finally(() => {
+            isGeneratingCLRef.current = false;
             setIsGeneratingCL(false);
           });
       }
@@ -2304,6 +2360,25 @@ export default function ResumeAnalyzer() {
                   )}
                 </div>
               </div>
+
+              {coverLetterError && !isGeneratingCL && (
+                <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-400">Cover Letter Notice</h4>
+                      <p className="text-[11px] text-ink-dim mt-0.5">{coverLetterError}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleGenerateCoverLetter}
+                    disabled={isGeneratingCL || !jobDesc.trim()}
+                    className="px-3 py-1.5 bg-accent text-black font-mono font-bold rounded-xl text-xs hover:bg-accent/90 transition-all cursor-pointer shrink-0 self-end sm:self-auto"
+                  >
+                    Retry Cover Letter
+                  </button>
+                </div>
+              )}
 
               {isGeneratingCL ? (
                 <div className="bg-background p-8 rounded-2xl border border-border text-center space-y-3">

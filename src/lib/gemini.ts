@@ -264,6 +264,7 @@ async function executeAICompletion<T = any>({
   temperature = 0.2,
   maxTokens,
   operation = 'general',
+  requestId,
   meta
 }: {
   prompt: string;
@@ -272,6 +273,7 @@ async function executeAICompletion<T = any>({
   temperature?: number;
   maxTokens?: number;
   operation?: string;
+  requestId?: string;
   meta?: {
     fileType?: string;
     charCount?: number;
@@ -292,6 +294,7 @@ async function executeAICompletion<T = any>({
     jsonMode,
     maxTokens,
     operation,
+    requestId,
     meta
   });
 
@@ -309,7 +312,17 @@ async function executeAICompletion<T = any>({
     }
   }
 
+  // In non-JSON text mode:
   if (detailed.isTruncated || detailed.finishReason === 'length') {
+    if (operation === 'cover_letter') {
+      // If the model produced a substantial letter, salvage and return it rather than hard failing
+      if (detailed.text && detailed.text.trim().length >= 150) {
+        return detailed.text as unknown as T;
+      }
+      const err: any = new Error("Cover letter draft reached token limit. Please click Retry Cover Letter.");
+      err.code = "OUTPUT_TRUNCATED";
+      throw err;
+    }
     const error: any = new Error("The AI response was too large. Please try a more specific search.");
     error.code = "AI_RESPONSE_TRUNCATED";
     throw error;
@@ -436,7 +449,8 @@ ${cleanResume}
         return startData.result;
       }
       const effectiveId = startData.analysisId || analysisId;
-      const maxPolls = 60;
+      // Aligned with backend 48,000ms overall budget (26 polls * 2000ms = 52s)
+      const maxPolls = 26;
       for (let i = 0; i < maxPolls; i++) {
         await new Promise(r => setTimeout(r, 2000));
         const checkRes = await fetch(`/api/resume/analyze-job/${effectiveId}`);
@@ -1374,43 +1388,47 @@ export const generateResume = async (userData: any) => {
   });
 };
 
-export const generateCoverLetter = async (resumeText: string, jobDescription: string) => {
+export const generateCoverLetter = async (resumeText: string, jobDescription: string, requestId?: string) => {
   const cleanResume = (resumeText || '')
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
-    .replace(/[ \t]+/g, ' ')
-    .trim()
-    .slice(0, 3500);
-
-  const cleanJD = (jobDescription || '')
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
     .replace(/[ \t]+/g, ' ')
     .trim()
     .slice(0, 2000);
 
-  const prompt = `
-You are a senior recruiter and executive career coach.
-Write a personalized, highly tailored, professional 3-paragraph cover letter for this candidate applying to the specified target position.
+  const cleanJD = (jobDescription || '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+    .slice(0, 1000);
 
-CANDIDATE RESUME:
-${cleanResume}
+  const prompt = `Write a personalized, concise 3-paragraph professional cover letter applying for this target position.
 
 TARGET JOB DESCRIPTION:
 ${cleanJD}
 
-REQUIREMENTS:
-1. Address the hiring team directly (e.g., "Dear Hiring Team,").
-2. Paragraph 1: State interest in the role and company, identifying why the candidate's background is an immediate fit.
-3. Paragraph 2: Showcase 1-2 specific projects or technical achievements from the actual candidate resume that directly address the job's key requirements.
-4. Paragraph 3: Reiterate value-add, convey enthusiasm, and invite an interview.
-5. Professional sign-off ("Sincerely,\n[Candidate Name]").
-6. Return ONLY the plain text of the cover letter. Do NOT use markdown code fences and do NOT output JSON.
-  `.trim();
+CANDIDATE RESUME SUMMARY:
+${cleanResume}
+
+STRICT REQUIREMENTS:
+1. Address the hiring team (e.g. "Dear Hiring Team,").
+2. Paragraph 1: State interest in the role and immediate fit.
+3. Paragraph 2: Highlight 1-2 specific technical achievements from the resume matching key job requirements.
+4. Paragraph 3: Reiterate value proposition, convey enthusiasm, and invite an interview.
+5. Professional sign-off (e.g. "Sincerely,\n[Candidate Name]").
+6. Target 200-280 words. Return ONLY the plain text of the cover letter. Do NOT use markdown code fences and do NOT output JSON.`.trim();
+
+  const systemPrompt = "You are an ultra-fast career letter writer for AI HireFlow. Do not perform extended reasoning or internal chain of thought. Output the final cover letter plain text immediately.";
+
+  const effectiveReqId = requestId || `cl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
   const res = await executeAICompletion({
     prompt,
+    systemPrompt,
     jsonMode: false,
     temperature: 0.3,
-    maxTokens: 1500
+    maxTokens: 2400,
+    operation: 'cover_letter',
+    requestId: effectiveReqId
   });
 
   let text = '';
@@ -1428,7 +1446,7 @@ REQUIREMENTS:
     .trim();
 
   // Validate that the output is a complete cover letter, not an unfinished fragment
-  if (text.length >= 150 && !text.endsWith(',') && (text.includes('\n\n') || text.toLowerCase().includes('sincerely') || text.toLowerCase().includes('dear'))) {
+  if (text.length >= 120 && (text.includes('\n') || text.toLowerCase().includes('sincerely') || text.toLowerCase().includes('dear'))) {
     return { content: text };
   }
 

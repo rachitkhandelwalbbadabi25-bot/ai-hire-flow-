@@ -121,6 +121,7 @@ export async function generateWithVelonaDetailed(options: {
   jsonMode?: boolean;
   maxTokens?: number;
   operation?: string;
+  requestId?: string;
   meta?: {
     fileType?: string;
     charCount?: number;
@@ -154,6 +155,7 @@ export async function generateWithVelonaDetailed(options: {
       jsonMode: options.jsonMode ?? false,
       maxTokens: options.maxTokens,
       operation: options.operation || 'general',
+      requestId: options.requestId,
       meta: options.meta,
       userId: currentUser?.uid,
       userEmail: currentUser?.email

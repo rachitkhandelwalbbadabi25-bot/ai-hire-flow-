@@ -443,35 +443,41 @@ ${cleanResume}
       })
     });
 
-    if (startRes.ok) {
-      const startData = await startRes.json().catch(() => ({}));
-      if (startData.status === 'completed' && startData.result) {
-        return startData.result;
-      }
-      const effectiveId = startData.analysisId || analysisId;
-      // Aligned with backend 48,000ms overall budget (26 polls * 2000ms = 52s)
-      const maxPolls = 26;
-      for (let i = 0; i < maxPolls; i++) {
-        await new Promise(r => setTimeout(r, 2000));
-        const checkRes = await fetch(`/api/resume/analyze-job/${effectiveId}`);
-        if (checkRes.ok) {
-          const job = await checkRes.json();
-          if (job.status === 'completed' && job.result) {
-            return job.result;
-          }
-          if (job.status === 'failed') {
-            throw new Error(job.error || 'Analysis is taking longer than expected. Please retry in a moment.');
-          }
-        }
-      }
-      throw new Error('Analysis is taking longer than expected. Please retry in a moment.');
+    const startData = await startRes.json().catch(() => ({}));
+    if (!startRes.ok) {
+      const error: any = new Error(startData.error || 'Resume analysis failed. Please retry.');
+      error.code = startData.code;
+      error.status = startRes.status;
+      throw error;
     }
+
+    if (startData.status === 'completed' && startData.result) {
+      return startData.result;
+    }
+
+    const effectiveId = startData.analysisId || analysisId;
+    // The backend currently completes the request synchronously. Polling is
+    // retained only for a queued response and never starts another AI call.
+    const maxPolls = 26;
+    for (let i = 0; i < maxPolls; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const checkRes = await fetch(`/api/resume/analyze-job/${effectiveId}`);
+      const job = await checkRes.json().catch(() => ({}));
+      if (checkRes.ok && job.status === 'completed' && job.result) {
+        return job.result;
+      }
+      if (job.status === 'failed') {
+        throw new Error(job.error || 'Resume analysis failed. Please retry.');
+      }
+    }
+    throw new Error('Resume analysis timed out. Please retry.');
   } catch (asyncErr: any) {
-    if (asyncErr.message && (asyncErr.message.includes('longer') || asyncErr.message.includes('Analysis') || asyncErr.message.includes('timed out'))) {
-      throw asyncErr;
-    }
+    throw asyncErr;
   }
 
+  throw new Error('Resume analysis failed. Please retry.');
+  /* Legacy client-side ATS normalization intentionally disabled. The server
+     is the single ATS execution and normalization path.
   const rawData = await executeAICompletion({
     prompt,
     systemPrompt: "You are a concise ATS scoring API for AI HireFlow. Output raw JSON only. Be extremely brief.",
@@ -634,6 +640,7 @@ ${cleanResume}
           ? rawData.summary.trim()
           : `The candidate presents relevant foundational capabilities with an ATS compatibility rating of ${atsCompatibility}.`)
   };
+  */
 };
 
 // =========================================================================

@@ -2218,7 +2218,8 @@ async function callVelonaChatCompletion({
   maxTokens,
   requestId,
   operation = "general",
-  meta
+  meta,
+  allowRetry = true
 }) {
   const apiKey = getVelonaApiKey();
   const modelId = getVelonaModel();
@@ -2255,10 +2256,11 @@ IMPORTANT: Output valid, parseable raw JSON only without markdown fences or extr
   const safeMaxTokens = Math.min(3200, Math.max(1e3, maxTokens || (isJob ? 2800 : isCoverLetter ? 2400 : 1600)));
   const safeTemperature = typeof temperature === "number" && !isNaN(temperature) ? Math.max(0, Math.min(1, temperature)) : isCoverLetter ? 0.3 : 0.1;
   const velonaStart = Date.now();
-  const maxRetries = 1;
+  const maxRetries = allowRetry ? 1 : 0;
   const maxTotalBudgetMs = 48e3;
   const perAttemptTimeoutMs = isJob ? 42e3 : isCoverLetter ? 38e3 : isLearningPath ? 38e3 : 4e4;
   let lastError = null;
+  let velonaRequestCount = 0;
   const inputChars = meta?.charCount || formattedMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
   const approxInputTokens = Math.round(inputChars / 4);
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -2303,6 +2305,7 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
         const backoffMs = Math.min(1500, 400 * Math.pow(2, attempt - 1));
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
       }
+      velonaRequestCount++;
       const response = await fetch(`${VELONA_BASE_URL}/chat/completions`, {
         method: "POST",
         headers: {
@@ -2445,7 +2448,7 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
       }
       const finishReason = choice?.finish_reason || "stop";
       const totalElapsed2 = Date.now() - velonaStart;
-      console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(attemptStart).toISOString()}, request_id=${requestId || "unknown"}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${attemptDuration}, provider_status=200, retry_count=${attempt}, response_chars=${content.length}, failure_category=none`);
+      console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(attemptStart).toISOString()}, request_id=${requestId || "unknown"}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${attemptDuration}, provider_status=200, retry_count=${velonaRequestCount - 1}, velona_request_count=${velonaRequestCount}, response_chars=${content.length}, failure_category=none`);
       let cleanText = content;
       if (jsonMode && typeof cleanText === "string") {
         cleanText = cleanText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
@@ -2480,8 +2483,10 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
         usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         timing: {
           velonaDurationMs: attemptDuration,
-          totalDurationMs: totalElapsed2
-        }
+          totalDurationMs: totalElapsed2,
+          velonaRequestCount
+        },
+        velonaRequestCount
       };
     } catch (err) {
       clearTimeout(timeoutId);
@@ -2502,6 +2507,7 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
         lastError.timeoutStage = "none";
         lastError.attemptDuration = attemptDuration;
       }
+      lastError.velonaRequestCount = velonaRequestCount;
       const timeRemaining2 = maxTotalBudgetMs - (Date.now() - velonaStart);
       if (attempt < maxRetries && timeRemaining2 > 2e4 && (err.name === "FetchError" || err.code === "ECONNRESET" || err.code === "ETIMEDOUT" || err.code === "MALFORMED_UPSTREAM_RESPONSE" || err.code === "TOKEN_LIMIT_EXCEEDED" || err.status === 502 || err.status === 503 || err.status === 504 || err.status === 520 || err.velonaStatus === 520)) {
         continue;
@@ -2515,7 +2521,7 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
   const velonaStatus = lastError?.velonaStatus || lastError?.status || 500;
   const timeoutStage = lastError?.timeoutStage || (errorCategory === "TIMEOUT" ? "request_timeout" : "none");
   const velonaDuration = lastError?.attemptDuration || totalElapsed;
-  console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || "unknown"}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, provider_status=${velonaStatus}, retry_count=${maxRetries > 0 ? 1 : 0}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}`);
+  console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || "unknown"}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, provider_status=${velonaStatus}, retry_count=${Math.max(0, velonaRequestCount - 1)}, velona_request_count=${velonaRequestCount}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}`);
   throw lastError || new Error("Velona API request failed after retries.");
 }
 app.get(["/api/ai/providers", "/ai/providers"], (req, res) => {
@@ -2565,6 +2571,14 @@ app.post([
       operation = "general",
       meta
     } = body;
+    if (operation === "resume_analysis" || operation === "resume_analysis_job" || operation === "ats_analysis") {
+      return res.status(400).json({
+        error: "Resume analysis must use /api/resume/analyze-job.",
+        code: "ATS_ROUTE_REQUIRED",
+        provider: "velona",
+        model: modelId
+      });
+    }
     const effectiveUserId = typeof body.userId === "string" && body.userId.trim() ? body.userId.trim() : typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"].trim() : void 0;
     const effectiveUserEmail = typeof body.userEmail === "string" && body.userEmail.trim() ? body.userEmail.trim() : typeof req.headers["x-user-email"] === "string" ? req.headers["x-user-email"].trim() : void 0;
     if (effectiveUserId || effectiveUserEmail) {
@@ -2816,84 +2830,13 @@ function extractAndParseJson(raw) {
   if (!raw || typeof raw !== "string") {
     throw new Error("Empty model response received.");
   }
-  let cleanText = raw.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
+  const cleanText = raw.replace(/<think[\s\S]*?<\/think>/gi, "").trim();
+  const fenceMatch = cleanText.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const candidate = (fenceMatch?.[1] || cleanText).trim();
   try {
-    return JSON.parse(cleanText);
-  } catch {
-  }
-  const fenceRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
-  const match = fenceRegex.exec(cleanText);
-  const textWithoutFences = match && match[1] ? match[1].trim() : cleanText;
-  try {
-    return JSON.parse(textWithoutFences);
-  } catch {
-  }
-  const startIdx = textWithoutFences.indexOf("{");
-  if (startIdx === -1) {
-    throw new Error("No JSON object found in response");
-  }
-  const text = textWithoutFences.substring(startIdx);
-  let inString = false;
-  let escaped = false;
-  const bracketStack = [];
-  let endIdx = -1;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (char === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (!inString) {
-      if (char === "{") {
-        bracketStack.push("}");
-      } else if (char === "[") {
-        bracketStack.push("]");
-      } else if (char === "}" || char === "]") {
-        const expected = bracketStack[bracketStack.length - 1];
-        if (expected === char) {
-          bracketStack.pop();
-        }
-        if (bracketStack.length === 0) {
-          endIdx = i;
-          break;
-        }
-      }
-    }
-  }
-  if (endIdx !== -1) {
-    const candidate = text.substring(0, endIdx + 1);
-    try {
-      return JSON.parse(candidate);
-    } catch {
-      try {
-        const sanitized = candidate.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, " ").replace(/,\s*([\]}])/g, "$1");
-        return JSON.parse(sanitized);
-      } catch {
-      }
-    }
-  }
-  let repairText = text;
-  if (inString) {
-    repairText += '"';
-  }
-  repairText = repairText.replace(/,\s*"[^"]*"\s*:\s*"?$/g, "").replace(/,\s*"[^"]*"$/g, "").replace(/,\s*$/g, "").replace(/:\s*$/g, ": null").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, " ").replace(/,\s*([\]}])/g, "$1");
-  while (bracketStack.length > 0) {
-    const closingChar = bracketStack.pop();
-    repairText += closingChar;
-  }
-  repairText = repairText.replace(/,\s*([\]}])/g, "$1");
-  try {
-    return JSON.parse(repairText);
+    return JSON.parse(candidate);
   } catch (err) {
-    throw new Error(`JSON parse failed after stack repair: ${err.message}`);
+    throw new Error(`AI provider returned invalid JSON: ${err.message}`);
   }
 }
 async function processResumeAnalysisJob(job, resumeText, jobDescription, fileType) {
@@ -2905,7 +2848,7 @@ async function processResumeAnalysisJob(job, resumeText, jobDescription, fileTyp
   let lastRawSample = "";
   let totalInputChars = (resumeText?.length || 0) + (jobDescription?.length || 0);
   let approxInputTokens = Math.round(totalInputChars / 4);
-  let didRetry = false;
+  let velonaRequestCount = 0;
   try {
     const prepStart = Date.now();
     const cleanResume = (resumeText || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "").replace(/[ \t]+/g, " ").split("\n").map((line) => line.trim()).filter((line, idx, arr) => line.length > 0 && (idx === 0 || line !== arr[idx - 1])).join("\n").slice(0, 3500);
@@ -2997,59 +2940,24 @@ ${cleanResume}
         fileType: fileType || "resume",
         charCount: totalInputChars,
         wordCount: cleanResume.split(/\s+/).filter(Boolean).length
-      }
+      },
+      allowRetry: false
     });
     lastFinishReason = velonaResult.finishReason || "stop";
     lastModel = velonaResult.model || VELONA_MODEL_ID;
     lastRawSample = velonaResult.text?.slice(0, 500) || "";
+    velonaRequestCount = velonaResult.velonaRequestCount || 0;
     let parsed = null;
-    didRetry = false;
     try {
       parsed = extractAndParseJson(velonaResult.text);
     } catch (firstParseErr) {
       console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] First JSON parse attempt failed (${firstParseErr.message}), finish_reason=${velonaResult.finishReason}.`);
     }
     if (!parsed) {
-      const timeSpent = Date.now() - jobStart;
-      const timeRemaining = 48e3 - timeSpent;
-      if (timeRemaining < 2e4) {
-        const isTruncated = velonaResult.finishReason === "length";
-        const err = new Error(
-          isTruncated ? "Resume analysis output exceeded token budget. Please click Retry Analysis to run a fresh audit." : "Analysis completed with malformed response. Please click Retry Analysis to rerun."
-        );
-        err.code = isTruncated ? "OUTPUT_TRUNCATED" : "JSON_PARSE_ERROR";
-        err.rawSample = velonaResult.text?.slice(0, 500);
-        throw err;
-      }
-      console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] Executing ONE controlled internal retry for malformed response (${timeRemaining}ms budget remaining)...`);
-      didRetry = true;
-      const recoveryResult = await callVelonaChatCompletion({
-        messages: [
-          { role: "system", content: "You are an ultra-fast ATS scoring engine for AI HireFlow. Do not perform extended reasoning. Output raw valid JSON only matching the schema concisely." },
-          { role: "user", content: prompt },
-          { role: "user", content: "The previous response was malformed or incomplete. Output ONLY valid JSON matching the schema concisely." }
-        ],
-        temperature: 0,
-        jsonMode: true,
-        maxTokens: 2500,
-        requestId: `${job.analysisId}_retry`,
-        operation: "resume_analysis_job_recovery"
-      });
-      lastFinishReason = recoveryResult.finishReason || "stop";
-      lastModel = recoveryResult.model || VELONA_MODEL_ID;
-      lastRawSample = recoveryResult.text?.slice(0, 500) || "";
-      velonaResult = recoveryResult;
-      try {
-        parsed = extractAndParseJson(recoveryResult.text);
-      } catch (retryParseErr) {
-        console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Recovery retry JSON parse failed:`, retryParseErr.message, "Sample:", recoveryResult.text?.slice(0, 300));
-        const parseError = new Error(
-          recoveryResult.finishReason === "length" ? "Resume analysis output exceeded token budget. Please click Retry Analysis to run a fresh audit." : "Analysis completed with malformed response. Please click Retry Analysis to rerun."
-        );
-        parseError.code = recoveryResult.finishReason === "length" ? "OUTPUT_TRUNCATED" : "JSON_PARSE_ERROR";
-        parseError.rawSample = recoveryResult.text?.slice(0, 500);
-        throw parseError;
-      }
+      const parseError = new Error("AI provider returned an invalid analysis response. Please retry.");
+      parseError.code = "INVALID_ANALYSIS_RESPONSE";
+      parseError.rawSample = velonaResult.text?.slice(0, 500);
+      throw parseError;
     }
     const normalized = normalizeAtsAuditResult(parsed);
     if (typeof normalized.score !== "number" || !Array.isArray(normalized.scoreBreakdown) || normalized.scoreBreakdown.length === 0) {
@@ -3070,16 +2978,19 @@ ${cleanResume}
       parseResult: "SUCCESS",
       schemaValidation: "SUCCESS",
       httpStatus: 200,
-      retried: didRetry
+      retried: false,
+      velonaRequestCount
     };
-    console.log(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=${velonaResult.model}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=200, provider_duration_ms=${velonaResult.timing?.velonaDurationMs || job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=${didRetry ? 1 : 0}, finish_reason=${velonaResult.finishReason}, parse_status=SUCCESS, failure_category=none, request_count=1`);
+    console.log(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=${velonaResult.model}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=200, provider_duration_ms=${velonaResult.timing?.velonaDurationMs || job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=0, finish_reason=${velonaResult.finishReason}, parse_status=SUCCESS, failure_category=none, velona_request_count=${velonaRequestCount}`);
   } catch (err) {
     console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Background analysis failed:`, err.message);
     job.status = "failed";
     job.updatedAt = Date.now();
+    velonaRequestCount = err.velonaRequestCount ?? velonaRequestCount;
     const isAuth = err.status === 401 || err.status === 403 || err.code === "AUTH_ERROR" || err.code === "INVALID_API_KEY" || err.message && err.message.toLowerCase().includes("auth");
     const isRateLimit = err.status === 429 || err.code === "RATE_LIMIT" || err.message && err.message.toLowerCase().includes("rate");
     const isTimeout = err.code === "TIMEOUT" || err.status === 504 || err.message && err.message.toLowerCase().includes("time");
+    const isGateway = [502, 503, 520, 524].includes(err.velonaStatus || err.status);
     const isParse = err.code === "JSON_PARSE_ERROR" || err.code === "OUTPUT_TRUNCATED" || err.message && err.message.toLowerCase().includes("parse");
     const isSchema = err.code === "SCHEMA_VALIDATION_ERROR";
     let failureCategory = "UNKNOWN_ERROR";
@@ -3093,18 +3004,18 @@ ${cleanResume}
     } else if (isTimeout) {
       failureCategory = "TIMEOUT";
       safeErrorMsg = "Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.";
-    } else if (err.code === "OUTPUT_TRUNCATED") {
-      failureCategory = "OUTPUT_TRUNCATED";
-      safeErrorMsg = "Resume analysis response was truncated. Please click Retry Analysis.";
-    } else if (isParse) {
-      failureCategory = "JSON_PARSE_ERROR";
-      safeErrorMsg = "Failed to parse AI provider response. Please click Retry Analysis.";
+    } else if (err.code === "INVALID_ANALYSIS_RESPONSE" || err.code === "OUTPUT_TRUNCATED" || isParse) {
+      failureCategory = "INVALID_ANALYSIS_RESPONSE";
+      safeErrorMsg = "AI provider returned an invalid analysis response. Please retry.";
     } else if (isSchema) {
       failureCategory = "SCHEMA_VALIDATION_ERROR";
       safeErrorMsg = "ATS audit response failed validation. Please click Retry Analysis.";
+    } else if (isGateway) {
+      failureCategory = "PROVIDER_GATEWAY_ERROR";
+      safeErrorMsg = "AI provider gateway error. Please retry.";
     } else if (err.status >= 500 && err.status < 600) {
-      failureCategory = "UPSTREAM_ERROR";
-      safeErrorMsg = "AI provider is temporarily unavailable. Please try again later.";
+      failureCategory = "PROVIDER_ERROR";
+      safeErrorMsg = "AI provider request failed. Please retry.";
     }
     job.error = safeErrorMsg;
     const finalHttpStatus = isTimeout ? 504 : isAuth ? 401 : isRateLimit ? 429 : sanitizeHttpStatus(err.status || lastHttpStatus || 500);
@@ -3115,9 +3026,10 @@ ${cleanResume}
       model: lastModel,
       httpStatus: finalHttpStatus,
       failureCategory,
-      sample: err.rawSample || lastRawSample
+      sample: err.rawSample || lastRawSample,
+      velonaRequestCount
     };
-    console.error(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=${lastModel}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=${finalHttpStatus}, provider_duration_ms=${job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=${didRetry ? 1 : 0}, finish_reason=${lastFinishReason}, parse_status=FAILED, failure_category=${failureCategory}, request_count=1`);
+    console.error(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=${lastModel}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=${finalHttpStatus}, provider_duration_ms=${job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=0, finish_reason=${lastFinishReason}, parse_status=FAILED, failure_category=${failureCategory}, velona_request_count=${velonaRequestCount}`);
   }
 }
 app.post(["/api/resume/analyze-job", "/resume/analyze-job"], async (req, res) => {

@@ -130,24 +130,8 @@ function getInitialAnalyzerState() {
       };
     }
 
-    // Case 2: No active job is selected, but analyzer was bound to a previous active job
-    if (!currentJobKey && savedAnalyzerJobKey) {
-      sessionStorage.removeItem('resume_analyzer_active_job_key');
-      sessionStorage.removeItem('resume_analyzer_result');
-      sessionStorage.removeItem('resume_analyzer_cover_letter');
-      sessionStorage.removeItem('resume_analyzer_cache_source');
-      sessionStorage.removeItem('resume_analyzer_job_desc');
-
-      return {
-        jobDesc: '',
-        analysis: null,
-        coverLetter: null,
-        cacheSource: null as 'browser' | 'persistent' | null,
-        activeJobKey: null
-      };
-    }
-
-    // Case 3: Same active job key or preserving custom manual JD input
+    // Case 2: Same active job key, preserving custom manual JD input, or
+    // returning without an active job context after normal navigation.
     const savedDesc = sessionStorage.getItem('resume_analyzer_job_desc');
     let effectiveDesc = savedDesc ?? '';
     if (!effectiveDesc && currentStoredJob) {
@@ -165,7 +149,10 @@ function getInitialAnalyzerState() {
       analysis: savedAnalysis,
       coverLetter: savedCL,
       cacheSource: savedCache,
-      activeJobKey: currentJobKey || savedAnalyzerJobKey || null
+      // Do not bind the synchronization effect to a stale job when the shared
+      // active-job context is temporarily absent. A future genuine selection
+      // will still be detected because this ref remains null.
+      activeJobKey: currentJobKey || null
     };
   } catch (e) {
     return {

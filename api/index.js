@@ -1540,18 +1540,26 @@ Instructions:
   }
 ]
 IMPORTANT: Return raw JSON only. Do NOT modify or output job titles, companies, or links.`;
-    const aiTimeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 5e3));
-    const velonaCallPromise = callVelona({
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-      jsonMode: true,
-      maxTokens: 800,
-      operation: "job_match"
-    });
-    const velonaResponse = await Promise.race([velonaCallPromise, aiTimeoutPromise]);
-    if (!velonaResponse) {
-      console.warn("[JobDiscovery] Velona semantic scoring timed out after 5s; falling back to instant heuristic scoring.");
-      return applyHeuristicScores(jobs, candidateProfile);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5e3);
+    let velonaResponse;
+    try {
+      velonaResponse = await callVelona({
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        jsonMode: true,
+        maxTokens: 800,
+        operation: "job_match",
+        signal: controller.signal
+      });
+    } catch (err) {
+      if (err?.name === "AbortError" || err?.code === "TIMEOUT") {
+        console.warn("[JobDiscovery] Velona semantic scoring timed out after 5s; falling back to instant heuristic scoring.");
+        return applyHeuristicScores(jobs, candidateProfile);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
     const rawContent = velonaResponse?.content || velonaResponse?.text || "";
     const cleaned = rawContent.replace(/```json\s*/gi, "").replace(/```\s*$/gi, "").trim();
@@ -2221,6 +2229,7 @@ async function callVelonaChatCompletion({
   jsonMode = false,
   maxTokens,
   requestId,
+  signal,
   operation = "general",
   meta
 }) {
@@ -2317,7 +2326,7 @@ IMPORTANT: Be extremely concise. Output strictly raw valid JSON immediately.`
           "User-Agent": "AI-HireFlow/2.0"
         },
         body: JSON.stringify(payload),
-        signal: controller.signal
+        signal: signal || controller.signal
       });
       clearTimeout(timeoutId);
       const attemptDuration = Date.now() - attemptStart;

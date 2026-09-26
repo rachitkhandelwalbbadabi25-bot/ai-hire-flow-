@@ -1292,18 +1292,26 @@ Instructions:
 ]
 IMPORTANT: Return raw JSON only. Do NOT modify or output job titles, companies, or links.`;
 
-    const aiTimeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
-    const velonaCallPromise = callVelona({
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      jsonMode: true,
-      maxTokens: 800,
-      operation: 'job_match'
-    });
-    const velonaResponse = await Promise.race([velonaCallPromise, aiTimeoutPromise]);
-    if (!velonaResponse) {
-      console.warn('[JobDiscovery] Velona semantic scoring timed out after 5s; falling back to instant heuristic scoring.');
-      return applyHeuristicScores(jobs, candidateProfile);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    let velonaResponse: any;
+    try {
+      velonaResponse = await callVelona({
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        jsonMode: true,
+        maxTokens: 800,
+        operation: 'job_match',
+        signal: controller.signal
+      });
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || err?.code === 'TIMEOUT') {
+        console.warn('[JobDiscovery] Velona semantic scoring timed out after 5s; falling back to instant heuristic scoring.');
+        return applyHeuristicScores(jobs, candidateProfile);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     const rawContent = velonaResponse?.content || velonaResponse?.text || '';

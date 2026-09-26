@@ -126,6 +126,7 @@ export async function callVelonaChatCompletion({
   jsonMode = false,
   maxTokens,
   requestId,
+  signal,
   operation = 'general',
   meta
 }: {
@@ -134,6 +135,7 @@ export async function callVelonaChatCompletion({
   jsonMode?: boolean;
   maxTokens?: number;
   requestId?: string;
+  signal?: AbortSignal;
   operation?: string;
   meta?: {
     fileType?: string;
@@ -263,7 +265,7 @@ export async function callVelonaChatCompletion({
           'User-Agent': 'AI-HireFlow/2.0'
         },
         body: JSON.stringify(payload),
-        signal: controller.signal
+        signal: signal || controller.signal
       });
 
       clearTimeout(timeoutId);

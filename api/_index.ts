@@ -150,6 +150,8 @@ export async function callVelonaChatCompletion({
     const error: any = new Error('VELONA_API_KEY is not configured in server environment.');
     error.status = 500;
     error.code = 'MISSING_API_KEY';
+    error.failureCategory = 'PROVIDER_CONFIGURATION_ERROR';
+    error.velonaRequestCount = 0;
     throw error;
   }
 
@@ -201,6 +203,8 @@ export async function callVelonaChatCompletion({
   const perAttemptTimeoutMs = isJob ? 42000 : (isCoverLetter ? 38000 : (isLearningPath ? 38000 : 40000));
   let lastError: any = null;
   let velonaRequestCount = 0;
+  let lastProviderHttpStatus: number | string = 'N/A';
+  let lastResponseContentType = 'N/A';
 
   const inputChars = meta?.charCount || formattedMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
   const approxInputTokens = Math.round(inputChars / 4);
@@ -267,6 +271,8 @@ export async function callVelonaChatCompletion({
         body: JSON.stringify(payload),
         signal: controller.signal
       });
+      lastProviderHttpStatus = response.status;
+      lastResponseContentType = response.headers.get('content-type') || 'unknown';
 
       clearTimeout(timeoutId);
       const attemptDuration = Date.now() - attemptStart;
@@ -423,7 +429,7 @@ export async function callVelonaChatCompletion({
       const totalElapsed = Date.now() - velonaStart;
 
       // Safe production diagnostics: strictly operational metrics without sensitive user prompt/resume content
-      console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(attemptStart).toISOString()}, request_id=${requestId || 'unknown'}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${attemptDuration}, provider_status=200, retry_count=${velonaRequestCount - 1}, velona_request_count=${velonaRequestCount}, response_chars=${content.length}, failure_category=none`);
+      console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(attemptStart).toISOString()}, request_id=${requestId || 'unknown'}, provider=velona, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${attemptDuration}, total_duration_ms=${totalElapsed}, provider_http_status=200, response_content_type=${lastResponseContentType}, retry_count=${velonaRequestCount - 1}, velona_request_count=${velonaRequestCount}, response_chars=${content.length}, failure_category=none, finish_reason=${finishReason}, parse_status=SUCCESS`);
 
       let cleanText = content;
       if (jsonMode && typeof cleanText === 'string') {
@@ -466,9 +472,13 @@ export async function callVelonaChatCompletion({
         timing: {
           velonaDurationMs: attemptDuration,
           totalDurationMs: totalElapsed,
-          velonaRequestCount
+          velonaRequestCount,
+          providerHttpStatus: lastProviderHttpStatus,
+          responseContentType: lastResponseContentType
         },
-        velonaRequestCount
+        velonaRequestCount,
+        providerHttpStatus: lastProviderHttpStatus,
+        responseContentType: lastResponseContentType
       };
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -494,6 +504,8 @@ export async function callVelonaChatCompletion({
       }
 
       lastError.velonaRequestCount = velonaRequestCount;
+      lastError.providerHttpStatus = lastProviderHttpStatus;
+      lastError.responseContentType = lastResponseContentType;
 
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
       if (
@@ -526,7 +538,7 @@ export async function callVelonaChatCompletion({
   const timeoutStage = lastError?.timeoutStage || (errorCategory === 'TIMEOUT' ? 'request_timeout' : 'none');
   const velonaDuration = lastError?.attemptDuration || totalElapsed;
 
-  console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || 'unknown'}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, provider_status=${velonaStatus}, retry_count=${Math.max(0, velonaRequestCount - 1)}, velona_request_count=${velonaRequestCount}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}`);
+  console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || 'unknown'}, provider=velona, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, total_duration_ms=${totalElapsed}, provider_http_status=${lastProviderHttpStatus}, response_content_type=${lastResponseContentType}, retry_count=${Math.max(0, velonaRequestCount - 1)}, velona_request_count=${velonaRequestCount}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}, finish_reason=error, parse_status=FAILED`);
 
   throw lastError || new Error('Velona API request failed after retries.');
 }
@@ -756,10 +768,12 @@ interface ResumeAnalysisJob {
     parseResult?: string;
     schemaValidation?: string;
     httpStatus?: number;
-      failureCategory?: string;
-      sample?: string;
-      retried?: boolean;
-      velonaRequestCount?: number;
+    providerHttpStatus?: number | string;
+    responseContentType?: string;
+    failureCategory?: string;
+    sample?: string;
+    retried?: boolean;
+    velonaRequestCount?: number;
   };
 }
 
@@ -1092,7 +1106,7 @@ ${cleanResume}
     lastFinishReason = velonaResult.finishReason || 'stop';
     lastModel = velonaResult.model || VELONA_MODEL_ID;
     lastRawSample = velonaResult.text?.slice(0, 500) || '';
-    velonaRequestCount = velonaResult.velonaRequestCount || 0;
+    velonaRequestCount = velonaResult.velonaRequestCount ?? 0;
 
     // 5. Parse JSON using resilient extractor
     let parsed: any = null;
@@ -1132,6 +1146,8 @@ ${cleanResume}
       parseResult: 'SUCCESS',
       schemaValidation: 'SUCCESS',
       httpStatus: 200,
+      providerHttpStatus: velonaResult.providerHttpStatus ?? 200,
+      responseContentType: velonaResult.responseContentType,
       retried: false,
       velonaRequestCount
     };
@@ -1146,35 +1162,36 @@ ${cleanResume}
 
     const isAuth = err.status === 401 || err.status === 403 || err.code === 'AUTH_ERROR' || err.code === 'INVALID_API_KEY' || (err.message && err.message.toLowerCase().includes('auth'));
     const isRateLimit = err.status === 429 || err.code === 'RATE_LIMIT' || (err.message && err.message.toLowerCase().includes('rate'));
+    const providerStatus = err.velonaStatus ?? err.providerHttpStatus ?? err.status;
     const isTimeout = err.code === 'TIMEOUT' || err.status === 504 || (err.message && err.message.toLowerCase().includes('time'));
-    const isGateway = [502, 503, 520, 524].includes(err.velonaStatus || err.status);
-    const isParse = err.code === 'JSON_PARSE_ERROR' || err.code === 'OUTPUT_TRUNCATED' || (err.message && err.message.toLowerCase().includes('parse'));
+    const isProviderUpstream = typeof providerStatus === 'number' && providerStatus >= 400 && providerStatus < 600;
+    const isParse = err.code === 'JSON_PARSE_ERROR' || err.code === 'OUTPUT_TRUNCATED' || err.code === 'INVALID_UPSTREAM_RESPONSE' || err.code === 'MALFORMED_UPSTREAM_RESPONSE' || (err.message && err.message.toLowerCase().includes('parse'));
     const isSchema = err.code === 'SCHEMA_VALIDATION_ERROR';
 
     let failureCategory = 'UNKNOWN_ERROR';
     let safeErrorMsg = sanitizeSafeErrorMessage(err.message || 'Resume analysis failed. Please try again.');
 
     if (isAuth) {
-      failureCategory = 'AUTH_ERROR';
+      failureCategory = 'PROVIDER_UPSTREAM_ERROR';
       safeErrorMsg = 'AI provider authentication failed. Please verify API configuration.';
     } else if (isRateLimit) {
-      failureCategory = 'RATE_LIMIT';
+      failureCategory = 'PROVIDER_UPSTREAM_ERROR';
       safeErrorMsg = 'AI provider rate limit reached. Please wait a moment and try again.';
     } else if (isTimeout) {
-      failureCategory = 'TIMEOUT';
-      safeErrorMsg = 'Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.';
+      failureCategory = 'PROVIDER_TIMEOUT';
+      safeErrorMsg = 'AI provider request timed out. Please retry.';
     } else if (err.code === 'INVALID_ANALYSIS_RESPONSE' || err.code === 'OUTPUT_TRUNCATED' || isParse) {
-      failureCategory = 'INVALID_ANALYSIS_RESPONSE';
+      failureCategory = 'PARSE_ERROR';
       safeErrorMsg = 'AI provider returned an invalid analysis response. Please retry.';
     } else if (isSchema) {
       failureCategory = 'SCHEMA_VALIDATION_ERROR';
       safeErrorMsg = 'ATS audit response failed validation. Please click Retry Analysis.';
-    } else if (isGateway) {
-      failureCategory = 'PROVIDER_GATEWAY_ERROR';
-      safeErrorMsg = 'AI provider gateway error. Please retry.';
-    } else if (err.status >= 500 && err.status < 600) {
-      failureCategory = 'PROVIDER_ERROR';
-      safeErrorMsg = 'AI provider request failed. Please retry.';
+    } else if (err.code === 'MISSING_API_KEY' || err.code === 'INVALID_PROVIDER_MODEL') {
+      failureCategory = 'PROVIDER_CONFIGURATION_ERROR';
+      safeErrorMsg = 'AI provider configuration error. Please verify Velona configuration.';
+    } else if (isProviderUpstream) {
+      failureCategory = 'PROVIDER_UPSTREAM_ERROR';
+      safeErrorMsg = `AI provider upstream error (HTTP ${providerStatus}). Please retry.`;
     }
 
     job.error = safeErrorMsg;
@@ -1186,6 +1203,8 @@ ${cleanResume}
       finishReason: lastFinishReason,
       model: lastModel,
       httpStatus: finalHttpStatus,
+      providerHttpStatus: err.providerHttpStatus ?? err.velonaStatus ?? err.status ?? 'N/A',
+      responseContentType: err.responseContentType ?? 'N/A',
       failureCategory,
       sample: err.rawSample || lastRawSample,
       velonaRequestCount
@@ -1286,7 +1305,7 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
       analysisId: job.analysisId,
       status: 'failed',
       error: job.error || 'Resume analysis failed. Please try again.',
-      code: 'ANALYSIS_FAILED',
+      code: job.diagnostics?.failureCategory || 'ANALYSIS_FAILED',
       diagnostics: job.diagnostics
     });
   } catch (err: any) {

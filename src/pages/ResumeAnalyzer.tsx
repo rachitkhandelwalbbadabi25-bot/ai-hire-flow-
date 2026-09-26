@@ -257,6 +257,7 @@ export default function ResumeAnalyzer() {
   const [coverLetterError, setCoverLetterError] = useState<string | null>(null);
   const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(initialAnalyzerState.cacheSource);
   const activeJobKeyRef = useRef<string | null>(initialAnalyzerState.activeJobKey);
+  const analyzerGeneratedJobKeyRef = useRef<string | null>(null);
 
   // Sync state to sessionStorage to preserve across navigation (NAVIGATION != RESET)
   useEffect(() => {
@@ -407,6 +408,13 @@ export default function ResumeAnalyzer() {
     // If the active job has changed from what Analyzer is currently bound to
     if (activeJobKeyRef.current !== currentKey) {
       activeJobKeyRef.current = currentKey;
+
+      // Do not treat the active-job context published by this Analyzer result
+      // as an external Job Finder selection that should clear the fresh result.
+      if (analyzerGeneratedJobKeyRef.current === currentKey) {
+        analyzerGeneratedJobKeyRef.current = null;
+        return;
+      }
 
       // Cancel any running background analysis job from the previous job
       if (analysisAbortRef.current) {
@@ -1130,14 +1138,16 @@ export default function ResumeAnalyzer() {
       // Synchronize active job context across system modules
       const derivedCtx = getAnalyzerJobContext(analysisResult);
       if (derivedCtx.role) {
-        setCurrentActiveJob({
+        const analyzerActiveJob = {
           title: derivedCtx.role,
           company: derivedCtx.company || 'Target Opportunity',
           skills: derivedCtx.skills,
           description: jobDesc || derivedCtx.description,
           source: 'analyzer',
           selectedAt: Date.now()
-        });
+        };
+        analyzerGeneratedJobKeyRef.current = getActiveJobKey(analyzerActiveJob);
+        setCurrentActiveJob(analyzerActiveJob);
       }
 
       // Note: Cover letter generation is kept strictly on-demand in the Cover Letter card

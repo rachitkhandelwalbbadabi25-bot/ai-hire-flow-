@@ -59,38 +59,48 @@ class AnalysisJobService {
     const text = await res.text();
     const isHtml = text.includes('<!DOCTYPE') || text.includes('<!doctype') || text.includes('<html') || text.includes('Cloudflare');
 
-    if (isHtml || res.status === 520 || res.status === 502 || res.status === 503 || res.status === 524) {
-      throw new Error('AI provider is temporarily unavailable. Please try again later.');
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // Not JSON
     }
 
     if (!res.ok) {
-      let serverError = '';
-      try {
-        const parsed = JSON.parse(text);
-        serverError = parsed.error || parsed.message || '';
-      } catch {
-        // Not valid JSON
+      if (parsed && typeof parsed === 'object') {
+        const serverError = parsed.error || parsed.message;
+        if (serverError) {
+          const err: any = new Error(serverError);
+          err.code = parsed.code || (res.status === 504 ? 'PROVIDER_TIMEOUT' : 'PROVIDER_UPSTREAM_ERROR');
+          err.status = res.status;
+          err.diagnostics = parsed.diagnostics;
+          throw err;
+        }
       }
 
-      if (serverError) {
-        throw new Error(serverError);
-      }
-
-      if (res.status === 502 || res.status === 503 || res.status === 520 || res.status === 524) {
-        throw new Error('AI provider is temporarily unavailable. Please try again later.');
+      if (isHtml || res.status === 520 || res.status === 502 || res.status === 503 || res.status === 524) {
+        const err: any = new Error('AI provider is temporarily unavailable. Please try again later.');
+        err.code = 'PROVIDER_UPSTREAM_ERROR';
+        err.status = res.status;
+        throw err;
       }
       if (res.status === 504) {
-        throw new Error('Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.');
+        const err: any = new Error('Analysis timed out on the AI provider. Please click Retry Analysis to run a fresh audit.');
+        err.code = 'PROVIDER_TIMEOUT';
+        err.status = 504;
+        throw err;
       }
       const msg = text.slice(0, 150).replace(/<[^>]*>/g, '').trim() || `Request failed (HTTP ${res.status})`;
-      throw new Error(msg);
+      const err: any = new Error(msg);
+      err.status = res.status;
+      throw err;
     }
 
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new Error('AI provider is temporarily unavailable. Please try again later.');
+    if (parsed) {
+      return parsed as T;
     }
+
+    throw new Error('AI provider returned an invalid response structure.');
   }
 
   /**

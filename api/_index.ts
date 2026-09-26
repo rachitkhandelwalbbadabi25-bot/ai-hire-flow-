@@ -127,8 +127,7 @@ export async function callVelonaChatCompletion({
   maxTokens,
   requestId,
   operation = 'general',
-  meta,
-  allowRetry = true
+  meta
 }: {
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
@@ -141,7 +140,6 @@ export async function callVelonaChatCompletion({
     charCount?: number;
     wordCount?: number;
   };
-  allowRetry?: boolean;
 }) {
   const apiKey = getVelonaApiKey();
   const modelId = getVelonaModel();
@@ -150,8 +148,6 @@ export async function callVelonaChatCompletion({
     const error: any = new Error('VELONA_API_KEY is not configured in server environment.');
     error.status = 500;
     error.code = 'MISSING_API_KEY';
-    error.failureCategory = 'PROVIDER_CONFIGURATION_ERROR';
-    error.velonaRequestCount = 0;
     throw error;
   }
 
@@ -181,7 +177,8 @@ export async function callVelonaChatCompletion({
     }
   }
 
-  const isJob = (operation || '').includes('job');
+  const isAtsJob = operation === 'resume_analysis_job' || operation === 'ats_analysis';
+  const isJob = isAtsJob || (operation || '').includes('job');
   const isCoverLetter = operation === 'cover_letter';
   const isLearningPath = operation === 'learning_path';
 
@@ -193,7 +190,8 @@ export async function callVelonaChatCompletion({
     : (isCoverLetter ? 0.3 : 0.1);
 
   const velonaStart = Date.now();
-  const maxRetries = allowRetry ? 1 : 0;
+  // Strictly ZERO retries for ATS resume analysis jobs: exactly one Velona request per ATS analysis
+  const maxRetries = isAtsJob ? 0 : 1;
   // Vercel Serverless Function Execution Budget:
   // Vercel platform maxDuration is configured to 60 seconds (60,000ms).
   // Total overall execution budget is strictly bounded to 48,000ms, ensuring a guaranteed 12,000ms safety
@@ -202,9 +200,6 @@ export async function callVelonaChatCompletion({
   // Clamped per-attempt timeout: 42,000ms for ATS job, 38,000ms for Cover Letter
   const perAttemptTimeoutMs = isJob ? 42000 : (isCoverLetter ? 38000 : (isLearningPath ? 38000 : 40000));
   let lastError: any = null;
-  let velonaRequestCount = 0;
-  let lastProviderHttpStatus: number | string = 'N/A';
-  let lastResponseContentType = 'N/A';
 
   const inputChars = meta?.charCount || formattedMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
   const approxInputTokens = Math.round(inputChars / 4);
@@ -259,7 +254,6 @@ export async function callVelonaChatCompletion({
         await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
 
-      velonaRequestCount++;
       const response = await fetch(`${VELONA_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -271,8 +265,6 @@ export async function callVelonaChatCompletion({
         body: JSON.stringify(payload),
         signal: controller.signal
       });
-      lastProviderHttpStatus = response.status;
-      lastResponseContentType = response.headers.get('content-type') || 'unknown';
 
       clearTimeout(timeoutId);
       const attemptDuration = Date.now() - attemptStart;
@@ -282,7 +274,7 @@ export async function callVelonaChatCompletion({
         try {
           const errorBody = await response.text();
           if (errorBody.includes('520') || errorBody.includes('502') || errorBody.includes('Cloudflare') || errorBody.includes('<!DOCTYPE') || errorBody.includes('<html')) {
-            errorDetails = 'AI provider server encountered a temporary gateway issue. Please click Retry Analysis.';
+            errorDetails = 'AI provider server encountered a temporary gateway issue.';
           } else {
             try {
               const errJson = JSON.parse(errorBody);
@@ -296,27 +288,30 @@ export async function callVelonaChatCompletion({
         }
 
         const safeDetails = sanitizeSafeErrorMessage(errorDetails);
-        // Include 520 as a transient status for one controlled retry
-        const isTransient = [500, 502, 503, 504, 520].includes(response.status);
+        const resolvedMsg = (!safeDetails || safeDetails.toLowerCase().includes('internal server error'))
+          ? 'AI provider is temporarily unavailable. Please try again later.'
+          : safeDetails;
         const effectiveStatus = response.status === 520 ? 502 : response.status;
-        const err: any = new Error(safeDetails || `Velona API responded with HTTP status ${response.status}`);
+        const err: any = new Error(resolvedMsg);
         err.status = effectiveStatus;
         err.velonaStatus = response.status;
         err.attemptDuration = attemptDuration;
 
         if (response.status === 401) {
-          err.code = 'INVALID_API_KEY';
-          err.message = `Velona Authentication Failed: Invalid or expired API key. (${safeDetails})`;
+          err.code = 'PROVIDER_CONFIGURATION_ERROR';
+          err.message = `Velona Authentication Failed: Invalid or expired API key. (${resolvedMsg})`;
           throw err;
         } else if (response.status === 402 || response.status === 429) {
-          err.code = 'INSUFFICIENT_BALANCE_OR_RATE_LIMIT';
-          err.message = `Velona Quota/Balance Error: ${safeDetails || 'Insufficient prepaid balance or rate limit exceeded.'}`;
+          err.code = 'PROVIDER_UPSTREAM_ERROR';
+          err.message = `Velona Quota/Rate Limit Error: ${resolvedMsg}`;
           throw err;
         } else {
-          err.code = 'VELONA_API_ERROR';
+          err.code = 'PROVIDER_UPSTREAM_ERROR';
+          err.message = resolvedMsg;
         }
 
-        if (isTransient && attempt < maxRetries && (Date.now() - velonaStart) < (maxTotalBudgetMs - 15000)) {
+        const isTransient = [500, 502, 503, 504, 520].includes(response.status);
+        if (!isAtsJob && isTransient && attempt < maxRetries && (Date.now() - velonaStart) < (maxTotalBudgetMs - 15000)) {
           lastError = err;
           continue;
         }
@@ -331,7 +326,7 @@ export async function callVelonaChatCompletion({
         const err: any = new Error('Failed to read response body from AI service.');
         err.status = 502;
         err.velonaStatus = response.status;
-        err.code = 'NETWORK_ERROR';
+        err.code = 'PROVIDER_UPSTREAM_ERROR';
         err.attemptDuration = attemptDuration;
         throw err;
       }
@@ -343,7 +338,7 @@ export async function callVelonaChatCompletion({
         const err: any = new Error('Velona API returned a non-JSON response.');
         err.status = 502;
         err.velonaStatus = response.status;
-        err.code = 'INVALID_UPSTREAM_RESPONSE';
+        err.code = 'PROVIDER_UPSTREAM_ERROR';
         err.attemptDuration = attemptDuration;
         throw err;
       }
@@ -352,7 +347,7 @@ export async function callVelonaChatCompletion({
         const err: any = new Error('Velona API returned an invalid response structure.');
         err.status = 502;
         err.velonaStatus = response.status;
-        err.code = 'INVALID_UPSTREAM_RESPONSE';
+        err.code = 'PROVIDER_UPSTREAM_ERROR';
         err.attemptDuration = attemptDuration;
         throw err;
       }
@@ -362,7 +357,7 @@ export async function callVelonaChatCompletion({
         const err: any = new Error(errMsg);
         err.status = data.error.code === 'invalid_api_key' ? 401 : 502;
         err.velonaStatus = response.status;
-        err.code = data.error.code || 'VELONA_API_ERROR';
+        err.code = data.error.code === 'invalid_api_key' ? 'PROVIDER_CONFIGURATION_ERROR' : 'PROVIDER_UPSTREAM_ERROR';
         err.attemptDuration = attemptDuration;
         throw err;
       }
@@ -420,7 +415,7 @@ export async function callVelonaChatCompletion({
         );
         err.status = 502;
         err.velonaStatus = response.status;
-        err.code = isLengthExhaustion ? 'TOKEN_LIMIT_EXCEEDED' : 'MALFORMED_UPSTREAM_RESPONSE';
+        err.code = isLengthExhaustion ? 'PROVIDER_TIMEOUT' : 'PARSE_ERROR';
         err.attemptDuration = attemptDuration;
         throw err;
       }
@@ -429,7 +424,7 @@ export async function callVelonaChatCompletion({
       const totalElapsed = Date.now() - velonaStart;
 
       // Safe production diagnostics: strictly operational metrics without sensitive user prompt/resume content
-      console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(attemptStart).toISOString()}, request_id=${requestId || 'unknown'}, provider=velona, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${attemptDuration}, total_duration_ms=${totalElapsed}, provider_http_status=200, response_content_type=${lastResponseContentType}, retry_count=${velonaRequestCount - 1}, velona_request_count=${velonaRequestCount}, response_chars=${content.length}, failure_category=none, finish_reason=${finishReason}, parse_status=SUCCESS`);
+      console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(attemptStart).toISOString()}, request_id=${requestId || 'unknown'}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${attemptDuration}, provider_status=200, retry_count=${attempt}, response_chars=${content.length}, failure_category=none`);
 
       let cleanText = content;
       if (jsonMode && typeof cleanText === 'string') {
@@ -454,8 +449,8 @@ export async function callVelonaChatCompletion({
       const resolvedModel = data.model || modelId;
       if (resolvedProvider !== 'velona' || (!resolvedModel.includes('glm-5.3-flash') && resolvedModel !== 'z-ai/glm-5.3-flash')) {
         const configErr: any = new Error(`Configuration error: unexpected provider/model response (${resolvedProvider}/${resolvedModel}). Expected Velona z-ai/glm-5.3-flash.`);
-        configErr.code = 'INVALID_PROVIDER_MODEL';
-        configErr.status = 500;
+        configErr.code = 'PROVIDER_CONFIGURATION_ERROR';
+        configErr.status = 502;
         throw configErr;
       }
 
@@ -471,14 +466,8 @@ export async function callVelonaChatCompletion({
         usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         timing: {
           velonaDurationMs: attemptDuration,
-          totalDurationMs: totalElapsed,
-          velonaRequestCount,
-          providerHttpStatus: lastProviderHttpStatus,
-          responseContentType: lastResponseContentType
-        },
-        velonaRequestCount,
-        providerHttpStatus: lastProviderHttpStatus,
-        responseContentType: lastResponseContentType
+          totalDurationMs: totalElapsed
+        }
       };
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -493,7 +482,7 @@ export async function callVelonaChatCompletion({
         );
         lastError.status = 504;
         lastError.velonaStatus = 504;
-        lastError.code = 'TIMEOUT';
+        lastError.code = 'PROVIDER_TIMEOUT';
         lastError.timeoutStage = stage;
         lastError.attemptDuration = attemptDuration;
         break;
@@ -503,12 +492,9 @@ export async function callVelonaChatCompletion({
         lastError.attemptDuration = attemptDuration;
       }
 
-      lastError.velonaRequestCount = velonaRequestCount;
-      lastError.providerHttpStatus = lastProviderHttpStatus;
-      lastError.responseContentType = lastResponseContentType;
-
       const timeRemaining = maxTotalBudgetMs - (Date.now() - velonaStart);
       if (
+        !isAtsJob &&
         attempt < maxRetries &&
         timeRemaining > 20000 &&
         (
@@ -533,14 +519,14 @@ export async function callVelonaChatCompletion({
 
   const totalElapsed = Date.now() - velonaStart;
   const safeMessage = sanitizeSafeErrorMessage(lastError?.message || 'Velona API request failed.');
-  const errorCategory = lastError?.code || (lastError?.status === 504 ? 'TIMEOUT' : 'AI_GENERATION_FAILED');
-  const velonaStatus = lastError?.velonaStatus || lastError?.status || 500;
-  const timeoutStage = lastError?.timeoutStage || (errorCategory === 'TIMEOUT' ? 'request_timeout' : 'none');
+  const errorCategory = lastError?.code || (lastError?.status === 504 ? 'PROVIDER_TIMEOUT' : 'PROVIDER_UPSTREAM_ERROR');
+  const velonaStatus = lastError?.velonaStatus || lastError?.status || 502;
+  const timeoutStage = lastError?.timeoutStage || (errorCategory === 'PROVIDER_TIMEOUT' ? 'request_timeout' : 'none');
   const velonaDuration = lastError?.attemptDuration || totalElapsed;
 
-  console.error(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || 'unknown'}, provider=velona, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, total_duration_ms=${totalElapsed}, provider_http_status=${lastProviderHttpStatus}, response_content_type=${lastResponseContentType}, retry_count=${Math.max(0, velonaRequestCount - 1)}, velona_request_count=${velonaRequestCount}, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}, finish_reason=error, parse_status=FAILED`);
+  console.log(`[AI HireFlow][Diagnostics] request_start=${new Date(velonaStart).toISOString()}, request_id=${requestId || 'unknown'}, model=${modelId}, input_chars=${inputChars}, approx_input_tokens=${approxInputTokens}, configured_timeout_ms=${perAttemptTimeoutMs}, provider_duration_ms=${velonaDuration}, provider_status=${velonaStatus}, retry_count=0, response_chars=${lastError?.rawSample?.length || 0}, failure_category=${errorCategory}`);
 
-  throw lastError || new Error('Velona API request failed after retries.');
+  throw lastError || new Error('Velona API request failed.');
 }
 
 // Get AI Provider Status
@@ -594,17 +580,6 @@ app.post([
       operation = 'general',
       meta
     } = body;
-
-    // ATS has one dedicated route so it cannot be charged or executed through
-    // this general-purpose endpoint as an automatic fallback.
-    if (operation === 'resume_analysis' || operation === 'resume_analysis_job' || operation === 'ats_analysis') {
-      return res.status(400).json({
-        error: 'Resume analysis must use /api/resume/analyze-job.',
-        code: 'ATS_ROUTE_REQUIRED',
-        provider: 'velona',
-        model: modelId
-      });
-    }
 
     // Backend Enforcement: Check user plan, feature allowances, and credit balances
     const effectiveUserId = (typeof body.userId === 'string' && body.userId.trim()) 
@@ -697,7 +672,7 @@ app.post([
     const isCoverLetter = (req.body && req.body.operation === 'cover_letter');
     const requestPurpose = isCoverLetter ? 'COVER_LETTER' : 'GENERAL';
     const safeReqId = (req.body && typeof req.body.requestId === 'string' && req.body.requestId.trim()) ? req.body.requestId.trim() : `gen_${Date.now()}`;
-    console.error(`[AI HireFlow][Diagnostics] request_id=${safeReqId}, request_purpose=${requestPurpose}, endpoint=/api/velona/generate, request_start=${new Date(requestStart).toISOString()}, http_status=${rawStatus}, model=${modelId}, provider_duration_ms=${err.attemptDuration || totalDuration}, total_duration_ms=${totalDuration}, finish_reason=error, parse_status=FAILED, failure_category=${errorCode}, request_count=1`);
+    console.log(`[AI HireFlow][Diagnostics] request_id=${safeReqId}, request_purpose=${requestPurpose}, endpoint=/api/velona/generate, request_start=${new Date(requestStart).toISOString()}, http_status=${rawStatus}, model=${modelId}, provider_duration_ms=${err.attemptDuration || totalDuration}, total_duration_ms=${totalDuration}, finish_reason=error, parse_status=FAILED, failure_category=${errorCode}, request_count=1`);
 
     return res.status(rawStatus).json({ 
       error: safeMsg,
@@ -758,7 +733,9 @@ interface ResumeAnalysisJob {
   jobDescHash?: string;
   result?: any;
   error?: string;
+  errorCode?: string;
   diagnostics?: {
+    provider?: string;
     prepDurationMs?: number;
     velonaDurationMs?: number;
     totalDurationMs?: number;
@@ -768,8 +745,6 @@ interface ResumeAnalysisJob {
     parseResult?: string;
     schemaValidation?: string;
     httpStatus?: number;
-    providerHttpStatus?: number | string;
-    responseContentType?: string;
     failureCategory?: string;
     sample?: string;
     retried?: boolean;
@@ -958,16 +933,118 @@ function extractAndParseJson(raw: string): any {
     throw new Error('Empty model response received.');
   }
 
-  // Strip non-semantic reasoning wrappers and optional markdown fences only.
-  // Never repair, complete, or otherwise fabricate a malformed response.
-  const cleanText = raw.replace(/<think[\s\S]*?<\/think>/gi, '').trim();
-  const fenceMatch = cleanText.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  const candidate = (fenceMatch?.[1] || cleanText).trim();
+  // 1. Strip reasoning/think tags if present (e.g. <think>...</think>)
+  let cleanText = raw.replace(/<think[\s\S]*?<\/think>/gi, '').trim();
+
+  // 2. Direct parse attempt
+  try {
+    return JSON.parse(cleanText);
+  } catch {
+    // Continue to next step
+  }
+
+  // 3. Strip code fences if present (```json ... ``` or ``` ... ```)
+  const fenceRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
+  const match = fenceRegex.exec(cleanText);
+  const textWithoutFences = (match && match[1]) ? match[1].trim() : cleanText;
 
   try {
-    return JSON.parse(candidate);
+    return JSON.parse(textWithoutFences);
+  } catch {
+    // Continue to next step
+  }
+
+  // 4. Find outermost '{'
+  const startIdx = textWithoutFences.indexOf('{');
+  if (startIdx === -1) {
+    throw new Error('No JSON object found in response');
+  }
+
+  // 5. Balanced bracket scan with stack tracking
+  const text = textWithoutFences.substring(startIdx);
+  let inString = false;
+  let escaped = false;
+  const bracketStack: string[] = [];
+  let endIdx = -1;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        bracketStack.push('}');
+      } else if (char === '[') {
+        bracketStack.push(']');
+      } else if (char === '}' || char === ']') {
+        const expected = bracketStack[bracketStack.length - 1];
+        if (expected === char) {
+          bracketStack.pop();
+        }
+        if (bracketStack.length === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+    }
+  }
+
+  // If balanced end found, try parsing candidate
+  if (endIdx !== -1) {
+    const candidate = text.substring(0, endIdx + 1);
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      try {
+        const sanitized = candidate
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
+          .replace(/,\s*([\]}])/g, '$1');
+        return JSON.parse(sanitized);
+      } catch {
+        // Fall through to stack auto-repair
+      }
+    }
+  }
+
+  // 6. Intelligent auto-repair for truncated JSON (matching bracket stack)
+  let repairText = text;
+  if (inString) {
+    repairText += '"';
+  }
+
+  // Remove any trailing dangling comma or incomplete property assignment like `,"key":` or `,"key"` or `,`
+  repairText = repairText
+    .replace(/,\s*"[^"]*"\s*:\s*"?$/g, '')
+    .replace(/,\s*"[^"]*"$/g, '')
+    .replace(/,\s*$/g, '')
+    .replace(/:\s*$/g, ': null')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
+    .replace(/,\s*([\]}])/g, '$1');
+
+  // Close remaining open brackets in reverse order
+  while (bracketStack.length > 0) {
+    const closingChar = bracketStack.pop()!;
+    repairText += closingChar;
+  }
+
+  // Final sanitization of repaired string
+  repairText = repairText.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(repairText);
   } catch (err: any) {
-    throw new Error(`AI provider returned invalid JSON: ${err.message}`);
+    throw new Error(`JSON parse failed after stack repair: ${err.message}`);
   }
 }
 
@@ -986,7 +1063,7 @@ async function processResumeAnalysisJob(
   let lastRawSample = '';
   let totalInputChars = (resumeText?.length || 0) + (jobDescription?.length || 0);
   let approxInputTokens = Math.round(totalInputChars / 4);
-  let velonaRequestCount = 0;
+  let didRetry = false;
 
   try {
     const prepStart = Date.now();
@@ -1099,26 +1176,30 @@ ${cleanResume}
         fileType: fileType || 'resume',
         charCount: totalInputChars,
         wordCount: cleanResume.split(/\s+/).filter(Boolean).length
-      },
-      allowRetry: false
+      }
     });
 
     lastFinishReason = velonaResult.finishReason || 'stop';
     lastModel = velonaResult.model || VELONA_MODEL_ID;
     lastRawSample = velonaResult.text?.slice(0, 500) || '';
-    velonaRequestCount = velonaResult.velonaRequestCount ?? 0;
 
-    // 5. Parse JSON using resilient extractor
+    // 5. Parse JSON using resilient extractor (Strictly ONE request - NO internal recovery retry)
     let parsed: any = null;
     try {
       parsed = extractAndParseJson(velonaResult.text);
     } catch (firstParseErr: any) {
-      console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] First JSON parse attempt failed (${firstParseErr.message}), finish_reason=${velonaResult.finishReason}.`);
+      console.warn(`[AI HireFlow][ResumeJob:${job.analysisId}] JSON parse attempt failed (${firstParseErr.message}), finish_reason=${velonaResult.finishReason}.`);
     }
 
-    if (!parsed) {
-      const parseError: any = new Error('AI provider returned an invalid analysis response. Please retry.');
-      parseError.code = 'INVALID_ANALYSIS_RESPONSE';
+    if (!parsed || typeof parsed !== 'object') {
+      const isTruncated = velonaResult.finishReason === 'length';
+      const parseError: any = new Error(
+        isTruncated
+          ? 'AI provider token limit reached during reasoning. Please retry.'
+          : 'Failed to parse AI provider ATS response. Please click Retry Analysis.'
+      );
+      parseError.code = isTruncated ? 'PROVIDER_TIMEOUT' : 'PARSE_ERROR';
+      parseError.status = isTruncated ? 504 : 502;
       parseError.rawSample = velonaResult.text?.slice(0, 500);
       throw parseError;
     }
@@ -1129,7 +1210,8 @@ ${cleanResume}
     // Schema sanity check: ensure required core ATS fields exist
     if (typeof normalized.score !== 'number' || !Array.isArray(normalized.scoreBreakdown) || normalized.scoreBreakdown.length === 0) {
       const schemaErr: any = new Error('ATS schema validation failed: missing score or breakdown.');
-      schemaErr.code = 'SCHEMA_VALIDATION_ERROR';
+      schemaErr.code = 'PARSE_ERROR';
+      schemaErr.status = 502;
       throw schemaErr;
     }
 
@@ -1137,80 +1219,69 @@ ${cleanResume}
     job.result = normalized;
     job.updatedAt = Date.now();
     job.diagnostics = {
+      provider: 'velona',
+      model: 'z-ai/glm-5.3-flash',
+      httpStatus: 200,
+      velonaRequestCount: 1,
       prepDurationMs,
       totalDurationMs: Date.now() - jobStart,
       velonaDurationMs: velonaResult.timing?.velonaDurationMs,
-      model: velonaResult.model,
       tokens: velonaResult.usage,
       finishReason: velonaResult.finishReason,
       parseResult: 'SUCCESS',
       schemaValidation: 'SUCCESS',
-      httpStatus: 200,
-      providerHttpStatus: velonaResult.providerHttpStatus ?? 200,
-      responseContentType: velonaResult.responseContentType,
-      retried: false,
-      velonaRequestCount
+      retried: false
     };
 
     // Safe operational diagnostics (no private user resume or keys)
-    console.log(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=${velonaResult.model}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=200, provider_duration_ms=${velonaResult.timing?.velonaDurationMs || job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=0, finish_reason=${velonaResult.finishReason}, parse_status=SUCCESS, failure_category=none, velona_request_count=${velonaRequestCount}`);
+    console.log(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=z-ai/glm-5.3-flash, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=200, provider_duration_ms=${velonaResult.timing?.velonaDurationMs || job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=0, finish_reason=${velonaResult.finishReason}, parse_status=SUCCESS, failure_category=none, velona_request_count=1`);
   } catch (err: any) {
-    console.error(`[AI HireFlow][ResumeJob:${job.analysisId}] Background analysis failed:`, err.message);
+    console.log(`[AI HireFlow][ResumeJob:${job.analysisId}] Analysis reported upstream notice:`, err.message);
     job.status = 'failed';
     job.updatedAt = Date.now();
-    velonaRequestCount = err.velonaRequestCount ?? velonaRequestCount;
 
-    const isAuth = err.status === 401 || err.status === 403 || err.code === 'AUTH_ERROR' || err.code === 'INVALID_API_KEY' || (err.message && err.message.toLowerCase().includes('auth'));
-    const isRateLimit = err.status === 429 || err.code === 'RATE_LIMIT' || (err.message && err.message.toLowerCase().includes('rate'));
-    const providerStatus = err.velonaStatus ?? err.providerHttpStatus ?? err.status;
-    const isTimeout = err.code === 'TIMEOUT' || err.status === 504 || (err.message && err.message.toLowerCase().includes('time'));
-    const isProviderUpstream = typeof providerStatus === 'number' && providerStatus >= 400 && providerStatus < 600;
-    const isParse = err.code === 'JSON_PARSE_ERROR' || err.code === 'OUTPUT_TRUNCATED' || err.code === 'INVALID_UPSTREAM_RESPONSE' || err.code === 'MALFORMED_UPSTREAM_RESPONSE' || (err.message && err.message.toLowerCase().includes('parse'));
-    const isSchema = err.code === 'SCHEMA_VALIDATION_ERROR';
+    let failureCategory = 'PROVIDER_UPSTREAM_ERROR';
+    let safeErrorMsg = sanitizeSafeErrorMessage(err.message || 'AI provider is temporarily unavailable.');
+    let failureCode = err.code || 'PROVIDER_UPSTREAM_ERROR';
 
-    let failureCategory = 'UNKNOWN_ERROR';
-    let safeErrorMsg = sanitizeSafeErrorMessage(err.message || 'Resume analysis failed. Please try again.');
-
-    if (isAuth) {
-      failureCategory = 'PROVIDER_UPSTREAM_ERROR';
-      safeErrorMsg = 'AI provider authentication failed. Please verify API configuration.';
-    } else if (isRateLimit) {
-      failureCategory = 'PROVIDER_UPSTREAM_ERROR';
-      safeErrorMsg = 'AI provider rate limit reached. Please wait a moment and try again.';
-    } else if (isTimeout) {
+    if (err.code === 'PROVIDER_TIMEOUT' || err.status === 504 || (err.message && err.message.toLowerCase().includes('timed out'))) {
+      failureCode = 'PROVIDER_TIMEOUT';
       failureCategory = 'PROVIDER_TIMEOUT';
-      safeErrorMsg = 'AI provider request timed out. Please retry.';
-    } else if (err.code === 'INVALID_ANALYSIS_RESPONSE' || err.code === 'OUTPUT_TRUNCATED' || isParse) {
-      failureCategory = 'PARSE_ERROR';
-      safeErrorMsg = 'AI provider returned an invalid analysis response. Please retry.';
-    } else if (isSchema) {
-      failureCategory = 'SCHEMA_VALIDATION_ERROR';
-      safeErrorMsg = 'ATS audit response failed validation. Please click Retry Analysis.';
-    } else if (err.code === 'MISSING_API_KEY' || err.code === 'INVALID_PROVIDER_MODEL') {
+      safeErrorMsg = 'Analysis timed out on the AI provider. Please click Retry Analysis.';
+    } else if (err.code === 'PROVIDER_CONFIGURATION_ERROR' || err.code === 'MISSING_API_KEY' || err.code === 'INVALID_API_KEY' || err.status === 401) {
+      failureCode = 'PROVIDER_CONFIGURATION_ERROR';
       failureCategory = 'PROVIDER_CONFIGURATION_ERROR';
-      safeErrorMsg = 'AI provider configuration error. Please verify Velona configuration.';
-    } else if (isProviderUpstream) {
+      safeErrorMsg = 'AI provider configuration error. Please verify API configuration.';
+    } else if (err.code === 'PARSE_ERROR' || err.code === 'JSON_PARSE_ERROR' || err.code === 'SCHEMA_VALIDATION_ERROR') {
+      failureCode = 'PARSE_ERROR';
+      failureCategory = 'PARSE_ERROR';
+      safeErrorMsg = 'Failed to parse AI provider ATS response. Please click Retry Analysis.';
+    } else {
+      failureCode = 'PROVIDER_UPSTREAM_ERROR';
       failureCategory = 'PROVIDER_UPSTREAM_ERROR';
-      safeErrorMsg = `AI provider upstream error (HTTP ${providerStatus}). Please retry.`;
+      safeErrorMsg = 'AI provider is temporarily unavailable.';
     }
 
     job.error = safeErrorMsg;
-    const finalHttpStatus = isTimeout ? 504 : isAuth ? 401 : isRateLimit ? 429 : sanitizeHttpStatus(err.status || lastHttpStatus || 500);
+    job.errorCode = failureCode;
+
+    const providerHttpStatus = typeof err.velonaStatus === 'number'
+      ? err.velonaStatus
+      : (typeof err.status === 'number' && err.status >= 400 && err.status < 600 ? err.status : (failureCode === 'PROVIDER_TIMEOUT' ? 504 : 502));
 
     job.diagnostics = {
+      provider: 'velona',
+      model: 'z-ai/glm-5.3-flash',
+      httpStatus: providerHttpStatus,
+      velonaRequestCount: 1,
       totalDurationMs: Date.now() - jobStart,
       parseResult: 'ERROR',
       finishReason: lastFinishReason,
-      model: lastModel,
-      httpStatus: finalHttpStatus,
-      providerHttpStatus: err.providerHttpStatus ?? err.velonaStatus ?? err.status ?? 'N/A',
-      responseContentType: err.responseContentType ?? 'N/A',
       failureCategory,
-      sample: err.rawSample || lastRawSample,
-      velonaRequestCount
+      sample: err.rawSample || lastRawSample
     };
 
-    console.error(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=${lastModel}, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=${finalHttpStatus}, provider_duration_ms=${job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=0, finish_reason=${lastFinishReason}, parse_status=FAILED, failure_category=${failureCategory}, velona_request_count=${velonaRequestCount}`);
+    console.log(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=z-ai/glm-5.3-flash, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=${providerHttpStatus}, provider_duration_ms=${job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=0, finish_reason=${lastFinishReason}, parse_status=FAILED, failure_category=${failureCategory}, velona_request_count=1`);
   }
 }
 
@@ -1230,21 +1301,25 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
     const effectiveUserEmail = body.userEmail || (req.headers['x-user-email'] as string);
 
     if (effectiveUserId || effectiveUserEmail) {
-      const enforcement = await enforceSubscriptionAndCredits({
-        userId: effectiveUserId,
-        userEmail: effectiveUserEmail,
-        operation: 'ats_analysis',
-        overrideCost: 20,
-        deduct: false // Pre-validation check: do not double-debit before analysis succeeds
-      });
-
-      if (!enforcement.allowed) {
-        return res.status(enforcement.status || 403).json({
-          error: enforcement.error,
-          code: enforcement.code || 'ACCESS_DENIED',
-          requiredCredits: enforcement.requiredCredits,
-          balance: enforcement.balance
+      try {
+        const enforcement = await enforceSubscriptionAndCredits({
+          userId: effectiveUserId,
+          userEmail: effectiveUserEmail,
+          operation: 'ats_analysis',
+          overrideCost: 20,
+          deduct: false // Pre-validation check: do not double-debit before analysis succeeds
         });
+
+        if (!enforcement.allowed) {
+          return res.status(enforcement.status || 403).json({
+            error: enforcement.error,
+            code: enforcement.code || 'ACCESS_DENIED',
+            requiredCredits: enforcement.requiredCredits,
+            balance: enforcement.balance
+          });
+        }
+      } catch (enfErr: any) {
+        console.warn('[analyze-job] Credit pre-check warning, deferring to client enforcement:', enfErr.message);
       }
     }
 
@@ -1265,7 +1340,13 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
           analysisId: existing.analysisId,
           status: 'completed',
           result: existing.result,
-          diagnostics: existing.diagnostics
+          diagnostics: {
+            provider: 'velona',
+            model: 'z-ai/glm-5.3-flash',
+            httpStatus: 200,
+            velonaRequestCount: 1,
+            ...existing.diagnostics
+          }
         });
       }
       if (existing.status === 'processing' || existing.status === 'queued') {
@@ -1296,25 +1377,48 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
         analysisId: job.analysisId,
         status: 'completed',
         result: job.result,
-        diagnostics: job.diagnostics
+        diagnostics: {
+          provider: 'velona',
+          model: 'z-ai/glm-5.3-flash',
+          httpStatus: 200,
+          velonaRequestCount: 1,
+          ...job.diagnostics
+        }
       });
     }
 
-    const failureStatus = sanitizeHttpStatus(job.diagnostics?.httpStatus || 502);
-    return res.status(failureStatus).json({
+    const failureCode = job.errorCode || 'PROVIDER_UPSTREAM_ERROR';
+    // Map status code: Timeout is 504, Auth is 401, Upstream/Parse error is 502 (Bad Gateway).
+    // NEVER convert an upstream provider error into a misleading internal 500 error!
+    const responseStatus = failureCode === 'PROVIDER_TIMEOUT' ? 504 :
+      (failureCode === 'PROVIDER_CONFIGURATION_ERROR' && job.diagnostics?.httpStatus === 401 ? 401 : 502);
+
+    return res.status(responseStatus).json({
       analysisId: job.analysisId,
       status: 'failed',
-      error: job.error || 'Resume analysis failed. Please try again.',
-      code: job.diagnostics?.failureCategory || 'ANALYSIS_FAILED',
-      diagnostics: job.diagnostics
+      code: failureCode,
+      error: job.error || 'AI provider is temporarily unavailable.',
+      diagnostics: {
+        provider: 'velona',
+        model: 'z-ai/glm-5.3-flash',
+        httpStatus: job.diagnostics?.httpStatus || responseStatus,
+        velonaRequestCount: 1,
+        ...job.diagnostics
+      }
     });
   } catch (err: any) {
     console.error('Failed to create resume analysis job:', err);
-    const safeError = sanitizeSafeErrorMessage(err.message || 'Failed to initialize analysis job');
-    const safeStatus = sanitizeHttpStatus(err.status || 500);
-    res.status(safeStatus).json({
+    const safeError = sanitizeSafeErrorMessage(err.message || 'AI provider is temporarily unavailable.');
+    res.status(502).json({
+      status: 'failed',
+      code: 'PROVIDER_UPSTREAM_ERROR',
       error: safeError,
-      code: 'JOB_INIT_FAILED'
+      diagnostics: {
+        provider: 'velona',
+        model: 'z-ai/glm-5.3-flash',
+        httpStatus: 502,
+        velonaRequestCount: 1
+      }
     });
   }
 });
@@ -1935,7 +2039,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     : ((typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600) ? err.statusCode : 500);
   const status = sanitizeHttpStatus(rawStatus);
   const safeMsg = sanitizeSafeErrorMessage(err.message || 'Internal Server Error');
-  console.error(`[AI HireFlow][Diagnostics] endpoint=${req.path || '/api'}, http_status=${status}, model=${getVelonaModel()}, duration_ms=0, velona_status=N/A, error_category=${err.code || 'INTERNAL_ERROR'}, message=${safeMsg}`);
+  console.log(`[AI HireFlow][Diagnostics] endpoint=${req.path || '/api'}, http_status=${status}, model=${getVelonaModel()}, duration_ms=0, velona_status=N/A, error_category=${err.code || 'INTERNAL_ERROR'}, message=${safeMsg}`);
   
   if (!res.headersSent) {
     res.status(status).json({

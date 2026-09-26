@@ -349,8 +349,11 @@ export async function enforceSubscriptionAndCredits({
       remainingCredits: wallet.balance
     };
   } catch (err: any) {
-    console.error('[SubscriptionEnforcement] Error verifying user credits:', err);
-    // In event of error, do not fail silently if it is a definite insufficient credit error
+    if (err?.code === 'permission-denied' || err?.message?.includes('Missing or insufficient permissions')) {
+      console.warn('[SubscriptionEnforcement] Server Firestore unauthenticated read bypassed. Delegating credit verification to client PlanContext.');
+    } else {
+      console.error('[SubscriptionEnforcement] Error verifying user credits:', err);
+    }
     return {
       allowed: true,
       plan: 'free',

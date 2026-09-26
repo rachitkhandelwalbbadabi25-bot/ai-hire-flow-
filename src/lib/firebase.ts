@@ -1,7 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, setLogLevel, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+
+// Suppress benign internal gRPC idle stream disconnect warnings
+setLogLevel('error');
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

@@ -429,218 +429,45 @@ RESUME:
 ${cleanResume}
 `;
 
-  // Prefer asynchronous job architecture to decouple browser from long HTTP connections
-  try {
-    const analysisId = `ats_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const startRes = await fetch('/api/resume/analyze-job', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        analysisId,
-        resumeText: cleanResume,
-        jobDescription: cleanJD,
-        fileType
-      })
-    });
+  // Strictly invoke the single Velona ATS analyze-job pipeline with ZERO fallbacks
+  const analysisId = `ats_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const startRes = await fetch('/api/resume/analyze-job', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      analysisId,
+      resumeText: cleanResume,
+      jobDescription: cleanJD,
+      fileType
+    })
+  });
 
-    const startData = await startRes.json().catch(() => ({}));
-    if (!startRes.ok) {
-      const error: any = new Error(startData.error || 'Resume analysis failed. Please retry.');
-      error.code = startData.code;
-      error.status = startRes.status;
-      throw error;
-    }
+  const startData = await startRes.json().catch(() => ({}));
+  if (startRes.ok && startData.status === 'completed' && startData.result) {
+    return startData.result;
+  }
 
-    if (startData.status === 'completed' && startData.result) {
-      return startData.result;
-    }
+  if (!startRes.ok) {
+    throw new Error(startData.error || 'AI provider is temporarily unavailable. Please try again later.');
+  }
 
-    const effectiveId = startData.analysisId || analysisId;
-    // The backend currently completes the request synchronously. Polling is
-    // retained only for a queued response and never starts another AI call.
-    const maxPolls = 26;
-    for (let i = 0; i < maxPolls; i++) {
-      await new Promise(r => setTimeout(r, 2000));
-      const checkRes = await fetch(`/api/resume/analyze-job/${effectiveId}`);
-      const job = await checkRes.json().catch(() => ({}));
-      if (checkRes.ok && job.status === 'completed' && job.result) {
+  const effectiveId = startData.analysisId || analysisId;
+  // Aligned with backend 48,000ms overall budget (26 polls * 2000ms = 52s)
+  const maxPolls = 26;
+  for (let i = 0; i < maxPolls; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const checkRes = await fetch(`/api/resume/analyze-job/${effectiveId}`);
+    if (checkRes.ok) {
+      const job = await checkRes.json();
+      if (job.status === 'completed' && job.result) {
         return job.result;
       }
       if (job.status === 'failed') {
-        throw new Error(job.error || 'Resume analysis failed. Please retry.');
+        throw new Error(job.error || 'AI provider is temporarily unavailable. Please try again later.');
       }
     }
-    throw new Error('Resume analysis timed out. Please retry.');
-  } catch (asyncErr: any) {
-    throw asyncErr;
   }
-
-  throw new Error('Resume analysis failed. Please retry.');
-  /* Legacy client-side ATS normalization intentionally disabled. The server
-     is the single ATS execution and normalization path.
-  const rawData = await executeAICompletion({
-    prompt,
-    systemPrompt: "You are a concise ATS scoring API for AI HireFlow. Output raw JSON only. Be extremely brief.",
-    jsonMode: true,
-    temperature: 0.2,
-    maxTokens: 3500,
-    operation: 'resume_analysis',
-    meta: {
-      fileType,
-      charCount,
-      wordCount
-    }
-  });
-
-  if (!rawData || typeof rawData !== 'object') {
-    throw new Error("Resume analysis failed. Please try again.");
-  }
-
-  // Define canonical 4 categories with strict weights (40 + 25 + 20 + 15 = 100)
-  const canonicalCategories = [
-    { name: "Core Technical & Skill Match", weight: 40 },
-    { name: "Measurable Impact & Hard Metrics", weight: 25 },
-    { name: "Role & Domain Relevance", weight: 20 },
-    { name: "Structure & ATS Parsability", weight: 15 }
-  ];
-
-  let rawBreakdown = Array.isArray(rawData.scoreBreakdown) ? rawData.scoreBreakdown : [];
-  
-  // Normalize and strictly compute earnedPoints from actual category scores
-  let totalEarnedPoints = 0;
-  const normalizedBreakdown = canonicalCategories.map((canon, idx) => {
-    const matched = rawBreakdown.find((item: any) => 
-      item?.category && item.category.toLowerCase().includes(canon.name.toLowerCase().split('&')[0].trim().toLowerCase())
-    ) || rawBreakdown[idx] || {};
-
-    const rawCatScore = typeof matched.score === 'number' ? matched.score : Number(matched.score);
-    let catScore = 70;
-    let earned = 0;
-
-    if (!isNaN(rawCatScore)) {
-      if (rawCatScore <= canon.weight && canon.weight < 100) {
-        earned = Math.min(canon.weight, Math.max(0, rawCatScore));
-        catScore = Math.min(100, Math.max(0, Math.round((earned / canon.weight) * 100)));
-      } else {
-        catScore = Math.min(100, Math.max(0, Math.round(rawCatScore)));
-        earned = Math.round(((catScore / 100) * canon.weight) * 10) / 10;
-      }
-    } else {
-      catScore = 70;
-      earned = Math.round(((catScore / 100) * canon.weight) * 10) / 10;
-    }
-    totalEarnedPoints += earned;
-
-    const explanation = typeof matched.explanation === 'string' && matched.explanation.trim()
-      ? matched.explanation.trim()
-      : `Evaluation of ${canon.name} based on provided resume details.`;
-
-    const evidence = typeof matched.evidence === 'string' && matched.evidence.trim()
-      ? matched.evidence.trim()
-      : 'Identified relevant experience in resume.';
-
-    const recommendations = Array.isArray(matched.recommendations) && matched.recommendations.length > 0
-      ? matched.recommendations.map((r: any) => String(r).trim()).filter(Boolean)
-      : [`Enhance ${canon.name.toLowerCase()} with further specific achievements.`];
-
-    return {
-      category: canon.name,
-      weight: canon.weight,
-      score: catScore,
-      earnedPoints: earned,
-      mathExplanation: `(${catScore}/100) × ${canon.weight}% = ${earned.toFixed(1)} pts`,
-      explanation,
-      evidence,
-      recommendations
-    };
-  });
-
-  const finalScore = Math.min(100, Math.max(0, Math.round(totalEarnedPoints)));
-  const atsCompatibility = finalScore >= 80 ? 'High' : (finalScore >= 60 ? 'Moderate' : 'Low');
-
-  const rawKeywords = rawData.keywordsFound || rawData.identifiedKeywords || rawData.targetKeywords || rawData.foundKeywords || rawData.keywords || [];
-  const keywordsFound = Array.isArray(rawKeywords) ? rawKeywords.map(String).filter(Boolean) : [];
-
-  const rawMissing = rawData.missingKeywords || rawData.missingSkills || rawData.skillGaps || [];
-  const missingKeywords = Array.isArray(rawMissing) ? rawMissing.map(String).filter(Boolean) : [];
-
-  const rawStrengths = rawData.strengths || rawData.keyStrengths || rawData.strongPoints || rawData.highlights || [];
-  const strengths = Array.isArray(rawStrengths) ? rawStrengths.map(String).filter(Boolean) : [];
-
-  const rawWeaknesses = rawData.weaknesses || rawData.areasToImprove || rawData.gaps || rawData.criticalGaps || [];
-  const weaknesses = Array.isArray(rawWeaknesses) ? rawWeaknesses.map((w: any) => {
-    if (typeof w === 'object' && w !== null) {
-      return {
-        problem: String(w.problem || w.issue || w.gap || w.title || '').trim(),
-        whyItMatters: String(w.whyItMatters || w.why || w.impact || w.rationale || 'ATS parsers and technical recruiters rely on specific indicators to verify role alignment.').trim(),
-        howToFix: String(w.howToFix || w.fix || w.recommendation || w.action || 'Revise bullet points with verifiable metrics and concrete role-aligned technologies.').trim()
-      };
-    }
-    const problemStr = String(w || '').trim();
-    return {
-      problem: problemStr,
-      whyItMatters: 'Recruiters and automated screeners downgrade resumes with unverified or unquantified claims.',
-      howToFix: 'Strengthen this section with measurable accomplishments, industry-standard keywords, and technical context.'
-    };
-  }).filter(w => w.problem) : [];
-
-  const rawFormatting = rawData.formattingSuggestions || rawData.structuralRecommendations || rawData.formattingStrategy || [];
-  const formattingSuggestions = Array.isArray(rawFormatting) && rawFormatting.length > 0
-    ? rawFormatting.map(String).filter(Boolean)
-    : (normalizedBreakdown.find(b => b.category.includes('Structure'))?.recommendations || []);
-
-  const rawImpact = rawData.impactSuggestions || rawData.metricSuggestions || rawData.impactImprovements || [];
-  const impactSuggestions = Array.isArray(rawImpact) && rawImpact.length > 0
-    ? rawImpact.map(String).filter(Boolean)
-    : (normalizedBreakdown.find(b => b.category.includes('Impact'))?.recommendations || []);
-
-  // Ensure missingKeywordAnalysis has items if missingKeywords exist
-  const missingKeywordAnalysis = Array.isArray(rawData.missingKeywordAnalysis) && rawData.missingKeywordAnalysis.length > 0
-    ? rawData.missingKeywordAnalysis.map((k: any) => ({
-        keyword: String(k.keyword || '').trim(),
-        whyItMatters: String(k.whyItMatters || '').trim(),
-        suggestedRewrite: String(k.suggestedRewrite || '').trim(),
-        confidence_level: ['high', 'medium', 'low'].includes(k.confidence_level) ? k.confidence_level : 'high',
-        isInferred: Boolean(k.isInferred),
-        inferredNote: String(k.inferredNote || '').trim()
-      })).filter((k: any) => k.keyword)
-    : missingKeywords.slice(0, 3).map((kw) => ({
-        keyword: kw,
-        whyItMatters: `Recruiters require ${kw} to verify technical qualification for this role.`,
-        suggestedRewrite: `Architected scalable workflows incorporating ${kw}, improving throughput by 25%.`,
-        confidence_level: 'high',
-        isInferred: false,
-        inferredNote: ''
-      }));
-
-  return {
-    score: finalScore,
-    atsCompatibility: rawData.atsCompatibility || atsCompatibility,
-    scoreBreakdown: normalizedBreakdown,
-    skillsAnalysis: Array.isArray(rawData.skillsAnalysis) ? rawData.skillsAnalysis.map((s: any) => ({
-      skill: String(s.skill || '').trim(),
-      type: s.type === 'inferred' ? 'inferred' : 'explicit',
-      confidence_level: ['high', 'medium', 'low'].includes(s.confidence_level) ? s.confidence_level : 'high',
-      evidence: String(s.evidence || '').trim()
-    })).filter((s: any) => s.skill) : [],
-    keywordsFound,
-    missingKeywords,
-    missingKeywordAnalysis,
-    formattingSuggestions,
-    impactSuggestions,
-    strengths,
-    weaknesses,
-    recommendations: Array.isArray(rawData.recommendations) ? rawData.recommendations.map(String).filter(Boolean) : [],
-    summary: typeof rawData.summary === 'string' && rawData.summary.trim()
-      ? rawData.summary.trim()
-      : `ATS resume audit completed with a score of ${finalScore}/100.`,
-    human_explanation: typeof rawData.human_explanation === 'string' && rawData.human_explanation.trim()
-      ? rawData.human_explanation.trim()
-      : (typeof rawData.summary === 'string' && rawData.summary.trim()
-          ? rawData.summary.trim()
-          : `The candidate presents relevant foundational capabilities with an ATS compatibility rating of ${atsCompatibility}.`)
-  };
-  */
+  throw new Error('Analysis timed out on the AI provider. Please click Retry Analysis.');
 };
 
 // =========================================================================

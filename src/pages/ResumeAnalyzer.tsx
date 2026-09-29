@@ -245,10 +245,12 @@ export default function ResumeAnalyzer() {
   const [cacheSource, setCacheSource] = useState<'browser' | 'persistent' | null>(initialAnalyzerState.cacheSource);
   const activeJobKeyRef = useRef<string | null>(initialAnalyzerState.activeJobKey);
   const analyzerGeneratedJobKeyRef = useRef<string | null>(null);
+  const analyzerPersistenceReadyRef = useRef(false);
 
   // Sync state to sessionStorage to preserve across navigation (NAVIGATION != RESET)
   useEffect(() => {
     try {
+      if (!analyzerPersistenceReadyRef.current) return;
       if (analysis) {
         sessionStorage.setItem('resume_analyzer_result', JSON.stringify(analysis));
       } else {
@@ -259,6 +261,7 @@ export default function ResumeAnalyzer() {
 
   useEffect(() => {
     try {
+      if (!analyzerPersistenceReadyRef.current) return;
       if (coverLetter) {
         sessionStorage.setItem('resume_analyzer_cover_letter', coverLetter);
       } else {
@@ -269,6 +272,7 @@ export default function ResumeAnalyzer() {
 
   useEffect(() => {
     try {
+      if (!analyzerPersistenceReadyRef.current) return;
       if (cacheSource) {
         sessionStorage.setItem('resume_analyzer_cache_source', cacheSource);
       } else {
@@ -279,6 +283,7 @@ export default function ResumeAnalyzer() {
 
   useEffect(() => {
     try {
+      if (!analyzerPersistenceReadyRef.current) return;
       if (jobDesc) {
         sessionStorage.setItem('resume_analyzer_job_desc', jobDesc);
       } else {
@@ -286,6 +291,12 @@ export default function ResumeAnalyzer() {
       }
     } catch (e) {}
   }, [jobDesc]);
+
+  // Allow persistence only after the restored initial state has been mounted.
+  // This prevents an initial/null render from overwriting valid session state.
+  useEffect(() => {
+    analyzerPersistenceReadyRef.current = true;
+  }, []);
 
   // Reconnect to active background job if navigating back or refreshing
   useEffect(() => {

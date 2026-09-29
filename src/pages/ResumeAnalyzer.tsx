@@ -94,6 +94,31 @@ function formatMasterResumeToText(resume: MasterResumeData): string {
 
 const extractedFileCache = new Map<string, string>();
 
+function traceAnalyzerPersistence(
+  event: string,
+  details: {
+    analysisPresent: boolean;
+    activeJobKey?: string | null;
+    forceReset?: boolean;
+    source: string;
+  }
+): void {
+  let sessionResultPresent = false;
+  try {
+    sessionResultPresent = Boolean(sessionStorage.getItem('resume_analyzer_result'));
+  } catch {}
+  console.info(
+    '[ResumeAnalyzer][PersistenceTrace]',
+    `event=${event}`,
+    `pathname=${typeof window !== 'undefined' ? window.location.pathname : 'unknown'}`,
+    `analysis_present=${details.analysisPresent}`,
+    `session_result_present=${sessionResultPresent}`,
+    `active_job_key=${details.activeJobKey ?? 'null'}`,
+    `force_reset=${details.forceReset ?? false}`,
+    `source=${details.source}`
+  );
+}
+
 interface ExtractedDoc {
   text: string;
   fileName: string;
@@ -113,6 +138,11 @@ function getInitialAnalyzerState() {
 
     // Case 1: An active job is selected, and it is DIFFERENT from what Analyzer was previously bound to
     if (currentJobKey && savedAnalyzerJobKey !== currentJobKey) {
+      traceAnalyzerPersistence('CLEAR_REPORT', {
+        analysisPresent: Boolean(sessionStorage.getItem('resume_analyzer_result')),
+        activeJobKey: savedAnalyzerJobKey,
+        source: 'getInitialAnalyzerState_different_active_job'
+      });
       sessionStorage.removeItem('resume_analyzer_result');
       sessionStorage.removeItem('resume_analyzer_cover_letter');
       sessionStorage.removeItem('resume_analyzer_cache_source');
@@ -246,6 +276,39 @@ export default function ResumeAnalyzer() {
   const activeJobKeyRef = useRef<string | null>(initialAnalyzerState.activeJobKey);
   const analyzerGeneratedJobKeyRef = useRef<string | null>(null);
   const analyzerPersistenceReadyRef = useRef(false);
+  const latestAnalysisRef = useRef(analysis);
+
+  useEffect(() => {
+    latestAnalysisRef.current = analysis;
+  }, [analysis]);
+
+  useEffect(() => {
+    return () => {
+      traceAnalyzerPersistence('UNMOUNT', {
+        analysisPresent: Boolean(latestAnalysisRef.current),
+        activeJobKey: activeJobKeyRef.current,
+        source: 'ResumeAnalyzer_unmount'
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    traceAnalyzerPersistence('MOUNT_RESTORE', {
+      analysisPresent: Boolean(initialAnalyzerState.analysis),
+      activeJobKey: activeJobKeyRef.current,
+      forceReset: Boolean(location.state?.forceResetAnalysis),
+      source: 'initialAnalyzerState'
+    });
+  }, []);
+
+  useEffect(() => {
+    traceAnalyzerPersistence('ANALYSIS_STATE_EFFECT', {
+      analysisPresent: Boolean(analysis),
+      activeJobKey: activeJobKeyRef.current,
+      forceReset: Boolean(location.state?.forceResetAnalysis),
+      source: 'analysis_state_effect'
+    });
+  }, [analysis]);
 
   // Sync state to sessionStorage to preserve across navigation (NAVIGATION != RESET)
   useEffect(() => {
@@ -256,6 +319,12 @@ export default function ResumeAnalyzer() {
       } else {
         sessionStorage.removeItem('resume_analyzer_result');
       }
+      traceAnalyzerPersistence(analysis ? 'SESSION_RESULT_WRITE' : 'SESSION_RESULT_REMOVE', {
+        analysisPresent: Boolean(analysis),
+        activeJobKey: activeJobKeyRef.current,
+        forceReset: Boolean(location.state?.forceResetAnalysis),
+        source: 'analysis_persistence_effect'
+      });
     } catch (e) {}
   }, [analysis]);
 
@@ -370,6 +439,11 @@ export default function ResumeAnalyzer() {
 
   // Complete fresh start for Resume Analyzer
   const handleFullReset = () => {
+    traceAnalyzerPersistence('CLEAR_REPORT', {
+      analysisPresent: Boolean(analysis),
+      activeJobKey: activeJobKeyRef.current,
+      source: 'handleFullReset'
+    });
     if (analysisAbortRef.current) {
       analysisAbortRef.current.abort();
       analysisAbortRef.current = null;
@@ -405,11 +479,17 @@ export default function ResumeAnalyzer() {
 
     // If the active job has changed from what Analyzer is currently bound to
     if (activeJobKeyRef.current !== currentKey) {
+      const previousJobKey = activeJobKeyRef.current;
       activeJobKeyRef.current = currentKey;
 
       // Do not treat the active-job context published by this Analyzer result
       // as an external Job Finder selection that should clear the fresh result.
       if (analyzerGeneratedJobKeyRef.current === currentKey) {
+        traceAnalyzerPersistence('ACTIVE_JOB_SYNC_ANALYZER_GENERATED', {
+          analysisPresent: Boolean(analysis),
+          activeJobKey: currentKey,
+          source: 'active_job_sync_effect_guard'
+        });
         analyzerGeneratedJobKeyRef.current = null;
         return;
       }
@@ -431,6 +511,11 @@ export default function ResumeAnalyzer() {
         // Automatically load the NEW active job's title, company, location, and description
         const newDesc = formatActiveJobDescription(currentActiveJob);
         setJobDesc(newDesc);
+        traceAnalyzerPersistence('CLEAR_REPORT', {
+          analysisPresent: Boolean(analysis),
+          activeJobKey: previousJobKey,
+          source: 'active_job_sync_effect_external_change'
+        });
         // Clear previous job-specific analysis, cover letter, and cache
         setAnalysis(null);
         setCoverLetter(null);
@@ -446,6 +531,11 @@ export default function ResumeAnalyzer() {
         } catch (e) {}
       } else {
         // Active job was unselected / cleared
+        traceAnalyzerPersistence('CLEAR_REPORT', {
+          analysisPresent: Boolean(analysis),
+          activeJobKey: previousJobKey,
+          source: 'active_job_sync_effect_job_cleared'
+        });
         setJobDesc('');
         setAnalysis(null);
         setCoverLetter(null);
@@ -471,6 +561,12 @@ export default function ResumeAnalyzer() {
         sessionStorage.setItem('resume_analyzer_job_desc', location.state.jobDescription);
       } catch (e) {}
       if (location.state?.forceResetAnalysis) {
+        traceAnalyzerPersistence('CLEAR_REPORT', {
+          analysisPresent: Boolean(analysis),
+          activeJobKey: activeJobKeyRef.current,
+          forceReset: true,
+          source: 'route_state_forceResetAnalysis'
+        });
         setAnalysis(null);
         setCoverLetter(null);
         setCacheSource(null);
@@ -644,6 +740,11 @@ export default function ResumeAnalyzer() {
 
   // Dedicated reliable context transfer from Resume Analyzer to Learning Path
   const handleNavigateToLearningPath = () => {
+    traceAnalyzerPersistence('NAVIGATE_LEARNING_PATH', {
+      analysisPresent: Boolean(analysis),
+      activeJobKey: activeJobKeyRef.current,
+      source: 'handleNavigateToLearningPath_before_navigation'
+    });
     const ctx = getAnalyzerJobContext();
     const cleanRole = ctx.role || 'Software Engineer';
     const cleanSkills = ctx.skills || [];
@@ -1025,6 +1126,11 @@ export default function ResumeAnalyzer() {
     setIsAnalyzing(true);
     setError(null);
     setCacheSource(null);
+    traceAnalyzerPersistence('CLEAR_REPORT', {
+      analysisPresent: Boolean(analysis),
+      activeJobKey: activeJobKeyRef.current,
+      source: 'handleStartAnalysis'
+    });
     setAnalysis(null);
     setCoverLetter(null);
     setAnalysisStatus('Auditing resume against ATS benchmarks...');
@@ -1131,6 +1237,11 @@ export default function ResumeAnalyzer() {
       await deductCredit('resumeScans');
 
       // Immediate display of primary ATS analysis
+      traceAnalyzerPersistence('ANALYSIS_RESULT_RECEIVED', {
+        analysisPresent: true,
+        activeJobKey: activeJobKeyRef.current,
+        source: 'handleStartAnalysis_after_request'
+      });
       setAnalysis(analysisResult);
 
       // Synchronize active job context across system modules
@@ -1647,6 +1758,11 @@ export default function ResumeAnalyzer() {
                       <button
                         type="button"
                         onClick={() => {
+                          traceAnalyzerPersistence('CLEAR_REPORT', {
+                            analysisPresent: Boolean(analysis),
+                            activeJobKey: activeJobKeyRef.current,
+                            source: 'clear_active_job_button'
+                          });
                           clearCurrentJobContext();
                           setJobDesc('');
                           setAnalysis(null);
@@ -2431,6 +2547,11 @@ export default function ResumeAnalyzer() {
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
             <button 
               onClick={() => { 
+                traceAnalyzerPersistence('CLEAR_REPORT', {
+                  analysisPresent: Boolean(analysis),
+                  activeJobKey: activeJobKeyRef.current,
+                  source: 'modify_target_job_button'
+                });
                 setAnalysis(null); 
                 setCoverLetter(null); 
                 try {

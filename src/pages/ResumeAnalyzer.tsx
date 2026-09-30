@@ -179,10 +179,9 @@ function getInitialAnalyzerState() {
       analysis: savedAnalysis,
       coverLetter: savedCL,
       cacheSource: savedCache,
-      // Do not bind the synchronization effect to a stale job when the shared
-      // active-job context is temporarily absent. A future genuine selection
-      // will still be detected because this ref remains null.
-      activeJobKey: currentJobKey || null
+      // Keep the saved Analyzer key while the shared context is temporarily
+      // absent; a genuine later selection or clear still changes this ref.
+      activeJobKey: currentJobKey || savedAnalyzerJobKey || null
     };
   } catch (e) {
     return {

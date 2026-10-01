@@ -869,19 +869,33 @@ function normalizeAtsAuditResult(rawData: any) {
     : (normalizedBreakdown.find(b => b.category.includes('Impact'))?.recommendations || []);
 
   const missingKeywordAnalysis = Array.isArray(rawData?.missingKeywordAnalysis) && rawData.missingKeywordAnalysis.length > 0
-    ? rawData.missingKeywordAnalysis.slice(0, 4).map((k: any) => ({
-        keyword: String(k.keyword || '').trim(),
-        whyItMatters: String(k.whyItMatters || '').trim(),
-        suggestedRewrite: String(k.suggestedRewrite || '').trim(),
-        confidence_level: ['high', 'medium', 'low'].includes(k.confidence_level) ? k.confidence_level : 'high',
-        isInferred: Boolean(k.isInferred),
-        inferredNote: String(k.inferredNote || '').trim()
-      })).filter((k: any) => k.keyword)
+    ? rawData.missingKeywordAnalysis.slice(0, 4).map((k: any) => {
+        const kw = String(k.keyword || '').trim();
+        let why = String(k.whyItMatters || '').trim();
+        let rewrite = String(k.suggestedRewrite || '').trim();
+
+        // Sanitize generic/fabricated boilerplates if the model outputs them
+        if (!why || why.includes('to verify qualification for this role') || why.includes('Recruiters require')) {
+          why = `This position expects demonstrated capability in ${kw}. While your resume highlights relevant technical foundations, it currently lacks explicit evidence of hands-on delivery with ${kw}.`;
+        }
+        if (!rewrite || rewrite.includes('improving throughput by 20%') || rewrite.includes('improved efficiency by 20%') || rewrite.includes('improving throughput by 30%')) {
+          rewrite = `Add a verified bullet demonstrating ${kw} in your experience if you have direct hands-on practice.`;
+        }
+
+        return {
+          keyword: kw,
+          whyItMatters: why,
+          suggestedRewrite: rewrite,
+          confidence_level: ['high', 'medium', 'low'].includes(k.confidence_level) ? k.confidence_level : 'high',
+          isInferred: Boolean(k.isInferred),
+          inferredNote: String(k.inferredNote || '').trim()
+        };
+      }).filter((k: any) => k.keyword)
     : missingKeywords.slice(0, 3).map((kw) => ({
         keyword: kw,
-        whyItMatters: `Recruiters require ${kw} to verify qualification for this role.`,
-        suggestedRewrite: `Implemented key technical workflows utilizing ${kw}, improving throughput by 20%.`,
-        confidence_level: 'high',
+        whyItMatters: `This position expects demonstrated capability in ${kw}. While your resume highlights relevant technical foundations, it currently lacks explicit evidence of hands-on delivery with ${kw}.`,
+        suggestedRewrite: `Add a verified bullet demonstrating ${kw} in your experience if you have direct hands-on practice.`,
+        confidence_level: 'high' as const,
         isInferred: false,
         inferredNote: ''
       }));
@@ -1146,6 +1160,16 @@ Schema:
   ],
   "keywordsFound": ["max 6 items"],
   "missingKeywords": ["max 4 items"],
+  "missingKeywordAnalysis": [
+    {
+      "keyword": "Exact missing skill name",
+      "whyItMatters": "Recruiter explanation grounded in THIS specific job posting vs candidate resume: (1) what this specific job expects with this skill, (2) what related experience or project the candidate already demonstrates on their resume (naming the real project or tools), and (3) what exact requirement or evidence is genuinely missing. Natural, varied phrasing. Never use generic boilerplate like 'Recruiters require X to verify qualification'.",
+      "suggestedRewrite": "Truthful resume bullet rewrite based on an EXISTING project/experience from candidate resume. Incorporate the skill ONLY if transferable evidence exists in that real project. NEVER invent metrics, percentages (like 20% or 30%), employers, users, or tools. If the skill is an outright gap with no honest connection to candidate work, do not force a fake bullet; output: 'Add a verified bullet demonstrating [keyword] in your experience if you have direct hands-on practice.'",
+      "confidence_level": "high" | "medium" | "low",
+      "isInferred": false,
+      "inferredNote": ""
+    }
+  ],
   "recommendations": ["max 3 items, max 10 words each"]
 }
 STRICT CONSTRAINTS:
@@ -1153,7 +1177,9 @@ STRICT CONSTRAINTS:
 - Limit skillsAnalysis to at most 6 key technical skills.
 - Limit weaknesses to at most 3 items.
 - Limit strengths to at most 3 items.
-- Keep all explanations, problem statements, and recommendations strictly under 10 words.
+- missingKeywordAnalysis MUST have one entry for each item in missingKeywords (up to 4 items).
+- Each whyItMatters must cite the job's requirement and candidate's real resume context.
+- Each suggestedRewrite must be strictly truthful to the candidate's real resume work; NEVER fabricate numbers or percentages.
 - Output raw valid JSON only without markdown code fences or conversational text.
 
 TARGET JOB:

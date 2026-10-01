@@ -337,7 +337,7 @@ export default function ResumeAnalyzer() {
       let isMounted = true;
       setIsAnalyzing(true);
       isAnalyzingRef.current = true;
-      setAnalysisStatus('Auditing resume against ATS benchmarks with Velona GLM 5.3 Flash...');
+      setAnalysisStatus('Auditing resume against ATS benchmarks...');
 
       const checkActiveJob = async () => {
         try {
@@ -849,6 +849,36 @@ export default function ResumeAnalyzer() {
       ? analysis.missingKeywords.map(String).filter(Boolean)
       : [];
 
+    const missingKeywordAnalysis = Array.isArray(analysis.missingKeywordAnalysis) && analysis.missingKeywordAnalysis.length > 0
+      ? analysis.missingKeywordAnalysis.map((item: any) => {
+          const kw = String(item.keyword || '').trim();
+          let why = String(item.whyItMatters || '').trim();
+          let rewrite = String(item.suggestedRewrite || '').trim();
+
+          // Upgrade legacy boilerplate if present in restored/cached sessions
+          if (!why || why.includes('to verify qualification for this role') || why.includes('Recruiters require')) {
+            why = `This position requires demonstrated competency in ${kw}. While your resume highlights strong related technical fundamentals, it currently lacks explicit evidence of hands-on delivery with ${kw}.`;
+          }
+          if (!rewrite || rewrite.includes('improving throughput by 20%') || rewrite.includes('improved efficiency by 20%') || rewrite.includes('improving throughput by 30%')) {
+            rewrite = `Add a verified bullet demonstrating ${kw} in your experience if you have direct hands-on practice.`;
+          }
+
+          return {
+            ...item,
+            keyword: kw,
+            whyItMatters: why,
+            suggestedRewrite: rewrite
+          };
+        })
+      : missingKeywords.slice(0, 4).map((kw) => ({
+          keyword: kw,
+          whyItMatters: `This position requires demonstrated competency in ${kw}. While your resume highlights strong related technical fundamentals, it currently lacks explicit evidence of hands-on delivery with ${kw}.`,
+          suggestedRewrite: `Add a verified bullet demonstrating ${kw} in your experience if you have direct hands-on practice.`,
+          confidence_level: 'high',
+          isInferred: false,
+          inferredNote: ''
+        }));
+
     return {
       ...analysis,
       score: finalScore,
@@ -865,7 +895,8 @@ export default function ResumeAnalyzer() {
         recommendedChange: 'Rewrite bullets using the [Action Verb] + [Context/Tool] + [Quantified Result] formula.'
       }],
       keywordsFound,
-      missingKeywords
+      missingKeywords,
+      missingKeywordAnalysis
     };
   }, [analysis]);
 
@@ -1162,7 +1193,7 @@ export default function ResumeAnalyzer() {
       }
       
       // Execute primary resume audit via Asynchronous Job Architecture
-      setAnalysisStatus('Auditing resume against ATS benchmarks with Velona GLM 5.3 Flash...');
+      setAnalysisStatus('Auditing resume against ATS benchmarks...');
       const analysisResult = await analysisJobService.runAsyncAnalysis({
         userId: user.uid,
         resumeText: text,
@@ -2186,7 +2217,7 @@ export default function ResumeAnalyzer() {
                     <Zap className="w-4 h-4 text-accent" /> Missing Keyword Rationale & Bullet Rewrites
                   </h3>
                   <p className="text-xs text-ink-dim mt-1">
-                    Recruiter explanation of WHY each gap matters for this role + 1 concrete metric bullet rewrite per gap.
+                    Recruiter-grade analysis of why each gap matters for this specific role and truthful, grounded resume recommendations.
                   </p>
                 </div>
 
@@ -2241,9 +2272,9 @@ export default function ResumeAnalyzer() {
                       <div>
                         <div className="flex items-center gap-2 mb-1.5">
                           <span className="px-1.5 py-0.5 bg-accent/15 text-accent text-[9px] font-mono font-bold rounded uppercase">
-                            GLM 5.3 Flash Analysis
+                            RECRUITER INSIGHT
                           </span>
-                          <p className="text-xs font-bold text-accent uppercase tracking-wider">Why It Matters For THIS Role at THIS Company:</p>
+                          <p className="text-xs font-bold text-accent uppercase tracking-wider">Role & Requirement Alignment:</p>
                         </div>
                         <p className="text-xs text-ink leading-relaxed font-sans">{item.whyItMatters}</p>
                       </div>
@@ -2252,10 +2283,10 @@ export default function ResumeAnalyzer() {
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
                             <span className="px-1.5 py-0.5 bg-success/15 text-success text-[9px] font-mono font-bold rounded uppercase">
-                              GLM Recommendation
+                              RECOMMENDED ACTION
                             </span>
                             <p className="text-[10px] font-bold text-success uppercase tracking-widest flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Suggested Metric Bullet Rewrite:
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Suggested Resume Bullet / Action:
                             </p>
                           </div>
                           <button
@@ -2265,7 +2296,11 @@ export default function ResumeAnalyzer() {
                             <Copy className="w-3 h-3" /> Copy
                           </button>
                         </div>
-                        <p className="text-xs font-mono text-ink leading-relaxed">"{item.suggestedRewrite}"</p>
+                        <p className="text-xs font-mono text-ink leading-relaxed">
+                          {item.suggestedRewrite.startsWith('Add a verified') || item.suggestedRewrite.startsWith('Add a real')
+                            ? item.suggestedRewrite
+                            : `"${item.suggestedRewrite}"`}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -2431,7 +2466,7 @@ export default function ResumeAnalyzer() {
               {isGeneratingCL ? (
                 <div className="bg-background p-8 rounded-2xl border border-border text-center space-y-3">
                   <Loader2 className="w-8 h-8 text-accent animate-spin mx-auto" />
-                  <p className="font-mono text-xs font-bold text-ink">Drafting tailored 3-paragraph cover letter with Velona GLM 5.3 Flash...</p>
+                  <p className="font-mono text-xs font-bold text-ink">Drafting tailored 3-paragraph cover letter...</p>
                   <p className="text-[11px] text-ink-dim">Aligning your audited achievements with the specific requirements in the job description.</p>
                 </div>
               ) : coverLetter && coverLetter.length >= 120 ? (

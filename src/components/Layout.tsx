@@ -14,6 +14,12 @@ interface LayoutProps {
 
 export const PUBLIC_SEO_ROUTES = [
   '/',
+  '/resume-analyzer',
+  '/resume-editor',
+  '/job-finder',
+  '/job-tracker',
+  '/career-advisor',
+  '/interview-lab',
   '/ats-resume-checker',
   '/resume-builder',
   '/ai-interview-preparation',
@@ -52,18 +58,19 @@ export default function Layout({ user, children }: LayoutProps) {
       </main>
       <footer className={`py-12 border-t border-border bg-surface mb-16 md:mb-0 ${showAppSidebar ? "lg:ml-64" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-6">
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-ink-dim">
-            <Link to="/ats-resume-checker" className="hover:text-ink transition-colors">ATS Resume Checker</Link>
-            <Link to="/resume-builder" className="hover:text-ink transition-colors">AI Resume Builder</Link>
-            <Link to="/ai-interview-preparation" className="hover:text-ink transition-colors">AI Interview Practice</Link>
-            <Link to="/ai-job-search" className="hover:text-ink transition-colors">AI Job Search</Link>
-            <Link to="/career-roadmap" className="hover:text-ink transition-colors">Career Roadmap</Link>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-ink-dim font-medium">
+            <Link to="/resume-analyzer" className="hover:text-accent transition-colors">AI Resume Analyzer</Link>
+            <Link to="/resume-editor" className="hover:text-accent transition-colors">AI Resume Editor</Link>
+            <Link to="/job-finder" className="hover:text-accent transition-colors">AI Job Finder</Link>
+            <Link to="/job-tracker" className="hover:text-accent transition-colors">AI Job Tracker</Link>
+            <Link to="/career-advisor" className="hover:text-accent transition-colors">AI Career Advisor</Link>
+            <Link to="/interview-lab" className="hover:text-accent transition-colors">AI Interview Lab</Link>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between w-full pt-6 border-t border-border/40 gap-4">
             <div className="flex items-center gap-2.5">
               <HireFlowLogo className="w-6 h-6" />
               <p className="text-ink-dim text-xs font-sans">
-                © 2026 AI HireFlow. Precision engineered for the bold.
+                © 2026 AI HireFlow. AI-Powered Career Operating System.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-6">

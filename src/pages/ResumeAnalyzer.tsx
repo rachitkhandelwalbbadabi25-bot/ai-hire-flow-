@@ -807,6 +807,33 @@ export default function ResumeAnalyzer() {
       totalScore += rawEarned;
       const earned = Number(rawEarned.toFixed(1));
 
+      // Ensure category explanation is coherent with the category score
+      let explanation = typeof matched.explanation === 'string' && matched.explanation.trim()
+        ? matched.explanation.trim()
+        : '';
+
+      if (!explanation || (catScore < 60 && explanation.toLowerCase().includes('strong')) || (catScore >= 75 && explanation.toLowerCase().includes('lacks'))) {
+        if (catScore < 60) {
+          if (canon.name.includes('Core Technical')) {
+            explanation = 'Key role-specific technologies from the target job are not evidenced in candidate experience bullets.';
+          } else if (canon.name.includes('Impact')) {
+            explanation = 'Experience descriptions focus on routine tasks without verifiable metrics, latency figures, or scale.';
+          } else if (canon.name.includes('Domain')) {
+            explanation = 'Demonstrated project scope and domain experience show limited direct alignment with target benchmarks.';
+          } else {
+            explanation = 'Formatting and section hierarchy require standardized ATS column parsing structure.';
+          }
+        } else if (catScore < 75) {
+          explanation = `Candidate demonstrates competitive baseline competency in ${canon.name.toLowerCase()}, with opportunities to expand evidence.`;
+        } else {
+          explanation = `Strong validated competency in ${canon.name.toLowerCase()} supported by concrete resume evidence.`;
+        }
+      }
+
+      const evidence = typeof matched.evidence === 'string' && matched.evidence.trim()
+        ? matched.evidence.trim()
+        : (catScore >= 70 ? 'Identified relevant experience in resume.' : 'Limited verifiable evidence in candidate bullets.');
+
       return {
         ...matched,
         category: canon.name,
@@ -814,12 +841,8 @@ export default function ResumeAnalyzer() {
         score: catScore,
         earnedPoints: earned,
         mathExplanation: `(${catScore}/100) × ${canon.weight}% ≈ ${earned.toFixed(1)} pts`,
-        explanation: typeof matched.explanation === 'string' && matched.explanation.trim()
-          ? matched.explanation.trim()
-          : `Evaluation of ${canon.name} based on candidate experience and technical criteria.`,
-        evidence: typeof matched.evidence === 'string' && matched.evidence.trim()
-          ? matched.evidence.trim()
-          : 'Identified relevant experience in resume.',
+        explanation,
+        evidence,
         recommendations: Array.isArray(matched.recommendations) && matched.recommendations.length > 0
           ? matched.recommendations.map((r: any) => String(r).trim()).filter(Boolean)
           : [`Enhance ${canon.name.toLowerCase()} with further specific achievements.`]
@@ -856,6 +879,54 @@ export default function ResumeAnalyzer() {
     if (!isVueInJD && !isVueInResume) {
       rawMissingKeywords = rawMissingKeywords.filter((k: string) => !/\b(vue|vuejs|vue\.js)\b/i.test(k));
     }
+
+    // Helper for generating distinct, gap-specific rationale and actions
+    const generateGapSpecificAction = (kw: string, hasDirectMention: boolean, idx: number) => {
+      const kwLower = kw.toLowerCase();
+      let gapType = 'genuine_gap';
+      let why = '';
+      let rewrite = '';
+
+      if (hasDirectMention) {
+        gapType = 'direct_evidence_unclear';
+        why = `This position requires proven competency in ${kw}. While your resume mentions ${kw}, it is not clearly tied to an outcome-oriented project bullet.`;
+        rewrite = `Move your existing ${kw} implementation into a dedicated project bullet and explicitly describe the technical scope, components, and delivered functionality.`;
+      } else if (/\b(docker|kubernetes|k8s|container|helm|podman)\b/i.test(kwLower)) {
+        gapType = 'genuine_gap';
+        why = `Target job specifications emphasize ${kw} to ensure reproducible production environments, container orchestration, and reliable deployment workflows.`;
+        rewrite = `Build a containerized deployment workflow or Dockerfile configuration for one of your existing backend repositories to establish verifiable proof of work with ${kw}.`;
+      } else if (/\b(aws|gcp|azure|cloud|terraform|ansible|lambda|cloudformation)\b/i.test(kwLower)) {
+        gapType = 'genuine_gap';
+        why = `Cloud infrastructure and ${kw} expertise are key role criteria for provisioning scalable distributed systems and cloud services.`;
+        rewrite = `Deploy one of your existing full-stack projects to cloud infrastructure (${kw}) and document the architecture and cloud services in a dedicated project bullet.`;
+      } else if (/\b(jest|cypress|pytest|testing|ci\/cd|github actions|jenkins|automation)\b/i.test(kwLower)) {
+        gapType = 'genuine_gap';
+        why = `Production engineering environments require ${kw} to maintain high test coverage, reliable CI validation, and regression prevention.`;
+        rewrite = `Incorporate automated test suites (${kw}) into an existing codebase and document your testing coverage standards in your experience section.`;
+      } else if (/\b(sql|postgres|postgresql|mysql|mongodb|redis|database|nosql)\b/i.test(kwLower)) {
+        gapType = 'genuine_gap';
+        why = `Data persistence and ${kw} query proficiency are core requirements for architecting performant data layers and managing relational or key-value schemas.`;
+        rewrite = `Document the schema design, indexing strategies, and query optimizations involving ${kw} in your backend project descriptions.`;
+      } else if (/\b(react|typescript|next\.js|angular|tailwind|javascript)\b/i.test(kwLower)) {
+        gapType = 'genuine_gap';
+        why = `Target specifications mandate production-grade ${kw} experience to build responsive, accessible, and high-performance client architectures.`;
+        rewrite = `Develop a focused technical proof-of-work project implementing ${kw} with component state management and modular architecture.`;
+      } else if (idx === 1) {
+        gapType = 'transferable_evidence';
+        why = `Recruiters look for direct hands-on experience with ${kw}. Your background demonstrates transferable engineering foundations, but the specific tool is not highlighted.`;
+        rewrite = `Your technical projects demonstrate relevant software delivery, but ${kw} is not explicitly evidenced. If your work actually involved ${kw}, name it directly in the relevant project bullet.`;
+      } else if (idx === 3) {
+        gapType = 'weak_evidence';
+        why = `Technical screeners discount standalone skills without implementation context. Detail how you practically applied ${kw} in your work.`;
+        rewrite = `You mention ${kw} in your skills list, but your resume does not explain how it was applied. Expand the relevant project bullet with the actual steps, configuration, or workflows you performed.`;
+      } else {
+        gapType = 'genuine_gap';
+        why = `Target job requirements specify ${kw} as a key qualification. Your resume does not currently show evidence of this tool or workflow.`;
+        rewrite = `No direct evidence of ${kw} was found in your resume. Do not add a ${kw} bullet unless you have actually built an end-to-end workflow with it. If you have, add the real project and describe the actual pipeline.`;
+      }
+
+      return { gapType, why, rewrite };
+    };
 
     // Missing Keyword Analysis: situational, truthful, non-repetitive
     const missingKeywordAnalysis = (
@@ -894,33 +965,11 @@ export default function ResumeAnalyzer() {
           || rewrite.includes('efficiency by 20%')
           || rewrite.includes('throughput by 30%');
 
-        if (isGeneric) {
-          // Apply distinct situational recommendations (A, B, C, D) across gaps
-          if (hasDirectMention) {
-            gapType = 'direct_evidence_unclear';
-            rewrite = `Move your existing ${kw} implementation into a dedicated project bullet and explicitly describe the technical scope and delivered functionality.`;
-            if (!why || why.includes('to verify qualification') || why.includes('Recruiters require')) {
-              why = `This position requires demonstrated competency in ${kw}. While your resume mentions ${kw}, it is not clearly tied to an outcome-oriented project bullet.`;
-            }
-          } else if (idx === 1) {
-            gapType = 'transferable_evidence';
-            rewrite = `Your technical projects demonstrate relevant software delivery, but ${kw} is not explicitly evidenced. If your work actually involved ${kw}, name it directly in the relevant project bullet.`;
-            if (!why || why.includes('to verify qualification') || why.includes('Recruiters require')) {
-              why = `Recruiters look for direct hands-on experience with ${kw}. Your background demonstrates transferable engineering foundations, but the specific tool is not highlighted.`;
-            }
-          } else if (idx === 3) {
-            gapType = 'weak_evidence';
-            rewrite = `You mention ${kw} in your skills list, but your resume does not explain how it was applied. Expand the relevant project bullet with the actual steps, configuration, or workflows you performed.`;
-            if (!why || why.includes('to verify qualification') || why.includes('Recruiters require')) {
-              why = `Technical screeners discount standalone skills without implementation context. Detail how you practically applied ${kw} in your work.`;
-            }
-          } else {
-            gapType = 'genuine_gap';
-            rewrite = `No direct evidence of ${kw} was found in your resume. Do not add a ${kw} bullet unless you have actually built an end-to-end workflow with it. If you have, add the real project and describe the actual pipeline.`;
-            if (!why || why.includes('to verify qualification') || why.includes('Recruiters require')) {
-              why = `Target job requirements specify ${kw} as a key qualification. Your resume does not currently show evidence of this tool or workflow.`;
-            }
-          }
+        if (isGeneric || !why || why.includes('to verify qualification') || why.includes('Recruiters require')) {
+          const generated = generateGapSpecificAction(kw, hasDirectMention, idx);
+          gapType = generated.gapType;
+          why = generated.why;
+          rewrite = generated.rewrite;
         }
 
         if (!gapType) {
@@ -1029,20 +1078,20 @@ export default function ResumeAnalyzer() {
         howToFix = 'Strengthen this section with measurable accomplishments, industry-standard keywords, and technical context.';
       }
 
-      // Convert degree / BBA background to Positioning Consideration
+      // Convert degree / BBA background to Positioning Recommendation
       if (degreeRegex.test(problem) || degreeRegex.test(whyItMatters)) {
         return {
-          problem: 'Positioning Consideration: Academic background alignment',
-          whyItMatters: "The candidate's BBA/business background is less directly aligned with highly technical engineering roles. Technical screeners seek verified technical proof-of-work to validate hands-on engineering proficiency.",
-          howToFix: 'Strengthen positioning by making technical project depth, AI/automation implementations, and verified delivery outcomes prominent in your experience section.'
+          problem: 'Positioning Recommendation: Academic background alignment',
+          whyItMatters: "The candidate's academic background (such as a BBA or non-CS degree) is fixed and not a defect. Technical recruiters evaluate hands-on technical proficiency rather than degree title alone.",
+          howToFix: 'Compensate for academic alignment by emphasizing relevant technical projects, concrete proof of work, software internships, and recognized certifications directly in your experience section.'
         };
       }
 
-      // GAP ↔ DEFECT DEDUPLICATION (Requirement C):
+      // GAP ↔ DEFECT DEDUPLICATION (Requirement C & K):
       // If this defect duplicates a missing keyword (e.g. "Lacks React"), substitute an orthogonal weakness
-      const problemLower = problem.toLowerCase();
+      const fullDefectText = (problem + ' ' + whyItMatters + ' ' + howToFix).toLowerCase();
       for (const missingKw of finalMissingKeywordsLower) {
-        if (missingKw && problemLower.includes(missingKw)) {
+        if (missingKw && fullDefectText.includes(missingKw)) {
           const fallback = orthogonalWeaknessPool[orthogonalIdx % orthogonalWeaknessPool.length];
           orthogonalIdx++;
           return { ...fallback };
@@ -1142,12 +1191,16 @@ export default function ResumeAnalyzer() {
         let issue = String(imp.issue || imp.problem || '').trim();
         let improved = String(imp.improved || imp.recommendedChange || '').trim();
 
-        if (!original || original.toLowerCase().includes('bullet #') || original.toLowerCase().includes('experience bullet') || original.toLowerCase().includes('add metrics')) {
+        // Check if original exists in candidate resume or is a placeholder
+        const originalSnippet = original.toLowerCase().slice(0, 30);
+        const existsInResume = original.length >= 15 && (activeResumeLower.includes(originalSnippet) || realResumeBullets.some(b => b.toLowerCase().includes(originalSnippet)));
+
+        if (!existsInResume || original.toLowerCase().includes('bullet #') || original.toLowerCase().includes('experience bullet') || original.toLowerCase().includes('add metrics')) {
           original = realResumeBullets[idx] || realResumeBullets[0] || 'Technical project implementation bullet';
         }
 
-        if (!issue || issue.toLowerCase() === 'add metrics' || issue.toLowerCase() === 'improve impact') {
-          issue = 'Bullet lists tasks without technical architecture context, component scope, or verifiable business outcomes.';
+        if (!issue || issue.toLowerCase() === 'add metrics' || issue.toLowerCase() === 'improve impact' || issue.toLowerCase().includes('experience bullet')) {
+          issue = 'Bullet describes task execution but lacks explicit technical scope, architectural context, and verifiable business outcomes.';
         }
 
         improved = improved
@@ -1155,8 +1208,10 @@ export default function ResumeAnalyzer() {
           .replace(/\bby\s+(?:20|25|30|40|50)%\b/gi, '')
           .trim();
 
-        if (!improved || improved.length < 15) {
-          improved = `${original.replace(/\.$/, '')}, ensuring standard architecture and reliable delivery. (Add a measurable result here if you have a verified figure.)`;
+        if (!improved || improved.length < 15 || improved.toLowerCase().includes('experience bullet')) {
+          improved = `${original.replace(/\.$/, '')}, establishing scalable implementation workflows. (Add a measurable result here if you have a verified figure.)`;
+        } else if (!improved.includes('(Add a measurable result') && !/\d+/.test(improved)) {
+          improved = `${improved.replace(/\.$/, '')}. (Add a measurable result here if you have a verified figure.)`;
         }
 
         specificImprovements.push({
@@ -1205,11 +1260,11 @@ export default function ResumeAnalyzer() {
 
     if (!summary) {
       if (finalScore >= 80) {
-        summary = `Candidate exhibits strong qualification alignment with target role benchmarks (${finalScore}/100), supported by verified proficiency in ${keywordsFound.slice(0, 2).join(' and ') || 'core technical competencies'}.`;
-      } else if (finalScore >= 60) {
-        summary = `Candidate demonstrates competitive baseline alignment (${finalScore}/100) with core job specifications; elevating explicit project evidence and quantifiable outcomes will strengthen top-tier placement.`;
+        summary = `Candidate exhibits strong qualification alignment (${finalScore}/100) with target benchmarks, backed by verified experience in ${keywordsFound.slice(0, 2).join(' and ') || 'core technical competencies'}. Expanding hard delivery metrics will further optimize screening rank.`;
+      } else if (finalScore >= 65) {
+        summary = `Candidate demonstrates competitive baseline alignment (${finalScore}/100) with target role specifications, though key proficiencies (${finalMissingKeywords[0] || 'core tools'}) and quantified impact require clearer technical evidence.`;
       } else {
-        summary = `Candidate demonstrates emerging technical alignment (${finalScore}/100) with target benchmarks; addressing identified skill gaps and incorporating hard delivery metrics are recommended prior to submission.`;
+        summary = `Candidate demonstrates emerging technical alignment (${finalScore}/100); key target qualifications (${finalMissingKeywords.slice(0, 2).join(' and ') || 'required skills'}) are not evidenced in the resume, and bullets lack quantifiable business outcomes.`;
       }
     }
 

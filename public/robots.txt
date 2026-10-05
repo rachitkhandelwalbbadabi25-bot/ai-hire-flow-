@@ -1,5 +1,16 @@
 User-agent: *
 Allow: /
+Allow: /resume-analyzer
+Allow: /resume-editor
+Allow: /job-finder
+Allow: /job-tracker
+Allow: /career-advisor
+Allow: /interview-lab
+Allow: /ats-resume-checker
+Allow: /resume-builder
+Allow: /ai-job-search
+Allow: /ai-interview-preparation
+Allow: /career-roadmap
 Disallow: /api/
 Disallow: /dashboard
 Disallow: /profile
@@ -10,7 +21,6 @@ Disallow: /finder
 Disallow: /interview
 Disallow: /learning
 Disallow: /editor
-Disallow: /resume-editor
 Disallow: /campus
 Disallow: /outreach
 

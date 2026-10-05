@@ -1,11 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Landing from './pages/Landing';
-import ATSResumeCheckerSEO from './pages/ATSResumeCheckerSEO';
-import ResumeBuilderSEO from './pages/ResumeBuilderSEO';
-import AIInterviewPrepSEO from './pages/AIInterviewPrepSEO';
-import AIJobSearchSEO from './pages/AIJobSearchSEO';
-import CareerRoadmapSEO from './pages/CareerRoadmapSEO';
+import ResumeAnalyzerSEO from './pages/ResumeAnalyzerSEO';
+import ResumeEditorSEO from './pages/ResumeEditorSEO';
+import JobFinderSEO from './pages/JobFinderSEO';
+import JobTrackerSEO from './pages/JobTrackerSEO';
+import CareerAdvisorSEO from './pages/CareerAdvisorSEO';
+import InterviewLabSEO from './pages/InterviewLabSEO';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import RefundPolicy from './pages/RefundPolicy';
@@ -58,12 +59,20 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
           
-          {/* Public SEO Landing Pages (Always accessible) */}
-          <Route path="/ats-resume-checker" element={<ATSResumeCheckerSEO />} />
-          <Route path="/resume-builder" element={<ResumeBuilderSEO />} />
-          <Route path="/ai-interview-preparation" element={<AIInterviewPrepSEO />} />
-          <Route path="/ai-job-search" element={<AIJobSearchSEO />} />
-          <Route path="/career-roadmap" element={<CareerRoadmapSEO />} />
+          {/* Public Core AI Feature Landing Pages (Always crawlable & accessible without login) */}
+          <Route path="/resume-analyzer" element={<ResumeAnalyzerSEO />} />
+          <Route path="/resume-editor" element={<ResumeEditorSEO />} />
+          <Route path="/job-finder" element={<JobFinderSEO />} />
+          <Route path="/job-tracker" element={<JobTrackerSEO />} />
+          <Route path="/career-advisor" element={<CareerAdvisorSEO />} />
+          <Route path="/interview-lab" element={<InterviewLabSEO />} />
+
+          {/* Backward-Compatible Public Aliases (Also crawlable & accessible without login) */}
+          <Route path="/ats-resume-checker" element={<ResumeAnalyzerSEO />} />
+          <Route path="/resume-builder" element={<ResumeEditorSEO />} />
+          <Route path="/ai-job-search" element={<JobFinderSEO />} />
+          <Route path="/career-roadmap" element={<CareerAdvisorSEO />} />
+          <Route path="/ai-interview-preparation" element={<InterviewLabSEO />} />
 
           {/* Public Legal & Support Pages (Always accessible) */}
           <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -76,7 +85,7 @@ function AppRoutes() {
           <Route path="/contact" element={<ContactUs />} />
           <Route path="/contact-us" element={<ContactUs />} />
 
-          {/* Authenticated Application Routes */}
+          {/* Authenticated Application Routes (Protected product functionality) */}
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" replace />} />
           <Route path="/analyzer" element={user ? <ResumeAnalyzer /> : <Navigate to="/" replace />} />
           <Route path="/finder" element={user ? <JobFinder /> : <Navigate to="/" replace />} />
@@ -84,7 +93,6 @@ function AppRoutes() {
           <Route path="/learning" element={user ? <LearningPath /> : <Navigate to="/" replace />} />
           <Route path="/roadmap" element={user ? <LearningPath /> : <Navigate to="/" replace />} />
           <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" replace />} />
-          <Route path="/resume-editor" element={user ? <ResumeEditor /> : <Navigate to="/" replace />} />
           <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" replace />} />
           <Route path="/campus" element={user ? <CampusPlacement /> : <Navigate to="/" replace />} />
           <Route path="/outreach" element={user ? <OutreachHub /> : <Navigate to="/" replace />} />

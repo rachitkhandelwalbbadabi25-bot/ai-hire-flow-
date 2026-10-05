@@ -31,11 +31,6 @@ export default function JobFinderSEO() {
     "url": "https://www.aihireflow.in/job-finder",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Semantic job discovery and matching engine. Discover high-compatibility tech opportunities based on skill alignment, location preferences, and career goals."
   };
 

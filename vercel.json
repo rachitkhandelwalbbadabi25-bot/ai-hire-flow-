@@ -43,8 +43,20 @@
       ]
     }
   ],
+  "cleanUrls": true,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/resume-analyzer/?", "destination": "/resume-analyzer.html" },
+    { "source": "/resume-editor/?", "destination": "/resume-editor.html" },
+    { "source": "/job-finder/?", "destination": "/job-finder.html" },
+    { "source": "/job-tracker/?", "destination": "/job-tracker.html" },
+    { "source": "/career-advisor/?", "destination": "/career-advisor.html" },
+    { "source": "/interview-lab/?", "destination": "/interview-lab.html" },
+    { "source": "/ats-resume-checker/?", "destination": "/resume-analyzer.html" },
+    { "source": "/resume-builder/?", "destination": "/resume-editor.html" },
+    { "source": "/ai-job-search/?", "destination": "/job-finder.html" },
+    { "source": "/career-roadmap/?", "destination": "/career-advisor.html" },
+    { "source": "/ai-interview-preparation/?", "destination": "/interview-lab.html" },
     { "source": "/((?!api/|.*\\.[\\w]+$).*)", "destination": "/index.html" }
   ]
 }

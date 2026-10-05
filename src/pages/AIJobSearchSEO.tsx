@@ -31,11 +31,6 @@ export default function AIJobSearchSEO() {
     "url": "https://www.aihireflow.in/ai-job-search",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Discover targeted job opportunities with AI-driven semantic role matching and objective skill fit scoring."
   };
 

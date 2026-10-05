@@ -31,11 +31,6 @@ export default function ResumeAnalyzerSEO() {
     "url": "https://www.aihireflow.in/resume-analyzer",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Enterprise-grade ATS resume analyzer and auditor. Scan resumes for keyword gaps, formatting parseability, impact metrics, and job alignment with explainable scoring."
   };
 

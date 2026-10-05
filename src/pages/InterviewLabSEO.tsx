@@ -32,11 +32,6 @@ export default function InterviewLabSEO() {
     "url": "https://www.aihireflow.in/interview-lab",
     "applicationCategory": "EducationalApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Interactive technical and behavioral interview simulation laboratory. Practice with dynamic AI hiring managers and receive structured feedback on STAR delivery and technical precision."
   };
 

@@ -46,38 +46,6 @@
     <priority>0.95</priority>
   </url>
 
-  <!-- Feature Aliases & Secondary Discovery -->
-  <url>
-    <loc>https://www.aihireflow.in/ats-resume-checker</loc>
-    <lastmod>2026-10-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://www.aihireflow.in/resume-builder</loc>
-    <lastmod>2026-10-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://www.aihireflow.in/ai-job-search</loc>
-    <lastmod>2026-10-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://www.aihireflow.in/career-roadmap</loc>
-    <lastmod>2026-10-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://www.aihireflow.in/ai-interview-preparation</loc>
-    <lastmod>2026-10-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-
   <!-- Legal & Support Pages -->
   <url>
     <loc>https://www.aihireflow.in/privacy</loc>

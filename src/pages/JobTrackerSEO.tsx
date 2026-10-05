@@ -32,11 +32,6 @@ export default function JobTrackerSEO() {
     "url": "https://www.aihireflow.in/job-tracker",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Smart career Kanban application pipeline. Track job applications, interview stages, recruiter contacts, and follow-up deadlines in one unified board."
   };
 

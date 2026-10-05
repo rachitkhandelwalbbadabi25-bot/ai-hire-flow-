@@ -30,11 +30,6 @@ export default function ResumeBuilderSEO() {
     "url": "https://www.aihireflow.in/resume-builder",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Create clean, ATS-compliant resumes with AI-assisted bullet point formatting, customizable sections, and instant export."
   };
 

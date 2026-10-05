@@ -31,11 +31,6 @@ export default function CareerRoadmapSEO() {
     "url": "https://www.aihireflow.in/career-roadmap",
     "applicationCategory": "EducationalApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Generate structured career learning roadmaps. Map technical skill gaps into milestone-driven courses and projects."
   };
 

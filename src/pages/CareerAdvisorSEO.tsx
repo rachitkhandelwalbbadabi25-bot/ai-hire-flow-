@@ -32,11 +32,6 @@ export default function CareerAdvisorSEO() {
     "url": "https://www.aihireflow.in/career-advisor",
     "applicationCategory": "EducationalApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Intelligent AI career advisory system. Analyze skill deficiencies against target tech jobs, formulate milestone learning roadmaps, and receive curated technical project guidance."
   };
 

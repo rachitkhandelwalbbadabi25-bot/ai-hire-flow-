@@ -31,11 +31,6 @@ export default function AIInterviewPrepSEO() {
     "url": "https://www.aihireflow.in/ai-interview-preparation",
     "applicationCategory": "EducationalApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Simulate technical and behavioral job interviews with AI. Receive real-time critique on answer clarity, depth, and STAR structure."
   };
 

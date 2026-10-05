@@ -31,11 +31,6 @@ export default function ResumeEditorSEO() {
     "url": "https://www.aihireflow.in/resume-editor",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "description": "Interactive ATS resume editor and builder. Structure professional resumes, polish bullet points with AI assistance, and export clean, single-column PDFs."
   };
 

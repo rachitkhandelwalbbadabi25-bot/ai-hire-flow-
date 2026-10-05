@@ -31,12 +31,7 @@ export default function ATSResumeCheckerSEO() {
     "url": "https://www.aihireflow.in/ats-resume-checker",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "description": "Free ATS resume scanner and audit tool. Analyze resume keywords, formatting, structure, and job description alignment using AI."
+    "description": "ATS resume scanner and audit tool. Analyze resume keywords, formatting, structure, and job description alignment using AI."
   };
 
   const handleLaunch = async () => {

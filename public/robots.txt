@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+Allow: /favicon.png
+Allow: /favicon.ico
+Allow: /apple-touch-icon.png
 Allow: /resume-analyzer
 Allow: /resume-editor
 Allow: /job-finder

@@ -24,6 +24,7 @@ import {
   AlertCircle,
   Lightbulb,
   Clock,
+  Info,
 } from "lucide-react";
 import NextStepBridgeCard from "../components/NextStepBridgeCard";
 import { useAuth } from "../context/AuthContext";
@@ -284,183 +285,214 @@ export default function OutreachHub() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
       {viewMode === "pitch_result" ? (
-        <div className="max-w-4xl mx-auto">
-          {/* Top Navigation: Back / Close */}
-          <div className="flex items-center justify-between mb-8">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Top Navigation: Back to contacts */}
+          <div className="flex items-center justify-between">
             <button
+              type="button"
               onClick={handleClosePitchResult}
-              className="inline-flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-wider text-ink-dim hover:text-accent transition-colors cursor-pointer py-2.5 px-4 rounded-xl hover:bg-surface border border-border"
+              className="hf-btn-secondary min-h-[44px] px-4 py-2 text-sm inline-flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Outreach Hub
+              <span>Back to contacts</span>
             </button>
-            <button
-              onClick={handleClosePitchResult}
-              className="p-2.5 text-ink-dim hover:text-ink hover:bg-surface rounded-xl border border-border transition-colors cursor-pointer"
-              title="Close Pitch Result"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {selectedContact && (
+              <span className="text-xs text-[var(--hf-text-secondary)]">
+                Recipient: <strong className="text-[var(--hf-text)]">{selectedContact.name}</strong> ({selectedContact.company})
+              </span>
+            )}
           </div>
 
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold font-mono px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-accent" />
-                Outreach Pitch Generated
-              </span>
-              {selectedContact && (
-                <span className="text-xs text-ink-dim font-medium">
-                  for <strong className="text-ink">{selectedContact.name}</strong> @ <strong className="text-ink">{selectedContact.company}</strong>
-                </span>
-              )}
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-ink tracking-tight uppercase">
-              Tailored Referral Pitch
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight mb-1">
+              Email draft
             </h1>
-            <p className="text-xs text-ink-dim mt-1 font-medium">
-              Review and copy your customized cold outreach email before contacting recruiters or hiring managers.
+            <p className="text-sm text-[var(--hf-text-secondary)]">
+              Personalized cold email for {selectedContact?.name || "your contact"} at {selectedContact?.company || "their company"}. Review and edit before sending.
             </p>
           </div>
 
           {/* Body: Loading vs Error vs Result */}
           {generatingPitch ? (
-            <div className="glass-panel p-10 sm:p-14 text-center rounded-3xl border border-border">
-              <Loader2 className="w-9 h-9 text-accent animate-spin mx-auto mb-4" />
-              <h3 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">
-                Synthesizing Personalized Pitch...
-              </h3>
-              <p className="text-xs text-ink-dim max-w-md mx-auto mb-6">
-                Generating custom referral pitch for {selectedContact?.name || "Recruiter"} at {selectedContact?.company || "Target Company"} aligned with your background.
+            <div
+              aria-live="polite"
+              className="hf-card p-8 sm:p-12 text-center"
+            >
+              <Loader2 className="w-8 h-8 text-[var(--hf-cta)] animate-spin mx-auto mb-3" />
+              <h2 className="text-base font-semibold text-[var(--hf-text)] mb-2">
+                Preparing an email draft...
+              </h2>
+              <p className="text-sm text-[var(--hf-text-secondary)] max-w-md mx-auto mb-6">
+                Drafting a personalized cold email for {selectedContact?.name || "your contact"} at {selectedContact?.company || "their company"} based on your candidate background.
               </p>
               <div className="max-w-md mx-auto">
                 <SkeletonLoader type="card" lines={4} />
               </div>
             </div>
           ) : pitchError ? (
-            <div className="glass-panel p-8 sm:p-12 text-center rounded-3xl border border-rose-500/20 bg-rose-500/5 max-w-lg mx-auto">
-              <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div
+              role="alert"
+              className="hf-card p-6 sm:p-8 text-center max-w-lg mx-auto border-[var(--hf-error)]/30"
+            >
+              <div className="w-12 h-12 bg-[var(--hf-error)]/10 border border-[var(--hf-error)]/20 text-[var(--hf-error)] rounded-xl flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-ink uppercase tracking-wider mb-2">
-                Pitch Generation Issue
-              </h3>
-              <p className="text-xs text-ink-dim mb-6 leading-relaxed">
+              <h2 className="text-base font-semibold text-[var(--hf-text)] mb-2">
+                Could not generate draft
+              </h2>
+              <p className="text-sm text-[var(--hf-text-secondary)] mb-6 leading-relaxed">
                 {pitchError}
               </p>
-              <div className="flex gap-3 justify-center">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
+                  type="button"
                   onClick={() => handleGeneratePitch(selectedContact, outreachTone)}
                   disabled={generatingPitch}
-                  className="bg-accent text-white py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-accent/20"
+                  className="hf-btn-primary min-h-[44px] px-5 py-2.5 text-sm inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Retry
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Try again</span>
                 </button>
                 <button
+                  type="button"
                   onClick={handleClosePitchResult}
-                  className="bg-surface border border-border text-ink py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-widest hover:border-accent/40 transition-all cursor-pointer"
+                  className="hf-btn-secondary min-h-[44px] px-5 py-2.5 text-sm inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                 >
-                  Back / Cancel
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to contacts</span>
                 </button>
               </div>
             </div>
           ) : (
-            <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-border space-y-6">
+            <div className="hf-card p-6 sm:p-8 space-y-6">
+              {/* Draft banner */}
+              <div className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg flex items-start gap-3">
+                <Info className="w-5 h-5 text-[var(--hf-cta)] shrink-0 mt-0.5" />
+                <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">
+                  AI-generated email draft. Review and personalize it, check that every claim is true, and only send to people you have a reason to contact.
+                </p>
+              </div>
+
               {/* Subject field */}
-              <div className="bg-background border border-border p-4 rounded-2xl">
-                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2 font-mono">
-                  Subject line
-                </label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={generatedSubject}
-                    onChange={(e) => setGeneratedSubject(e.target.value)}
-                    className="flex-1 bg-surface border border-border px-4 py-3 rounded-xl text-xs text-ink font-sans focus:outline-none focus:ring-1 focus:ring-accent font-medium"
-                  />
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="draft-subject-input" className="block text-xs font-medium text-[var(--hf-text)]">
+                    Subject line
+                  </label>
                   <button
+                    type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(generatedSubject);
                       setCopiedSubject(true);
                       setTimeout(() => setCopiedSubject(false), 2000);
                     }}
-                    className="p-3 bg-surface border border-border text-ink-dim hover:text-accent rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
-                    title="Copy Subject"
+                    className="hf-btn-secondary min-h-[44px] px-3 py-1.5 text-xs inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                    title="Copy subject line"
                   >
                     {copiedSubject ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[var(--hf-success)]" />
+                        <span className="text-[var(--hf-success)] font-medium">Copied</span>
+                      </>
                     ) : (
-                      <Copy className="w-3.5 h-3.5" />
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy subject</span>
+                      </>
                     )}
-                    <span className="text-[9px] font-bold uppercase tracking-wider font-mono">
-                      {copiedSubject ? "Copied" : "Copy"}
-                    </span>
                   </button>
                 </div>
+                <input
+                  id="draft-subject-input"
+                  type="text"
+                  value={generatedSubject}
+                  onChange={(e) => setGeneratedSubject(e.target.value)}
+                  className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm sm:text-base text-[var(--hf-text)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
+                />
               </div>
 
               {/* Body field */}
-              <div className="bg-background border border-border p-4 rounded-2xl">
-                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2 font-mono">
-                  Cold outreach body
-                </label>
-                <textarea
-                  value={generatedBody}
-                  onChange={(e) => setGeneratedBody(e.target.value)}
-                  rows={10}
-                  className="w-full bg-surface border border-border p-4 rounded-xl text-xs text-ink font-sans leading-relaxed focus:outline-none focus:ring-1 focus:ring-accent font-medium"
-                />
-                <div className="flex justify-end gap-2 mt-3">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="draft-body-textarea" className="block text-xs font-medium text-[var(--hf-text)]">
+                    Email body
+                  </label>
                   <button
+                    type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(generatedBody);
                       setCopiedBody(true);
                       setTimeout(() => setCopiedBody(false), 2000);
                     }}
-                    className="p-2.5 bg-surface border border-border text-ink-dim hover:text-accent rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="hf-btn-secondary min-h-[44px] px-3 py-1.5 text-xs inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                    title="Copy email body"
                   >
                     {copiedBody ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[var(--hf-success)]" />
+                        <span className="text-[var(--hf-success)] font-medium">Copied</span>
+                      </>
                     ) : (
-                      <Copy className="w-3.5 h-3.5" />
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy body</span>
+                      </>
                     )}
-                    <span className="text-[9px] font-bold uppercase tracking-widest font-mono">
-                      {copiedBody ? "Body Copied" : "Copy Body"}
-                    </span>
                   </button>
                 </div>
+                <textarea
+                  id="draft-body-textarea"
+                  value={generatedBody}
+                  onChange={(e) => setGeneratedBody(e.target.value)}
+                  rows={10}
+                  className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg p-3.5 text-sm sm:text-base text-[var(--hf-text)] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors"
+                />
               </div>
 
-              {/* Actions */}
+              {/* Bottom Actions */}
               <div className="pt-2 flex flex-col sm:flex-row gap-3">
                 <button
+                  type="button"
                   onClick={() => {
                     const fullMail = `Subject: ${generatedSubject}\n\n${generatedBody}`;
                     navigator.clipboard.writeText(fullMail);
                     setCopiedAll(true);
                     setTimeout(() => setCopiedAll(false), 2000);
                   }}
-                  className="flex-1 bg-surface border border-border text-ink py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:border-accent transition-colors cursor-pointer"
+                  className="hf-btn-secondary flex-1 min-h-[44px] py-3 px-4 text-sm inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                 >
                   {copiedAll ? (
-                    <CheckCircle2 className="w-4 h-4 text-success" />
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-[var(--hf-success)]" />
+                      <span className="text-[var(--hf-success)] font-medium">Full draft copied</span>
+                    </>
                   ) : (
-                    <Copy className="w-4 h-4" />
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copy full draft</span>
+                    </>
                   )}
-                  {copiedAll ? "Entire Copy Complete" : "Copy Entire Pitch"}
                 </button>
 
                 <a
                   href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedContact?.email || "")}&su=${encodeURIComponent(generatedSubject)}&body=${encodeURIComponent(generatedBody)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer"
+                  className="hf-btn-primary flex-1 min-h-[44px] py-3 px-4 text-sm inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Send in Gmail
+                  <span>Open draft in Gmail</span>
                 </a>
+              </div>
+
+              <div className="space-y-1 text-xs text-[var(--hf-text-secondary)] text-center sm:text-left">
+                <p>
+                  This draft is not saved. Copy it before leaving this page.
+                </p>
+                <p>
+                  Opens a Gmail compose window in a new tab with the recipient, subject and body pre-filled. Nothing is sent until you press send in Gmail.
+                </p>
               </div>
             </div>
           )}

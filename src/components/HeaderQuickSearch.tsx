@@ -142,7 +142,7 @@ export default function HeaderQuickSearch() {
             setIsMobileSearchOpen((prev) => !prev);
             setIsOpen(true);
           }}
-          className="p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center justify-center cursor-pointer"
+          className="min-h-[44px] min-w-[44px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
           aria-label="Open Quick Job Search"
           title="Quick Search"
         >
@@ -154,11 +154,11 @@ export default function HeaderQuickSearch() {
       <div className="hidden md:block w-64 lg:w-80">
         <form onSubmit={handleSubmit} className="relative">
           <div
-            className={`flex items-center gap-2 bg-surface/90 border ${
-              isOpen ? 'border-accent ring-1 ring-accent/30 shadow-lg shadow-accent/10' : 'border-border hover:border-border/80'
-            } rounded-xl px-3 py-1.5 transition-all`}
+            className={`flex items-center gap-2 bg-[var(--hf-surface-secondary)] border ${
+              isOpen ? 'border-[var(--hf-cta)] ring-1 ring-[var(--hf-cta)]/30 shadow-xs' : 'border-[var(--hf-border)] hover:border-[var(--hf-text-muted)]'
+            } rounded-lg px-3 py-1.5 transition-all`}
           >
-            <Search className="w-4 h-4 text-ink-dim shrink-0" />
+            <Search className="w-4 h-4 text-[var(--hf-text-muted)] shrink-0" />
             <input
               ref={inputRef}
               type="text"
@@ -166,7 +166,7 @@ export default function HeaderQuickSearch() {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setIsOpen(true)}
               placeholder={placeholderText}
-              className="w-full bg-transparent text-xs text-ink placeholder:text-ink-dim/60 focus:outline-none font-sans"
+              className="w-full bg-transparent text-xs text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none font-sans"
               aria-label="Quick search jobs and roles"
             />
 
@@ -177,13 +177,13 @@ export default function HeaderQuickSearch() {
                   setQuery('');
                   inputRef.current?.focus();
                 }}
-                className="text-ink-dim hover:text-ink p-0.5 rounded cursor-pointer"
+                className="text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] p-0.5 rounded cursor-pointer"
                 aria-label="Clear search input"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             ) : (
-              <kbd className="hidden lg:inline-flex items-center gap-0.5 text-[9px] font-mono px-1.5 py-0.5 bg-surface-light border border-border text-ink-dim rounded">
+              <kbd className="hidden lg:inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-text-muted)] rounded">
                 <CornerDownLeft className="w-2.5 h-2.5" />
               </kbd>
             )}
@@ -199,25 +199,25 @@ export default function HeaderQuickSearch() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-x-0 top-16 bg-surface/95 backdrop-blur-xl border-b border-border p-3 z-50 md:hidden shadow-2xl"
+            className="fixed inset-x-0 top-16 bg-[var(--hf-surface)] border-b border-[var(--hf-border)] p-3 z-50 md:hidden shadow-lg"
           >
             <form onSubmit={handleSubmit} className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-background border border-accent/40 rounded-xl px-3 py-2">
-                <Search className="w-4 h-4 text-accent shrink-0" />
+              <div className="flex-1 flex items-center gap-2 bg-[var(--hf-surface-secondary)] border border-[var(--hf-cta)]/40 rounded-lg px-3 py-2">
+                <Search className="w-4 h-4 text-[var(--hf-cta)] shrink-0" />
                 <input
                   ref={mobileInputRef}
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={placeholderText}
-                  className="w-full bg-transparent text-sm text-ink placeholder:text-ink-dim/60 focus:outline-none font-sans"
+                  className="w-full bg-transparent text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none font-sans"
                   aria-label="Quick search input"
                 />
                 {query && (
                   <button
                     type="button"
                     onClick={() => setQuery('')}
-                    className="text-ink-dim hover:text-ink p-0.5 rounded"
+                    className="text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] p-0.5 rounded"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -226,7 +226,7 @@ export default function HeaderQuickSearch() {
 
               <button
                 type="submit"
-                className="px-3.5 py-2 bg-accent text-black font-mono font-bold text-xs rounded-xl shadow-md cursor-pointer shrink-0"
+                className="hf-btn-primary min-h-[40px] px-3.5 py-2 text-xs font-medium rounded-lg shadow-xs cursor-pointer shrink-0"
               >
                 Search
               </button>
@@ -234,7 +234,7 @@ export default function HeaderQuickSearch() {
               <button
                 type="button"
                 onClick={() => setIsMobileSearchOpen(false)}
-                className="p-2 text-ink-dim hover:text-ink rounded-xl"
+                className="min-h-[40px] min-w-[40px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] rounded-lg flex items-center justify-center"
                 aria-label="Close search overlay"
               >
                 <X className="w-5 h-5" />
@@ -242,17 +242,17 @@ export default function HeaderQuickSearch() {
             </form>
 
             {/* Mobile Suggestions in Dropdown */}
-            <div className="mt-3 max-h-72 overflow-y-auto no-scrollbar pt-2 border-t border-border/60">
+            <div className="mt-3 max-h-72 overflow-y-auto no-scrollbar pt-2 border-t border-[var(--hf-border)]">
               {recentSearches.length > 0 && (
                 <div className="mb-3">
                   <div className="flex items-center justify-between px-1 mb-1.5">
-                    <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-accent" /> Recent Searches
+                    <span className="text-xs font-semibold text-[var(--hf-text-secondary)] flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-[var(--hf-cta)]" /> Recent Searches
                     </span>
                     <button
                       type="button"
                       onClick={clearAllRecent}
-                      className="text-[10px] font-mono text-ink-dim hover:text-rose-400 hover:underline"
+                      className="text-xs text-[var(--hf-text-muted)] hover:text-[var(--hf-error)] hover:underline"
                     >
                       Clear
                     </button>
@@ -262,10 +262,10 @@ export default function HeaderQuickSearch() {
                       <div
                         key={idx}
                         onClick={() => executeSearch(item)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-surface-light/50 hover:bg-surface-light text-ink text-xs font-sans transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--hf-surface-secondary)]/50 hover:bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] text-xs font-sans transition-colors cursor-pointer"
                       >
                         <span className="truncate">{item}</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-ink-dim" />
+                        <ArrowRight className="w-3.5 h-3.5 text-[var(--hf-text-muted)]" />
                       </div>
                     ))}
                   </div>
@@ -274,7 +274,7 @@ export default function HeaderQuickSearch() {
 
               {/* Suggestions */}
               <div>
-                <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider px-1 mb-1.5 block">
+                <span className="text-xs font-semibold text-[var(--hf-text-secondary)] px-1 mb-1.5 block">
                   Popular & Matched Roles
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -282,7 +282,7 @@ export default function HeaderQuickSearch() {
                     <button
                       type="button"
                       onClick={() => executeSearch(activeTargetRole)}
-                      className="px-2.5 py-1 bg-accent/15 border border-accent/30 text-accent rounded-lg text-xs font-mono font-bold flex items-center gap-1"
+                      className="px-2.5 py-1 bg-[var(--hf-cta)]/10 border border-[var(--hf-cta)]/20 text-[var(--hf-cta)] rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles className="w-3 h-3" /> {activeTargetRole}
                     </button>
@@ -292,7 +292,7 @@ export default function HeaderQuickSearch() {
                       key={idx}
                       type="button"
                       onClick={() => executeSearch(role)}
-                      className="px-2.5 py-1 bg-surface-light hover:bg-surface border border-border text-ink rounded-lg text-xs font-sans"
+                      className="px-2.5 py-1 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-border)] border border-[var(--hf-border)] text-[var(--hf-text)] rounded-lg text-xs font-sans cursor-pointer transition-colors"
                     >
                       {role}
                     </button>
@@ -312,21 +312,21 @@ export default function HeaderQuickSearch() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.98 }}
             transition={{ duration: 0.12 }}
-            className="hidden md:block absolute top-full left-0 right-0 mt-2 w-80 lg:w-96 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-50 overflow-hidden"
+            className="hidden md:block absolute top-full left-0 right-0 mt-2 w-80 lg:w-96 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl shadow-lg p-3 z-50 overflow-hidden"
           >
             {/* Quick Action when query is typed */}
             {query.trim() && (
               <div
                 onClick={() => executeSearch(query)}
-                className="flex items-center justify-between p-2.5 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl mb-2 cursor-pointer transition-all group"
+                className="flex items-center justify-between p-2.5 bg-[var(--hf-cta)]/10 hover:bg-[var(--hf-cta)]/15 border border-[var(--hf-cta)]/20 rounded-lg mb-2 cursor-pointer transition-all group"
               >
                 <div className="flex items-center gap-2 truncate">
-                  <Search className="w-4 h-4 text-accent shrink-0" />
-                  <span className="text-xs text-ink font-semibold truncate">
-                    Search for "<span className="text-accent">{query}</span>" in Job Finder
+                  <Search className="w-4 h-4 text-[var(--hf-cta)] shrink-0" />
+                  <span className="text-xs text-[var(--hf-text)] font-semibold truncate">
+                    Search for "<span className="text-[var(--hf-cta)]">{query}</span>" in Job Finder
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-accent shrink-0">
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-[var(--hf-cta)] shrink-0">
                   <span>Enter</span>
                   <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                 </div>
@@ -336,19 +336,19 @@ export default function HeaderQuickSearch() {
             {/* Target Role Instant Match */}
             {activeTargetRole && (
               <div className="mb-2.5">
-                <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-wider px-1 mb-1 block">
+                <span className="text-xs font-semibold text-[var(--hf-text-secondary)] px-1 mb-1 block">
                   Your Target Role
                 </span>
                 <button
                   type="button"
                   onClick={() => executeSearch(activeTargetRole)}
-                  className="w-full flex items-center justify-between p-2 rounded-xl bg-accent/5 hover:bg-accent/15 border border-accent/20 text-left cursor-pointer transition-all group"
+                  className="w-full flex items-center justify-between p-2 rounded-lg bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-border)] border border-[var(--hf-border)] text-left cursor-pointer transition-all group"
                 >
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-accent" />
-                    <span className="text-xs font-bold text-ink">{activeTargetRole}</span>
+                    <Sparkles className="w-3.5 h-3.5 text-[var(--hf-cta)]" />
+                    <span className="text-xs font-semibold text-[var(--hf-text)]">{activeTargetRole}</span>
                   </div>
-                  <span className="text-[10px] font-mono text-accent flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span className="text-xs font-medium text-[var(--hf-cta)] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Find Openings <ArrowRight className="w-3 h-3" />
                   </span>
                 </button>
@@ -359,13 +359,13 @@ export default function HeaderQuickSearch() {
             {recentSearches.length > 0 && (
               <div className="mb-2.5">
                 <div className="flex items-center justify-between px-1 mb-1">
-                  <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-ink-dim" /> Recent Searches
+                  <span className="text-xs font-semibold text-[var(--hf-text-secondary)] flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-[var(--hf-text-muted)]" /> Recent Searches
                   </span>
                   <button
                     type="button"
                     onClick={clearAllRecent}
-                    className="text-[10px] font-mono text-ink-dim hover:text-rose-400 hover:underline cursor-pointer"
+                    className="text-xs text-[var(--hf-text-muted)] hover:text-[var(--hf-error)] hover:underline cursor-pointer"
                   >
                     Clear All
                   </button>
@@ -375,16 +375,16 @@ export default function HeaderQuickSearch() {
                     <div
                       key={idx}
                       onClick={() => executeSearch(item)}
-                      className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-surface-light text-ink text-xs font-sans transition-colors cursor-pointer"
+                      className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] text-xs font-sans transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <Clock className="w-3 h-3 text-ink-dim group-hover:text-accent shrink-0 transition-colors" />
+                        <Clock className="w-3 h-3 text-[var(--hf-text-muted)] group-hover:text-[var(--hf-cta)] shrink-0 transition-colors" />
                         <span className="truncate">{item}</span>
                       </div>
                       <button
                         type="button"
                         onClick={(e) => removeSearchItem(e, item)}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-ink-dim hover:text-rose-400 rounded transition-opacity"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--hf-text-muted)] hover:text-[var(--hf-error)] rounded transition-opacity"
                         aria-label={`Remove ${item} from history`}
                       >
                         <X className="w-3 h-3" />
@@ -397,7 +397,7 @@ export default function HeaderQuickSearch() {
 
             {/* Popular Suggestions */}
             <div>
-              <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider px-1 mb-1.5 block">
+              <span className="text-xs font-semibold text-[var(--hf-text-secondary)] px-1 mb-1.5 block">
                 Popular Tech Roles
               </span>
               <div className="flex flex-wrap gap-1">
@@ -406,9 +406,9 @@ export default function HeaderQuickSearch() {
                     key={idx}
                     type="button"
                     onClick={() => executeSearch(role)}
-                    className="px-2.5 py-1 bg-surface-light hover:bg-surface border border-border/80 hover:border-accent/40 text-ink rounded-lg text-[11px] font-sans transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-border)] border border-[var(--hf-border)] text-[var(--hf-text)] rounded-md text-[11px] font-sans transition-all flex items-center gap-1 cursor-pointer"
                   >
-                    <Briefcase className="w-3 h-3 text-ink-dim" />
+                    <Briefcase className="w-3 h-3 text-[var(--hf-text-muted)]" />
                     <span>{role}</span>
                   </button>
                 ))}

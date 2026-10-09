@@ -36,17 +36,17 @@ function AppRoutes() {
 
   if (authLoading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#0a0a0a] transition-all duration-700">
+      <div className="h-screen w-full flex items-center justify-center bg-[var(--hf-bg)] text-[var(--hf-text)] transition-all duration-700">
         <div className="flex flex-col items-center gap-6">
           <div className="relative">
             <HireFlowLogo className="w-16 h-16 animate-pulse" />
           </div>
           <div className="flex flex-col items-center gap-2">
-            <h2 className="text-white font-sans font-black uppercase tracking-[0.4em] text-sm ml-[0.4em]">AI HireFlow</h2>
-            <div className="h-[2px] w-12 bg-accent/40 rounded-full overflow-hidden">
-               <div className="h-full bg-accent animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '40%' }}></div>
+            <h2 className="text-[var(--hf-text)] font-sans font-bold uppercase tracking-[0.3em] text-sm ml-[0.3em]">AI HireFlow</h2>
+            <div className="h-[2px] w-12 bg-[var(--hf-border)] rounded-full overflow-hidden">
+               <div className="h-full bg-[var(--hf-cta)] animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '40%' }}></div>
             </div>
-            <p className="text-[#404040] font-mono text-[8px] uppercase tracking-widest mt-2">Loading Career Platform</p>
+            <p className="text-[var(--hf-text-secondary)] font-sans text-xs tracking-wide mt-2">Loading career platform</p>
           </div>
         </div>
       </div>

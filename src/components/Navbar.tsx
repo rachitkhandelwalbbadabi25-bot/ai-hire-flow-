@@ -127,22 +127,20 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="flex items-center gap-3 sm:gap-4">
               {user && !isPublicRoute && <HeaderQuickSearch />}
 
-              {/* Dev Only Theme Toggle Preview */}
-              {import.meta.env.DEV && (
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="min-h-[44px] min-w-[44px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
-                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode (Preview)`}
-                  title={`Toggle theme (${theme})`}
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="w-4 h-4 text-amber-400" />
-                  ) : (
-                    <Moon className="w-4 h-4 text-slate-600" />
-                  )}
-                </button>
-              )}
+              {/* Theme Toggle */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="min-h-[44px] min-w-[44px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                title={`Toggle theme (${theme})`}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-600" />
+                )}
+              </button>
 
               {user ? (
                 <div className="flex items-center gap-2 sm:gap-3">

@@ -196,173 +196,165 @@ export default function Profile() {
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 pt-2 space-y-8">
       
       {/* ========================================================================= */}
-      {/* 1. HERO COMMAND HEADER: Identity, Status, Level & Actions                */}
+      {/* 1. ACCOUNT PROFILE HEADER: Identity, Status, Level & Actions             */}
       {/* ========================================================================= */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-[#14181f] to-[#0c0d10] border border-white/[0.08] p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-        {/* Subtle Ambient Glow */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-accent/[0.04] rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/[0.02] rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          
+      <div className="hf-card p-6 sm:p-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           {/* Left: Avatar and Identity */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            {/* Tech-accented Avatar */}
+            {/* Avatar with Level Overlay */}
             <div className="relative shrink-0">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl p-1 bg-gradient-to-br from-accent/40 via-white/10 to-transparent border border-white/15 shadow-[0_0_20px_rgba(0,255,65,0.12)]">
-                <div className="w-full h-full rounded-xl bg-[#12141a] overflow-hidden flex items-center justify-center">
-                  {user.photoURL ? (
-                    <img 
-                      src={user.photoURL} 
-                      alt={user.displayName || 'Candidate Avatar'} 
-                      className="w-full h-full object-cover" 
-                      referrerPolicy="no-referrer" 
-                    />
-                  ) : (
-                    <UserIcon className="w-10 h-10 text-accent/80" />
-                  )}
-                </div>
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] overflow-hidden flex items-center justify-center">
+                {user.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt={user.displayName || 'User avatar'} 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer" 
+                  />
+                ) : (
+                  <UserIcon className="w-10 h-10 text-[var(--hf-text-secondary)]" />
+                )}
               </div>
               {/* Level Pill Overlay */}
-              <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-amber-500 to-amber-400 text-black text-[10px] font-black px-2 py-0.5 rounded-md shadow-lg border border-black/60 font-mono flex items-center gap-1">
-                <Zap className="w-3 h-3 fill-black" />
-                LVL {userLevel}
+              <div className="absolute -bottom-2 -right-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-text)] text-xs font-semibold px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1">
+                <Zap className="w-3 h-3 text-[var(--hf-warning)] fill-[var(--hf-warning)]" />
+                <span>Level {userLevel}</span>
               </div>
             </div>
 
             {/* Candidate Metadata */}
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="text-[10px] font-mono font-bold text-accent tracking-[0.2em] uppercase">
-                  Candidate Dossier //
-                </span>
-                <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider border bg-accent/10 text-accent border-accent/30 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                  Online & Active
-                </span>
-                <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider border ${
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-2.5 py-0.5 rounded-md text-xs font-medium border ${
                   isAdmin 
-                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' 
+                    ? 'bg-[var(--hf-error)]/10 text-[var(--hf-error)] border-[var(--hf-error)]/20' 
                     : isPremium 
-                    ? 'bg-accent/10 text-accent border-accent/30' 
-                    : 'bg-white/5 text-ink-dim border-white/10'
+                    ? 'bg-[var(--hf-cta)]/10 text-[var(--hf-cta)] border-[var(--hf-cta)]/20' 
+                    : 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)]'
                 }`}>
                   {planDisplay}
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
-                {user.displayName || 'Anonymous Candidate'}
+              <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight">
+                {user.displayName || 'Candidate'}
               </h1>
 
-              <div className="flex items-center gap-3 text-xs text-ink-dim font-mono flex-wrap">
+              <div className="flex items-center gap-3 text-sm text-[var(--hf-text-secondary)] flex-wrap">
                 <span className="flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-accent/70" />
-                  {user.email}
+                  <Mail className="w-4 h-4 text-[var(--hf-text-secondary)]" />
+                  <span>{user.email}</span>
                 </span>
-                <span className="text-white/20">•</span>
-                <span className="text-white/60">
-                  {user.emailVerified ? 'Verified Account' : 'Standard Authentication'}
+                <span className="text-[var(--hf-border)]">•</span>
+                <span>
+                  {user.emailVerified ? (
+                    <span className="inline-flex items-center gap-1 text-[var(--hf-success)] font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Verified account
+                    </span>
+                  ) : (
+                    <span>Standard account</span>
+                  )}
                 </span>
               </div>
             </div>
           </div>
 
           {/* Right: Quick Action Controls */}
-          <div className="flex items-center gap-3 self-start lg:self-center shrink-0">
+          <div className="flex items-center gap-3 self-start lg:self-center shrink-0 flex-wrap">
             <Link
               to="/credits"
-              className="px-4 py-2.5 rounded-xl bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent text-accent font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(0,255,65,0.08)] cursor-pointer"
+              className="hf-btn-secondary min-h-[44px] px-4 py-2.5 text-sm inline-flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
             >
-              <Coins className="w-4 h-4" />
-              <span>Credit Wallet</span>
+              <Coins className="w-4 h-4 text-[var(--hf-cta)]" />
+              <span>Credit wallet</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
 
             <button
+              type="button"
               onClick={() => signOut(auth)}
-              className="px-3.5 py-2.5 rounded-xl bg-rose-500/5 hover:bg-rose-500/15 border border-rose-500/20 hover:border-rose-500/40 text-rose-400 font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
-              title="End active session securely"
+              className="hf-btn-secondary min-h-[44px] px-4 py-2.5 text-sm inline-flex items-center gap-2 text-[var(--hf-error)] hover:border-[var(--hf-error)]/40 hover:bg-[var(--hf-error)]/5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-error)]"
+              title="Sign out of your account"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
+              <LogOut className="w-4 h-4" />
+              <span>Sign out</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. STATS STRIP: 4 High-Impact Metrics                                    */}
+      {/* 2. STATS STRIP: 4 Metrics                                                */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Total XP */}
-        <div className="bg-[#0e1015] border border-white/[0.08] hover:border-accent/40 rounded-xl p-5 transition-all relative overflow-hidden group">
+        <div className="hf-card p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider">Total Experience</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Total experience</span>
+            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-warning)]">
               <Award className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight">{xp}</span>
-            <span className="text-xs font-mono font-bold text-amber-400">XP</span>
+            <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{xp}</span>
+            <span className="text-xs font-semibold text-[var(--hf-text-secondary)]">XP</span>
           </div>
-          <p className="text-[11px] font-mono text-ink-dim mt-2 truncate">
-            Rank: <span className="text-white font-semibold">{levelInfo.rank}</span>
+          <p className="text-xs text-[var(--hf-text-secondary)] mt-2 truncate">
+            Rank: <span className="font-semibold text-[var(--hf-text)]">{levelInfo.rank}</span>
           </p>
         </div>
 
         {/* Metric 2: Current Level */}
-        <div className="bg-[#0e1015] border border-white/[0.08] hover:border-accent/40 rounded-xl p-5 transition-all relative overflow-hidden group">
+        <div className="hf-card p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider">Current Level</span>
-            <div className="w-7 h-7 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+            <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Current level</span>
+            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
               <Zap className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight">Level {userLevel}</span>
+            <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">Level {userLevel}</span>
           </div>
-          <p className="text-[11px] font-mono text-accent mt-2">
+          <p className="text-xs text-[var(--hf-cta)] font-medium mt-2 tabular-nums">
             {levelInfo.progress}% to next tier
           </p>
         </div>
 
         {/* Metric 3: Active Streak */}
-        <div className="bg-[#0e1015] border border-white/[0.08] hover:border-accent/40 rounded-xl p-5 transition-all relative overflow-hidden group">
+        <div className="hf-card p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider">Daily Streak</span>
-            <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
-              <Flame className="w-4 h-4 fill-orange-500/30 text-orange-400" />
+            <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Daily streak</span>
+            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-warning)]">
+              <Flame className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight">{currentStreak}</span>
-            <span className="text-xs font-mono font-bold text-orange-400">Days</span>
+            <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{currentStreak}</span>
+            <span className="text-xs font-semibold text-[var(--hf-text-secondary)]">{currentStreak === 1 ? 'day' : 'days'}</span>
           </div>
-          <p className="text-[11px] font-mono text-ink-dim mt-2">
-            Active daily bonus enabled
+          <p className="text-xs text-[var(--hf-text-secondary)] mt-2">
+            Consecutive login days
           </p>
         </div>
 
         {/* Metric 4: Badges Unlocked */}
-        <div className="bg-[#0e1015] border border-white/[0.08] hover:border-accent/40 rounded-xl p-5 transition-all relative overflow-hidden group">
+        <div className="hf-card p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono font-bold text-ink-dim uppercase tracking-wider">Badges Unlocked</span>
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Badges unlocked</span>
+            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
               <Star className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight">{unlockedBadges.length}</span>
-            <span className="text-xs font-mono font-bold text-ink-dim">/ {premiumBadges.length}</span>
+            <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{unlockedBadges.length}</span>
+            <span className="text-xs font-semibold text-[var(--hf-text-secondary)] tabular-nums">/ {premiumBadges.length}</span>
           </div>
-          <p className="text-[11px] font-mono text-indigo-400 mt-2">
-            {Math.round((unlockedBadges.length / premiumBadges.length) * 100)}% achievements cleared
+          <p className="text-xs text-[var(--hf-text-secondary)] mt-2 tabular-nums">
+            {Math.round((unlockedBadges.length / premiumBadges.length) * 100)}% completed
           </p>
         </div>
-
       </div>
 
       {/* ========================================================================= */}
@@ -375,77 +367,101 @@ export default function Profile() {
         {/* ======================================================================= */}
         <div className="lg:col-span-8 space-y-8">
 
-          {/* SECTION A: XP & Level Progression Engine */}
-          <div className="bg-[#0c0d10] border border-white/[0.08] rounded-2xl p-6 sm:p-7 relative overflow-hidden shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.06] pb-5 mb-6">
+          {/* SECTION A: Career Progression & Milestones */}
+          <div className="hf-card p-6 sm:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--hf-border)] pb-5 mb-6">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Award className="w-4 h-4 text-accent" />
-                  <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-widest">
-                    Progression Engine //
+                  <Award className="w-4 h-4 text-[var(--hf-cta)]" />
+                  <span className="text-xs font-semibold text-[var(--hf-cta)]">
+                    Career progression
                   </span>
                 </div>
-                <h2 className="text-lg font-bold text-white uppercase tracking-tight">
-                  Experience & Career Rank
+                <h2 className="text-lg font-bold text-[var(--hf-text)] tracking-tight">
+                  Experience & rank milestones
                 </h2>
               </div>
               <div className="text-left sm:text-right">
-                <span className="text-xs font-mono font-bold text-white block">
-                  {levelInfo.remaining > 0 ? `${levelInfo.remaining} XP until ${levelInfo.nextRank}` : 'Maximum Level Achieved'}
+                <span className="text-sm font-semibold text-[var(--hf-text)] block tabular-nums">
+                  {levelInfo.remaining > 0 ? `${levelInfo.remaining} XP until ${levelInfo.nextRank}` : 'Maximum level achieved'}
                 </span>
-                <span className="text-[10px] font-mono text-ink-dim">
-                  Tier {userLevel} of 5 &bull; {xp} XP Accumulated
+                <span className="text-xs text-[var(--hf-text-secondary)] block tabular-nums">
+                  Level {userLevel} of 5 &bull; {xp} XP accumulated
                 </span>
               </div>
             </div>
 
             {/* Visual Progress Bar */}
-            <div className="space-y-3 mb-8">
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="font-bold text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-accent" />
+            <div className="space-y-2.5 mb-8">
+              <div className="flex justify-between items-center text-sm">
+                <span className="font-semibold text-[var(--hf-text)] flex items-center gap-2">
                   Level {userLevel}: {levelInfo.rank}
                 </span>
-                <span className="text-accent font-bold">
-                  {levelInfo.progress}% Complete
+                <span className="text-[var(--hf-cta)] font-semibold tabular-nums">
+                  {levelInfo.progress}%
                 </span>
               </div>
 
-              <div className="h-3 w-full bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/10">
+              <div className="h-2.5 w-full bg-[var(--hf-surface-secondary)] rounded-full overflow-hidden border border-[var(--hf-border)]">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${levelInfo.progress}%` }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-accent to-[#00FF41] shadow-[0_0_12px_rgba(0,255,65,0.5)]"
+                  className="h-full rounded-full bg-[var(--hf-cta)]"
                 />
               </div>
             </div>
 
             {/* 5 Milestone Step Indicators */}
-            <div className="grid grid-cols-5 gap-2 pt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-2">
               {milestones.map((m) => {
                 const isPassed = userLevel > m.lvl || (userLevel === m.lvl && xp >= m.xpReq);
                 const isCurrent = userLevel === m.lvl;
                 return (
                   <div 
                     key={m.lvl} 
-                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                    className={`p-3 rounded-xl border transition-colors flex flex-col justify-between ${
+                      m.lvl === 5 ? 'col-span-2 sm:col-span-1' : ''
+                    } ${
                       isCurrent 
-                        ? 'bg-accent/10 border-accent text-accent shadow-[0_0_15px_rgba(0,255,65,0.15)]' 
+                        ? 'bg-[var(--hf-cta)]/10 border-[var(--hf-cta)] text-[var(--hf-text)] shadow-sm' 
                         : isPassed 
-                        ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' 
-                        : 'bg-black/30 border-white/[0.05] text-ink-dim opacity-40'
+                        ? 'bg-[var(--hf-surface-secondary)] border-[var(--hf-border)] text-[var(--hf-text)]' 
+                        : 'bg-[var(--hf-surface)]/40 border-[var(--hf-border)]/60 text-[var(--hf-text-muted)] opacity-75'
                     }`}
                   >
-                    <span className="text-[9px] font-mono font-bold block uppercase tracking-wider">
-                      L{m.lvl}
-                    </span>
-                    <span className="text-[11px] font-bold block text-white truncate my-0.5">
-                      {m.title}
-                    </span>
-                    <span className="text-[9px] font-mono text-ink-dim block">
-                      {m.xpReq} XP
-                    </span>
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className={`text-xs font-semibold ${
+                          isCurrent ? 'text-[var(--hf-cta)]' : isPassed ? 'text-[var(--hf-text-secondary)]' : 'text-[var(--hf-text-muted)]'
+                        }`}>
+                          Level {m.lvl}
+                        </span>
+                        <span className="text-xs text-[var(--hf-text-muted)] tabular-nums">
+                          {m.xpReq} XP
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold block text-[var(--hf-text)] truncate my-0.5">
+                        {m.title}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-[var(--hf-border)]/40">
+                      {isCurrent ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--hf-cta)]">
+                          Current rank
+                        </span>
+                      ) : isPassed ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--hf-success)]">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          Reached
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-[var(--hf-text-muted)]">
+                          Upcoming
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -453,48 +469,51 @@ export default function Profile() {
           </div>
 
           {/* SECTION B: Badges & Rewards Showcase */}
-          <div className="bg-[#0c0d10] border border-white/[0.08] rounded-2xl p-6 sm:p-7 relative overflow-hidden shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.06] pb-5 mb-6">
+          <div className="hf-card p-6 sm:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--hf-border)] pb-5 mb-6">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Star className="w-4 h-4 text-indigo-400" />
-                  <span className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-widest">
-                    Achievements Repository //
+                  <Star className="w-4 h-4 text-[var(--hf-cta)]" />
+                  <span className="text-xs font-semibold text-[var(--hf-cta)]">
+                    Achievements
                   </span>
                 </div>
-                <h2 className="text-lg font-bold text-white uppercase tracking-tight">
-                  Profile Badges & Rewards
+                <h2 className="text-lg font-bold text-[var(--hf-text)] tracking-tight">
+                  Profile badges
                 </h2>
               </div>
 
               {/* Filter Tabs */}
-              <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1 rounded-xl">
+              <div className="flex items-center gap-1.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-1 rounded-xl flex-wrap">
                 <button
+                  type="button"
                   onClick={() => setBadgeFilter('all')}
-                  className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] ${
                     badgeFilter === 'all' 
-                      ? 'bg-accent text-black shadow-sm' 
-                      : 'text-ink-dim hover:text-white'
+                      ? 'bg-[var(--hf-cta)] text-white shadow-sm' 
+                      : 'text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface)]'
                   }`}
                 >
                   All ({premiumBadges.length})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setBadgeFilter('unlocked')}
-                  className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] ${
                     badgeFilter === 'unlocked' 
-                      ? 'bg-accent text-black shadow-sm' 
-                      : 'text-ink-dim hover:text-white'
+                      ? 'bg-[var(--hf-cta)] text-white shadow-sm' 
+                      : 'text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface)]'
                   }`}
                 >
                   Unlocked ({unlockedBadges.length})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setBadgeFilter('locked')}
-                  className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] ${
                     badgeFilter === 'locked' 
-                      ? 'bg-accent text-black shadow-sm' 
-                      : 'text-ink-dim hover:text-white'
+                      ? 'bg-[var(--hf-cta)] text-white shadow-sm' 
+                      : 'text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface)]'
                   }`}
                 >
                   Locked ({Math.max(0, premiumBadges.length - unlockedBadges.length)})
@@ -513,10 +532,10 @@ export default function Profile() {
                 return (
                   <div
                     key={badge.id}
-                    className={`p-4 rounded-xl border transition-all relative overflow-hidden flex flex-col justify-between group ${
+                    className={`p-4 rounded-xl border transition-colors flex flex-col justify-between ${
                       isUnlocked
-                        ? 'bg-[#10131a] border-accent/30 hover:border-accent/60 shadow-[0_0_15px_rgba(0,255,65,0.05)]'
-                        : 'bg-[#0a0b0e]/70 border-white/[0.05] hover:border-white/15 opacity-60 hover:opacity-85'
+                        ? 'bg-[var(--hf-surface)] border-[var(--hf-border)] shadow-sm'
+                        : 'bg-[var(--hf-surface-secondary)]/40 border-[var(--hf-border)]/60 opacity-80'
                     }`}
                   >
                     <div>
@@ -525,54 +544,53 @@ export default function Profile() {
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${
                             isUnlocked 
-                              ? 'bg-accent/15 border-accent/40 text-accent shadow-[0_0_10px_rgba(0,255,65,0.2)]' 
-                              : 'bg-white/5 border-white/10 text-ink-dim'
+                              ? 'bg-[var(--hf-cta)]/10 border-[var(--hf-cta)]/20 text-[var(--hf-cta)]' 
+                              : 'bg-[var(--hf-surface-secondary)] border-[var(--hf-border)] text-[var(--hf-text-muted)]'
                           }`}>
                             <BadgeIcon className="w-4 h-4" />
                           </div>
                           <div>
-                            <h3 className="text-xs font-bold text-white uppercase tracking-tight">
+                            <h3 className="text-sm font-semibold text-[var(--hf-text)]">
                               {badge.label}
                             </h3>
-                            <span className="text-[9px] font-mono text-amber-400 font-bold block">
+                            <span className="text-xs font-medium text-[var(--hf-warning)] tabular-nums">
                               +{badge.reward}
                             </span>
                           </div>
                         </div>
 
                         {/* Status Chip */}
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider border shrink-0 ${
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium border shrink-0 ${
                           isUnlocked 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 flex items-center gap-1' 
-                            : 'bg-white/5 text-ink-dim border-white/10 flex items-center gap-1'
+                            ? 'bg-[var(--hf-success)]/10 text-[var(--hf-success)] border-[var(--hf-success)]/20 inline-flex items-center gap-1' 
+                            : 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-muted)] border-[var(--hf-border)] inline-flex items-center gap-1'
                         }`}>
                           {isUnlocked ? (
                             <>
-                              <CheckCircle2 className="w-2.5 h-2.5" />
-                              UNLOCKED
+                              <CheckCircle2 className="w-3 h-3" />
+                              Unlocked
                             </>
                           ) : (
                             <>
-                              <Lock className="w-2.5 h-2.5" />
-                              LOCKED
+                              <Lock className="w-3 h-3" />
+                              Locked
                             </>
                           )}
                         </span>
                       </div>
 
                       {/* Requirement description */}
-                      <p className="text-[11px] text-ink-dim leading-relaxed mb-4">
+                      <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed mb-4">
                         {badge.req}
                       </p>
                     </div>
 
                     {/* Bottom Indicator */}
-                    <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-mono">
-                      <span className={isUnlocked ? 'text-accent font-bold' : 'text-ink-dim'}>
-                        {isUnlocked ? 'Achieved & Credited' : 'Requirement Pending'}
-                      </span>
-                      {isUnlocked && (
-                        <span className="text-[10px] text-accent">✦</span>
+                    <div className="pt-2 border-t border-[var(--hf-border)]/50 flex items-center justify-between text-xs font-medium">
+                      {isUnlocked ? (
+                        <span className="text-[var(--hf-success)]">Completed</span>
+                      ) : (
+                        <span className="text-[var(--hf-text-muted)]">In progress</span>
                       )}
                     </div>
                   </div>
@@ -584,49 +602,47 @@ export default function Profile() {
         </div>
 
         {/* ======================================================================= */}
-        {/* RIGHT COLUMN: Prominent Credit Wallet & Account Governance              */}
+        {/* RIGHT COLUMN: Credit Wallet & Account Governance                        */}
         {/* ======================================================================= */}
         <div className="lg:col-span-4 space-y-6">
 
-          {/* CARD 1: Credit Wallet (Visually Prominent!) */}
-          <div className="bg-gradient-to-b from-accent/[0.08] via-[#0c0d10] to-[#0c0d10] border border-accent/40 rounded-2xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(0,255,65,0.08)]">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-2xl pointer-events-none" />
-
+          {/* CARD 1: Credit Wallet */}
+          <div className="hf-card p-6">
             <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 rounded-xl bg-accent/20 border border-accent/40 flex items-center justify-center text-accent shadow-[0_0_10px_rgba(0,255,65,0.25)]">
+              <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
                 <Coins className="w-4 h-4" />
               </div>
               <div>
-                <span className="text-[10px] font-mono font-bold text-accent uppercase tracking-widest block">
-                  AI Neural Compute //
+                <span className="text-xs font-semibold text-[var(--hf-cta)] block">
+                  AI usage
                 </span>
-                <h2 className="text-sm font-bold text-white uppercase tracking-tight">
-                  Credit Wallet
+                <h2 className="text-base font-bold text-[var(--hf-text)] tracking-tight">
+                  Credit balance
                 </h2>
               </div>
             </div>
 
             {/* Balance Big Readout */}
-            <div className="bg-black/50 border border-white/10 rounded-xl p-5 mb-5 text-center">
-              <span className="text-[10px] font-mono text-ink-dim uppercase tracking-wider block mb-1">
-                Available Request Balance
+            <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl p-5 mb-5 text-center">
+              <span className="text-xs text-[var(--hf-text-secondary)] block mb-1">
+                Available balance
               </span>
               <div className="flex items-center justify-center gap-2">
-                <span className="text-4xl font-black font-mono text-white tracking-tight">
+                <span className="text-3xl sm:text-4xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">
                   {creditWallet?.balance ?? 250}
                 </span>
-                <span className="text-sm font-mono font-bold text-accent uppercase">
-                  Credits
+                <span className="text-sm font-semibold text-[var(--hf-cta)]">
+                  credits
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 border-t border-white/10 mt-4 pt-3 text-[10px] font-mono">
+              <div className="grid grid-cols-2 gap-2 border-t border-[var(--hf-border)] mt-4 pt-3 text-xs">
                 <div>
-                  <span className="text-ink-dim block">Cycle Usage:</span>
-                  <span className="font-bold text-white">{creditWallet?.usedThisMonth ?? 0} Used</span>
+                  <span className="text-[var(--hf-text-secondary)] block">Monthly usage</span>
+                  <span className="font-semibold text-[var(--hf-text)] tabular-nums">{creditWallet?.usedThisMonth ?? 0} used</span>
                 </div>
                 <div>
-                  <span className="text-ink-dim block">Total Granted:</span>
-                  <span className="font-bold text-white">{creditWallet?.totalEarned ?? creditWallet?.balance ?? 250} Earned</span>
+                  <span className="text-[var(--hf-text-secondary)] block">Total granted</span>
+                  <span className="font-semibold text-[var(--hf-text)] tabular-nums">{creditWallet?.totalEarned ?? creditWallet?.balance ?? 250} earned</span>
                 </div>
               </div>
             </div>
@@ -634,114 +650,123 @@ export default function Profile() {
             {/* Manage Wallet CTA */}
             <Link
               to="/credits"
-              className="w-full py-3 px-4 bg-accent hover:bg-accent/90 text-black font-mono font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,255,65,0.25)] transition-all cursor-pointer mb-5"
+              className="hf-btn-primary w-full min-h-[44px] py-2.5 px-4 text-sm inline-flex items-center justify-center gap-2 mb-5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
             >
               <Coins className="w-4 h-4" />
-              <span>Manage Wallet & Refill &rarr;</span>
+              <span>Manage credits & refill</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
 
             {/* Quick Credit Cost Cheat-Sheet */}
-            <div className="border-t border-white/10 pt-4">
-              <span className="text-[9px] font-mono font-bold text-ink-dim uppercase tracking-wider block mb-2.5">
-                Feature Credit Consumption:
-              </span>
-              <div className="space-y-1.5 text-[11px] font-mono">
-                <div className="flex justify-between items-center py-1 border-b border-white/[0.04]">
-                  <span className="text-ink-dim">Resume Full Analysis</span>
-                  <span className="text-accent font-bold">{DEFAULT_CREDIT_COSTS.resumeScan} cr</span>
+            <div className="border-t border-[var(--hf-border)] pt-4">
+              <h3 className="text-xs font-semibold text-[var(--hf-text-secondary)] mb-2.5">
+                Credit cost per action
+              </h3>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-[var(--hf-border)]/40">
+                  <span className="text-[var(--hf-text-secondary)]">Resume analysis</span>
+                  <span className="font-semibold text-[var(--hf-cta)] tabular-nums">{DEFAULT_CREDIT_COSTS.resumeScan} cr</span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-white/[0.04]">
-                  <span className="text-ink-dim">ATS Optimization</span>
-                  <span className="text-accent font-bold">{DEFAULT_CREDIT_COSTS.atsOptimization} cr</span>
+                <div className="flex justify-between items-center py-1 border-b border-[var(--hf-border)]/40">
+                  <span className="text-[var(--hf-text-secondary)]">ATS optimization</span>
+                  <span className="font-semibold text-[var(--hf-cta)] tabular-nums">{DEFAULT_CREDIT_COSTS.atsOptimization} cr</span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-white/[0.04]">
-                  <span className="text-ink-dim">Interactive Mock Session</span>
-                  <span className="text-accent font-bold">{DEFAULT_CREDIT_COSTS.interviewSession} cr</span>
+                <div className="flex justify-between items-center py-1 border-b border-[var(--hf-border)]/40">
+                  <span className="text-[var(--hf-text-secondary)]">Interactive mock interview</span>
+                  <span className="font-semibold text-[var(--hf-cta)] tabular-nums">{DEFAULT_CREDIT_COSTS.interviewSession} cr</span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-white/[0.04]">
-                  <span className="text-ink-dim">Campus Placement Drill</span>
-                  <span className="text-accent font-bold">{DEFAULT_CREDIT_COSTS.jobMatchAnalysis} cr</span>
+                <div className="flex justify-between items-center py-1 border-b border-[var(--hf-border)]/40">
+                  <span className="text-[var(--hf-text-secondary)]">Campus placement drill</span>
+                  <span className="font-semibold text-[var(--hf-cta)] tabular-nums">{DEFAULT_CREDIT_COSTS.jobMatchAnalysis} cr</span>
                 </div>
                 <div className="flex justify-between items-center py-1">
-                  <span className="text-ink-dim">Learning Path Roadmap</span>
-                  <span className="text-accent font-bold">{DEFAULT_CREDIT_COSTS.careerRoadmap} cr</span>
+                  <span className="text-[var(--hf-text-secondary)]">Learning path roadmap</span>
+                  <span className="font-semibold text-[var(--hf-cta)] tabular-nums">{DEFAULT_CREDIT_COSTS.careerRoadmap} cr</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* CARD 2: Plan Tier & Security Governance */}
-          <div className="bg-[#0c0d10] border border-white/[0.08] rounded-2xl p-6 relative overflow-hidden shadow-xl">
+          <div className="hf-card p-6">
             <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className="w-4 h-4 text-accent" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                Account Security & Tier
+              <ShieldCheck className="w-4 h-4 text-[var(--hf-cta)]" />
+              <h3 className="text-sm font-bold text-[var(--hf-text)]">
+                Account membership
               </h3>
             </div>
 
             <div className="space-y-4">
-              <div className="p-3.5 bg-black/40 border border-white/[0.06] rounded-xl">
+              <div className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-mono text-ink-dim uppercase">Active Plan</span>
-                  <span className={`text-[10px] font-mono font-bold uppercase ${isAdmin ? 'text-rose-400' : isPremium ? 'text-accent' : 'text-white'}`}>
-                    {isAdmin ? 'Root Override' : isPremium ? 'Premium Active' : 'Free Tier'}
+                  <span className="text-xs text-[var(--hf-text-secondary)]">Active plan</span>
+                  <span className={`text-xs font-semibold ${isAdmin ? 'text-[var(--hf-error)]' : isPremium ? 'text-[var(--hf-cta)]' : 'text-[var(--hf-text)]'}`}>
+                    {isAdmin ? 'Administrator' : isPremium ? 'Premium' : 'Free tier'}
                   </span>
                 </div>
-                <p className="text-xs text-white font-bold mb-2">{planDisplay}</p>
-                <p className="text-[11px] text-ink-dim leading-relaxed">
+                <p className="text-sm text-[var(--hf-text)] font-bold mb-1.5">{planDisplay}</p>
+                <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">
                   {isAdmin 
-                    ? 'Total administrative authorization granted. System bypass active.' 
+                    ? 'Full administrative access and testing controls enabled.' 
                     : isPremium 
-                    ? 'Full access to high-priority AI queues and unlimited deep scans.' 
-                    : 'Standard speed quota with daily reload triggers.'}
+                    ? 'Full access to all AI career tools with high monthly credit allocations.' 
+                    : 'Standard monthly credit allocation for core career tools.'}
                 </p>
               </div>
 
-              <div className="flex items-center justify-between text-xs font-mono p-2.5 rounded-lg bg-black/30 border border-white/[0.04]">
-                <span className="text-ink-dim">Email Status</span>
-                <span className={`font-bold ${user.emailVerified ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {user.emailVerified ? 'Verified' : 'Active Account'}
+              <div className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)]">
+                <span className="text-[var(--hf-text-secondary)]">Email status</span>
+                <span className={`font-semibold inline-flex items-center gap-1 ${user.emailVerified ? 'text-[var(--hf-success)]' : 'text-[var(--hf-warning)]'}`}>
+                  {user.emailVerified ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Verified
+                    </>
+                  ) : (
+                    'Standard account'
+                  )}
                 </span>
               </div>
 
               <Link
                 to="/credits"
-                className="w-full py-2.5 px-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-ink-dim hover:text-white rounded-xl text-[11px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+                className="hf-btn-secondary w-full min-h-[44px] py-2 px-3 text-xs inline-flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
               >
-                <span>Change Plan Tier</span>
-                <ExternalLink className="w-3 h-3" />
+                <span>Change plan tier</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
 
           {/* CARD 3: Referral Network Code */}
           {creditWallet?.referralCode && (
-            <div className="bg-[#0c0d10] border border-white/[0.08] rounded-2xl p-6 relative overflow-hidden shadow-xl">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-accent" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                  Referral Network Code
+            <div className="hf-card p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-[var(--hf-cta)]" />
+                <h3 className="text-sm font-bold text-[var(--hf-text)]">
+                  Referral code
                 </h3>
               </div>
-              <p className="text-[11px] text-ink-dim mb-3">
-                Share your personal code with engineers or classmates. Earn bonus credits upon their first login.
+              <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed mb-3">
+                Share your referral code with peers. Earn bonus credits when they join.
               </p>
-              <div className="flex items-center gap-2 bg-black/60 border border-white/10 p-2 rounded-xl">
-                <code className="flex-1 font-mono text-xs font-bold text-accent px-2">
+              <div className="flex items-center gap-2 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-1.5 rounded-xl">
+                <code className="flex-1 text-sm font-semibold text-[var(--hf-cta)] px-2 font-mono tracking-wide">
                   {creditWallet.referralCode}
                 </code>
                 <button
+                  type="button"
                   onClick={handleCopyReferral}
-                  className="px-3 py-1.5 bg-accent/15 hover:bg-accent/25 text-accent border border-accent/30 rounded-lg text-[10px] font-mono font-bold uppercase flex items-center gap-1 transition-all cursor-pointer"
+                  className="hf-btn-secondary min-h-[44px] px-3.5 py-2 text-xs inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                 >
                   {copiedReferral ? (
                     <>
-                      <Check className="w-3 h-3 text-emerald-400" />
-                      <span>Copied!</span>
+                      <Check className="w-4 h-4 text-[var(--hf-success)]" />
+                      <span className="text-[var(--hf-success)] font-medium">Copied!</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3 h-3" />
+                      <Copy className="w-4 h-4" />
                       <span>Copy</span>
                     </>
                   )}

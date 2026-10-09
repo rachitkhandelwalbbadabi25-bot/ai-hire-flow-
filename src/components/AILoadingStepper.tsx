@@ -45,63 +45,60 @@ export default function AILoadingStepper({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
+      initial={{ opacity: 0, scale: 0.99 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
+      exit={{ opacity: 0, scale: 0.99 }}
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      className={`bg-surface border border-accent/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden ${className}`}
+      className={`hf-card p-6 sm:p-7 space-y-5 relative ${className}`}
     >
-      {/* Background Subtle Accent Glow */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4 relative z-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--hf-border)] pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-2xl text-accent animate-pulse" aria-hidden="true">
+          <div className="p-2 rounded-lg border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] text-[var(--hf-ai-teal)]" aria-hidden="true">
             <Cpu className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 bg-accent/10 text-accent border border-accent/20 rounded-full flex items-center gap-1">
-                <Sparkles className="w-3 h-3" aria-hidden="true" /> Autonomous Engine
+              <span className="hf-badge hf-badge-teal text-[11px] py-0.5">
+                <Sparkles className="w-3 h-3" aria-hidden="true" /> AI Pipeline
               </span>
-              <span className="text-[10px] text-ink-dim font-mono uppercase tracking-wider">
+              <span className="text-xs text-[var(--hf-text-muted)] tabular-nums">
                 Step {activeIndex + 1} of {steps.length}
               </span>
             </div>
-            <h3 className="text-base sm:text-lg font-extrabold text-ink uppercase tracking-tight font-mono mt-0.5">
+            <h3 className="text-base sm:text-lg font-semibold text-[var(--hf-text)] mt-1">
               {title}
             </h3>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-mono font-bold text-accent bg-accent/10 border border-accent/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> In Progress
+          <span className="text-xs font-medium text-[var(--hf-cta)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--hf-cta)]" /> In progress
           </span>
         </div>
       </div>
 
-      {/* Primary Honest Processing Notice */}
-      <div className="p-5 rounded-2xl bg-accent/5 border border-accent/20 text-center space-y-1.5 relative z-10">
-        <h4 className="text-sm sm:text-base font-mono font-bold text-ink uppercase tracking-wider flex items-center justify-center gap-2">
-          Processing Your Request
+      {/* Primary Processing Notice */}
+      <div className="p-4 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-center space-y-1">
+        <h4 className="text-sm font-semibold text-[var(--hf-text)]">
+          Processing request
         </h4>
-        <p className="text-xs sm:text-sm text-ink-dim font-sans leading-relaxed">
-          This may take 1–2 minutes. We're working on it — please wait.
+        <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">
+          This usually takes 30–60 seconds. Analyzing details and verifying benchmarks.
         </p>
       </div>
 
-      {/* Single Indeterminate Loading Visual - Does NOT freeze at 90% */}
+      {/* Single Indeterminate Loading Visual */}
       <div 
         role="progressbar"
         aria-label={`${title} processing`}
-        className="w-full bg-background border border-border/80 h-2 rounded-full overflow-hidden relative z-10"
+        className="w-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] h-2 rounded-full overflow-hidden relative"
       >
         <motion.div
-          className="bg-accent h-full rounded-full w-1/3"
+          className="bg-[var(--hf-cta)] h-full rounded-full w-1/3"
           animate={{
             x: ['-100%', '300%']
           }}
@@ -114,7 +111,7 @@ export default function AILoadingStepper({
       </div>
 
       {/* Step Checklist Items */}
-      <div className="space-y-2 pt-1 relative z-10">
+      <div className="space-y-2 pt-1">
         {steps.map((s, idx) => {
           const isDone = idx < currentStepIndex;
           const isCurrent = idx === currentStepIndex;
@@ -122,27 +119,27 @@ export default function AILoadingStepper({
           return (
             <div
               key={s.step}
-              className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-mono transition-all ${
+              className={`flex items-center gap-3 p-3 rounded-lg border text-xs sm:text-sm transition-all ${
                 isDone
-                  ? 'bg-success/5 border-success/20 text-ink'
+                  ? 'bg-[var(--hf-surface-secondary)]/60 border-[var(--hf-border)] text-[var(--hf-text-secondary)]'
                   : isCurrent
-                  ? 'bg-accent/10 border-accent/30 text-ink font-bold'
-                  : 'bg-background/40 border-border/40 text-ink-dim opacity-60'
+                  ? 'bg-[var(--hf-mint)]/20 border-[var(--hf-ai-teal)]/30 text-[var(--hf-text)] font-medium shadow-xs'
+                  : 'bg-[var(--hf-surface)] border-[var(--hf-border)]/60 text-[var(--hf-text-muted)] opacity-60'
               }`}
             >
               <div className="shrink-0">
                 {isDone ? (
-                  <CheckCircle2 className="w-4 h-4 text-success" />
+                  <CheckCircle2 className="w-4 h-4 text-[var(--hf-success)]" />
                 ) : isCurrent ? (
-                  <div className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                  <div className="w-4 h-4 rounded-full border-2 border-[var(--hf-ai-teal)] border-t-transparent animate-spin" />
                 ) : (
-                  <div className="w-4 h-4 rounded-full border border-border flex items-center justify-center text-[9px] text-ink-dim">
+                  <div className="w-4 h-4 rounded-full border border-[var(--hf-border)] flex items-center justify-center text-[10px] text-[var(--hf-text-muted)]">
                     {s.step}
                   </div>
                 )}
               </div>
 
-              <span className={`flex-1 truncate ${isDone ? 'line-through text-ink-dim' : ''}`}>
+              <span className={`flex-1 truncate ${isDone ? 'line-through text-[var(--hf-text-muted)]' : ''}`}>
                 {s.description}
               </span>
             </div>
@@ -150,11 +147,11 @@ export default function AILoadingStepper({
         })}
       </div>
 
-      <div className="flex items-center justify-between text-[10px] text-ink-dim font-mono border-t border-border/60 pt-3 relative z-10">
+      <div className="flex items-center justify-between text-xs text-[var(--hf-text-muted)] border-t border-[var(--hf-border)] pt-3">
         <span className="flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-accent" /> Verified Analysis Standard
+          <ShieldCheck className="w-3.5 h-3.5 text-[var(--hf-success)]" /> Benchmarked evaluation
         </span>
-        <span>AI Calibration Pipeline</span>
+        <span className="text-[11px]">AI Career Engine</span>
       </div>
     </motion.div>
   );

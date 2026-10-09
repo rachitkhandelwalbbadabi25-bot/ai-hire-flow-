@@ -22,16 +22,16 @@ export default function HireFlowLogo({
         viewBox="0 0 512 512"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full shrink-0 shadow-md shadow-[#00F08B]/20 rounded-[26%] overflow-hidden"
+        className="w-full h-full shrink-0 shadow-xs rounded-[26%] overflow-hidden"
         style={style}
         aria-label="AI HireFlow Logo"
       >
         {/* Squircle Background */}
-        <rect width="512" height="512" rx="136" ry="136" fill="#00F08B" />
+        <rect width="512" height="512" rx="136" ry="136" fill="#2563EB" />
 
         {/* Brand Ligature Monogram */}
         <path
-          fill="#000000"
+          fill="#FFFFFF"
           fillRule="evenodd"
           clipRule="evenodd"
           d="
@@ -67,12 +67,12 @@ export default function HireFlowLogo({
       </svg>
 
       {showText && (
-        <div className={`flex flex-col leading-none ${textClassName}`}>
-          <span className="font-sans font-black text-lg tracking-tight text-ink">
+        <div className={`flex flex-col leading-tight ${textClassName}`}>
+          <span className="font-sans font-bold text-base tracking-tight text-[var(--hf-text)]">
             AI HireFlow
           </span>
-          <span className="text-[9px] font-bold text-accent uppercase tracking-wider mt-0.5 font-mono">
-            Career Hub
+          <span className="text-[11px] font-normal text-[var(--hf-text-secondary)]">
+            Career platform
           </span>
         </div>
       )}

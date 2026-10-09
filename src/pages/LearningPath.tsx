@@ -553,8 +553,8 @@ export default function LearningPath() {
     return (
       <div className="min-h-[400px] w-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Initializing Learning Path...</p>
+          <Loader2 className="w-7 h-7 animate-spin text-[var(--hf-primary)]" />
+          <p className="text-sm font-medium text-[var(--hf-text-secondary)]">Loading career roadmap...</p>
         </div>
       </div>
     );
@@ -562,61 +562,73 @@ export default function LearningPath() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-20">
-      <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* 1. Header */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
-              <Map className="w-5 h-5 text-accent" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 rounded-lg border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] text-[var(--hf-ai-teal)]" aria-hidden="true">
+              <Map className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Learning Roadmap</span>
+            <span className="hf-badge hf-badge-teal text-xs">
+              Career advisor
+            </span>
           </div>
-          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Learning Path</h1>
-          <p className="text-ink-dim font-medium text-lg max-w-2xl">
-            Convert alignment gaps into strategic growth trajectories using validated career requirements.
+          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight">
+            Learning path
+          </h1>
+          <p className="text-sm sm:text-base text-[var(--hf-text-secondary)] font-normal leading-relaxed max-w-2xl mt-1.5">
+            Turn skill and role alignment gaps into a structured, step-by-step career learning plan.
           </p>
         </div>
         {(targetRole || skillsStr || roadmap) && (
           <button
             onClick={handleResetLearningPath}
-            className="px-3.5 py-2.5 bg-surface hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-ink-dim hover:text-rose-400 rounded-2xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 transition-all self-start md:self-auto shrink-0 cursor-pointer shadow-sm"
-            title="Explicitly reset learning path state"
+            className="hf-btn-ghost text-xs text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] border border-[var(--hf-border)] px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors self-start md:self-auto shrink-0 cursor-pointer"
+            title="Reset role, skills, and roadmap"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Path</span>
+            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Reset path</span>
           </button>
         )}
       </div>
 
       {/* Active Job Context Banner */}
       {currentActiveJob && (currentActiveJob.source || !isDemoRole(currentActiveJob.title)) && !currentActiveJob.title?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('target organization') && (
-        <div className="mb-6 p-4 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse mt-1 sm:mt-0" />
-            <div>
+        <div className="mb-6 p-4 sm:p-5 rounded-xl bg-[var(--hf-surface)] border border-[var(--hf-border)] shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            <div className="w-2.5 h-2.5 rounded-full bg-[var(--hf-ai-teal)] shrink-0 mt-1.5 sm:mt-0" />
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Selected Real Job</p>
+                <span className="hf-badge hf-badge-teal text-[11px] py-0.5">
+                  Active target job
+                </span>
                 {currentActiveJob.provider && (
-                  <span className="px-2 py-0.5 bg-accent/10 border border-accent/20 rounded-md text-[9px] font-mono font-bold text-accent">
+                  <span className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded text-[11px] font-medium text-[var(--hf-text-secondary)]">
                     {currentActiveJob.provider}
                   </span>
                 )}
                 {currentActiveJob.isRemote && (
-                  <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[9px] font-mono font-bold text-emerald-400">
-                    Verified Remote
+                  <span className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded text-[11px] font-medium text-[var(--hf-text-secondary)]">
+                    Remote
                   </span>
                 )}
               </div>
-              <p className="text-sm font-bold text-ink mt-0.5">
-                {currentActiveJob.title} <span className="text-ink-dim font-normal">at {currentActiveJob.company}</span>
+              <p className="text-sm font-semibold text-[var(--hf-text)] mt-1 truncate">
+                {currentActiveJob.title}{' '}
+                <span className="font-normal text-[var(--hf-text-secondary)]">
+                  at {currentActiveJob.company}
+                </span>
                 {currentActiveJob.location && (
-                  <span className="text-xs text-ink-dim font-normal ml-2">({currentActiveJob.location})</span>
+                  <span className="text-xs text-[var(--hf-text-muted)] font-normal ml-1.5">
+                    ({currentActiveJob.location})
+                  </span>
                 )}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 self-end sm:self-center">
+          <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
             {currentActiveJob.skills && currentActiveJob.skills.length > 0 && (
-              <span className="text-[10px] font-bold bg-surface px-2.5 py-1 rounded-full text-ink-dim border border-border">
+              <span className="text-xs text-[var(--hf-text-secondary)] bg-[var(--hf-surface-secondary)] px-2.5 py-1 rounded-md border border-[var(--hf-border)]">
                 {currentActiveJob.skills.length} skills from job
               </span>
             )}
@@ -625,60 +637,84 @@ export default function LearningPath() {
                 href={currentActiveJob.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1 uppercase tracking-wider font-mono"
+                className="text-xs font-medium text-[var(--hf-primary)] hover:underline flex items-center gap-1"
               >
-                Official Posting <ExternalLink className="w-3 h-3" />
+                <span>{currentActiveJob.provider ? `${currentActiveJob.provider} posting` : 'Job posting'}</span>
+                <ExternalLink className="w-3 h-3" aria-hidden="true" />
               </a>
             )}
             <button
               onClick={handleResetLearningPath}
-              className="text-[10px] font-bold text-ink-dim hover:text-rose-400 uppercase tracking-wider transition-colors cursor-pointer"
+              className="text-xs font-medium text-[var(--hf-text-muted)] hover:text-[var(--hf-error)] transition-colors cursor-pointer"
             >
-              Clear Job Context
+              Clear context
             </button>
           </div>
         </div>
       )}
 
       {/* 2. Target Input Section (Full width, placed at the top) */}
-      <div className="bg-surface p-6 sm:p-8 rounded-[2rem] border border-border shadow-2xl mb-10 w-full">
+      <div className="hf-card p-6 sm:p-7 mb-8 w-full">
         <div className="space-y-6">
+          <div>
+            <h2 className="text-base font-semibold text-[var(--hf-text)]">
+              Target role & skill targets
+            </h2>
+            <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] mt-0.5">
+              Configure the career role and specific competency gaps you want your 30-day curriculum to bridge.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-3 block px-1">Target Role</label>
-                <input 
-                  value={targetRole}
-                  onChange={(e) => {
-                    setTargetRole(e.target.value);
-                    userEditedRoleRef.current = true;
-                  }}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
-                  placeholder="e.g. Senior Software Engineer"
-                />
-              </div>
+            <div className="space-y-2">
+              <label 
+                htmlFor="target-role-input"
+                className="text-xs font-medium text-[var(--hf-text)] block"
+              >
+                Target role
+              </label>
+              <input 
+                id="target-role-input"
+                value={targetRole}
+                onChange={(e) => {
+                  setTargetRole(e.target.value);
+                  userEditedRoleRef.current = true;
+                }}
+                className="hf-input w-full text-sm"
+                placeholder="e.g. Senior Software Engineer"
+              />
+              <p className="text-xs text-[var(--hf-text-muted)]">
+                Enter the position you are aiming for or currently interviewing toward.
+              </p>
             </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1">Target Skills</label>
-                <div className="flex items-center gap-3">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label 
+                  htmlFor="target-skills-input"
+                  className="text-xs font-medium text-[var(--hf-text)] block"
+                >
+                  Target skills
+                </label>
+                <div className="flex items-center gap-2">
                   {currentActiveJob?.skills && currentActiveJob.skills.length > 0 && (
                     <button 
+                      type="button"
                       onClick={() => {
                         setSkillsStr(currentActiveJob.skills.join(', '));
                         userEditedSkillsRef.current = false;
                       }}
-                      className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
+                      className="text-xs font-medium text-[var(--hf-primary)] hover:underline cursor-pointer"
                     >
-                      Reset to Job Skills
+                      Reset to job skills
                     </button>
                   )}
                   {recentAnalysis && (
                     <button 
+                      type="button"
                       onClick={() => {
                         if (recentAnalysis.missingKeywords) {
-                           const clean = normalizeIncomingSkills(recentAnalysis.missingKeywords);
+                          const clean = normalizeIncomingSkills(recentAnalysis.missingKeywords);
                           if (clean) {
                             setSkillsStr(clean);
                             userEditedSkillsRef.current = true;
@@ -692,32 +728,37 @@ export default function LearningPath() {
                           }
                         }
                       }}
-                      className="text-[9px] font-bold text-accent uppercase tracking-tighter hover:underline cursor-pointer"
+                      className="text-xs font-medium text-[var(--hf-ai-teal)] hover:underline cursor-pointer flex items-center gap-1"
                     >
-                      Load Analysis Gaps
+                      <Sparkles className="w-3 h-3" aria-hidden="true" />
+                      Load analysis gaps
                     </button>
                   )}
                 </div>
               </div>
               <textarea 
+                id="target-skills-input"
                 value={skillsStr}
                 onChange={(e) => {
                   setSkillsStr(e.target.value);
                   userEditedSkillsRef.current = true;
                 }}
-                className="w-full h-28 sm:h-32 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed"
-                placeholder="Enter skills separated by commas (e.g. React, TypeScript, GraphQL)..."
+                className="hf-input w-full h-28 sm:h-32 text-sm resize-none leading-relaxed"
+                placeholder="Enter skills separated by commas (e.g. React, TypeScript, System Design, GraphQL)..."
               />
+              <p className="text-xs text-[var(--hf-text-muted)]">
+                Separate skills with commas. Focus on 3–6 key competencies for best results.
+              </p>
             </div>
           </div>
 
           <button 
             onClick={generatePath}
             disabled={loading || !targetRole.trim() || !skillsStr.trim()}
-            className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+            className="hf-btn-primary w-full py-3.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {loading ? 'Generating Learning Path...' : 'Generate Learning Path'}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Sparkles className="w-4 h-4" aria-hidden="true" />}
+            <span>{loading ? 'Generating 30-day learning roadmap...' : 'Generate 30-day learning roadmap'}</span>
           </button>
         </div>
       </div>
@@ -725,17 +766,17 @@ export default function LearningPath() {
       {/* 3. Complete Learning Roadmap (Full width) */}
       <div className="w-full">
         {error && !loading && (
-          <div className="p-4 mb-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+          <div className="p-4 mb-6 rounded-lg bg-[var(--hf-error-bg)] border border-[var(--hf-error)]/30 text-[var(--hf-error)] text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" />
+              <span className="font-medium leading-relaxed">{error}</span>
             </div>
             <button
               onClick={generatePath}
-              className="px-3 py-1.5 bg-rose-500 text-white text-xs font-bold rounded-xl hover:bg-rose-600 transition-colors uppercase tracking-wider shrink-0 cursor-pointer flex items-center gap-1.5"
+              className="hf-btn-danger text-xs px-3 py-1.5 rounded-lg font-medium shrink-0 cursor-pointer flex items-center gap-1.5"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Retry
+              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Retry</span>
             </button>
           </div>
         )}
@@ -746,94 +787,177 @@ export default function LearningPath() {
               icon={GraduationCap}
               title="Create your personalized learning path"
               targetRole={targetRole || undefined}
-              description="Enter your target role and skills above, or load missing keywords from your resume analysis, then generate a customized skill roadmap."
-              benefitMetric="Following a structured learning plan reduces interview prep time by 4 weeks"
+              description="Enter your target role and skills above, or load missing keywords from your resume analysis, then generate a customized 30-day learning roadmap."
             />
           ) : loading ? (
             <AILoadingStepper 
               presetKey="learning_roadmap" 
-              title="Curriculum Dependency & Skill Graph Engine" 
+              title="Generating 30-day learning roadmap" 
             />
           ) : (
             <motion.div 
               key="roadmap"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
               className="space-y-8"
             >
-              {/* Roadmap Header */}
-              <div className="bg-accent/10 border border-accent/20 p-8 rounded-[3rem] text-center mb-8 relative">
-                 <div className="flex justify-end mb-2">
-                   <button
-                     onClick={handleResetLearningPath}
-                     className="px-3 py-1.5 text-xs text-ink-dim hover:text-rose-400 font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
-                   >
-                     <RotateCcw className="w-3.5 h-3.5" />
-                     Reset Learning Path
-                   </button>
-                 </div>
-                 <h2 className="text-2xl sm:text-3xl font-black text-ink uppercase tracking-tight mb-2">{roadmap.roadmapTitle}</h2>
-                 <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent uppercase tracking-[0.2em]">
-                    <Zap className="w-3 h-3" /> Accelerated {roadmapType} Learning Protocol
-                 </div>
+              {/* Roadmap Header Card */}
+              <div className="hf-card p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[var(--hf-border)]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="hf-badge hf-badge-teal text-xs">
+                      {roadmapType === 'personalized' ? 'Personalized to skill gaps' : 'General skill roadmap'}
+                    </span>
+                    {targetRole && (
+                      <span className="text-xs font-medium text-[var(--hf-text-secondary)]">
+                        Target role: <strong className="font-semibold text-[var(--hf-text)]">{targetRole}</strong>
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleResetLearningPath}
+                    className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3 py-1.5 text-xs font-medium text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Reset path
+                  </button>
+                </div>
+
+                <div className="pt-5">
+                  <h2 className="text-xl sm:text-2xl font-bold text-[var(--hf-text)] tracking-tight">
+                    {roadmap.roadmapTitle}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] mt-1.5">
+                    {roadmap.sections?.length || 0} milestone {(roadmap.sections?.length || 0) === 1 ? 'phase' : 'phases'} covering targeted skills and practical project milestones.
+                  </p>
+                </div>
+
+                {/* AI Suggestions Guidance Note */}
+                <div className="mt-5 flex items-start gap-2.5 p-3 rounded-lg border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] text-xs text-[var(--hf-text-secondary)]">
+                  <AlertCircle className="w-4 h-4 text-[var(--hf-text-muted)] shrink-0 mt-0.5" />
+                  <span>AI-generated suggestions. Check that each link works and fits you before relying on it.</span>
+                </div>
               </div>
 
               {/* Milestone Sequence */}
-              {(roadmap?.sections || []).map((section, idx) => (
-                <div key={idx} className="relative pl-14 sm:pl-16 group">
-                  {/* Vertical Line */}
-                  {idx !== roadmap.sections.length - 1 && (
-                    <div className="absolute left-[27px] top-14 bottom-0 w-0.5 bg-border group-hover:bg-accent/30 transition-colors" />
-                  )}
-                  
-                  {/* Circle Node */}
-                  <div className="absolute left-0 top-0 w-14 h-14 bg-surface border-2 border-accent rounded-full flex items-center justify-center font-bold text-accent text-base shadow-lg shadow-accent/10 z-10">
-                    {idx + 1}
-                  </div>
-
-                  <div className="bg-surface border border-border rounded-[2rem] p-6 sm:p-8 hover:border-accent/40 transition-all shadow-sm">
-                    <h3 className="text-xl sm:text-2xl font-bold text-ink mb-4">{section.title}</h3>
+              <div className="space-y-6">
+                {(roadmap?.sections || []).map((section, idx) => (
+                  <div key={idx} className="relative pl-12 sm:pl-16">
+                    {/* Vertical Connecting Line */}
+                    {idx !== roadmap.sections.length - 1 && (
+                      <div 
+                        className="absolute left-[19px] sm:left-[23px] top-12 bottom-0 w-px bg-[var(--hf-border)]" 
+                        aria-hidden="true"
+                      />
+                    )}
                     
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {section.skillsCovered.map((skill, i) => (
-                        <span key={i} className="px-3 py-1 bg-background border border-border rounded-lg text-[10px] font-bold text-ink-dim uppercase">
-                          {skill}
-                        </span>
-                      ))}
+                    {/* Circle Node with Step Index */}
+                    <div 
+                      className="absolute left-0 top-0 w-10 sm:w-12 h-10 sm:h-12 rounded-full border border-[var(--hf-border)] bg-[var(--hf-surface)] flex items-center justify-center font-bold text-sm sm:text-base text-[var(--hf-text)] shadow-xs z-10"
+                      aria-hidden="true"
+                    >
+                      {idx + 1}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {section.resources.map((resource, i) => (
-                        <a 
-                          key={i} 
-                          href={resource.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="p-5 bg-background border border-border rounded-2xl hover:border-accent/40 transition-all group/res flex flex-col justify-between"
-                        >
-                          <div>
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="text-accent bg-accent/10 p-1.5 rounded-lg flex items-center justify-center">
-                                {getIcon(resource.type)}
-                              </div>
-                              <span className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">{resource.platform}</span>
-                            </div>
-                            <h4 className="text-sm font-bold text-ink group-hover/res:text-accent transition-colors line-clamp-1 mb-1">{resource.name}</h4>
-                            <p className="text-[11px] text-ink-dim line-clamp-2 leading-relaxed italic">"{resource.description}"</p>
+                    <div className="hf-card p-5 sm:p-7">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <span className="text-xs font-semibold text-[var(--hf-ai-teal)]">
+                          Phase {idx + 1} of {roadmap.sections.length}
+                        </span>
+                        <span className="text-xs text-[var(--hf-text-muted)] font-normal">
+                          {section.resources?.length || 0} suggested {(section.resources?.length || 0) === 1 ? 'resource' : 'resources'}
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg sm:text-xl font-bold text-[var(--hf-text)] mb-3">
+                        {section.title}
+                      </h3>
+                      
+                      {section.skillsCovered?.length > 0 && (
+                        <div className="mb-5">
+                          <p className="text-xs font-medium text-[var(--hf-text-muted)] mb-2">Skills covered</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {section.skillsCovered.map((skill, i) => (
+                              <span 
+                                key={i} 
+                                className="px-2.5 py-1 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md text-xs font-medium text-[var(--hf-text)]"
+                              >
+                                {skill}
+                              </span>
+                            ))}
                           </div>
-                          <div className="mt-4 flex items-center gap-1 text-[10px] font-bold text-accent uppercase tracking-tighter opacity-0 group-hover/res:opacity-100 transition-opacity">
-                            Initialize Module <ArrowRight className="w-3 h-3" />
+                        </div>
+                      )}
+
+                      {/* Suggested resources */}
+                      {section.resources?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-[var(--hf-text)] mb-3">
+                            Suggested resources
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                            {section.resources.map((resource, i) => {
+                              const hasLink = Boolean(resource.link && resource.link.trim());
+                              const cardContent = (
+                                <div className="flex flex-col h-full justify-between">
+                                  <div>
+                                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                                      <div className="p-1.5 rounded-md bg-[var(--hf-surface-secondary)] text-[var(--hf-ai-teal)]">
+                                        {getIcon(resource.type)}
+                                      </div>
+                                      <span className="text-xs font-medium text-[var(--hf-text-muted)] truncate max-w-[150px]">
+                                        {resource.platform || 'Online'}
+                                      </span>
+                                    </div>
+                                    <h5 className="text-sm font-semibold text-[var(--hf-text)] group-hover:text-[var(--hf-primary)] transition-colors line-clamp-1 mb-1">
+                                      {resource.name}
+                                    </h5>
+                                    {resource.description && (
+                                      <p className="text-xs text-[var(--hf-text-secondary)] line-clamp-2 leading-relaxed">
+                                        {resource.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {hasLink && (
+                                    <div className="mt-4 pt-3 border-t border-[var(--hf-border)] flex items-center justify-between text-xs font-medium text-[var(--hf-primary)]">
+                                      <span>Open resource</span>
+                                      <ExternalLink className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+
+                              return hasLink ? (
+                                <a 
+                                  key={i} 
+                                  href={resource.link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="group block p-4 sm:p-5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl hover:border-[var(--hf-border-hover)] hover:shadow-xs transition-all"
+                                >
+                                  {cardContent}
+                                </a>
+                              ) : (
+                                <div 
+                                  key={i} 
+                                  className="p-4 sm:p-5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl"
+                                >
+                                  {cardContent}
+                                </div>
+                              );
+                            })}
                           </div>
-                        </a>
-                      ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
-              {/* 4. AI Journey Router (Rendered at bottom after all milestones) */}
+              {/* AI Journey Router Bridge */}
               {roadmap && (
-                <div className="pt-6">
+                <div className="pt-4">
                   <NextStepBridgeCard
                     title="Learning roadmap generated"
                     contextData={`30-day curriculum tailored for "${targetRole || 'Target Role'}". Mapped ${roadmap.sections.length} core milestone modules covering ${roadmap.sections.flatMap(s => s.skillsCovered).slice(0, 4).join(', ')}.`}
@@ -859,36 +983,16 @@ export default function LearningPath() {
                 </div>
               )}
 
-              {/* Verified & Calibrated Footer */}
-              <div className="text-center py-6">
-                 <div className="inline-flex items-center gap-2 px-6 py-3 bg-surface border border-border rounded-full text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                    <ShieldCheckIcon className="w-4 h-4 text-success" /> Skill Path Verified & Calibrated
-                 </div>
+              {/* Plain Roadmap Footnote */}
+              <div className="text-center py-6 border-t border-[var(--hf-border)]">
+                <p className="text-xs text-[var(--hf-text-muted)]">
+                  {roadmap.roadmapTitle} · Target role: {targetRole || 'Target role'}
+                </p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
     </div>
-  );
-}
-
-function ShieldCheckIcon(props: any) {
-  return (
-    <svg 
-      {...props}
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
   );
 }

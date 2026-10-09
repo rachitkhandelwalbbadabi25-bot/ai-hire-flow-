@@ -96,11 +96,25 @@ class AnalysisJobService {
       throw err;
     }
 
-    if (parsed) {
+    if (isHtml) {
+      const err: any = new Error('AI provider is temporarily unavailable. Please try again later.');
+      err.code = 'PROVIDER_UPSTREAM_ERROR';
+      err.status = res.status;
+      throw err;
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.status === 'failed' && (parsed.error || parsed.message)) {
+        const err: any = new Error(parsed.error || parsed.message);
+        err.code = parsed.code || 'PROVIDER_UPSTREAM_ERROR';
+        err.status = res.status;
+        err.diagnostics = parsed.diagnostics;
+        throw err;
+      }
       return parsed as T;
     }
 
-    throw new Error('AI provider returned an invalid response structure.');
+    throw new Error('Analysis timed out or returned an invalid response. Please click Retry Analysis to run a fresh audit.');
   }
 
   /**
@@ -238,9 +252,17 @@ class AnalysisJobService {
         return startData.result;
       }
 
+      if (startData.status === 'failed') {
+        this.clearActiveJobId();
+        const err: any = new Error(startData.error || 'Analysis failed. Please click Retry Analysis to rerun the scan.');
+        err.code = startData.code || 'PROVIDER_UPSTREAM_ERROR';
+        err.diagnostics = startData.diagnostics;
+        throw err;
+      }
+
       // Polling loop: every 2 seconds check job status until completed or failed
-      // Aligned with backend 48,000ms overall budget (26 polls * 2000ms = 52s)
-      const maxPolls = 26;
+      // Aligned with backend 54,000ms overall budget (28 polls * 2000ms = 56s)
+      const maxPolls = 28;
       const pollIntervalMs = 2000;
 
       for (let poll = 0; poll < maxPolls; poll++) {

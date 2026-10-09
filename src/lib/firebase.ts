@@ -19,13 +19,34 @@ export const db = initializeFirestore(app, {
 }, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
+let pendingSignIn: Promise<any> | null = null;
+
 export const signInWithGoogle = async () => {
-  try {
-    const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
-  } catch (error) {
-    console.error('Error signing in with Google:', error);
-    throw error;
+  if (pendingSignIn) {
+    return pendingSignIn;
   }
+
+  pendingSignIn = (async () => {
+    try {
+      googleProvider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, googleProvider);
+      return result.user;
+    } catch (error: any) {
+      // Gracefully handle benign user cancelation or duplicate popup requests
+      if (
+        error?.code === 'auth/cancelled-popup-request' ||
+        error?.code === 'auth/popup-closed-by-user' ||
+        error?.code === 'auth/user-cancelled'
+      ) {
+        return null;
+      }
+      console.error('Error signing in with Google:', error);
+      throw error;
+    } finally {
+      pendingSignIn = null;
+    }
+  })();
+
+  return pendingSignIn;
 };
 

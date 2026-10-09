@@ -1,28 +1,23 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signInWithGoogle } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
-import SEOHead from '../components/SEOHead';
+import SEOFeatureLayout from '../components/SEOFeatureLayout';
+import { SAMPLE_PERSONA } from '../data/sampleData';
 import { 
-  FileSearch, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Zap, 
-  ArrowRight, 
-  ShieldCheck, 
-  Search, 
-  Layers, 
   BarChart3, 
-  HelpCircle,
-  Briefcase,
-  Mic,
-  GraduationCap,
-  FileEdit,
-  Sparkles
+  Zap, 
+  ShieldCheck, 
+  SlidersHorizontal,
+  FileSearch,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export default function ResumeAnalyzerSEO() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [isLaunching, setIsLaunching] = useState(false);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -39,236 +34,179 @@ export default function ResumeAnalyzerSEO() {
       navigate('/analyzer');
       return;
     }
+    if (isLaunching) return;
+    setIsLaunching(true);
     try {
       const loggedInUser = await signInWithGoogle();
       if (loggedInUser) {
         navigate('/analyzer');
       }
-    } catch (error) {
-      console.error('Sign in error:', error);
+    } catch (error: any) {
+      if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
+        console.error('Sign in error:', error);
+      }
+    } finally {
+      setIsLaunching(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background text-ink selection:bg-accent selection:text-black">
-      <SEOHead 
-        title="AI Resume Analyzer | ATS Compatibility & Keyword Audit — AI HireFlow"
-        description="Analyze your resume with AI HireFlow's advanced AI Resume Analyzer. Get instant ATS compatibility scores, keyword gap audits, metric density evaluations, and actionable bullet rewrites."
-        canonicalPath="/resume-analyzer"
-        jsonLd={jsonLd}
-      />
+  // Unique Sample Visual: Annotated sample resume audit with categories, missing keywords, and evidence
+  const sampleVisual = (
+    <div className="hf-card p-5 sm:p-7 shadow-xs space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hf-border)] pb-4">
+        <div className="flex items-center gap-2">
+          <span className="hf-badge hf-badge-teal">Sample audit</span>
+          <span className="text-xs text-[var(--hf-text-secondary)] font-medium">
+            Role: {SAMPLE_PERSONA.targetRole}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[var(--hf-text-muted)]">Benchmark score</span>
+          <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] border border-[var(--hf-border)] tabular-nums">
+            {SAMPLE_PERSONA.scoreLabel}
+          </span>
+        </div>
+      </div>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden border-b border-border">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[500px] -z-10 opacity-40 pointer-events-none">
-          <div className="absolute top-[-10%] left-[20%] w-[350px] h-[350px] bg-accent/10 rounded-full blur-[100px]" />
-          <div className="absolute top-[20%] right-[20%] w-[300px] h-[300px] bg-emerald-500/10 rounded-full blur-[90px]" />
+      {/* 4 Score Categories */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {SAMPLE_PERSONA.categories.map((cat, idx) => (
+          <div key={idx} className="p-3.5 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)]">
+            <span className="text-xs text-[var(--hf-text-secondary)] block">
+              {cat.name} ({cat.weight}%)
+            </span>
+            <span className="text-base font-semibold text-[var(--hf-text)] tabular-nums mt-1 block">
+              {cat.scoreLabel}
+            </span>
+            <span className="text-[11px] text-[var(--hf-text-muted)] mt-1 line-clamp-2 block leading-relaxed">
+              {cat.evidence}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Keyword Matching & Gaps */}
+      <div className="p-4 rounded-lg bg-[var(--hf-surface-secondary)]/60 border border-[var(--hf-border)] space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-semibold text-[var(--hf-text)]">
+            Keyword coverage analysis [Sample]
+          </span>
+          <span className="text-[11px] text-[var(--hf-text-muted)]">
+            5 matched &bull; 3 missing [Sample]
+          </span>
         </div>
 
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-surface px-3.5 py-1.5 rounded-full text-accent text-xs font-mono font-bold uppercase tracking-wider mb-6 border border-border">
-            <FileSearch className="w-3.5 h-3.5" /> AI Resume Intelligence Engine
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-sans font-black tracking-tight text-ink leading-[1.05] mb-6">
-            AI Resume Analyzer
-          </h1>
-
-          <p className="text-base sm:text-lg text-ink-dim max-w-2xl mx-auto mb-10 leading-relaxed">
-            Audit your resume with senior recruiter rigor. Detect missing technical keywords, eliminate ATS parsing roadblocks, evaluate quantifiable impact metrics, and optimize your qualifications for target positions.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-            <button
-              onClick={handleLaunch}
-              className="bg-accent text-black font-mono font-bold text-sm uppercase tracking-wider px-8 py-4 rounded-lg hover:opacity-90 transition-all shadow-lg shadow-accent/20 w-full sm:w-auto flex items-center justify-center gap-2 cursor-pointer"
-            >
-              Try Resume Analyzer <ArrowRight className="w-4 h-4" />
-            </button>
-            <a 
-              href="#how-it-works"
-              className="text-ink-dim hover:text-ink px-6 py-4 rounded-lg text-sm font-medium border border-border bg-surface hover:bg-surface-light transition-all w-full sm:w-auto text-center"
-            >
-              How It Works
-            </a>
-          </div>
-
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-xs text-ink-dim font-mono">
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-accent" /> 4-Category Weighted Math</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-accent" /> Keyword Gap Isolation</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-accent" /> Evidence-Grounded Rewrites</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Feature Deep Dive */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-b border-border bg-surface/20">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-xs font-mono font-bold text-accent uppercase tracking-widest mb-3">Diagnostic Intelligence</h2>
-            <p className="text-3xl font-sans font-black text-ink uppercase tracking-tight">Why Standard ATS Checkers Fail Job Seekers</p>
-            <p className="text-sm text-ink-dim mt-4 leading-relaxed">
-              Most online resume checkers give arbitrary 0-100 scores based on simple word count or keyword stuffing. AI HireFlow operates like a senior technical hiring manager: analyzing deep semantic skills, verifying project evidence, and calculating transparent, weighted category scores.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-surface border border-border p-8 rounded-xl">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 text-accent flex items-center justify-center mb-6">
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-ink mb-2">Mathematical Transparency</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Scores are divided into four clear categories: Core Technical Match (40%), Measurable Impact (25%), Role Relevance (20%), and Structure (15%). No hidden formulas or artificial clamping.
-              </p>
-            </div>
-
-            <div className="bg-surface border border-border p-8 rounded-xl">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 text-accent flex items-center justify-center mb-6">
-                <Zap className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-ink mb-2">Evidence-Grounded Rewrites</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                The analyzer never fabricates fake projects or metrics. Instead, it extracts your real experience bullets and provides truthful, tailored upgrades that highlight delivered value.
-              </p>
-            </div>
-
-            <div className="bg-surface border border-border p-8 rounded-xl">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 text-accent flex items-center justify-center mb-6">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-ink mb-2">Recruiter-Grade Advice</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Gaps are categorized into direct evidence, transferable experience, or genuine gaps, delivering distinct, situational recommendations rather than repetitive templates.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 border-b border-border">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-xs font-mono font-bold text-accent uppercase tracking-widest mb-3">Audit Process</h2>
-            <p className="text-3xl font-sans font-black text-ink uppercase tracking-tight">How the Resume Analyzer Works</p>
-          </div>
-
-          <div className="space-y-6">
-            {[
-              {
-                step: "01",
-                title: "Upload Resume or Paste Text",
-                desc: "Upload PDF or DOCX files or select your saved Master Resume profile. Our parser strips formatting noise and normalizes sections."
-              },
-              {
-                step: "02",
-                title: "Provide Target Job Description",
-                desc: "Paste the exact job description you are targeting. The analyzer extracts required technical qualifications, hard requirements, and domain preferences."
-              },
-              {
-                step: "03",
-                title: "Run Deep-Layer ATS Audit",
-                desc: "AI HireFlow evaluates keyword density, explicit vs. inferred skills, quantifiable metrics, and single-column ATS parsability."
-              },
-              {
-                step: "04",
-                title: "Implement High-Impact Upgrades",
-                desc: "Review your detailed 12-section audit memo, copy evidence-based bullet rewrites, and push improvements directly into the Resume Editor."
-              }
-            ].map((s, i) => (
-              <div key={i} className="flex gap-6 p-6 bg-surface border border-border rounded-xl items-start">
-                <span className="font-mono text-xl font-bold text-accent">{s.step}</span>
-                <div>
-                  <h3 className="text-base font-bold text-ink mb-1">{s.title}</h3>
-                  <p className="text-xs text-ink-dim leading-relaxed">{s.desc}</p>
-                </div>
-              </div>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-[var(--hf-text-secondary)] font-medium mr-1">Matched:</span>
+            {SAMPLE_PERSONA.matchedKeywords.map((kw, i) => (
+              <span key={i} className="px-2 py-0.5 rounded text-[11px] bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-success)] font-medium">
+                {kw} [Sample]
+              </span>
             ))}
           </div>
 
-          <div className="mt-12 text-center">
-            <button
-              onClick={handleLaunch}
-              className="bg-accent text-black font-mono font-bold text-sm uppercase tracking-wider px-8 py-4 rounded-lg hover:opacity-90 transition-all cursor-pointer inline-flex items-center gap-2"
-            >
-              Analyze Your Resume Now <ArrowRight className="w-4 h-4" />
-            </button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-[var(--hf-text-secondary)] font-medium mr-1">Missing:</span>
+            {SAMPLE_PERSONA.missingKeywords.map((kw, i) => (
+              <span key={i} className="px-2 py-0.5 rounded text-[11px] bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-error)] font-medium">
+                {kw} [Sample]
+              </span>
+            ))}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Related Tools / Internal Linking */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-b border-border bg-surface/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-xs font-mono font-bold text-accent uppercase tracking-widest mb-2">Connected Career Operations</h2>
-            <p className="text-2xl font-sans font-bold text-ink">Explore AI HireFlow's Platform Capabilities</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link to="/resume-editor" className="p-6 bg-surface border border-border rounded-xl hover:border-accent/40 transition-all flex flex-col justify-between group">
-              <div>
-                <FileEdit className="w-6 h-6 text-accent mb-4" />
-                <h3 className="font-bold text-ink mb-1 group-hover:text-accent transition-colors">AI Resume Editor</h3>
-                <p className="text-xs text-ink-dim">Apply analyzed recommendations and build single-column ATS resumes with instant PDF export.</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-accent mt-4">Open Resume Editor <ArrowRight className="w-3.5 h-3.5" /></span>
-            </Link>
-
-            <Link to="/job-finder" className="p-6 bg-surface border border-border rounded-xl hover:border-accent/40 transition-all flex flex-col justify-between group">
-              <div>
-                <Search className="w-6 h-6 text-accent mb-4" />
-                <h3 className="font-bold text-ink mb-1 group-hover:text-accent transition-colors">AI Job Finder</h3>
-                <p className="text-xs text-ink-dim">Discover targeted openings and run automated skill match comparisons before applying.</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-accent mt-4">Find Relevant Jobs <ArrowRight className="w-3.5 h-3.5" /></span>
-            </Link>
-
-            <Link to="/interview-lab" className="p-6 bg-surface border border-border rounded-xl hover:border-accent/40 transition-all flex flex-col justify-between group">
-              <div>
-                <Mic className="w-6 h-6 text-accent mb-4" />
-                <h3 className="font-bold text-ink mb-1 group-hover:text-accent transition-colors">AI Interview Lab</h3>
-                <p className="text-xs text-ink-dim">Rehearse technical and behavioral interview questions tailored to your target job profile.</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-accent mt-4">Start Interview Lab <ArrowRight className="w-3.5 h-3.5" /></span>
-            </Link>
-          </div>
+      {/* Evidence-Grounded Recommendation */}
+      <div className="p-4 rounded-lg bg-[var(--hf-surface-secondary)]/40 border border-[var(--hf-border)] flex items-start gap-3">
+        <div className="p-1.5 rounded-md bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-cta)] shrink-0 mt-0.5">
+          <SlidersHorizontal className="w-4 h-4" />
         </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-xs font-mono font-bold text-accent uppercase tracking-widest mb-2">FAQ</h2>
-            <p className="text-2xl font-sans font-bold text-ink">Frequently Asked Questions</p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="bg-surface border border-border p-6 rounded-xl">
-              <h3 className="text-sm font-bold text-ink mb-2">How does AI HireFlow calculate the ATS Compatibility Score?</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Our engine uses an authoritative 4-category weighted breakdown: Core Technical & Skill Match (40%), Measurable Impact & Hard Metrics (25%), Role & Domain Relevance (20%), and Structure & ATS Parsability (15%). Category points sum exactly to your final score without arbitrary inflation.
-              </p>
-            </div>
-
-            <div className="bg-surface border border-border p-6 rounded-xl">
-              <h3 className="text-sm font-bold text-ink mb-2">Does the analyzer invent fake metrics or experience?</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Never. Every recommendation, bullet rewrite, and skill gap is anchored strictly in the content of your resume. If a verified metric is missing, the tool prompts you to add a real figure rather than inventing fabricated statistics.
-              </p>
-            </div>
-
-            <div className="bg-surface border border-border p-6 rounded-xl">
-              <h3 className="text-sm font-bold text-ink mb-2">Is the Resume Analyzer free to try?</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Yes! Every new account receives free AI analysis credits to scan resumes, inspect keyword gaps, and review full recruiter audit reports.
-              </p>
-            </div>
-          </div>
+        <div>
+          <p className="text-xs font-semibold text-[var(--hf-text)]">Actionable evidence rewrite [Sample]</p>
+          <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5 leading-relaxed">
+            {SAMPLE_PERSONA.recommendation}
+          </p>
         </div>
-      </section>
+      </div>
     </div>
+  );
+
+  return (
+    <SEOFeatureLayout
+      title="AI Resume Analyzer | ATS Compatibility & Keyword Audit — AI HireFlow"
+      metaDescription="Analyze your resume with AI HireFlow's advanced AI Resume Analyzer. Get instant ATS compatibility scores, keyword gap audits, metric density evaluations, and actionable bullet rewrites."
+      canonicalPath="/resume-analyzer"
+      jsonLd={jsonLd}
+      badgeText="AI Resume Intelligence Engine"
+      h1="AI Resume Analyzer"
+      heroDescription="Audit your resume with senior recruiter rigor. Detect missing technical keywords, eliminate ATS parsing roadblocks, evaluate quantifiable impact metrics, and optimize your qualifications for target positions."
+      ctaLabel="Try Resume Analyzer"
+      onCtaClick={handleLaunch}
+      isCtaLoading={isLaunching}
+      sampleVisual={sampleVisual}
+      howItWorksTitle="How the Resume Analyzer Works"
+      howItWorksSubtitle="A structured 4-step audit to inspect and improve your resume."
+      howItWorks={[
+        {
+          step: "01",
+          title: "Upload Resume or Paste Text",
+          desc: "Upload PDF or DOCX files or select your saved Master Resume profile. Our parser strips formatting noise and normalizes sections."
+        },
+        {
+          step: "02",
+          title: "Provide Target Job Description",
+          desc: "Paste the exact job description you are targeting. The analyzer extracts required technical qualifications, hard requirements, and domain preferences."
+        },
+        {
+          step: "03",
+          title: "Run Deep-Layer ATS Audit",
+          desc: "AI HireFlow evaluates keyword density, explicit vs. inferred skills, quantifiable metrics, and single-column ATS parsability."
+        },
+        {
+          step: "04",
+          title: "Implement High-Impact Upgrades",
+          desc: "Review your detailed 12-section audit memo, copy evidence-based bullet rewrites, and push improvements directly into the Resume Editor."
+        }
+      ]}
+      capabilitiesTitle="Why Standard ATS Checkers Fail Job Seekers"
+      capabilitiesSubtitle="Most online resume checkers give arbitrary scores based on simple word count or keyword stuffing. AI HireFlow operates with transparent, weighted category scores."
+      capabilities={[
+        {
+          icon: BarChart3,
+          title: "Mathematical Transparency",
+          desc: "Scores are divided into four clear categories: Core Technical Match (40%), Measurable Impact (25%), Role Relevance (20%), and Structure (15%). No hidden formulas or artificial clamping."
+        },
+        {
+          icon: Zap,
+          title: "Evidence-Grounded Rewrites",
+          desc: "The analyzer never fabricates fake projects or metrics. Instead, it extracts your real experience bullets and provides truthful, tailored upgrades that highlight delivered value."
+        },
+        {
+          icon: ShieldCheck,
+          title: "Recruiter-Grade Advice",
+          desc: "Gaps are categorized into direct evidence, transferable experience, or genuine gaps, delivering distinct, situational recommendations rather than repetitive templates."
+        }
+      ]}
+      faqTitle="Frequently Asked Questions"
+      faqSubtitle="Answers regarding scoring methodology and privacy."
+      faqItems={[
+        {
+          q: "How does AI HireFlow calculate the ATS Compatibility Score?",
+          a: "Our engine uses an authoritative 4-category weighted breakdown: Core Technical & Skill Match (40%), Measurable Impact & Hard Metrics (25%), Role & Domain Relevance (20%), and Structure & ATS Parsability (15%). Category points sum exactly to your final score without arbitrary inflation."
+        },
+        {
+          q: "Does the analyzer invent fake metrics or experience?",
+          a: "Never. Every recommendation, bullet rewrite, and skill gap is anchored strictly in the content of your resume. If a verified metric is missing, the tool prompts you to add a real figure rather than inventing fabricated statistics."
+        },
+        {
+          q: "Is the Resume Analyzer free to try?",
+          a: "Yes! Every new account receives free AI analysis credits to scan resumes, inspect keyword gaps, and review full recruiter audit reports."
+        }
+      ]}
+      finalCtaTitle="Ready to Audit Your Resume?"
+      finalCtaDesc="Get an actionable evaluation of your resume's technical coverage, impact metrics, and ATS compatibility."
+      finalCtaLabel="Analyze Your Resume Now"
+    />
   );
 }

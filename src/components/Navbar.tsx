@@ -9,17 +9,15 @@ import HeaderQuickSearch from './HeaderQuickSearch';
 import MobileBottomNav from './MobileBottomNav';
 import HireFlowLogo from './HireFlowLogo';
 import { PUBLIC_SEO_ROUTES } from './Layout';
+import { useTheme } from '../context/ThemeContext';
 import { 
   BarChart3, 
-  FileSearch, 
   Briefcase, 
   User as UserIcon, 
   LogOut, 
   Sparkles,
   LayoutDashboard,
   Search,
-  MessageSquare,
-  BookOpen,
   FileEdit,
   Menu,
   X,
@@ -28,7 +26,8 @@ import {
   Mic,
   Award,
   MessageCircle,
-  ArrowRight
+  Sun,
+  Moon
 } from 'lucide-react';
 
 import { usePlan } from '../context/PlanContext';
@@ -39,42 +38,50 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const { plan } = usePlan();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const isPublicRoute = PUBLIC_SEO_ROUTES.includes(location.pathname);
 
   const handleSignOut = () => signOut(auth);
 
   const handleSignIn = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
     try {
       const loggedInUser = await signInWithGoogle();
       if (loggedInUser) {
         navigate('/dashboard');
       }
-    } catch (err) {
-      console.error('Sign in error:', err);
+    } catch (err: any) {
+      if (err?.code !== 'auth/cancelled-popup-request' && err?.code !== 'auth/popup-closed-by-user') {
+        console.error('Sign in error:', err);
+      }
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Job Finder', path: '/finder', icon: Search },
-    { name: 'Campus Prep', path: '/campus', icon: Award },
-    { name: 'Outreach & Alerts', path: '/outreach', icon: MessageCircle },
-    { name: 'Analyzer', path: '/analyzer', icon: BarChart3 },
-    { name: 'Interview Lab', path: '/interview', icon: Mic },
-    { name: 'Learning Path', path: '/learning', icon: GraduationCap },
-    { name: 'Resume Editor', path: '/editor', icon: FileEdit },
-    { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
-    { name: 'AI Credit Wallet', path: '/credits', icon: Sparkles },
+    { name: 'Job finder', path: '/finder', icon: Search },
+    { name: 'Campus prep', path: '/campus', icon: Award },
+    { name: 'Outreach & alerts', path: '/outreach', icon: MessageCircle },
+    { name: 'Resume analyzer', path: '/analyzer', icon: BarChart3 },
+    { name: 'Interview lab', path: '/interview', icon: Mic },
+    { name: 'Learning path', path: '/learning', icon: GraduationCap },
+    { name: 'Resume editor', path: '/editor', icon: FileEdit },
+    { name: 'Job tracker', path: '/jobs', icon: Briefcase },
+    { name: 'Credit wallet', path: '/credits', icon: Sparkles },
     { name: 'Profile', path: '/profile', icon: UserIcon },
   ];
 
   const getPlanLabel = (p: string) => {
     switch (p) {
-      case 'admin': return 'System Admin';
+      case 'admin': return 'System admin';
       case 'premium': return 'Premium';
       case 'pro':
       case 'standard': return 'Pro';
@@ -89,38 +96,56 @@ export default function Navbar({ user }: NavbarProps) {
 
   return (
     <>
-      <nav aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-[100] bg-surface/80 backdrop-blur-md border-b border-border">
+      <nav aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-[100] bg-[var(--hf-surface)] border-b border-[var(--hf-border)] shadow-xs transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {user && !isPublicRoute && (
                 <button 
                   onClick={() => setIsDrawerOpen(true)}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all lg:hidden cursor-pointer"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors lg:hidden cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
                   aria-label="Open navigation menu"
                   aria-expanded={isDrawerOpen}
                   aria-controls="mobile-navigation-drawer"
                 >
-                  <Menu className="w-6 h-6" aria-hidden="true" />
+                  <Menu className="w-5 h-5" aria-hidden="true" />
                 </button>
               )}
-              <Link to={user ? "/dashboard" : "/"} className="min-h-[44px] flex items-center gap-3 group" aria-label="AI HireFlow Home">
-                <HireFlowLogo className="w-9 h-9 transition-transform group-hover:scale-105" />
-                <div className="flex flex-col">
-                  <span className="font-sans font-black text-lg tracking-tight text-ink leading-none">
+              <Link to={user ? "/dashboard" : "/"} className="min-h-[44px] flex items-center gap-3 group focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded-lg" aria-label="AI HireFlow Home">
+                <HireFlowLogo className="w-8 h-8 shrink-0 transition-transform group-hover:scale-105" />
+                <div className="flex flex-col leading-tight">
+                  <span className="font-sans font-bold text-base tracking-tight text-[var(--hf-text)]">
                     AI HireFlow
                   </span>
-                  <span className="text-[9px] font-bold text-accent uppercase tracking-wider mt-0.5 font-mono">
-                    Career Hub
+                  <span className="text-[11px] font-normal text-[var(--hf-text-secondary)]">
+                    Career platform
                   </span>
                 </div>
               </Link>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               {user && !isPublicRoute && <HeaderQuickSearch />}
+
+              {/* Dev Only Theme Toggle Preview */}
+              {import.meta.env.DEV && (
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="min-h-[44px] min-w-[44px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
+                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode (Preview)`}
+                  title={`Toggle theme (${theme})`}
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <Moon className="w-4 h-4 text-slate-600" />
+                  )}
+                </button>
+              )}
+
               {user ? (
-                <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
+                <div className="flex items-center gap-2 sm:gap-3">
                    {!isPublicRoute && (
                      <div className="hidden sm:block">
                         <PlanBadge />
@@ -129,7 +154,7 @@ export default function Navbar({ user }: NavbarProps) {
                    {isPublicRoute && (
                      <Link
                        to="/dashboard"
-                       className="min-h-[40px] bg-accent text-black px-4 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider hover:opacity-90 transition-all shadow-md shadow-accent/20 flex items-center gap-1.5"
+                       className="hf-btn-primary min-h-[40px] px-3.5 py-1.5 text-xs gap-1.5"
                      >
                        <LayoutDashboard className="w-3.5 h-3.5" />
                        <span>Dashboard</span>
@@ -137,20 +162,21 @@ export default function Navbar({ user }: NavbarProps) {
                    )}
                    <button
                     onClick={handleSignOut}
-                    className="min-h-[44px] min-w-[44px] p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all flex items-center justify-center cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
                     aria-label="Sign out of account"
                     title="Sign Out"
                   >
-                    <LogOut className="w-5 h-5" aria-hidden="true" />
+                    <LogOut className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={handleSignIn}
-                  className="min-h-[44px] bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-accent/20 cursor-pointer flex items-center justify-center"
+                  disabled={isSigningIn}
+                  className="hf-btn-primary min-h-[44px] px-4 py-2 text-sm font-medium disabled:opacity-60"
                   aria-label="Get Started with Google Sign In"
                 >
-                  Get Started
+                  {isSigningIn ? 'Signing in...' : 'Get started'}
                 </button>
               )}
             </div>
@@ -160,13 +186,13 @@ export default function Navbar({ user }: NavbarProps) {
 
       {/* Desktop Persistent Sidebar Rail (Only on authenticated app routes) */}
       {user && !isPublicRoute && (
-        <aside aria-label="Sidebar Navigation" className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r lg:border-border lg:bg-surface/90 lg:backdrop-blur-xl">
-          <div className="px-6 py-4 border-b border-border/40">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.2em]">Navigation</span>
+        <aside aria-label="Sidebar Navigation" className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r lg:border-[var(--hf-border)] lg:bg-[var(--hf-surface)] transition-colors">
+          <div className="px-5 py-4 border-b border-[var(--hf-border)]">
+            <div className="flex items-center gap-2 mb-0.5">
+              <Sparkles className="w-3.5 h-3.5 text-[var(--hf-ai-teal)]" />
+              <span className="text-[11px] font-medium text-[var(--hf-text-secondary)]">Workspace</span>
             </div>
-            <h2 className="text-xs font-bold text-ink uppercase tracking-wider">Main Modules</h2>
+            <h2 className="text-xs font-semibold text-[var(--hf-text)]">Navigation modules</h2>
           </div>
 
           <div className="flex-1 px-3 py-3 space-y-1 overflow-y-auto custom-scrollbar">
@@ -177,30 +203,30 @@ export default function Navbar({ user }: NavbarProps) {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all group",
+                    "flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]",
                     isActive
-                      ? "bg-accent/10 text-accent border border-accent/20 shadow-sm"
-                      : "text-ink-dim hover:text-ink hover:bg-surface-light"
+                      ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] font-semibold border border-[var(--hf-border)] shadow-xs"
+                      : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/60"
                   )}
                 >
                   <item.icon className={cn(
-                    "w-4 h-4 transition-transform group-hover:scale-110 shrink-0",
-                    isActive ? "text-accent" : "text-ink-dim group-hover:text-ink"
+                    "w-4 h-4 shrink-0 transition-colors",
+                    isActive ? "text-[var(--hf-cta)]" : "text-[var(--hf-text-secondary)]"
                   )} />
-                  <span className="tracking-tight text-xs">{item.name}</span>
+                  <span className="text-xs">{item.name}</span>
                 </Link>
               );
             })}
           </div>
 
-          <div className="p-4 border-t border-border bg-surface-light/40 mt-auto">
-            <div className="bg-surface p-3 rounded-2xl border border-border flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
-                <UserIcon className="w-4 h-4 text-accent" />
+          <div className="p-3.5 border-t border-[var(--hf-border)] bg-[var(--hf-surface-secondary)]/40 mt-auto">
+            <div className="bg-[var(--hf-surface)] p-3 rounded-lg border border-[var(--hf-border)] flex items-center gap-3 shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 text-[var(--hf-cta)]">
+                <UserIcon className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-ink truncate">{user?.displayName || 'User'}</p>
-                <p className="text-[10px] text-accent font-mono font-medium truncate">{getPlanLabel(plan)}</p>
+                <p className="text-xs font-semibold text-[var(--hf-text)] truncate">{user?.displayName || 'User'}</p>
+                <p className="text-[11px] text-[var(--hf-cta)] font-medium truncate">{getPlanLabel(plan)}</p>
               </div>
             </div>
           </div>
@@ -216,7 +242,7 @@ export default function Navbar({ user }: NavbarProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsDrawerOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
+              className="fixed inset-0 bg-black/50 z-[110]"
             />
             <motion.div 
               initial={{ x: '-100%' }}
@@ -227,57 +253,57 @@ export default function Navbar({ user }: NavbarProps) {
               role="dialog"
               aria-modal="true"
               aria-label="Mobile Navigation Menu"
-              className="fixed top-0 left-0 bottom-0 w-80 bg-surface border-r border-border z-[120] flex flex-col pt-20"
+              className="fixed top-0 left-0 bottom-0 w-80 bg-[var(--hf-surface)] border-r border-[var(--hf-border)] z-[120] flex flex-col pt-16 shadow-xl"
             >
               <div className="absolute top-4 right-4">
                 <button 
                    onClick={() => setIsDrawerOpen(false)}
-                   className="min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all cursor-pointer"
+                   className="min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
                    aria-label="Close navigation menu"
                 >
-                  <X className="w-6 h-6" aria-hidden="true" />
+                  <X className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
 
-              <div className="px-6 mb-4">
-                 <div className="flex items-center gap-3 mb-2">
-                    <HireFlowLogo className="w-8 h-8" />
+              <div className="px-5 mb-3">
+                 <div className="flex items-center gap-3">
+                    <HireFlowLogo className="w-7 h-7" />
                     <div>
-                      <h2 className="text-sm font-bold text-ink uppercase tracking-wider">AI HireFlow</h2>
-                      <span className="text-[9px] font-bold text-accent uppercase tracking-widest font-mono">Career Platform</span>
+                      <h2 className="text-sm font-bold text-[var(--hf-text)]">AI HireFlow</h2>
+                      <span className="text-[11px] font-normal text-[var(--hf-text-secondary)]">Career platform</span>
                     </div>
                  </div>
               </div>
 
-              <div className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+              <div className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "min-h-[48px] flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all group",
+                      "min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]",
                       location.pathname === item.path
-                        ? "bg-accent/10 text-accent border border-accent/20 shadow-sm"
-                        : "text-ink-dim hover:text-ink hover:bg-surface-light"
+                        ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] font-semibold border border-[var(--hf-border)]"
+                        : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/60"
                     )}
                   >
                     <item.icon className={cn(
-                      "w-5 h-5 transition-transform group-hover:scale-110 shrink-0",
-                      location.pathname === item.path ? "text-accent" : "text-ink-dim group-hover:text-ink"
+                      "w-4 h-4 shrink-0 transition-colors",
+                      location.pathname === item.path ? "text-[var(--hf-cta)]" : "text-[var(--hf-text-secondary)]"
                     )} />
-                    <span className="tracking-tight text-xs">{item.name}</span>
+                    <span className="text-xs">{item.name}</span>
                   </Link>
                 ))}
               </div>
 
-              <div className="p-6 border-t border-border mt-auto">
-                 <div className="bg-surface-light p-4 rounded-2xl flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
-                       <UserIcon className="w-4 h-4 text-accent" />
+              <div className="p-4 border-t border-[var(--hf-border)] mt-auto bg-[var(--hf-surface-secondary)]/40">
+                 <div className="bg-[var(--hf-surface)] p-3 rounded-lg border border-[var(--hf-border)] flex items-center gap-3 shadow-xs">
+                    <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 text-[var(--hf-cta)]">
+                       <UserIcon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                       <p className="text-xs font-bold text-ink truncate">{user?.displayName}</p>
-                       <p className="text-[10px] text-accent font-mono truncate">{getPlanLabel(plan)}</p>
+                       <p className="text-xs font-semibold text-[var(--hf-text)] truncate">{user?.displayName || 'User'}</p>
+                       <p className="text-[11px] text-[var(--hf-cta)] font-medium truncate">{getPlanLabel(plan)}</p>
                     </div>
                  </div>
               </div>

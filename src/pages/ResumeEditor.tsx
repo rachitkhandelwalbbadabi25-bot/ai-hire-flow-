@@ -250,8 +250,9 @@ export default function ResumeEditor() {
 
   if (loading) {
     return (
-      <div className="h-96 w-full flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      <div className="min-h-[60vh] w-full flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-7 h-7 animate-spin text-[var(--hf-cta)]" />
+        <p className="text-sm text-[var(--hf-text-secondary)]">Loading master resume profile...</p>
       </div>
     );
   }
@@ -262,54 +263,60 @@ export default function ResumeEditor() {
   return (
     <div className="max-w-5xl mx-auto px-4 pb-32 relative">
       {/* Header Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
-              <FileEdit className="w-5 h-5 text-accent" />
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
+              <FileEdit className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Master Resume Profile</span>
+            <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Master resume profile</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-2">Resume Editor</h1>
-          <p className="text-ink-dim font-medium text-sm md:text-base">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight">Resume editor</h1>
+          <p className="text-sm text-[var(--hf-text-secondary)] mt-1">
             Craft your master profile with Google's XYZ formula and real-time AI bullet rewrites.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs font-mono text-ink-dim bg-surface border border-border px-3.5 py-3 rounded-2xl shadow-sm hidden sm:inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-xs text-[var(--hf-text-secondary)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-3 py-2 rounded-lg hidden sm:inline-flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[var(--hf-cta)] inline-block"></span>
             {typeof editAccess.limit === 'number' && editAccess.limit < 9999 ? `${editAccess.remaining} edits left this month` : 'Unlimited edits'}
           </span>
 
           <button
             type="button"
             onClick={handleClearAll}
-            className="bg-surface hover:bg-surface-light text-ink-dim hover:text-rose-400 border border-border px-3.5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-            title="Reset Editor"
+            className="min-h-[44px] px-3.5 py-2 bg-[var(--hf-surface)] hover:bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] border border-[var(--hf-border)] rounded-lg text-xs font-medium transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+            title="Reset editor"
           >
             <RotateCcw className="w-4 h-4" />
+            <span className="hidden sm:inline">Reset</span>
           </button>
 
           <button
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-accent text-white px-7 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl shadow-accent/30 hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+            className="hf-btn-primary min-h-[44px] px-5 py-2.5 text-xs sm:text-sm font-medium flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
-            {isSaving ? 'Syncing...' : saveSuccess ? 'Saved to Cloud' : 'Save Resume'}
+            {isSaving ? 'Syncing...' : saveSuccess ? 'Saved to cloud' : 'Save resume'}
           </button>
         </div>
       </div>
 
-      <div className="space-y-10">
+      <div className="space-y-8">
         {/* Professional Summary */}
-        <section className="bg-surface p-8 sm:p-10 rounded-[2.5rem] border border-border shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-[0.2em]">
-              <BrainCircuit className="w-4 h-4 text-accent" /> Professional Summary
-            </h3>
+        <section className="bg-[var(--hf-surface)] p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-sm sm:text-base font-semibold text-[var(--hf-text)] flex items-center gap-2">
+                <BrainCircuit className="w-4 h-4 text-[var(--hf-cta)]" /> Professional summary
+              </h2>
+              <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
+                Brief narrative highlighting your background, core specializations, and quantifiable career wins.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => handleOpenWritingAssistant(
@@ -320,58 +327,58 @@ export default function ResumeEditor() {
                 experienceList[0]?.role, 
                 experienceList[0]?.company
               )}
-              className="group flex items-center gap-2 text-xs font-mono font-bold text-accent uppercase tracking-wider bg-accent/10 hover:bg-accent/20 px-3.5 py-1.5 rounded-xl border border-accent/20 transition-all cursor-pointer"
+              className="self-start sm:self-auto min-h-[36px] px-3.5 py-1.5 rounded-lg border text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer bg-[color-mix(in_srgb,var(--hf-ai-teal)_10%,transparent)] border-[color-mix(in_srgb,var(--hf-ai-teal)_25%,transparent)] text-[var(--hf-ai-teal)] hover:bg-[color-mix(in_srgb,var(--hf-ai-teal)_18%,transparent)]"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Improve with AI</span>
             </button>
           </div>
-          <div className="relative group/summary-box">
+          <div className="relative">
             <textarea
               value={data.summary || ''}
               onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
               placeholder="Introduce your engineering background, specializations, and quantifiable career achievements..."
-              className="w-full h-36 p-5 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none leading-relaxed font-sans"
+              className="w-full min-h-[120px] p-4 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent resize-none leading-relaxed font-sans"
             />
           </div>
         </section>
 
         {/* Experience Section */}
-        <section className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2">
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
             <div>
-              <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-[0.2em]">
-                <Briefcase className="w-4 h-4 text-accent" /> Work Experience
-              </h3>
-              <p className="text-[11px] text-ink-dim font-mono mt-0.5">
+              <h2 className="text-base sm:text-lg font-semibold text-[var(--hf-text)] flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-[var(--hf-cta)]" /> Work experience
+              </h2>
+              <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
                 Google XYZ formula: Accomplished [X] as measured by [Y] by doing [Z].
               </p>
             </div>
             <button
               type="button"
               onClick={addExperience}
-              className="self-start sm:self-auto flex items-center gap-2 text-xs font-bold text-accent uppercase tracking-widest bg-accent/10 hover:bg-accent/20 px-4 py-2.5 rounded-xl border border-accent/20 transition-all cursor-pointer"
+              className="self-start sm:self-auto hf-btn-secondary min-h-[40px] px-3.5 py-2 text-xs sm:text-sm font-medium flex items-center gap-2 cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Add Experience Entry
+              <Plus className="w-4 h-4" /> Add experience entry
             </button>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {experienceList.length === 0 ? (
-              <div className="bg-surface/50 border border-dashed border-border rounded-3xl p-10 text-center space-y-4">
-                <Briefcase className="w-10 h-10 text-ink-dim mx-auto stroke-[1.5]" />
+              <div className="bg-[var(--hf-surface)] border border-dashed border-[var(--hf-border)] rounded-xl p-8 sm:p-10 text-center space-y-3">
+                <Briefcase className="w-9 h-9 text-[var(--hf-text-muted)] mx-auto stroke-[1.5]" />
                 <div>
-                  <h4 className="text-base font-bold text-ink">No experience entries added yet</h4>
-                  <p className="text-xs text-ink-dim mt-1 max-w-md mx-auto">
-                    Add your previous roles to structure your accomplishments using Google's high-impact XYZ bullet formula.
+                  <h3 className="text-base font-semibold text-[var(--hf-text)]">No experience entries added yet</h3>
+                  <p className="text-xs text-[var(--hf-text-secondary)] mt-1 max-w-md mx-auto">
+                    Add your previous roles to structure your accomplishments using Google's XYZ bullet formula.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={addExperience}
-                  className="bg-accent/10 hover:bg-accent/20 text-accent font-bold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer uppercase tracking-wider inline-flex items-center gap-2"
+                  className="hf-btn-primary min-h-[40px] px-4 py-2 text-xs font-medium inline-flex items-center gap-2 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" /> Add First Experience
+                  <Plus className="w-4 h-4" /> Add first experience
                 </button>
               </div>
             ) : (
@@ -380,34 +387,35 @@ export default function ResumeEditor() {
                   <motion.div
                     key={exp.id}
                     layout
-                    initial={{ opacity: 0, y: 15 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-surface border border-border rounded-[2rem] overflow-hidden shadow-sm"
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    className="bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl overflow-hidden shadow-xs"
                   >
                     <div 
-                      className="p-5 sm:p-6 flex items-center justify-between cursor-pointer hover:bg-surface-light/40 transition-colors"
+                      className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-[var(--hf-surface-secondary)]/50 transition-colors"
                       onClick={() => updateExperience(exp.id, 'isExpanded', !exp.isExpanded)}
                     >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 bg-background rounded-xl flex items-center justify-center border border-border shrink-0">
-                          <Briefcase className="w-5 h-5 text-accent" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-[var(--hf-surface-secondary)] rounded-lg flex items-center justify-center border border-[var(--hf-border)] shrink-0 text-[var(--hf-cta)]">
+                          <Briefcase className="w-4 h-4" />
                         </div>
                         <div>
-                          <h4 className="font-bold text-ink text-sm sm:text-base">{exp.company || 'New Company / Entity'}</h4>
-                          <p className="text-xs text-ink-dim font-mono font-medium">{exp.role || 'Role Specification'}</p>
+                          <h3 className="font-semibold text-[var(--hf-text)] text-sm sm:text-base">{exp.company || 'New company / organization'}</h3>
+                          <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">{exp.role || 'Role or title'}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <button 
                           type="button"
                           onClick={(e) => { e.stopPropagation(); removeExperience(exp.id); }}
-                          className="p-2 text-ink-dim hover:text-rose-500 transition-colors mr-1 cursor-pointer"
-                          title="Delete Experience"
+                          className="min-h-[36px] min-w-[36px] flex items-center justify-center p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-lg hover:bg-[var(--hf-surface-secondary)] transition-colors cursor-pointer mr-1"
+                          aria-label="Delete experience"
+                          title="Delete experience"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                        {exp.isExpanded ? <ChevronUp className="w-5 h-5 text-ink-dim" /> : <ChevronDown className="w-5 h-5 text-ink-dim" />}
+                        {exp.isExpanded ? <ChevronUp className="w-4 h-4 text-[var(--hf-text-secondary)]" /> : <ChevronDown className="w-4 h-4 text-[var(--hf-text-secondary)]" />}
                       </div>
                     </div>
 
@@ -415,54 +423,54 @@ export default function ResumeEditor() {
                       <motion.div 
                         initial={{ height: 0 }}
                         animate={{ height: 'auto' }}
-                        className="px-6 sm:px-8 pb-8 space-y-6 border-t border-border mt-2"
+                        className="px-4 sm:px-6 pb-6 pt-4 space-y-5 border-t border-[var(--hf-border)]"
                       >
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                           <div>
-                            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-1.5 block px-1">COMPANY / ORGANIZATION</label>
+                            <label className="text-xs font-semibold text-[var(--hf-text)] mb-1.5 block">Company or organization</label>
                             <input 
                               value={exp.company || ''}
                               onChange={(e) => updateExperience(exp.id, 'company', e.target.value)}
                               placeholder="e.g. Acme Corp"
-                              className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
+                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent"
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-1.5 block px-1">ROLE / TITLE</label>
+                            <label className="text-xs font-semibold text-[var(--hf-text)] mb-1.5 block">Role or job title</label>
                             <input 
                               value={exp.role || ''}
                               onChange={(e) => updateExperience(exp.id, 'role', e.target.value)}
                               placeholder="e.g. Senior Frontend Engineer"
-                              className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
+                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent"
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-1.5 block px-1">TIMELINE / PERIOD</label>
+                            <label className="text-xs font-semibold text-[var(--hf-text)] mb-1.5 block">Timeline or period</label>
                             <input 
                               value={exp.period || ''}
                               onChange={(e) => updateExperience(exp.id, 'period', e.target.value)}
-                              className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
-                              placeholder="e.g. 2022 - Present"
+                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent"
+                              placeholder="e.g. 2022 – Present"
                             />
                           </div>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           <div className="flex justify-between items-center">
-                            <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block px-1">
-                              Impact Bullet Points (XYZ Formula)
+                            <label className="text-xs font-semibold text-[var(--hf-text)] block">
+                              Impact bullet points (Google XYZ formula)
                             </label>
                             <button 
                               type="button"
                               onClick={() => updateExperience(exp.id, 'bullets', [...(exp.bullets || []), ''])}
-                              className="text-[10px] font-bold text-accent uppercase tracking-widest hover:underline cursor-pointer flex items-center gap-1"
+                              className="min-h-[36px] px-2.5 py-1 text-xs font-medium text-[var(--hf-cta)] hover:underline cursor-pointer flex items-center gap-1"
                             >
-                              <Plus className="w-3.5 h-3.5" /> Add Bullet
+                              <Plus className="w-3.5 h-3.5" /> Add bullet
                             </button>
                           </div>
                           <div className="space-y-3">
                             {(exp.bullets || []).map((bullet, bIdx) => (
-                              <div key={bIdx} className="bg-background/60 border border-border rounded-2xl p-4 space-y-3 transition-all hover:border-accent/30">
+                              <div key={bIdx} className="bg-[var(--hf-surface-secondary)]/50 border border-[var(--hf-border)] rounded-lg p-3 sm:p-3.5 space-y-2.5 transition-colors focus-within:border-[var(--hf-cta)]/50">
                                 <textarea
                                   value={bullet || ''}
                                   onChange={(e) => {
@@ -470,7 +478,7 @@ export default function ResumeEditor() {
                                     newBullets[bIdx] = e.target.value;
                                     updateExperience(exp.id, 'bullets', newBullets);
                                   }}
-                                  className="w-full p-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink resize-none font-sans leading-relaxed"
+                                  className="w-full p-3 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent resize-none leading-relaxed font-sans"
                                   rows={2}
                                   placeholder="Accomplished [X] as measured by [Y] by doing [Z]..."
                                 />
@@ -479,7 +487,7 @@ export default function ResumeEditor() {
                                   <button
                                     type="button"
                                     onClick={() => handleOpenWritingAssistant(bullet, 'bullet', exp.id, bIdx, exp.role, exp.company)}
-                                    className="px-3 py-1.5 bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded-xl text-accent text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                                    className="min-h-[36px] px-3 py-1.5 bg-[color-mix(in_srgb,var(--hf-ai-teal)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--hf-ai-teal)_18%,transparent)] border border-[color-mix(in_srgb,var(--hf-ai-teal)_25%,transparent)] rounded-lg text-[var(--hf-ai-teal)] text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
                                   >
                                     <Wand2 className="w-3.5 h-3.5" />
                                     <span>Improve with AI</span>
@@ -491,8 +499,9 @@ export default function ResumeEditor() {
                                       const newBullets = (exp.bullets || []).filter((_, i) => i !== bIdx);
                                       updateExperience(exp.id, 'bullets', newBullets);
                                     }}
-                                    className="p-1.5 text-ink-dim hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                    title="Delete Bullet"
+                                    className="min-h-[36px] min-w-[36px] flex items-center justify-center p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-lg hover:bg-[var(--hf-surface)] transition-colors cursor-pointer"
+                                    aria-label="Delete bullet"
+                                    title="Delete bullet"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -511,11 +520,16 @@ export default function ResumeEditor() {
         </section>
 
         {/* Skills Section */}
-        <section className="bg-surface p-8 sm:p-10 rounded-[2.5rem] border border-border shadow-sm">
-          <h3 className="font-bold text-ink flex items-center gap-2 uppercase text-xs tracking-[0.2em] mb-6">
-            <CheckCircle2 className="w-4 h-4 text-accent" /> Skillset Taxonomy
-          </h3>
-          <div className="space-y-6">
+        <section className="bg-[var(--hf-surface)] p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] shadow-xs">
+          <div className="mb-4">
+            <h2 className="text-sm sm:text-base font-semibold text-[var(--hf-text)] flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[var(--hf-cta)]" /> Core skills
+            </h2>
+            <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
+              Add technical, domain, and tool proficiencies. Type a skill and press Enter.
+            </p>
+          </div>
+          <div className="space-y-4">
             <div className="flex gap-2">
               <input 
                 onKeyDown={(e) => {
@@ -527,25 +541,27 @@ export default function ResumeEditor() {
                     }
                   }
                 }}
-                className="flex-1 px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
+                className="flex-1 min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent font-sans"
                 placeholder="Type a skill (e.g. React, Docker, Python) and press Enter..."
               />
             </div>
             <div className="flex flex-wrap gap-2">
               {skillsList.map((skill, i) => (
-                <span key={i} className="group relative bg-background border border-border px-3.5 py-1.5 rounded-xl text-xs font-bold text-ink flex items-center gap-2">
-                  {skill}
+                <span key={i} className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--hf-text)] flex items-center gap-2">
+                  <span>{skill}</span>
                   <button 
                     type="button"
                     onClick={() => setData(prev => ({ ...prev, skills: (prev.skills || []).filter((_, idx) => idx !== i) }))}
-                    className="p-0.5 text-ink-dim hover:text-rose-500 transition-colors cursor-pointer"
+                    className="min-h-[24px] min-w-[24px] flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded transition-colors cursor-pointer"
+                    aria-label={`Remove skill ${skill}`}
+                    title="Remove skill"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </span>
               ))}
               {skillsList.length === 0 && (
-                <p className="text-xs text-ink-dim italic">No skills added yet. Type a skill above and press Enter.</p>
+                <p className="text-xs text-[var(--hf-text-muted)] italic">No skills added yet. Type a skill above and press Enter.</p>
               )}
             </div>
           </div>
@@ -577,19 +593,19 @@ export default function ResumeEditor() {
       </div>
 
       {/* Floating Status Bar */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface/90 backdrop-blur-md border border-border px-6 py-3 rounded-full shadow-xl flex items-center gap-6">
-        <div className="flex items-center gap-2.5 border-r border-border pr-4">
-          <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-          <span className="text-[11px] font-bold text-ink uppercase tracking-wider">Master Resume</span>
+      <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--hf-surface)]/95 backdrop-blur-sm border border-[var(--hf-border)] px-4 sm:px-5 py-2.5 rounded-full shadow-md flex items-center gap-4 sm:gap-6 text-xs whitespace-nowrap">
+        <div className="flex items-center gap-2 border-r border-[var(--hf-border)] pr-3 sm:pr-4">
+          <div className="w-2 h-2 rounded-full bg-[var(--hf-success)]" />
+          <span className="font-semibold text-[var(--hf-text)]">Master resume</span>
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-bold text-ink-dim uppercase">Bullets:</span>
-            <span className="text-xs font-bold text-accent">{experienceList.reduce((acc, curr) => acc + (curr.bullets?.length || 0), 0)}</span>
+            <span className="text-[var(--hf-text-secondary)]">Bullets:</span>
+            <span className="font-semibold text-[var(--hf-text)] tabular-nums">{experienceList.reduce((acc, curr) => acc + (curr.bullets?.length || 0), 0)}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-bold text-ink-dim uppercase">Skills:</span>
-            <span className="text-xs font-bold text-accent">{skillsList.length}</span>
+            <span className="text-[var(--hf-text-secondary)]">Skills:</span>
+            <span className="font-semibold text-[var(--hf-text)] tabular-nums">{skillsList.length}</span>
           </div>
         </div>
       </div>

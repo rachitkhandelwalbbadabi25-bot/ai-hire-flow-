@@ -90,9 +90,13 @@ export default function JobTracker() {
   };
 
   const handleDeleteJob = async (id: string) => {
-    if (confirm("Delete this application?")) {
+    if (!user?.uid) return;
+    try {
       await deleteDoc(doc(db, 'users', user.uid, 'jobs', id));
-      fetchJobs();
+      setJobs(prev => prev.filter(j => j.id !== id));
+      await fetchJobs();
+    } catch (err) {
+      console.error('Failed to delete job:', err);
     }
   };
 
@@ -110,54 +114,61 @@ export default function JobTracker() {
     return (
       <div className="min-h-[400px] w-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Initializing Job Pipeline...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--hf-cta)]" />
+          <p className="text-sm font-medium text-[var(--hf-text-secondary)]">Loading your applications...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
-        <div className="flex flex-col md:flex-row md:items-end gap-6 mb-12">
-          <div>
-            <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase font-sans leading-none">Job Pipeline</h1>
-            <p className="text-ink-dim font-medium text-sm">Real-time tracking of your current job applications.</p>
-          </div>
-          <div className="flex items-center gap-4 bg-surface border border-border px-4 py-2 rounded-xl shadow-sm">
-             <div className="flex flex-col">
-                <span className="text-[10px] font-black text-ink uppercase tracking-wider">Storage Capacity</span>
-                <span className={cn(
-                  "text-[10px] font-bold uppercase",
-                  jobsRemaining === 0 ? "text-rose-500" : "text-ink-dim"
-                )}>
-                  {jobs.length} / {jobLimit} Slots Used
-                </span>
-             </div>
-             <div className="w-12 h-1.5 bg-background rounded-full overflow-hidden">
-                <div 
-                  className={cn(
-                    "h-full transition-all duration-1000",
-                    jobsRemaining === 0 ? "bg-rose-500" : "bg-accent"
-                  )} 
-                  style={{ width: `${Math.min(100, (jobs.length / (typeof jobLimit === 'number' ? jobLimit : 1)) * 100)}%` }} 
-                />
-             </div>
-          </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      {/* Header and Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--hf-text)] tracking-tight">
+            Application tracker
+          </h1>
+          <p className="text-sm text-[var(--hf-text-secondary)]">
+            Track and organize your active job applications across interview stages.
+          </p>
         </div>
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" aria-hidden="true" />
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Capacity pill */}
+          <div className="flex items-center gap-3 bg-[var(--hf-surface)] border border-[var(--hf-border)] px-3.5 py-2 rounded-lg text-xs shadow-xs">
+            <span className="text-[var(--hf-text-secondary)] font-medium">Slots used:</span>
+            <span className={cn(
+              "font-semibold tabular-nums",
+              jobsRemaining === 0 ? "text-[var(--hf-error)]" : "text-[var(--hf-text)]"
+            )}>
+              {jobs.length} / {jobLimit}
+            </span>
+            <div className="w-16 h-1.5 bg-[var(--hf-surface-secondary)] rounded-full overflow-hidden">
+              <div 
+                className={cn(
+                  "h-full transition-all duration-500",
+                  jobsRemaining === 0 ? "bg-[var(--hf-error)]" : "bg-[var(--hf-cta)]"
+                )} 
+                style={{ width: `${Math.min(100, (jobs.length / (typeof jobLimit === 'number' ? jobLimit : 1)) * 100)}%` }} 
+              />
+            </div>
+          </div>
+
+          {/* Search box */}
+          <div className="relative flex-1 sm:w-64 min-w-[200px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--hf-text-muted)] pointer-events-none" aria-hidden="true" />
             <input 
               type="text" 
-              placeholder="Filter applications..." 
+              placeholder="Search company or role..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Filter applications by company or role"
-              className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all text-ink"
+              className="w-full min-h-[44px] pl-10 pr-4 py-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-all"
             />
           </div>
+
+          {/* Add Application CTA */}
           <button 
             onClick={() => {
               if (!canAddJob) {
@@ -166,61 +177,74 @@ export default function JobTracker() {
               }
               setIsAdding(true);
             }}
-            className="bg-accent text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20 whitespace-nowrap cursor-pointer"
+            className="hf-btn-primary min-h-[44px] px-4 font-medium flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
           >
-            <Plus className="w-4 h-4" /> New Target
+            <Plus className="w-4 h-4" /> Add new application
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="h-64 flex items-center justify-center">
-          <Spinner className="w-8 h-8 animate-spin text-accent/20" />
+        <div className="h-64 flex flex-col items-center justify-center gap-3">
+          <Spinner className="w-7 h-7 animate-spin text-[var(--hf-cta)]" />
+          <p className="text-sm text-[var(--hf-text-secondary)]">Loading pipeline...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-6">
           <AnimatePresence>
             {isAdding && (
               <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-surface p-8 rounded-3xl border border-border mb-8 shadow-2xl relative"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="bg-[var(--hf-surface)] p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] shadow-sm"
               >
-                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-xs font-bold text-ink uppercase tracking-widest flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-accent" /> Register Opportunity
-                  </h3>
-                  <button onClick={() => setIsAdding(false)} className="text-ink-dim hover:text-ink"><X className="w-5 h-5" /></button>
+                <div className="flex justify-between items-center mb-5 pb-3 border-b border-[var(--hf-border)]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-semibold text-[var(--hf-text)]">Add new application</h2>
+                      <p className="text-xs text-[var(--hf-text-secondary)]">Log an opportunity into your active tracking pipeline.</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsAdding(false)} 
+                    aria-label="Close add form"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] rounded-lg hover:bg-[var(--hf-surface-secondary)] transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                <form onSubmit={handleAddJob} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                <form onSubmit={handleAddJob} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                   <div className="md:col-span-1">
-                    <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2 block px-1">Organization</label>
+                    <label className="text-xs font-semibold text-[var(--hf-text)] mb-1.5 block">Company</label>
                     <input 
                       required
                       value={newJob.company}
                       onChange={(e) => setNewJob({...newJob, company: e.target.value})}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
+                      className="w-full min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                       placeholder="e.g. Stripe"
                     />
                   </div>
                   <div className="md:col-span-1">
-                    <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2 block px-1">Role Type</label>
+                    <label className="text-xs font-semibold text-[var(--hf-text)] mb-1.5 block">Role title</label>
                     <input 
                       required
                       value={newJob.role}
                       onChange={(e) => setNewJob({...newJob, role: e.target.value})}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
-                      placeholder="e.g. Product Engineer"
+                      className="w-full min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                      placeholder="e.g. Frontend Engineer"
                     />
                   </div>
                   <div className="md:col-span-1">
-                    <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest mb-2 block px-1">Status</label>
+                    <label className="text-xs font-semibold text-[var(--hf-text)] mb-1.5 block">Stage</label>
                     <select 
                       value={newJob.status}
                       onChange={(e) => setNewJob({...newJob, status: e.target.value})}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 appearance-none text-ink"
+                      className="w-full min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] cursor-pointer"
                     >
                       <option>Applied</option>
                       <option>Interview</option>
@@ -228,9 +252,20 @@ export default function JobTracker() {
                       <option>Rejected</option>
                     </select>
                   </div>
-                  <div className="flex gap-2">
-                    <button type="submit" className="flex-1 bg-accent text-white p-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:opacity-90 transition-all">Commit</button>
-                    <button type="button" onClick={() => setIsAdding(false)} className="p-3.5 border border-border rounded-2xl text-ink-dim hover:text-ink transition-colors"><X className="w-5 h-5" /></button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="submit" 
+                      className="hf-btn-primary flex-1 min-h-[44px] text-sm font-medium shadow-xs"
+                    >
+                      Save application
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsAdding(false)} 
+                      className="hf-btn-secondary min-h-[44px] px-3.5 text-sm"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </form>
               </motion.div>
@@ -239,61 +274,66 @@ export default function JobTracker() {
 
           {filteredJobs.length > 0 ? (
             <div className="space-y-6">
-              <div className="bg-surface rounded-3xl border border-border overflow-hidden shadow-sm">
+              {/* Desktop / Tablet: Editorial Table */}
+              <div className="hidden md:block bg-[var(--hf-surface)] rounded-xl border border-[var(--hf-border)] shadow-xs overflow-hidden">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-surface-light/30">
-                      <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest">Company</th>
-                      <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest hidden md:table-cell">Role</th>
-                      <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest hidden md:table-cell">Applied Date</th>
-                      <th className="px-6 py-4 text-[10px] font-bold text-ink-dim uppercase tracking-widest">Status</th>
-                      <th className="px-6 py-4"></th>
+                    <tr className="bg-[var(--hf-surface-secondary)] border-b border-[var(--hf-border)]">
+                      <th className="px-6 py-3.5 text-xs font-semibold text-[var(--hf-text-secondary)]">Company</th>
+                      <th className="px-6 py-3.5 text-xs font-semibold text-[var(--hf-text-secondary)]">Role</th>
+                      <th className="px-6 py-3.5 text-xs font-semibold text-[var(--hf-text-secondary)]">Date applied</th>
+                      <th className="px-6 py-3.5 text-xs font-semibold text-[var(--hf-text-secondary)]">Stage</th>
+                      <th className="px-6 py-3.5 text-right text-xs font-semibold text-[var(--hf-text-secondary)]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="font-sans">
+                  <tbody className="divide-y divide-[var(--hf-border)]">
                     {filteredJobs.map((job) => (
-                      <tr key={job.id} className="border-b border-border hover:bg-surface-light/20 transition-colors group">
-                        <td className="px-6 py-5">
+                      <tr key={job.id} className="hover:bg-[var(--hf-surface-secondary)]/50 transition-colors group">
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="bg-background p-2 rounded-xl border border-border">
-                              <Building2 className="w-4 h-4 text-accent" />
+                            <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)] shrink-0">
+                              <Building2 className="w-4 h-4" />
                             </div>
-                            <div>
-                              <p className="font-bold text-ink text-sm">{job.company}</p>
-                              <p className="text-ink-dim text-[10px] md:hidden font-medium">{job.role}</p>
-                            </div>
+                            <span className="font-medium text-sm text-[var(--hf-text)]">{job.company}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-5 hidden md:table-cell">
-                          <p className="text-ink text-sm font-medium">{job.role}</p>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-[var(--hf-text-secondary)]">{job.role}</span>
                         </td>
-                        <td className="px-6 py-5 hidden md:table-cell">
-                          <div className="flex items-center gap-2 text-ink-dim">
-                            <span className="text-xs font-mono">{formatDate(job.appliedDate)}</span>
-                          </div>
+                        <td className="px-6 py-4">
+                          <span className="text-xs font-mono text-[var(--hf-text-secondary)]">
+                            {formatDate(job.appliedDate)}
+                          </span>
                         </td>
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-4">
+                          <label className="sr-only" htmlFor={`status-desktop-${job.id}`}>Update stage for {job.company}</label>
                           <select 
+                            id={`status-desktop-${job.id}`}
                             value={job.status}
                             onChange={(e) => updateStatus(job.id, e.target.value)}
                             className={cn(
-                              "status-pill appearance-none cursor-pointer border-none focus:ring-0",
-                              job.status === 'Applied' && "status-applied",
-                              job.status === 'Interview' && "status-interview",
-                              job.status === 'Offer' && "status-offer",
-                              job.status === 'Rejected' && "status-rejected"
+                              "text-xs font-medium rounded-md px-2.5 py-1.5 border cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]",
+                              job.status === 'Applied' && "bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)]",
+                              job.status === 'Interview' && "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25",
+                              job.status === 'Offer' && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
+                              job.status === 'Rejected' && "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25"
                             )}
                           >
-                            <option>Applied</option>
-                            <option>Interview</option>
-                            <option>Offer</option>
-                            <option>Rejected</option>
+                            <option value="Applied">Applied</option>
+                            <option value="Interview">Interview</option>
+                            <option value="Offer">Offer</option>
+                            <option value="Rejected">Rejected</option>
                           </select>
                         </td>
-                        <td className="px-6 py-5 text-right">
+                        <td className="px-6 py-4 text-right">
                           <button 
-                            onClick={() => handleDeleteJob(job.id)}
-                            className="p-2 text-ink-dim hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteJob(job.id);
+                            }}
+                            aria-label={`Delete application for ${job.role} at ${job.company}`}
+                            className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] p-2 text-[var(--hf-text-muted)] hover:text-[var(--hf-error)] hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -302,6 +342,65 @@ export default function JobTracker() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile: Readable Application Cards */}
+              <div className="md:hidden space-y-3">
+                {filteredJobs.map((job) => (
+                  <div 
+                    key={job.id} 
+                    className="bg-[var(--hf-surface)] p-4 rounded-xl border border-[var(--hf-border)] shadow-xs space-y-3.5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)] shrink-0 mt-0.5">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-sm text-[var(--hf-text)] leading-snug">{job.company}</h3>
+                          <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">{job.role}</p>
+                          <p className="text-[11px] text-[var(--hf-text-muted)] font-mono mt-1">
+                            Applied: {formatDate(job.appliedDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteJob(job.id);
+                        }}
+                        aria-label={`Delete application for ${job.role} at ${job.company}`}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--hf-text-muted)] hover:text-[var(--hf-error)] rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="pt-2 border-t border-[var(--hf-border)] flex items-center justify-between gap-3">
+                      <span className="text-xs text-[var(--hf-text-secondary)] font-medium">Stage</span>
+                      <label className="sr-only" htmlFor={`status-mobile-${job.id}`}>Update stage for {job.company}</label>
+                      <select 
+                        id={`status-mobile-${job.id}`}
+                        value={job.status}
+                        onChange={(e) => updateStatus(job.id, e.target.value)}
+                        className={cn(
+                          "min-h-[44px] text-xs font-medium rounded-lg px-3 py-2 border cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]",
+                          job.status === 'Applied' && "bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)]",
+                          job.status === 'Interview' && "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25",
+                          job.status === 'Offer' && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
+                          job.status === 'Rejected' && "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25"
+                        )}
+                      >
+                        <option value="Applied">Applied</option>
+                        <option value="Interview">Interview</option>
+                        <option value="Offer">Offer</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {jobs.length > 0 && (

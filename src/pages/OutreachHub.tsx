@@ -22,6 +22,8 @@ import {
   Briefcase,
   ArrowLeft,
   AlertCircle,
+  Lightbulb,
+  Clock,
 } from "lucide-react";
 import NextStepBridgeCard from "../components/NextStepBridgeCard";
 import { useAuth } from "../context/AuthContext";
@@ -465,92 +467,106 @@ export default function OutreachHub() {
         </div>
       ) : (
         <>
-          <div className="mb-12">
-            <h1 className="text-3xl font-bold text-ink tracking-tight mb-2 uppercase">
-              Outreach Hub
+          <div className="mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight mb-2">
+              Outreach drafts
             </h1>
-            <p className="text-ink-dim font-medium text-sm">
-              Draft professional cold Gmail pitches and coordinate warm corporate
-              connections dynamically.
+            <p className="text-sm text-[var(--hf-text-secondary)] font-normal">
+              Draft personalized cold emails to contacts. Review and edit before sending.
             </p>
           </div>
 
           {/* Add Connection Modal */}
           <AnimatePresence>
             {showAddModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="add-contact-title"
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              >
                 <motion.div
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
-                  className="glass-panel w-full max-w-md relative overflow-hidden"
+                  className="hf-card w-full max-w-md p-6 relative shadow-xl"
                 >
                   <button
+                    type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="absolute top-6 right-6 p-2 hover:bg-accent/10 rounded-full transition-colors"
+                    aria-label="Close dialog"
+                    className="absolute top-4 right-4 p-2.5 rounded-lg text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors"
                   >
-                    <X className="w-5 h-5 text-ink-dim" />
+                    <X className="w-5 h-5" />
                   </button>
 
-                  <h3 className="text-lg font-bold text-ink uppercase tracking-tight mb-6 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-accent" />
-                    Add Referral Connection
-                  </h3>
+                  <h2 id="add-contact-title" className="text-base font-semibold text-[var(--hf-text)] mb-5 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-[var(--hf-cta)]" />
+                    Add contact
+                  </h2>
 
                   <form onSubmit={handleAddContact} className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                        Connection Name
+                      <label htmlFor="new-contact-name" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+                        Contact name
                       </label>
                       <input
+                        id="new-contact-name"
                         type="text"
                         required
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
                         placeholder="e.g. Priyesh Patel"
-                        className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                        className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                        Corporate Hub / Company
+                      <label htmlFor="new-contact-company" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+                        Company
                       </label>
                       <input
+                        id="new-contact-company"
                         type="text"
                         required
                         value={newCompany}
                         onChange={(e) => setNewCompany(e.target.value)}
                         placeholder="e.g. Google India"
-                        className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                        className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                        Gmail / Email Identifier
+                      <label htmlFor="new-contact-email" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+                        Email address
                       </label>
                       <input
+                        id="new-contact-email"
                         type="email"
                         required
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
-                        placeholder="e.g. contact@company.com"
-                        className="w-full bg-background border border-border px-4 py-3 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                        placeholder="e.g. contact@example.com"
+                        className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={addingContact}
-                      className="w-full bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 mt-6 shadow-md shadow-accent/20"
+                      className="hf-btn-primary w-full min-h-[44px] py-2.5 text-sm flex items-center justify-center gap-2 mt-4 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                     >
                       {addingContact ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Adding contact...</span>
+                        </>
                       ) : (
-                        <Plus className="w-4 h-4" />
+                        <>
+                          <Plus className="w-4 h-4" />
+                          <span>Add contact</span>
+                        </>
                       )}
-                      Add Connection
                     </button>
                   </form>
                 </motion.div>
@@ -559,165 +575,163 @@ export default function OutreachHub() {
           </AnimatePresence>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column - Alerts, Sync, and Elevator Pitch */}
-        <div className="lg:col-span-12 xl:col-span-5 space-y-8">
-          {/* Synced Settings */}
-          <div className="glass-panel shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-accent/10 p-2.5 rounded-2xl border border-accent/20">
-                <Mail className="w-5 h-5 text-accent" />
+        {/* Left Column - Email settings, Candidate background, and Drafting tips */}
+        <div className="lg:col-span-12 xl:col-span-5 space-y-6">
+          {/* Email settings card */}
+          <div className="hf-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+                <Mail className="w-5 h-5 text-[var(--hf-cta)]" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-ink uppercase tracking-tight">
-                  Gmail Integration
+                <h2 className="text-base font-semibold text-[var(--hf-text)]">
+                  Your email address
                 </h2>
-                <p className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">
-                  Connect Pipeline to Personal Mail
+                <p className="text-xs text-[var(--hf-text-secondary)]">
+                  Used for pre-filling outgoing links
                 </p>
               </div>
             </div>
 
-            <div className="bg-background border border-border p-5 rounded-2xl mb-6">
-              <label className="text-[9px] font-bold text-ink-dim uppercase tracking-widest block mb-2">
-                Connected Gmail Account
+            <div className="mb-3">
+              <label htmlFor="outreach-gmail-input" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+                Gmail or sender address
               </label>
-              <div className="flex gap-2">
-                <div className="bg-surface border border-border px-3.5 py-3 rounded-xl text-sm text-ink-dim flex items-center">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--hf-text-secondary)]">
                   <Inbox className="w-4 h-4" />
                 </div>
                 <input
+                  id="outreach-gmail-input"
                   type="email"
                   value={gmailAddress}
                   onChange={(e) => setGmailAddress(e.target.value)}
                   placeholder="your.name@gmail.com"
-                  className="flex-1 bg-surface border border-border px-4 py-3 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-accent text-ink font-mono font-semibold"
+                  className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px] pl-9"
                 />
               </div>
             </div>
 
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center justify-between p-3 bg-surface-light/50 rounded-xl border border-border">
-                <div className="flex items-center gap-2.5">
-                  <Zap className="w-4 h-4 text-warning" />
-                  <span className="text-[11px] font-bold text-ink uppercase tracking-tight">
-                    Automatic Pitch Draft Generation
-                  </span>
-                </div>
-                <div className="w-9 h-5 bg-accent/20 rounded-full flex items-center px-0.5 border border-accent/30 cursor-pointer">
-                  <div className="w-3.5 h-3.5 bg-accent rounded-full ml-auto" />
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={handleSync}
-              className="w-full bg-accent text-white py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 group shadow-md shadow-accent/20"
-            >
-              {syncing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "Verify Connection"
-              )}
-              {!syncing && (
-                <Send className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              )}
-            </button>
-          </div>
-
-          {/* Elevator Pitch and Candidate Background */}
-          <div className="glass-panel shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-accent/10 p-2.5 rounded-2xl border border-accent/20">
-                  <FileText className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold uppercase text-ink tracking-tight">
-                    Outreach Background
-                  </h3>
-                  <p className="text-[9px] font-mono text-ink-dim uppercase tracking-widest">
-                    Controls AI Personalization Pitch
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={loadLatestResumeContext}
-                disabled={loadingContext}
-                className="p-2 border border-border rounded-xl text-ink-dim hover:text-accent transition-all hover:bg-accent/5"
-                title="Sync from latest resume"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${loadingContext ? "animate-spin" : ""}`}
-                />
-              </button>
-            </div>
-
-            <p className="text-xs text-ink-dim mb-4 leading-relaxed font-medium">
-              We personalize cold referral requests based on your technical background and experience. Sync from your analyzed resume or customize your background below:
-            </p>
-
-            <textarea
-              value={candidateContext}
-              onChange={(e) => setCandidateContext(e.target.value)}
-              rows={8}
-              className="w-full bg-background border border-border p-4 rounded-2xl text-xs text-ink font-sans leading-relaxed focus:outline-none focus:ring-1 focus:ring-accent"
-              placeholder="Detail your technology stack, notable milestones, and what specific types of positions you are seeking..."
-            />
-          </div>
-
-          <div className="bg-[#0c0c0c] border border-border rounded-[2rem] p-6 text-white shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <Sparkles className="w-5 h-5 text-accent" />
-              <h3 className="text-xs font-bold uppercase tracking-widest text-white">
-                Cold Pitch Intelligence
-              </h3>
-            </div>
-            <p className="text-xs text-white/50 leading-relaxed font-sans mb-4 italic">
-              "We analyze your background and company target details to generate professional, personalized outreach emails."
-            </p>
-            <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span className="text-[9px] font-bold text-white/70 uppercase font-mono">
-                Email Assistant Ready
+            <div className="p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg text-xs text-[var(--hf-text-secondary)] flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-[var(--hf-text-secondary)] shrink-0 mt-0.5" />
+              <span>
+                Saved on this device only, and used to pre-fill the Gmail compose link. Nothing is sent from this page.
               </span>
             </div>
           </div>
-        </div>
 
-        {/* Right Column - Referral Matrix */}
-        <div className="lg:col-span-12 xl:col-span-7 space-y-8">
-          <div className="glass-panel shadow-sm min-h-[500px]">
-            <div className="flex items-center justify-between mb-8">
+          {/* Candidate background card */}
+          <div className="hf-card p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div className="flex items-center gap-3">
-                <div className="bg-accent/10 p-2.5 rounded-2xl border border-accent/20">
-                  <Users className="w-5 h-5 text-accent" />
+                <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5 text-[var(--hf-cta)]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-ink uppercase tracking-tight">
-                    Referral Contacts
+                  <h2 className="text-base font-semibold text-[var(--hf-text)]">
+                    Candidate background
                   </h2>
-                  <p className="text-[10px] font-bold text-ink-dim uppercase tracking-[0.2em] mt-0.5">
-                    Target Contact Hub
+                  <p className="text-xs text-[var(--hf-text-secondary)]">
+                    Context used by AI to personalize outreach drafts
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadLatestResumeContext}
+                disabled={loadingContext}
+                className="hf-btn-secondary text-xs min-h-[44px] px-3.5 py-2 inline-flex items-center justify-center gap-2"
+                title="Load from latest resume"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${loadingContext ? "animate-spin" : ""}`}
+                />
+                <span>{loadingContext ? "Loading resume..." : "Load from latest resume"}</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--hf-text-secondary)] mb-3 leading-relaxed">
+              Summarize your skills, recent experience, and target roles. This is included in the prompt when generating drafts.
+            </p>
+
+            <div>
+              <label htmlFor="outreach-candidate-context" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+                Background summary
+              </label>
+              <textarea
+                id="outreach-candidate-context"
+                value={candidateContext}
+                onChange={(e) => setCandidateContext(e.target.value)}
+                rows={7}
+                className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg p-3 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors resize-y"
+                placeholder="Detail your technology stack, notable milestones, and what specific types of positions you are seeking..."
+              />
+              <div className="mt-2 text-xs text-[var(--hf-text-secondary)]">
+                <span className="tabular-nums font-medium">{candidateContext.length}</span> characters
+              </div>
+            </div>
+          </div>
+
+          {/* Drafting tips card */}
+          <div className="hf-card p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+                <Lightbulb className="w-5 h-5 text-[var(--hf-warning)]" />
+              </div>
+              <h3 className="text-sm font-semibold text-[var(--hf-text)]">
+                Drafting tips
+              </h3>
+            </div>
+            <ul className="space-y-2 text-xs text-[var(--hf-text-secondary)] leading-relaxed">
+              <li className="flex items-start gap-2">
+                <span className="text-[var(--hf-cta)] font-bold shrink-0">•</span>
+                <span><strong>Be specific:</strong> Mention a relevant project, shared connection, or specific initiative at the company.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[var(--hf-cta)] font-bold shrink-0">•</span>
+                <span><strong>Keep it short:</strong> Aim for 3–5 sentences so the email is quick to read on a phone.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[var(--hf-cta)] font-bold shrink-0">•</span>
+                <span><strong>Ask for advice, not a job:</strong> Request 10–15 minutes for advice or questions rather than directly asking for a referral or interview.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Right Column - Referral Contacts */}
+        <div className="lg:col-span-12 xl:col-span-7 space-y-6">
+          <div className="hf-card p-6 min-h-[500px]">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5 text-[var(--hf-cta)]" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-[var(--hf-text)]">
+                    Referral contacts
+                  </h2>
+                  <p className="text-xs text-[var(--hf-text-secondary)]">
+                    Target contacts for outreach
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(true)}
-                className="p-2.5 bg-background border border-border rounded-xl text-ink-dim hover:text-accent transition-colors flex items-center gap-1.5"
+                className="hf-btn-primary text-xs min-h-[44px] px-3.5 py-2 inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
               >
-                <Plus className="w-4 h-4 text-accent" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">
-                  Add Contact
-                </span>
+                <Plus className="w-4 h-4" />
+                <span>Add contact</span>
               </button>
             </div>
 
             {loadingContacts ? (
-              <div className="flex flex-col items-center justify-center p-20 gap-3">
-                <Loader2 className="w-8 h-8 text-accent animate-spin" />
-                <span className="text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                  Loading Referral Contacts...
+              <div className="flex flex-col items-center justify-center p-16 gap-3 text-center">
+                <Loader2 className="w-6 h-6 text-[var(--hf-cta)] animate-spin" />
+                <span className="text-xs text-[var(--hf-text-secondary)]">
+                  Loading contacts...
                 </span>
               </div>
             ) : contacts.length === 0 ? (
@@ -725,8 +739,8 @@ export default function OutreachHub() {
                 icon={Users}
                 title="Start your recruiter outreach"
                 targetRole="Tech Recruiters & Engineering Managers"
-                description="Add hiring managers and recruiters at your target companies to generate personalized email pitches and follow-up templates."
-                benefitMetric="Direct recruiter emails yield 4.8x higher response rates than standard portal applications"
+                description="Add hiring managers and recruiters at your target companies to generate personalized email pitches."
+                benefitMetric="Personalized emails that mention a specific project or ask for advice tend to get more thoughtful replies."
                 primaryAction={{
                   label: "Add recruiter contact",
                   onClick: () => setShowAddModal(true),
@@ -739,105 +753,200 @@ export default function OutreachHub() {
                 }}
               />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="pb-4 text-left text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                        Connection
-                      </th>
-                      <th className="pb-4 text-left text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                        Corporate Hub
-                      </th>
-                      <th className="pb-4 text-left text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                        Status
-                      </th>
-                      <th className="pb-4 text-right text-[10px] font-bold text-ink-dim uppercase tracking-widest">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {contacts.map((ref) => (
-                      <tr
-                        key={ref.id}
-                        className="group hover:bg-accent/[0.01] transition-colors"
-                      >
-                        <td className="py-5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-[10px] font-bold text-accent">
-                              {ref.name[0]}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold text-ink">
-                                {ref.name}
-                              </span>
-                              <span className="text-[10px] font-mono text-ink-dim mt-0.5">
-                                {ref.email}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-5">
-                          <span className="text-xs font-semibold text-ink uppercase tracking-tight">
-                            {ref.company}
-                          </span>
-                        </td>
-                        <td className="py-5">
-                          <button
-                            onClick={() =>
-                              handleToggleStatus(ref.id, ref.status)
-                            }
-                            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider cursor-pointer border hover:border-accent transition-colors ${
-                              ref.status === "Referred"
-                                ? "bg-success/10 text-success border-success/20"
-                                : ref.status === "Requested"
-                                  ? "bg-warning/10 text-warning border-warning/20"
-                                  : "bg-surface-light text-ink-dim border-border"
-                            }`}
-                            title="Click to toggle status"
-                          >
-                            {ref.status}
-                          </button>
-                        </td>
-                        <td className="py-5 text-right">
-                          <div className="flex items-center justify-end gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => handleGeneratePitch(ref)}
-                              className="text-[9px] font-bold text-accent uppercase tracking-widest py-2 px-3 border border-accent/20 rounded-xl hover:bg-accent/10 transition-all font-sans flex items-center gap-1"
-                            >
-                              <Sparkles className="w-3 h-3" />
-                              Pitch
-                            </button>
-                            <button
-                              onClick={() => handleDeleteContact(ref.id)}
-                              className="p-2 border border-border hover:border-rose-500/30 text-ink-dim hover:text-rose-400 rounded-xl transition-colors"
-                              title="Delete connection"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-[var(--hf-border)] text-xs font-semibold text-[var(--hf-text-secondary)]">
+                        <th className="pb-3 pr-4">Contact</th>
+                        <th className="pb-3 pr-4">Company</th>
+                        <th className="pb-3 pr-4">Status</th>
+                        <th className="pb-3 text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--hf-border)] text-sm">
+                      {contacts.map((ref) => (
+                        <tr
+                          key={ref.id}
+                          className="hover:bg-[var(--hf-surface-secondary)]/50 transition-colors"
+                        >
+                          <td className="py-3.5 pr-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-xs font-semibold text-[var(--hf-text)] shrink-0">
+                                {ref.name?.[0]?.toUpperCase() || "C"}
+                              </div>
+                              <div>
+                                <div className="font-medium text-[var(--hf-text)]">
+                                  {ref.name}
+                                </div>
+                                <div className="text-xs text-[var(--hf-text-secondary)]">
+                                  {ref.email}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 pr-4">
+                            <span className="font-medium text-[var(--hf-text)]">
+                              {ref.company}
+                            </span>
+                            {ref.role ? (
+                              <div className="text-xs text-[var(--hf-text-secondary)]">
+                                {ref.role}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="py-3.5 pr-4">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleToggleStatus(ref.id, ref.status)
+                              }
+                              title="Click to change status"
+                              aria-label={`Status: ${ref.status || "Pending Response"}. Click to change status`}
+                              className="hf-btn-secondary min-h-[44px] px-3 py-1.5 text-xs inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                            >
+                              {ref.status === "Referred" ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-[var(--hf-success)] shrink-0" />
+                                  <span className="text-[var(--hf-success)] font-medium">Referred</span>
+                                </>
+                              ) : ref.status === "Requested" ? (
+                                <>
+                                  <Mail className="w-3.5 h-3.5 text-[var(--hf-warning)] shrink-0" />
+                                  <span className="text-[var(--hf-warning)] font-medium">Requested</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="w-3.5 h-3.5 text-[var(--hf-text-secondary)] shrink-0" />
+                                  <span className="text-[var(--hf-text-secondary)] font-medium">Pending Response</span>
+                                </>
+                              )}
+                              <span className="text-[11px] text-[var(--hf-text-muted)] ml-1">(Change)</span>
+                            </button>
+                          </td>
+                          <td className="py-3.5 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleGeneratePitch(ref)}
+                                className="hf-btn-primary min-h-[44px] text-xs px-3 py-2 inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Draft email</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteContact(ref.id)}
+                                className="p-2.5 min-h-[44px] min-w-[44px] rounded-lg border border-[var(--hf-border)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] hover:border-[var(--hf-error)] transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[var(--hf-error)]"
+                                aria-label={`Delete contact ${ref.name}`}
+                                title={`Delete contact ${ref.name}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className="block md:hidden space-y-3">
+                  {contacts.map((ref) => (
+                    <div
+                      key={ref.id}
+                      className="p-4 rounded-lg bg-[var(--hf-surface-secondary)]/40 border border-[var(--hf-border)] space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-xs font-semibold text-[var(--hf-text)] shrink-0">
+                            {ref.name?.[0]?.toUpperCase() || "C"}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm text-[var(--hf-text)] truncate">
+                              {ref.name}
+                            </div>
+                            <div className="text-xs text-[var(--hf-text-secondary)] truncate">
+                              {ref.email}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteContact(ref.id)}
+                          className="p-2.5 min-h-[44px] min-w-[44px] rounded-lg border border-[var(--hf-border)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] hover:border-[var(--hf-error)] transition-colors flex items-center justify-center shrink-0 focus:outline-none focus:ring-2 focus:ring-[var(--hf-error)]"
+                          aria-label={`Delete contact ${ref.name}`}
+                          title={`Delete contact ${ref.name}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="text-xs">
+                        <span className="text-[var(--hf-text-secondary)]">Company: </span>
+                        <span className="font-medium text-[var(--hf-text)]">{ref.company}</span>
+                        {ref.role ? (
+                          <span className="text-[var(--hf-text-secondary)]"> • {ref.role}</span>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--hf-border)]">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(ref.id, ref.status)}
+                          title="Click to change status"
+                          aria-label={`Status: ${ref.status || "Pending Response"}. Click to change status`}
+                          className="hf-btn-secondary min-h-[44px] px-3 py-1.5 text-xs inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                        >
+                          {ref.status === "Referred" ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--hf-success)] shrink-0" />
+                              <span className="text-[var(--hf-success)] font-medium">Referred</span>
+                            </>
+                          ) : ref.status === "Requested" ? (
+                            <>
+                              <Mail className="w-3.5 h-3.5 text-[var(--hf-warning)] shrink-0" />
+                              <span className="text-[var(--hf-warning)] font-medium">Requested</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="w-3.5 h-3.5 text-[var(--hf-text-secondary)] shrink-0" />
+                              <span className="text-[var(--hf-text-secondary)] font-medium">Pending Response</span>
+                            </>
+                          )}
+                          <span className="text-[11px] text-[var(--hf-text-muted)] ml-1">(Change)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleGeneratePitch(ref)}
+                          className="hf-btn-primary min-h-[44px] text-xs px-3.5 py-2 inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Draft email</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
-            <div className="mt-12 p-6 bg-surface-light border border-border rounded-2xl border-dashed">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-10 h-10 bg-accent/5 rounded-full flex items-center justify-center mb-3 border border-accent/10">
-                  <UserCheck className="w-5 h-5 text-accent" />
+            <div className="mt-8 p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 mt-0.5">
+                  <UserCheck className="w-4 h-4 text-[var(--hf-cta)]" />
                 </div>
-                <h4 className="text-xs font-bold text-ink uppercase tracking-widest mb-1.5">
-                  Elevate Response Probability
-                </h4>
-                <p className="text-xs text-ink-dim max-w-sm leading-relaxed mb-4">
-                  Add actual professionals from target tech companies. A
-                  customized email asking for advice or feedback can increase
-                  interview rates by up to 5x.
-                </p>
+                <div>
+                  <h4 className="text-xs font-semibold text-[var(--hf-text)] mb-1">
+                    Reaching out to contacts
+                  </h4>
+                  <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">
+                    Personalized emails that mention a specific project or ask for advice tend to get more thoughtful replies.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

@@ -12,9 +12,9 @@ import {
   generateStartupChallenge, 
   evaluateStartupSolution 
 } from '../lib/gemini';
-import AILoadingStepper from '../components/AILoadingStepper';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import { isDemoRole } from '../utils/demoDataSanitizer';
+import { cn } from '../lib/utils';
 
 const CAMPUS_STORAGE_KEYS = {
   SEARCH_QUERY: 'campus_prep_search_query',
@@ -462,27 +462,32 @@ export default function CampusPlacement() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
       {/* Top Heading */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-12">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
-              <Trophy className="w-5 h-5 text-accent" />
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-[var(--hf-ai-teal)]" />
             </div>
-            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Placement War-Room</span>
+            <span className="hf-badge hf-badge-teal text-xs font-medium">
+              Campus preparation
+            </span>
           </div>
-          <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">India Campus Prep Hub</h1>
-          <p className="text-ink-dim font-medium text-lg max-w-2xl">
-            Search specific tech companies for customized prep guidelines, practice interactive drills, and test yourself with startup architecture boards.
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--hf-text)] tracking-tight">
+            Campus placement preparation
+          </h1>
+          <p className="text-sm text-[var(--hf-text-secondary)] mt-1.5 max-w-2xl leading-relaxed">
+            Search tech companies for tailored recruitment guidelines, practice interactive aptitude drills, and solve startup architecture challenges.
           </p>
         </div>
         {hasAnySavedData && (
           <button
+            type="button"
             onClick={handleResetAllCampusPrep}
-            className="self-start sm:self-auto px-4 py-2.5 bg-surface hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-ink-dim hover:text-rose-400 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shrink-0 cursor-pointer shadow-sm"
+            className="hf-btn-secondary min-h-[44px] px-4 py-2.5 text-xs font-medium rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] self-start sm:self-auto"
             title="Explicitly clear all cached prep, drills, and challenges"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Reset All Prep
+            <span>Reset all prep</span>
           </button>
         )}
       </div>
@@ -492,169 +497,259 @@ export default function CampusPlacement() {
         <div className="lg:col-span-8 space-y-8">
           
           {/* SECTION 1: Company Prep Search Engine */}
-          <div className="glass-panel">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-accent/10 p-2.5 rounded-2xl border border-accent/20">
-                <Search className="w-5 h-5 text-accent" />
+          <div className="hf-card p-6 sm:p-7 rounded-xl space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center">
+                <Search className="w-4.5 h-4.5 text-[var(--hf-ai-teal)]" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-ink uppercase tracking-tight">Company Placement Prep</h2>
-                <p className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">Search any company to construct custom preparation plans</p>
+                <h2 className="text-base sm:text-lg font-semibold text-[var(--hf-text)] tracking-tight">
+                  Company recruitment preparation
+                </h2>
+                <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
+                  Generate tailored interview and aptitude guidelines for a target tech company or campus recruiter
+                </p>
               </div>
             </div>
 
             {/* Search Input Bar */}
-            <div className="bg-background border border-border p-4 rounded-2xl mb-6">
+            <div className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl">
               <div className="flex flex-col sm:flex-row gap-3">
                 <input 
                   type="text"
-                  placeholder="Enter target company (e.g. your dream tech company or campus recruiter)..."
+                  placeholder="Enter target company (e.g. Infosys, TCS, Google, Amazon, Zoho)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCompanySearch(searchQuery)}
-                  className="flex-1 bg-surface border border-border px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-accent text-ink font-semibold"
+                  aria-label="Target company name"
+                  className="flex-1 bg-[var(--hf-surface)] border border-[var(--hf-border)] px-4 py-3 rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
                 />
                 <button 
+                  type="button"
                   onClick={() => handleCompanySearch(searchQuery)}
                   disabled={searching || !searchQuery.trim()}
-                  className="bg-accent text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md shadow-accent/20 disabled:opacity-50"
+                  className="hf-btn-primary min-h-[44px] px-5 py-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] shrink-0"
                 >
                   {searching ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Synthesizing...
+                      <span>Preparing plan...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      Get Company Prep
+                      <span>Generate company plan</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
 
-            {/* Error Message */}
+            {/* Error Message with role="alert" */}
             {searchError && (
-              <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-400 text-xs font-medium mb-6">
-                <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-                <span>{searchError}</span>
+              <div 
+                role="alert" 
+                aria-live="assertive"
+                className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-error)] rounded-xl flex items-center gap-3 text-xs"
+              >
+                <AlertCircle className="w-4 h-4 text-[var(--hf-error)] shrink-0" />
+                <span className="text-[var(--hf-text)] leading-relaxed font-medium">{searchError}</span>
               </div>
             )}
 
             {/* SEARCH RESULTS INTERACTIVE PANEL */}
             <AnimatePresence mode="wait">
               {searching && (
-                <div className="py-6 max-w-2xl mx-auto">
-                  <AILoadingStepper 
-                    presetKey="company_prep" 
-                    title={`Enterprise Hiring Tactics: ${searchQuery || 'Target Company'}`} 
-                  />
+                <div 
+                  aria-live="polite" 
+                  className="py-10 flex flex-col items-center justify-center gap-3 text-center"
+                >
+                  <Loader2 className="w-7 h-7 text-[var(--hf-cta)] animate-spin" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-[var(--hf-text)]">
+                      Preparing recruitment plan for {searchQuery || 'your target company'}...
+                    </p>
+                    <p className="text-xs text-[var(--hf-text-secondary)]">
+                      Analyzing hiring rounds, core technical questions, and interview strategy.
+                    </p>
+                  </div>
                 </div>
               )}
 
               {companyPrep && !searching && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="space-y-6 bg-surface-light/30 border border-border p-6 rounded-3xl"
+                  transition={{ duration: 0.18 }}
+                  className="space-y-6 pt-2"
                 >
                   {/* Results Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--hf-border)] pb-5">
                     <div>
-                      <span className="text-[9px] font-bold text-accent uppercase tracking-widest">Tailored Recruitment Plan</span>
-                      <h3 className="text-2xl font-bold text-ink uppercase tracking-tight flex items-center gap-2 mt-1">
-                        <Building2 className="w-6 h-6 text-accent" />
-                        {companyPrep.companyName}
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="hf-badge hf-badge-teal text-xs font-medium">
+                          Company preparation guide
+                        </span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-semibold text-[var(--hf-text)] tracking-tight flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-[var(--hf-ai-teal)]" />
+                        <span>{companyPrep.companyName}</span>
                       </h3>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="px-3 py-1.5 bg-background border border-border rounded-xl text-center">
-                        <span className="text-[8px] font-bold text-ink-dim uppercase block">Difficulty</span>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          companyPrep.difficulty === "Hard" ? "text-rose-500" : 
-                          companyPrep.difficulty === "Medium" ? "text-warning" : "text-success"
-                        }`}>{companyPrep.difficulty}</span>
-                      </div>
-                      <div className="px-3 py-1.5 bg-background border border-border rounded-xl text-center">
-                        <span className="text-[8px] font-bold text-ink-dim uppercase block">Prep Time</span>
-                        <span className="text-[10px] font-bold text-ink uppercase tracking-wide">{companyPrep.estimatedPrepTime}</span>
-                      </div>
+
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {companyPrep.difficulty && (
+                        <div className="px-3 py-1.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg text-left">
+                          <span className="text-[11px] font-medium text-[var(--hf-text-secondary)] block">
+                            Difficulty (AI estimate)
+                          </span>
+                          <span className={cn(
+                            "text-xs font-semibold",
+                            companyPrep.difficulty === "Hard" ? "text-[var(--hf-error)]" : 
+                            companyPrep.difficulty === "Medium" ? "text-[var(--hf-warning)]" : "text-[var(--hf-success)]"
+                          )}>
+                            {companyPrep.difficulty}
+                          </span>
+                        </div>
+                      )}
+
+                      {companyPrep.estimatedPrepTime && (
+                        <div className="px-3 py-1.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg text-left">
+                          <span className="text-[11px] font-medium text-[var(--hf-text-secondary)] block">
+                            Prep timeline (AI estimate)
+                          </span>
+                          <span className="text-xs font-semibold text-[var(--hf-text)]">
+                            {companyPrep.estimatedPrepTime}
+                          </span>
+                        </div>
+                      )}
+
                       <button
+                        type="button"
                         onClick={handleClearCompanyPrep}
-                        className="px-3 py-1.5 bg-background hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-ink-dim hover:text-rose-400 rounded-xl text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
-                        title="Clear cached company prep plan"
+                        className="hf-btn-secondary min-h-[44px] px-3.5 py-2 text-xs font-medium rounded-lg flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                        title="Clear company preparation plan"
                       >
-                        <RotateCcw className="w-3 h-3" />
-                        Clear Plan
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Clear plan</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Recruitment Rounds Breakdown */}
-                  <div>
-                    <h4 className="text-xs font-bold text-ink uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <GraduationCap className="w-4 h-4 text-accent" />
-                      Interviews & Placement Rounds
-                    </h4>
-                    <div className="space-y-3">
-                      {companyPrep.roundBreakdown?.map((round: any, rIdx: number) => (
-                        <div key={rIdx} className="bg-background border border-border p-4 rounded-2xl hover:border-accent/20 transition-colors">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="w-5 h-5 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[10px] font-bold">
-                              {rIdx + 1}
-                            </span>
-                            <h5 className="text-xs font-bold text-ink uppercase">{round.roundName}</h5>
-                          </div>
-                          <p className="text-xs text-ink-dim mb-3 font-medium">{round.description}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {round.focusTopics?.map((topic: string, tIdx: number) => (
-                              <span key={tIdx} className="px-2 py-0.5 bg-surface-light border border-border rounded text-[9px] font-mono text-ink-dim uppercase font-semibold">
-                                {topic}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  {/* Fixed Honesty Disclaimer Note */}
+                  <div className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg flex items-start gap-2.5 text-xs text-[var(--hf-text-secondary)] leading-relaxed">
+                    <AlertCircle className="w-4 h-4 text-[var(--hf-text-muted)] shrink-0 mt-0.5" />
+                    <span>
+                      AI-generated plan. It may not match this company's actual hiring process. Check official sources and recent candidate reports.
+                    </span>
                   </div>
 
-                  {/* Top Frequently Asked Questions */}
-                  <div>
-                    <h4 className="text-xs font-bold text-ink uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-accent" />
-                      High-Probability Questions Asked
-                    </h4>
+                  {/* Recruitment Rounds Breakdown */}
+                  {Array.isArray(companyPrep.roundBreakdown) && companyPrep.roundBreakdown.length > 0 && (
                     <div className="space-y-3">
-                      {companyPrep.topQuestions?.map((qObj: any, qIdx: number) => (
-                        <div key={qIdx} className="bg-background border border-border p-4 rounded-2xl">
-                          <div className="flex items-start gap-2.5 mb-2">
-                            <HelpCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                            <span className="text-xs font-bold text-ink leading-relaxed">{qObj.question}</span>
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="w-4 h-4 text-[var(--hf-ai-teal)]" />
+                        <h4 className="text-xs font-semibold text-[var(--hf-text)] uppercase tracking-wider">
+                          Interviews & placement stages
+                        </h4>
+                      </div>
+                      <div className="space-y-2.5">
+                        {companyPrep.roundBreakdown.map((round: any, rIdx: number) => (
+                          <div 
+                            key={rIdx} 
+                            className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg space-y-2"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-5 h-5 rounded-md bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-text)] flex items-center justify-center text-xs font-semibold">
+                                {rIdx + 1}
+                              </span>
+                              <h5 className="text-xs font-semibold text-[var(--hf-text)]">
+                                {round.roundName}
+                              </h5>
+                            </div>
+                            {round.description && (
+                              <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed pl-7.5">
+                                {round.description}
+                              </p>
+                            )}
+                            {Array.isArray(round.focusTopics) && round.focusTopics.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pl-7.5 pt-1">
+                                {round.focusTopics.map((topic: string, tIdx: number) => (
+                                  <span 
+                                    key={tIdx} 
+                                    className="px-2 py-0.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded text-[11px] font-mono text-[var(--hf-text-secondary)]"
+                                  >
+                                    {topic}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <div className="pl-6.5 mt-2 flex flex-col gap-1.5">
-                            <span className="text-[9px] font-bold text-accent uppercase tracking-wider">Concept: {qObj.topic}</span>
-                            <div className="bg-surface p-3 rounded-xl border border-border border-dashed flex items-start gap-2">
-                              <Lightbulb className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
-                              <p className="text-[11px] text-ink-dim leading-relaxed font-medium"><strong className="text-ink">Passing Tip:</strong> {qObj.tip}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Practice Questions (renamed from High-Probability Questions) */}
+                  {Array.isArray(companyPrep.topQuestions) && companyPrep.topQuestions.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-[var(--hf-ai-teal)]" />
+                        <h4 className="text-xs font-semibold text-[var(--hf-text)] uppercase tracking-wider">
+                          Practice questions
+                        </h4>
+                      </div>
+                      <div className="space-y-3">
+                        {companyPrep.topQuestions.map((qObj: any, qIdx: number) => (
+                          <div 
+                            key={qIdx} 
+                            className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg space-y-2.5"
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <HelpCircle className="w-4 h-4 text-[var(--hf-ai-teal)] shrink-0 mt-0.5" />
+                              <span className="text-xs font-semibold text-[var(--hf-text)] leading-relaxed">
+                                {qObj.question}
+                              </span>
+                            </div>
+
+                            <div className="pl-6.5 space-y-2">
+                              {qObj.topic && (
+                                <span className="text-[11px] text-[var(--hf-text-secondary)] font-medium block">
+                                  Topic focus: <span className="text-[var(--hf-text)]">{qObj.topic}</span>
+                                </span>
+                              )}
+                              {qObj.tip && (
+                                <div className="p-3 bg-[var(--hf-surface)] rounded-md border border-[var(--hf-border)] flex items-start gap-2 text-xs">
+                                  <Lightbulb className="w-3.5 h-3.5 text-[var(--hf-warning)] shrink-0 mt-0.5" />
+                                  <p className="text-[var(--hf-text-secondary)] leading-relaxed">
+                                    <strong className="text-[var(--hf-text)] font-medium">Preparation tip: </strong>
+                                    {qObj.tip}
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Preparation Strategy Quote */}
-                  <div className="bg-[#0b0b0b] border border-border p-5 rounded-2xl text-white">
-                    <span className="text-[9px] font-bold text-accent uppercase tracking-[0.2em] block mb-2">Expert Tactical Directives</span>
-                    <p className="text-xs text-white/70 italic leading-relaxed font-sans">
-                      "{companyPrep.prepStrategy}"
-                    </p>
-                  </div>
+                  {companyPrep.prepStrategy && (
+                    <div className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg space-y-1 text-xs">
+                      <span className="font-semibold text-[var(--hf-text)] block">
+                        Preparation advice
+                      </span>
+                      <p className="text-[var(--hf-text-secondary)] leading-relaxed italic">
+                        "{companyPrep.prepStrategy}"
+                      </p>
+                    </div>
+                  )}
 
+                  {/* Contextual Next Step Bridge Card */}
                   <NextStepBridgeCard
-                    title="Placement blueprint synthesized"
+                    title="Preparation plan"
                     contextData={`Generated interview blueprint for ${searchQuery || 'Target Enterprise'} with ${companyPrep.rounds?.length || 0} evaluation stages and ${companyPrep.topQuestions?.length || 0} core technical drill questions.`}
                     primaryStep={{
                       label: `Simulate ${searchQuery || 'Company'} interview`,
@@ -681,40 +776,57 @@ export default function CampusPlacement() {
             </AnimatePresence>
           </div>
 
-          {/* SECTION 2: Interactive Aptitude & Technical Practice Drills */}
-          <div className="glass-panel">
+          {/* SECTION 2: AI-Generated Aptitude & Technical Practice Drills */}
+          <div className="hf-card p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="bg-accent/10 p-2.5 rounded-2xl border border-accent/20">
-                <Code className="w-5 h-5 text-accent" />
+              <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+                <Code className="w-5 h-5 text-[var(--hf-ai-teal)]" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-ink uppercase tracking-tight">Interactive Aptitude Drills</h2>
-                <p className="text-[9px] font-bold text-ink-dim uppercase tracking-widest">Test your placement competencies in live MCQ practice sessions</p>
+                <h2 className="text-base sm:text-lg font-semibold text-[var(--hf-text)]">
+                  Aptitude practice drills
+                </h2>
+                <p className="text-xs text-[var(--hf-text-secondary)]">
+                  AI-generated practice questions to test problem-solving and fundamentals
+                </p>
               </div>
+            </div>
+
+            {/* Fixed Accuracy & Source Notice */}
+            <div className="mb-6 p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg text-xs text-[var(--hf-text-secondary)] flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-[var(--hf-text-muted)] shrink-0 mt-0.5" />
+              <span>
+                Questions and answer explanations are AI-generated and may contain mistakes. Verify anything you are unsure about.
+              </span>
             </div>
 
             {/* Drill Topic Selector */}
             {!activeDrillTopic && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { title: "Logical & Quantitative", desc: "Probability, P&C, Time & Speed, Syllogisms", icon: Zap, color: "text-amber-500" },
-                  { title: "CS Fundamentals", desc: "Object-Oriented Programming, OS, DBMS Joins", icon: Code, color: "text-blue-500" },
-                  { title: "System Design", desc: "Caching, Load Balancers, Databases, API Scaling", icon: Star, color: "text-emerald-500" }
+                  { title: "Logical & Quantitative", desc: "Probability, P&C, Time & Speed, Syllogisms", icon: Zap },
+                  { title: "CS Fundamentals", desc: "Object-Oriented Programming, OS, DBMS Joins", icon: Code },
+                  { title: "System Design", desc: "Caching, Load Balancers, Databases, API Scaling", icon: Star }
                 ].map((drill, idx) => (
                   <button
                     key={idx}
+                    type="button"
                     onClick={() => handleStartAptitudeDrill(drill.title)}
-                    className="p-5 bg-background border border-border hover:border-accent/40 rounded-2xl transition-all text-left flex flex-col justify-between group h-full"
+                    className="p-5 bg-[var(--hf-surface)] border border-[var(--hf-border)] hover:border-[var(--hf-cta)] rounded-lg transition-all text-left flex flex-col justify-between group h-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]/20"
                   >
                     <div>
-                      <div className="bg-surface border border-border p-2 rounded-xl w-fit mb-4">
-                        <drill.icon className={`w-5 h-5 ${drill.color}`} />
+                      <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center mb-3">
+                        <drill.icon className="w-4 h-4 text-[var(--hf-ai-teal)]" />
                       </div>
-                      <h4 className="font-bold text-ink text-sm group-hover:text-accent transition-colors uppercase">{drill.title}</h4>
-                      <p className="text-[10px] text-ink-dim mt-2 leading-normal">{drill.desc}</p>
+                      <h3 className="font-semibold text-sm text-[var(--hf-text)] group-hover:text-[var(--hf-cta)] transition-colors">
+                        {drill.title}
+                      </h3>
+                      <p className="text-xs text-[var(--hf-text-secondary)] mt-1.5 leading-normal">
+                        {drill.desc}
+                      </p>
                     </div>
-                    <div className="text-[9px] font-bold text-accent uppercase tracking-widest flex items-center gap-1 mt-6">
-                      Launch Drill <ChevronRight className="w-3.5 h-3.5" />
+                    <div className="text-xs font-medium text-[var(--hf-cta)] flex items-center gap-1 mt-5">
+                      Start drill <ChevronRight className="w-3.5 h-3.5" />
                     </div>
                   </button>
                 ))}
@@ -723,96 +835,123 @@ export default function CampusPlacement() {
 
             {/* ACTIVE DRILL WORKSPACE */}
             {activeDrillTopic && (
-              <div className="border border-border bg-background/30 rounded-3xl p-6">
+              <div className="border border-[var(--hf-border)] bg-[var(--hf-surface)] rounded-lg p-5 sm:p-6">
                 
                 {/* Header info */}
-                <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
+                <div className="flex items-center justify-between border-b border-[var(--hf-border)] pb-4 mb-6">
                   <div>
-                    <span className="text-[9px] font-bold text-accent uppercase tracking-widest">Live Interactive Practice</span>
-                    <h4 className="text-sm font-bold text-ink uppercase tracking-tight mt-1">{activeDrillTopic}</h4>
+                    <span className="text-xs text-[var(--hf-text-secondary)] block">
+                      Practice session
+                    </span>
+                    <h3 className="text-sm sm:text-base font-semibold text-[var(--hf-text)] mt-0.5">
+                      {activeDrillTopic}
+                    </h3>
                   </div>
                   <button
+                    type="button"
                     onClick={handleQuitDrill}
-                    className="text-[9px] font-bold text-ink-dim hover:text-rose-400 border border-border hover:border-rose-500/20 px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="hf-btn-secondary text-xs px-3 py-1.5 cursor-pointer"
                   >
-                    Quit Session
+                    End session
                   </button>
                 </div>
 
                 {loadingDrill ? (
-                  <div className="py-16 flex flex-col items-center justify-center gap-3.5 text-center">
-                    <Loader2 className="w-9 h-9 text-accent animate-spin" />
+                  <div className="py-14 flex flex-col items-center justify-center gap-3 text-center" aria-live="polite">
+                    <Loader2 className="w-7 h-7 text-[var(--hf-ai-teal)] animate-spin" />
                     <div>
-                      <span className="text-xs font-bold text-ink uppercase tracking-widest block">
-                        Generating Fresh Drill Questions...
+                      <span className="text-sm font-medium text-[var(--hf-text)] block">
+                        Generating practice questions...
                       </span>
-                      <span className="text-[10px] text-ink-dim font-medium mt-1 block">
-                        Attempt #{(drillAttemptMap[activeDrillTopic || ''] || 1)} &bull; Velona AI Engine
+                      <span className="text-xs text-[var(--hf-text-secondary)] mt-1 block">
+                        Attempt {(drillAttemptMap[activeDrillTopic || ''] || 1)}
                       </span>
                     </div>
                   </div>
                 ) : drillError ? (
-                  <div className="py-12 px-6 text-center max-w-md mx-auto">
-                    <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <AlertCircle className="w-6 h-6" />
+                  <div className="py-10 px-4 text-center max-w-md mx-auto" role="alert" aria-live="assertive">
+                    <div className="w-10 h-10 bg-[var(--hf-error)]/10 border border-[var(--hf-error)]/20 text-[var(--hf-error)] rounded-lg flex items-center justify-center mx-auto mb-3">
+                      <AlertCircle className="w-5 h-5" />
                     </div>
-                    <h4 className="text-sm font-bold text-ink uppercase tracking-tight mb-1.5">Drill Generation Issue</h4>
-                    <p className="text-xs text-ink-dim mb-6 leading-relaxed">
+                    <h3 className="text-sm font-semibold text-[var(--hf-text)] mb-1">
+                      Failed to load drill
+                    </h3>
+                    <p className="text-xs text-[var(--hf-text-secondary)] mb-5 leading-relaxed">
                       {drillError}
                     </p>
                     <div className="flex gap-3">
                       <button
+                        type="button"
                         onClick={() => handleStartAptitudeDrill(activeDrillTopic)}
                         disabled={loadingDrill}
-                        className="flex-1 bg-accent text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md shadow-accent/20 cursor-pointer disabled:opacity-50"
+                        className="hf-btn-primary flex-1 text-xs py-2.5 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
-                        Try Again
+                        Try again
                       </button>
                       <button
+                        type="button"
                         onClick={handleQuitDrill}
-                        className="flex-1 bg-surface border border-border text-ink py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:border-accent/40 transition-all cursor-pointer"
+                        className="hf-btn-secondary flex-1 text-xs py-2.5 cursor-pointer"
                       >
-                        Choose Topic
+                        Choose topic
                       </button>
                     </div>
                   </div>
                 ) : drillComplete ? (
                   /* Score and completion view */
-                  <div className="text-center py-10 max-w-md mx-auto">
-                    <div className="w-16 h-16 bg-success/10 border border-success/20 text-success rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Trophy className="w-8 h-8" />
+                  <div className="text-center py-8 max-w-md mx-auto">
+                    <div className="w-12 h-12 bg-[var(--hf-success)]/10 border border-[var(--hf-success)]/20 text-[var(--hf-success)] rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle2 className="w-6 h-6" />
                     </div>
-                    <h3 className="text-xl font-bold text-ink uppercase tracking-tight mb-2">Practice Complete!</h3>
-                    <p className="text-xs text-ink-dim mb-6">Excellent job practicing dynamic aptitude drills. Consistency is the key to passing MNC technical rounds.</p>
+                    <h3 className="text-lg font-semibold text-[var(--hf-text)] mb-1">
+                      Drill complete
+                    </h3>
+                    <p className="text-xs text-[var(--hf-text-secondary)] mb-6">
+                      You finished all questions in this practice set.
+                    </p>
                     
-                    <div className="bg-surface border border-border p-4 rounded-2xl mb-8 flex items-center justify-around">
+                    <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-4 rounded-lg mb-6 flex items-center justify-around">
                       <div>
-                        <span className="text-[10px] font-bold text-ink-dim uppercase block">Questions Answered</span>
-                        <span className="text-lg font-bold text-ink">{drillQuestions.length}</span>
+                        <span className="text-xs text-[var(--hf-text-secondary)] block">
+                          Questions
+                        </span>
+                        <span className="text-lg font-semibold text-[var(--hf-text)]">
+                          {drillQuestions.length}
+                        </span>
                       </div>
-                      <div className="border-r border-border h-8"></div>
+                      <div className="border-r border-[var(--hf-border)] h-8"></div>
                       <div>
-                        <span className="text-[10px] font-bold text-ink-dim uppercase block">Correct Answers</span>
-                        <span className="text-lg font-bold text-success">{drillScore} / {drillQuestions.length}</span>
+                        <span className="text-xs text-[var(--hf-text-secondary)] block">
+                          Result
+                        </span>
+                        <span className="text-lg font-semibold text-[var(--hf-success)]">
+                          {drillScore} of {drillQuestions.length} correct
+                        </span>
                       </div>
                     </div>
 
+                    <p className="text-xs text-[var(--hf-text-muted)] mb-6">
+                      Result measures answers you got right in this practice drill.
+                    </p>
+
                     <div className="flex gap-3">
                       <button
+                        type="button"
                         onClick={() => handleStartAptitudeDrill(activeDrillTopic)}
                         disabled={loadingDrill}
-                        className="flex-1 bg-accent text-white py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md shadow-accent/20 cursor-pointer disabled:opacity-50"
+                        className="hf-btn-primary flex-1 text-xs py-2.5 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                       >
-                        <RefreshCw className={`w-4 h-4 ${loadingDrill ? 'animate-spin' : ''}`} />
-                        Try Again
+                        <RefreshCw className={`w-3.5 h-3.5 ${loadingDrill ? 'animate-spin' : ''}`} />
+                        Practice again
                       </button>
                       <button
+                        type="button"
                         onClick={handleQuitDrill}
                         disabled={loadingDrill}
-                        className="flex-1 bg-surface border border-border text-ink py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:border-accent/40 transition-all cursor-pointer"
+                        className="hf-btn-secondary flex-1 text-xs py-2.5 cursor-pointer"
                       >
-                        Choose Topic
+                        Choose topic
                       </button>
                     </div>
                   </div>
@@ -821,21 +960,21 @@ export default function CampusPlacement() {
                   <div>
                     {/* Progress Bar */}
                     <div className="mb-6">
-                      <div className="flex justify-between text-[10px] font-bold text-ink-dim uppercase tracking-wider mb-2">
+                      <div className="flex justify-between text-xs text-[var(--hf-text-secondary)] mb-2">
                         <span>Question {currentQuestionIndex + 1} of {drillQuestions.length}</span>
-                        <span>Score: {drillScore}</span>
+                        <span>{drillScore} of {drillQuestions.length} correct</span>
                       </div>
-                      <div className="w-full bg-surface border border-border h-1.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] h-1.5 rounded-full overflow-hidden">
                         <div 
-                          className="bg-accent h-full transition-all duration-300" 
+                          className="bg-[var(--hf-cta)] h-full transition-all duration-300" 
                           style={{ width: `${((currentQuestionIndex + 1) / drillQuestions.length) * 100}%` }}
                         />
                       </div>
                     </div>
 
                     {/* Question Card */}
-                    <div className="bg-background border border-border p-5 rounded-2xl mb-6">
-                      <p className="text-xs font-bold text-ink leading-relaxed font-sans">
+                    <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-4 sm:p-5 rounded-lg mb-5">
+                      <p className="text-sm font-medium text-[var(--hf-text)] leading-relaxed">
                         {drillQuestions[currentQuestionIndex].question}
                       </p>
                     </div>
@@ -846,32 +985,39 @@ export default function CampusPlacement() {
                         const isSelected = selectedOptionIndex === optIdx;
                         const correctIdx = drillQuestions[currentQuestionIndex].correctIndex;
                         
-                        let cardStyle = "bg-background border-border hover:border-accent/30 text-ink";
+                        let cardStyle = "bg-[var(--hf-surface)] border-[var(--hf-border)] hover:border-[var(--hf-cta)]/50 text-[var(--hf-text)]";
                         if (isAnswered) {
                           if (optIdx === correctIdx) {
-                            cardStyle = "bg-success/10 border-success text-success font-semibold";
+                            cardStyle = "bg-[var(--hf-success)]/10 border-[var(--hf-success)] text-[var(--hf-success)] font-medium";
                           } else if (isSelected) {
-                            cardStyle = "bg-rose-500/10 border-rose-500 text-rose-500 font-semibold";
+                            cardStyle = "bg-[var(--hf-error)]/10 border-[var(--hf-error)] text-[var(--hf-error)] font-medium";
                           } else {
-                            cardStyle = "bg-background/40 border-border/50 text-ink-dim opacity-70";
+                            cardStyle = "bg-[var(--hf-surface)] border-[var(--hf-border)]/50 text-[var(--hf-text-secondary)] opacity-60";
                           }
                         } else if (isSelected) {
-                          cardStyle = "bg-accent/5 border-accent text-accent font-semibold";
+                          cardStyle = "bg-[var(--hf-cta)]/5 border-[var(--hf-cta)] text-[var(--hf-cta)] font-medium";
                         }
 
                         return (
                           <button
                             key={optIdx}
+                            type="button"
                             disabled={isAnswered}
                             onClick={() => handleSelectOption(optIdx)}
-                            className={`w-full p-4 border text-left rounded-xl text-xs transition-all flex items-center justify-between ${cardStyle}`}
+                            className={`w-full p-3.5 border text-left rounded-lg text-xs sm:text-sm transition-all flex items-center justify-between cursor-pointer disabled:cursor-default ${cardStyle}`}
                           >
                             <span>{opt}</span>
                             {isAnswered && optIdx === correctIdx && (
-                              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                              <span className="flex items-center gap-1.5 text-xs font-semibold text-[var(--hf-success)] shrink-0 ml-2">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Correct</span>
+                              </span>
                             )}
                             {isAnswered && isSelected && optIdx !== correctIdx && (
-                              <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                              <span className="flex items-center gap-1.5 text-xs font-semibold text-[var(--hf-error)] shrink-0 ml-2">
+                                <XCircle className="w-4 h-4" />
+                                <span>Incorrect</span>
+                              </span>
                             )}
                           </button>
                         );
@@ -879,47 +1025,52 @@ export default function CampusPlacement() {
                     </div>
 
                     {/* Actions Panel */}
-                    <div className="flex flex-col sm:flex-row gap-3 items-center justify-between border-t border-border pt-6">
+                    <div className="border-t border-[var(--hf-border)] pt-5">
                       {isAnswered ? (
-                        <div className="w-full">
+                        <div className="w-full space-y-4">
                           {/* Explanation Card */}
-                          <div className="bg-surface border border-border p-4 rounded-2xl mb-4 text-xs">
-                            <span className="text-[9px] font-bold text-accent uppercase tracking-widest block mb-2">Step-by-Step Logic Breakdown</span>
-                            <p className="text-ink-dim leading-relaxed font-medium">
+                          <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-4 rounded-lg text-xs">
+                            <span className="font-semibold text-[var(--hf-text)] block mb-1">
+                              Explanation
+                            </span>
+                            <p className="text-[var(--hf-text-secondary)] leading-relaxed">
                               {drillQuestions[currentQuestionIndex].explanation}
                             </p>
                           </div>
                           <button
+                            type="button"
                             onClick={handleNextQuestion}
-                            className="w-full bg-accent text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-1 hover:opacity-90 transition-all shadow-md shadow-accent/20"
+                            className="hf-btn-primary w-full py-2.5 text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            {currentQuestionIndex + 1 === drillQuestions.length ? "Finish Drill" : "Next Question"}
+                            <span>{currentQuestionIndex + 1 === drillQuestions.length ? "Finish drill" : "Next question"}</span>
                             <ArrowRight className="w-4 h-4" />
                           </button>
                         </div>
                       ) : (
                         <button
+                          type="button"
                           onClick={handleConfirmAnswer}
                           disabled={selectedOptionIndex === null}
-                          className="w-full bg-accent text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-1 hover:opacity-90 transition-all disabled:opacity-40"
+                          className="hf-btn-primary w-full py-2.5 text-xs sm:text-sm flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          Check Answer
+                          Check answer
                         </button>
                       )}
                     </div>
                   </div>
                 ) : (
                   <div className="p-8 text-center max-w-sm mx-auto space-y-4">
-                    <p className="text-xs text-ink-dim font-medium">
+                    <p className="text-xs text-[var(--hf-text-secondary)]">
                       No questions generated for this drill topic.
                     </p>
                     <button
+                      type="button"
                       onClick={() => handleStartAptitudeDrill(activeDrillTopic)}
                       disabled={loadingDrill}
-                      className="bg-accent text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-all inline-flex items-center gap-2 cursor-pointer shadow-md shadow-accent/20"
+                      className="hf-btn-primary text-xs px-4 py-2 inline-flex items-center gap-2 cursor-pointer"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      Generate Questions
+                      Generate questions
                     </button>
                   </div>
                 )}
@@ -928,152 +1079,237 @@ export default function CampusPlacement() {
           </div>
         </div>
 
-        {/* Right Column: Startup Elite Program Simulator */}
-        <div className="lg:col-span-4 space-y-8">
+        {/* Right Column: Startup Architecture Challenge & Hiring Notes */}
+        <div className="lg:col-span-4 space-y-6">
           
-          <div className="bg-[#0a0a0a] border border-accent/20 rounded-[2rem] p-8 text-white relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/20 blur-[60px] -mr-16 -mt-16 group-hover:bg-accent/30 transition-all"></div>
-            <Sparkles className="w-8 h-8 text-accent mb-6" />
-            <h3 className="text-xl font-bold uppercase tracking-tight mb-2">Startup Elite Prep</h3>
-            <p className="text-xs text-white/60 mb-6 leading-relaxed font-sans">
-              Test your architecture against elite-level engineering scenarios. Startups look for rapid prototyping and core performance optimization.
-            </p>
+          <div className="hf-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-[var(--hf-ai-teal)]" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-[var(--hf-text)]">
+                  Startup architecture challenge
+                </h2>
+                <p className="text-xs text-[var(--hf-text-secondary)]">
+                  AI-evaluated scenarios testing system choices and scale constraints
+                </p>
+              </div>
+            </div>
+
+            {/* Fixed Disclaimer */}
+            <div className="mb-5 p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg text-xs text-[var(--hf-text-secondary)] flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-[var(--hf-text-muted)] shrink-0 mt-0.5" />
+              <span>
+                AI-generated scenario. Challenges and evaluations test reasoning against hypothetical constraints.
+              </span>
+            </div>
 
             {/* Specialization Options */}
             {!activeStartupTrack ? (
-              <div className="space-y-2.5 mb-2">
+              <div className="space-y-3">
                 {[
-                  "Frontend Specialist (React)",
-                  "Backend Architect (Node)",
-                  "Full-Stack Builder"
+                  { title: "Frontend Specialist (React)", role: "Frontend", desc: "State management, performance, core web vitals" },
+                  { title: "Backend Architect (Node)", role: "Backend", desc: "System design, microservices, database scale" },
+                  { title: "Full-Stack Builder", role: "Full-Stack", desc: "End-to-end integration, API contracts, deployment" }
                 ].map((track, i) => (
                   <button 
                     key={i}
-                    onClick={() => handleStartStartupChallenge(track)}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-left transition-all flex items-center justify-between group"
+                    type="button"
+                    onClick={() => handleStartStartupChallenge(track.title)}
+                    className="w-full p-4 bg-[var(--hf-surface)] border border-[var(--hf-border)] hover:border-[var(--hf-cta)] rounded-lg text-left transition-all flex items-center justify-between group cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]/20"
                   >
                     <div>
-                      <h4 className="text-xs font-bold tracking-widest uppercase text-white group-hover:text-accent transition-colors">{track.split(' (')[0]}</h4>
-                      <p className="text-[9px] text-white/40 mt-1 uppercase tracking-tighter">
-                        {track.includes('Frontend') ? 'React, Next.js, Performance' : 
-                         track.includes('Backend') ? 'System Design, Microservices, Scale' : 'End-to-End System Integration'}
+                      <h3 className="text-xs sm:text-sm font-semibold text-[var(--hf-text)] group-hover:text-[var(--hf-cta)] transition-colors">
+                        {track.role}
+                      </h3>
+                      <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
+                        {track.desc}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-accent group-hover:translate-x-1 transition-all" />
+                    <ChevronRight className="w-4 h-4 text-[var(--hf-text-muted)] group-hover:text-[var(--hf-cta)] transition-colors shrink-0 ml-2" />
                   </button>
                 ))}
               </div>
             ) : (
-              /* ACTIVE CHALLENGE VIEW */
+              /* ACTIVE CHALLENGE VIEW: Dark panel allowed for focused challenge area */
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
-                  <span className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Bootcamp</span>
+                <div className="flex items-center justify-between border-b border-[var(--hf-border)] pb-3">
+                  <div>
+                    <span className="text-xs text-[var(--hf-text-secondary)] block">
+                      Active scenario
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-[var(--hf-text)]">
+                      {activeStartupTrack.split(' (')[0]}
+                    </span>
+                  </div>
                   <button 
+                    type="button"
                     onClick={handleClearStartupTrack}
-                    className="text-[9px] font-bold text-white/50 hover:text-rose-400 uppercase transition-colors cursor-pointer"
+                    className="hf-btn-secondary text-xs px-2.5 py-1.5 cursor-pointer"
                   >
-                    Change Track
+                    Change track
                   </button>
                 </div>
 
                 {loadingStartup ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="w-6 h-6 text-accent animate-spin" />
-                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest animate-pulse">Synthesizing Challenge...</span>
+                  <div className="py-12 flex flex-col items-center justify-center gap-3 text-center" aria-live="polite">
+                    <Loader2 className="w-7 h-7 text-[var(--hf-ai-teal)] animate-spin" />
+                    <div>
+                      <span className="text-xs sm:text-sm font-medium text-[var(--hf-text)] block">
+                        Synthesizing challenge...
+                      </span>
+                      <span className="text-xs text-[var(--hf-text-secondary)] mt-0.5 block">
+                        Preparing system requirements and scale constraints
+                      </span>
+                    </div>
                   </div>
                 ) : startupChallenge ? (
                   <div className="space-y-4">
-                    {/* Challenge Prompt */}
-                    <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
-                      <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">{startupChallenge.title}</h4>
-                      <p className="text-[11px] text-white/70 leading-relaxed mb-3 font-sans">
+                    {/* Focused Challenge Card */}
+                    <div className="p-4 bg-[var(--hf-dark-panel)] border border-[var(--hf-border)] rounded-lg text-[#F8FAFC]">
+                      <span className="hf-badge hf-badge-teal text-xs mb-2">
+                        AI-generated scenario
+                      </span>
+                      <h3 className="text-sm font-semibold text-white mt-1 mb-1.5">
+                        {startupChallenge.title}
+                      </h3>
+                      <p className="text-xs text-slate-300 leading-relaxed mb-3">
                         {startupChallenge.description}
                       </p>
-                      <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-lg flex items-center gap-2">
-                        <Terminal className="w-3.5 h-3.5 text-accent shrink-0" />
-                        <span className="text-[9px] font-bold text-accent uppercase tracking-widest font-mono">Scale Constraint: {startupChallenge.scaleContext}</span>
+                      <div className="p-2.5 bg-black/25 border border-white/10 rounded-md flex items-start gap-2">
+                        <Terminal className="w-4 h-4 text-[var(--hf-ai-teal)] shrink-0 mt-0.5" />
+                        <span className="text-xs font-mono text-slate-200">
+                          Scale constraint: {startupChallenge.scaleContext}
+                        </span>
                       </div>
                     </div>
 
                     {/* Core Architectural Task */}
-                    <div>
-                      <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block mb-1">Your Engineering Task:</span>
-                      <p className="text-[10px] text-white/80 leading-relaxed font-sans">{startupChallenge.coreTask}</p>
+                    <div className="p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg">
+                      <span className="text-xs font-semibold text-[var(--hf-text)] block mb-1">
+                        Your engineering task
+                      </span>
+                      <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">
+                        {startupChallenge.coreTask}
+                      </p>
                     </div>
 
                     {/* Requirements checklist */}
-                    <div className="space-y-1">
-                      {startupChallenge.checklist?.map((item: string, idx: number) => (
-                        <div key={idx} className="flex items-start gap-1.5 text-[9px] text-white/50">
-                          <Check className="w-3 h-3 text-accent shrink-0 mt-0.5" />
-                          <span>{item}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {startupChallenge.checklist?.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-semibold text-[var(--hf-text)] block mb-1">
+                          Key requirements to address
+                        </span>
+                        {startupChallenge.checklist.map((item: string, idx: number) => (
+                          <div key={idx} className="flex items-start gap-2 text-xs text-[var(--hf-text-secondary)]">
+                            <Check className="w-3.5 h-3.5 text-[var(--hf-ai-teal)] shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Input Solution */}
                     {!solutionFeedback && (
-                      <div className="space-y-2 mt-4">
-                        <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Propose Your Solution Strategy:</span>
+                      <div className="space-y-2.5 pt-2">
+                        <label 
+                          htmlFor="solution-strategy-input"
+                          className="text-xs font-semibold text-[var(--hf-text)] block"
+                        >
+                          Proposed architecture solution
+                        </label>
                         <textarea
+                          id="solution-strategy-input"
                           placeholder="Detail your database choice, system architecture, caching strategy, and framework pathways to solve this..."
                           value={proposedSolution}
                           onChange={(e) => setProposedSolution(e.target.value)}
                           rows={6}
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-xs text-white leading-relaxed focus:outline-none focus:ring-1 focus:ring-accent font-sans"
+                          className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] p-3 rounded-lg text-sm text-[var(--hf-text)] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]/20 focus:border-[var(--hf-cta)] resize-y min-h-[120px]"
                         />
                         <button
+                          type="button"
                           onClick={handleSubmitStartupSolution}
                           disabled={submittingSolution || !proposedSolution.trim()}
-                          className="w-full bg-accent text-white py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-[1.01] transition-all disabled:opacity-40"
+                          className="hf-btn-primary w-full py-2.5 text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {submittingSolution ? (
                             <span className="flex items-center justify-center gap-1.5">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              Evaluating Solutions...
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Evaluating solution...
                             </span>
                           ) : (
-                            "Submit Proposal To CTO"
+                            "Submit solution"
                           )}
                         </button>
                       </div>
                     )}
 
-                    {/* CTO Evaluation Feedback */}
+                    {/* Technical Architecture Evaluation Feedback */}
                     {solutionFeedback && (
-                      <div className="space-y-4 mt-6 pt-4 border-t border-white/10">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-accent uppercase tracking-widest">CTO Assessment Grade:</span>
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                            solutionFeedback.grade.includes('Elite') || solutionFeedback.score >= 85 ? 'bg-success/15 text-success' :
-                            solutionFeedback.score >= 65 ? 'bg-warning/15 text-warning' : 'bg-rose-500/15 text-rose-400'
+                      <div className="space-y-4 pt-3 border-t border-[var(--hf-border)]">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg">
+                          <div>
+                            <span className="text-xs text-[var(--hf-text-secondary)] block">
+                              Technical architecture evaluation
+                            </span>
+                            <span className="text-xs sm:text-sm font-semibold text-[var(--hf-text)]">
+                              AI estimate: {solutionFeedback.score} / 100
+                            </span>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded text-xs font-semibold self-start sm:self-auto ${
+                            solutionFeedback.score >= 80 ? 'bg-[var(--hf-success)]/10 text-[var(--hf-success)] border border-[var(--hf-success)]/20' :
+                            solutionFeedback.score >= 60 ? 'bg-[var(--hf-warning)]/10 text-[var(--hf-warning)] border border-[var(--hf-warning)]/20' : 
+                            'bg-[var(--hf-error)]/10 text-[var(--hf-error)] border border-[var(--hf-error)]/20'
                           }`}>
-                            {solutionFeedback.grade} ({solutionFeedback.score}/100)
+                            {solutionFeedback.grade}
                           </span>
                         </div>
 
-                        {/* CTO Critique */}
-                        <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-xs leading-normal">
-                          <span className="text-[9px] font-bold text-accent uppercase block mb-1">Scale Strategy Critique:</span>
-                          <p className="text-white/80 font-sans">{solutionFeedback.scaleCheck}</p>
+                        <p className="text-xs text-[var(--hf-text-muted)]">
+                          This is an AI evaluation of your written solution. It is not a hiring decision and may miss or misjudge details. Measures how well the written solution covers stated requirements and scale constraints.
+                        </p>
+
+                        {/* Scale Strategy Critique */}
+                        <div className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg text-xs space-y-3">
+                          <div>
+                            <span className="font-semibold text-[var(--hf-text)] block mb-1">
+                              Scale strategy critique
+                            </span>
+                            <p className="text-[var(--hf-text-secondary)] leading-relaxed">
+                              {solutionFeedback.scaleCheck}
+                            </p>
+                          </div>
                           
-                          <span className="text-[9px] font-bold text-accent uppercase block mt-3 mb-1">Architecture & Code Feedback:</span>
-                          <p className="text-white/60 font-sans whitespace-pre-line">{solutionFeedback.feedback}</p>
+                          <div className="border-t border-[var(--hf-border)] pt-2.5">
+                            <span className="font-semibold text-[var(--hf-text)] block mb-1">
+                              Architecture & implementation feedback
+                            </span>
+                            <p className="text-[var(--hf-text-secondary)] leading-relaxed whitespace-pre-line">
+                              {solutionFeedback.feedback}
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="bg-[#121212] border border-white/10 p-4 rounded-xl text-[10.5px]">
-                          <span className="text-[9px] font-bold text-white/50 uppercase block mb-2">CTO Model Solution Reference:</span>
-                          <p className="text-white/40 leading-relaxed font-sans">{startupChallenge.modelSolutionArchitecture}</p>
+                        {/* Reference Approach */}
+                        <div className="p-3.5 bg-[var(--hf-dark-panel)] border border-[var(--hf-border)] rounded-lg text-xs text-slate-200">
+                          <span className="text-xs font-semibold text-white block mb-1.5">
+                            Reference approach (AI-generated)
+                          </span>
+                          <p className="text-slate-300 leading-relaxed font-sans">
+                            {startupChallenge.modelSolutionArchitecture}
+                          </p>
                         </div>
 
                         <button 
+                          type="button"
                           onClick={() => {
                             setSolutionFeedback(null);
                             setProposedSolution('');
                           }}
-                          className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 text-[9px] font-bold uppercase tracking-widest rounded-xl transition-all"
+                          className="hf-btn-secondary w-full py-2 text-xs cursor-pointer"
                         >
-                          Revise Solution
+                          Revise solution
                         </button>
                       </div>
                     )}
@@ -1083,24 +1319,35 @@ export default function CampusPlacement() {
             )}
           </div>
 
-          {/* Quick Stats cycle */}
-          <div className="glass-panel">
-            <h4 className="text-xs font-bold text-ink uppercase tracking-widest mb-6 flex items-center gap-2">
-              <BookCheck className="w-4.5 h-4.5 text-accent" />
-              Trending Indian Placement Trends
-            </h4>
-            <ul className="space-y-4">
-              <li className="flex items-start gap-3">
-                <div className="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-                <p className="text-[10px] text-ink-dim font-medium leading-normal">Global Capability Centers (GCCs) in Bengaluru & Hyderabad are increasing hiring for System Performance developers.</p>
+          {/* General Campus Hiring Notes */}
+          <div className="hf-card p-6">
+            <h3 className="text-sm font-semibold text-[var(--hf-text)] mb-2 flex items-center gap-2">
+              <BookCheck className="w-4 h-4 text-[var(--hf-ai-teal)]" />
+              General campus hiring notes
+            </h3>
+            
+            <p className="text-xs text-[var(--hf-text-muted)] mb-4">
+              General observations written into the app. They are not live data and may be out of date.
+            </p>
+
+            <ul className="space-y-3.5 text-xs text-[var(--hf-text-secondary)]">
+              <li className="flex items-start gap-2.5">
+                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--hf-cta)] shrink-0" />
+                <p className="leading-relaxed">
+                  Global Capability Centers (GCCs) in Bengaluru & Hyderabad are increasing hiring for System Performance developers.
+                </p>
               </li>
-              <li className="flex items-start gap-3">
-                <div className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                <p className="text-[10px] text-ink-dim font-medium leading-normal">Mass recruitment rounds are transitioning from classic aptitude tests to live programming challenges on platforms like HackerEarth.</p>
+              <li className="flex items-start gap-2.5">
+                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--hf-ai-teal)] shrink-0" />
+                <p className="leading-relaxed">
+                  Mass recruitment rounds are transitioning from classic aptitude tests to live programming challenges on platforms like HackerEarth.
+                </p>
               </li>
-              <li className="flex items-start gap-3">
-                <div className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                <p className="text-[10px] text-ink-dim font-medium leading-normal">Full-stack competencies, responsive routing, and custom local storage persistence are highly requested for fast-scaling elite Indian startups.</p>
+              <li className="flex items-start gap-2.5">
+                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--hf-warning)] shrink-0" />
+                <p className="leading-relaxed">
+                  Full-stack competencies, responsive routing, and custom local storage persistence are highly requested for fast-scaling elite Indian startups.
+                </p>
               </li>
             </ul>
           </div>

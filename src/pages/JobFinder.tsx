@@ -441,47 +441,48 @@ export default function JobFinder() {
     return (
       <div className="min-h-[400px] w-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Initializing Job Finder...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--hf-cta)]" />
+          <p className="text-xs text-[var(--hf-text-secondary)] tracking-wide animate-pulse">Initializing Job Finder...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-      <div className="mb-12">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-accent/10 p-2 rounded-xl border border-accent/20">
-              <Search className="w-5 h-5 text-accent" />
-            </div>
-            <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em]">Job Finder</span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 font-sans">
+      {/* Header */}
+      <div className="mb-8 font-sans">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border border-[var(--hf-border)]">
+            <Search className="w-3.5 h-3.5 text-[var(--hf-teal)]" />
+            <span className="font-sans">Job finder</span>
           </div>
-          <div className="px-4 py-2 glass border border-border rounded-xl flex items-center gap-3">
-             <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-             <span className="text-[10px] font-bold text-ink uppercase tracking-wider">
-               {formatCreditAvailability(creditWallet?.balance, creditCosts?.jobMatchAnalysis ?? 20, 'searches')}
-             </span>
+          <div className="px-3 py-1.5 border border-[var(--hf-border)] rounded-lg bg-[var(--hf-surface)] flex items-center gap-2 text-xs text-[var(--hf-text-secondary)]">
+            <span className="w-2 h-2 rounded-full bg-[var(--hf-teal)]" />
+            <span className="font-medium tabular-nums font-sans">
+              {formatCreditAvailability(creditWallet?.balance, creditCosts?.jobMatchAnalysis ?? 20, 'searches')}
+            </span>
           </div>
         </div>
-        <h1 className="text-4xl font-bold text-ink tracking-tight uppercase leading-none mb-4">Job Finder</h1>
-        <p className="text-ink-dim font-medium text-lg max-w-2xl mb-4">
-          Discover real, verified job vacancies from live external sources with AI-powered candidate compatibility matching.
+        <h1 className="text-2xl sm:text-3xl font-bold font-sans text-[var(--hf-text)] tracking-tight mb-2">Job finder</h1>
+        <p className="text-sm sm:text-base text-[var(--hf-text-secondary)] max-w-2xl font-sans">
+          Discover verified job vacancies from live external sources with AI-powered candidate compatibility matching.
         </p>
       </div>
 
-      {/* Search Bar */}
-      <div className="glass-panel mb-12 p-8 rounded-3xl border border-border bg-surface">
-        <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+      {/* Search Console */}
+      <div className="mb-8 p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] bg-[var(--hf-surface)] shadow-xs">
+        <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
           <div className="md:col-span-5">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <label htmlFor="job-role-input" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block">Job Role / Title</label>
+            <div className="flex items-center justify-between mb-1.5 px-0.5">
+              <label htmlFor="job-role-input" className="text-xs font-medium text-[var(--hf-text-secondary)] block">
+                Job role or title
+              </label>
               {query && (
                 <button
                   type="button"
                   onClick={() => handleQueryChange('')}
-                  className="text-[10px] text-ink-dim hover:text-accent font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <X className="w-3 h-3" /> Clear
                 </button>
@@ -492,16 +493,16 @@ export default function JobFinder() {
                 id="job-role-input"
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
-                className="w-full pl-12 pr-10 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
+                className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]/20 focus:border-[var(--hf-cta)] transition-all"
                 placeholder="e.g. AI Product Intern at Mumbai, Software Engineer"
                 aria-label="Job Role or Title"
               />
-              <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" aria-hidden="true" />
+              <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--hf-text-muted)]" aria-hidden="true" />
               {query && (
                 <button
                   type="button"
                   onClick={() => handleQueryChange('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-ink-dim hover:text-ink rounded-lg transition-colors cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] p-1 text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] rounded-md transition-colors cursor-pointer flex items-center justify-center"
                   aria-label="Clear job role"
                 >
                   <X className="w-4 h-4" />
@@ -511,13 +512,15 @@ export default function JobFinder() {
           </div>
           
           <div className="md:col-span-3">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <label htmlFor="job-location-input" className="text-[10px] font-bold text-ink-dim uppercase tracking-widest block">Location / Remote</label>
+            <div className="flex items-center justify-between mb-1.5 px-0.5">
+              <label htmlFor="job-location-input" className="text-xs font-medium text-[var(--hf-text-secondary)] block">
+                Location or remote
+              </label>
               {location && (
                 <button
                   type="button"
                   onClick={() => handleLocationChange('')}
-                  className="text-[10px] text-ink-dim hover:text-accent font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <X className="w-3 h-3" /> Clear
                 </button>
@@ -528,16 +531,16 @@ export default function JobFinder() {
                 id="job-location-input"
                 value={location}
                 onChange={(e) => handleLocationChange(e.target.value)}
-                className="w-full pl-12 pr-10 py-4 bg-background border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink transition-all group-hover:border-accent/40"
+                className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]/20 focus:border-[var(--hf-cta)] transition-all"
                 placeholder="e.g. Remote or Worldwide"
                 aria-label="Job Location or Remote"
               />
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" aria-hidden="true" />
+              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--hf-text-muted)]" aria-hidden="true" />
               {location && (
                 <button
                   type="button"
                   onClick={() => handleLocationChange('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-ink-dim hover:text-ink rounded-lg transition-colors cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] p-1 text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] rounded-md transition-colors cursor-pointer flex items-center justify-center"
                   aria-label="Clear location"
                 >
                   <X className="w-4 h-4" />
@@ -550,16 +553,17 @@ export default function JobFinder() {
             <button 
               type="submit" 
               disabled={loading}
-              className="flex-1 bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/40 hover:opacity-90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 cursor-pointer"
+              className="flex-1 min-h-[44px] bg-[var(--hf-cta)] hover:opacity-90 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs"
             >
               {loading ? (
                 <>
-                  <LoaderCircle className="w-5 h-5 animate-spin" />
-                  Searching...
+                  <LoaderCircle className="w-4 h-4 animate-spin" />
+                  <span>Searching...</span>
                 </>
               ) : (
                 <>
-                  <Search className="w-4 h-4" /> Search Jobs
+                  <Search className="w-4 h-4" />
+                  <span>Search jobs</span>
                 </>
               )}
             </button>
@@ -570,7 +574,7 @@ export default function JobFinder() {
               onClick={handleResetSearch}
               title="Reset and clear search"
               aria-label="Reset Search"
-              className="px-4 py-4 bg-background hover:bg-surface-light text-ink-dim hover:text-ink border border-border hover:border-accent/40 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              className="min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-border)] rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
               <span className="hidden sm:inline">Reset</span>
@@ -579,14 +583,14 @@ export default function JobFinder() {
         </form>
 
         {/* Popular Searches */}
-        <div className="mt-6 pt-6 border-t border-border/50">
-          <span className="text-[10px] font-bold text-ink-dim uppercase tracking-wider block mb-3">Popular Searches:</span>
+        <div className="mt-5 pt-4 border-t border-[var(--hf-border)]">
+          <span className="text-xs font-medium text-[var(--hf-text-muted)] block mb-2">Popular searches:</span>
           <div className="flex flex-wrap gap-2">
             {popularSearches.map((chip) => (
               <button
                 key={chip}
                 onClick={() => handlePopularSearch(chip)}
-                className="px-3 py-1.5 bg-background hover:bg-accent/10 hover:border-accent/30 text-ink-dim hover:text-accent border border-border rounded-xl text-xs font-medium transition-all cursor-pointer"
+                className="min-h-[36px] sm:min-h-[32px] px-3 py-1 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-border)] rounded-md text-xs font-medium transition-all cursor-pointer flex items-center"
               >
                 {chip}
               </button>
@@ -598,10 +602,10 @@ export default function JobFinder() {
       {/* Results */}
       <div className="min-h-[400px]">
         {isFromCache && (
-          <div className="flex justify-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 border border-accent/20 rounded-full text-accent shadow-sm">
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md text-xs font-medium text-[var(--hf-teal)] shadow-xs">
               <Sparkles className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Cached Results</span>
+              <span>Cached results</span>
             </div>
           </div>
         )}
@@ -610,36 +614,36 @@ export default function JobFinder() {
             <AILoadingStepper presetKey="job_finder" title="Live Job Index & Compatibility Engine" />
           </div>
         ) : error ? (
-          <div className="py-16 text-center bg-surface border border-border rounded-3xl p-8 max-w-lg mx-auto">
-            <div className="bg-rose-500/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
-              <AlertCircle className="w-8 h-8 text-rose-400" />
+          <div className="py-12 text-center bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl p-6 sm:p-8 max-w-lg mx-auto shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-[var(--hf-error)]/10 text-[var(--hf-error)] flex items-center justify-center mx-auto mb-3 border border-[var(--hf-error)]/20">
+              <AlertCircle className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-ink mb-2">Search Error</h3>
-            <p className="text-rose-400/80 text-sm mb-6">
+            <h3 className="text-base font-semibold font-sans text-[var(--hf-text)] mb-1.5">Search error</h3>
+            <p className="text-sm text-[var(--hf-text-secondary)] mb-6 leading-relaxed">
               {error}
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
               <button 
                 id="retry-search-button"
                 onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location)}
-                className="px-6 py-2.5 bg-accent text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:opacity-90 transition-all cursor-pointer"
+                className="min-h-[44px] px-5 py-2.5 bg-[var(--hf-cta)] hover:opacity-90 text-white rounded-lg text-xs font-semibold tracking-wide shadow-xs transition-all cursor-pointer"
               >
-                Retry Search
+                Retry search
               </button>
               <button 
                 id="fallback-search-button"
                 onClick={() => handleSearchWithQuery(query.trim() || activeTargetRole || "Full Stack Developer", location, undefined, true)}
-                className="px-4 py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
+                className="min-h-[44px] px-4 py-2.5 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-border)] rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5"
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                Search Public Feeds
+                <Sparkles className="w-3.5 h-3.5 text-[var(--hf-teal)]" />
+                <span>Search public feeds</span>
               </button>
               <button 
                 onClick={handleResetSearch}
-                className="px-4 py-2.5 bg-surface-light hover:bg-surface-light/80 text-ink-dim hover:text-ink border border-border rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
+                className="min-h-[44px] px-4 py-2.5 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-border)] rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                Reset
+                <span>Reset</span>
               </button>
             </div>
           </div>
@@ -705,64 +709,76 @@ export default function JobFinder() {
         ) : (
           <>
             {currentActiveJob && (
-              <div className="mb-6 p-4 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-start sm:items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse mt-1 sm:mt-0" />
+              <div className="mb-6 p-4 sm:p-5 rounded-xl bg-[var(--hf-surface)] border border-[var(--hf-border)] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-teal)] shrink-0 mt-0.5">
+                    <Target className="w-5 h-5 text-[var(--hf-teal)]" />
+                  </div>
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Selected Real Job</p>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--hf-surface-secondary)] text-[var(--hf-teal)] border border-[var(--hf-border)] text-xs font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--hf-teal)]" />
+                        Active job
+                      </span>
+                      <span className="text-xs text-[var(--hf-text-muted)] font-normal">
+                        Selected for analysis and application actions
+                      </span>
                       {currentActiveJob.relevanceLabel && (
-                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-mono font-bold border ${
+                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${
                           currentActiveJob.relevanceLabel.toLowerCase().includes('exact')
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            ? 'bg-[var(--hf-mint)]/30 text-[var(--hf-success)] border-[var(--hf-success)]/30'
+                            : 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20'
                         }`}>
                           {currentActiveJob.relevanceLabel}
                         </span>
                       )}
                       {currentActiveJob.provider && (
-                        <span className="px-2 py-0.5 bg-accent/10 border border-accent/20 rounded-md text-[9px] font-mono font-bold text-accent">
+                        <span className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md text-[11px] font-medium text-[var(--hf-text-secondary)]">
                           {currentActiveJob.provider}
                         </span>
                       )}
-                      {currentActiveJob.isRemote && (
-                        <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[9px] font-mono font-bold text-emerald-400">
-                          Verified Remote
-                        </span>
-                      )}
                     </div>
-                    <p className="text-sm font-bold text-ink mt-0.5">
-                      {currentActiveJob.title} <span className="text-ink-dim font-normal">at {currentActiveJob.company}</span>
-                      {currentActiveJob.location && (
-                        <span className="text-xs text-ink-dim font-normal ml-2">({currentActiveJob.location})</span>
-                      )}
-                    </p>
+                    <div className="mt-1">
+                      <p className="text-base font-bold text-[var(--hf-text)] leading-snug">
+                        {currentActiveJob.title}
+                      </p>
+                      <p className="text-sm font-medium text-[var(--hf-text-secondary)]">
+                        at {currentActiveJob.company}
+                        {currentActiveJob.location && (
+                          <span className="text-xs text-[var(--hf-text-muted)] font-normal ml-2">· {currentActiveJob.location}</span>
+                        )}
+                        {currentActiveJob.isRemote && (
+                          <span className="text-xs text-[var(--hf-text-muted)] font-normal ml-2">· Remote</span>
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 self-end sm:self-center">
+                <div className="flex items-center gap-2.5 self-start md:self-center flex-wrap pt-2 md:pt-0 border-t md:border-t-0 border-[var(--hf-border)] w-full md:w-auto justify-end">
                   {currentActiveJob.link && (
                     <a
                       href={currentActiveJob.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] font-bold text-accent hover:underline flex items-center gap-1 uppercase tracking-wider"
+                      className="min-h-[44px] px-3 py-2 text-xs font-medium text-[var(--hf-cta)] hover:underline flex items-center gap-1"
                     >
-                      Official Posting <ExternalLink className="w-3 h-3" />
+                      <span>Official posting</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}
                   <button
                     onClick={() => clearCurrentJobContext()}
-                    className="px-3 py-1.5 text-xs text-ink-dim hover:text-rose-400 font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                    className="min-h-[44px] px-3 py-2 text-xs text-[var(--hf-text-muted)] hover:text-[var(--hf-error)] font-medium transition-colors cursor-pointer flex items-center"
                   >
-                    Clear Active Job
+                    Clear active job
                   </button>
                   <button
                     onClick={handleResetSearch}
-                    className="px-3 py-1.5 text-xs text-ink-dim hover:text-ink font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 border border-border rounded-xl bg-surface-light hover:border-accent/40"
+                    className="min-h-[44px] px-3 py-2 text-xs text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] font-medium transition-colors cursor-pointer flex items-center gap-1.5 border border-[var(--hf-border)] rounded-lg bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)]"
                     title="Complete Job Search Reset"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    Reset Search
+                    <span>Reset search</span>
                   </button>
                 </div>
               </div>
@@ -775,18 +791,18 @@ export default function JobFinder() {
               return (
                 <>
                   {/* Results Summary and Reset Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-border/70">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-[var(--hf-border)]">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-accent/10 text-accent">
+                      <div className="p-1.5 rounded-md bg-[var(--hf-surface-secondary)] text-[var(--hf-teal)] border border-[var(--hf-border)]">
                         <Briefcase className="w-4 h-4" />
                       </div>
                       <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-sm font-bold text-ink uppercase tracking-wider">
-                          {jobs.length} Real Vacanc{jobs.length === 1 ? 'y' : 'ies'} Found
+                        <span className="text-sm font-semibold text-[var(--hf-text)]">
+                          {jobs.length} verified vacanc{jobs.length === 1 ? 'y' : 'ies'} found
                         </span>
                         {query && (
-                          <span className="text-xs text-ink-dim">
-                            for &ldquo;<strong className="text-ink font-semibold">{query}</strong>&rdquo;{location ? ` in ${location}` : ''}
+                          <span className="text-xs text-[var(--hf-text-secondary)]">
+                            for &ldquo;<strong className="text-[var(--hf-text)] font-semibold">{query}</strong>&rdquo;{location ? ` in ${location}` : ''}
                           </span>
                         )}
                       </div>
@@ -795,32 +811,33 @@ export default function JobFinder() {
                       type="button"
                       id="reset-search-results-button"
                       onClick={handleResetSearch}
-                      className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl border border-border hover:border-accent/40 bg-surface-light text-ink-dim hover:text-ink text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="self-start sm:self-auto min-h-[44px] px-3.5 py-2 rounded-lg border border-[var(--hf-border)] hover:bg-[var(--hf-surface)] bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      Reset Search
+                      <span>Reset search</span>
                     </button>
                   </div>
-                  {/* Honest notice if no exact matches found but related listings exist */}
+
+                  {/* Notice if no exact matches found but related listings exist */}
                   {exactMatches.length === 0 && relatedMatches.length > 0 && (
-                    <div className="mb-8 p-6 rounded-3xl bg-amber-500/10 border border-amber-500/25">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-amber-500/20 rounded-2xl border border-amber-500/30 text-amber-400 shrink-0">
-                          <AlertTriangle className="w-6 h-6" />
+                    <div className="mb-6 p-4 sm:p-5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200">
+                      <div className="flex items-start gap-3.5">
+                        <div className="p-2 bg-amber-500/20 rounded-lg text-amber-700 dark:text-amber-300 shrink-0">
+                          <AlertTriangle className="w-5 h-5" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest px-2.5 py-0.5 bg-amber-500/20 rounded-full border border-amber-500/30">
-                              Strict Constraint Enforcement
+                            <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                              Strict constraint enforcement
                             </span>
-                            <span className="text-xs font-mono text-ink-dim">0 Exact Matches</span>
+                            <span className="text-xs font-medium text-[var(--hf-text-muted)]">0 exact matches</span>
                           </div>
-                          <h3 className="text-base font-bold text-ink mb-1">
+                          <h3 className="text-sm font-semibold font-sans text-[var(--hf-text)] mb-1">
                             {searchNotice || `No sufficiently relevant live job listings were found for this role${location ? ` in ${location}` : ''}.`}
                           </h3>
-                          <p className="text-xs text-ink-dim leading-relaxed">
-                            Verified live feeds do not currently have openings that satisfy every specified constraint (such as strict India eligibility or internship level).
-                            To protect you from misleading fit scores, all listings below are categorized as <strong>Related Matches</strong> with their specific differences highlighted.
+                          <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">
+                            Verified live feeds do not currently have openings that satisfy every specified constraint (such as strict local eligibility or seniority level).
+                            To protect you from misleading fit scores, all listings below are categorized as <strong>related matches</strong> with specific differences highlighted.
                           </p>
                         </div>
                       </div>
@@ -830,21 +847,21 @@ export default function JobFinder() {
                   {/* Section 1: Exact Matches */}
                   {exactMatches.length > 0 && (
                     <div className="mb-10">
-                      <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                          <h2 className="text-lg font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-                            Exact Matches
-                            <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-2.5 border-b border-[var(--hf-border)]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[var(--hf-success)]" />
+                          <h2 className="text-base sm:text-lg font-semibold font-sans text-[var(--hf-text)] flex items-center gap-2">
+                            Exact matches
+                            <span className="text-xs font-medium font-sans px-2 py-0.5 rounded-md bg-[var(--hf-mint)]/30 text-[var(--hf-success)] border border-[var(--hf-success)]/30 tabular-nums">
                               {exactMatches.length}
                             </span>
                           </h2>
                         </div>
-                        <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                          Satisfies Role, Seniority & Location Criteria
+                        <span className="text-xs font-medium font-sans text-[var(--hf-success)] bg-[var(--hf-mint)]/20 px-2.5 py-1 rounded-md border border-[var(--hf-success)]/20">
+                          Satisfies role, seniority & location criteria
                         </span>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <AnimatePresence>
                           {exactMatches.map((job, index) => (
                             <JobListingCard
@@ -865,21 +882,21 @@ export default function JobFinder() {
                   {/* Section 2: Related Matches */}
                   {relatedMatches.length > 0 && (
                     <div className="mb-10">
-                      <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                          <h2 className="text-lg font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-                            Related Live Opportunities
-                            <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-2.5 border-b border-[var(--hf-border)]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          <h2 className="text-base sm:text-lg font-semibold font-sans text-[var(--hf-text)] flex items-center gap-2">
+                            Related live opportunities
+                            <span className="text-xs font-medium font-sans px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20 tabular-nums">
                               {relatedMatches.length}
                             </span>
                           </h2>
                         </div>
-                        <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                          {exactMatches.length === 0 ? 'Verified Feed Alternatives (Differences Noted)' : 'Broader / Worldwide Openings'}
+                        <span className="text-xs font-medium font-sans text-amber-800 dark:text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+                          {exactMatches.length === 0 ? 'Verified feed alternatives (differences noted)' : 'Broader / worldwide openings'}
                         </span>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <AnimatePresence>
                           {relatedMatches.map((job, index) => (
                             <JobListingCard
@@ -930,28 +947,28 @@ export default function JobFinder() {
       </div>
       
       {!hasSearched && (
-        <div className="py-24 text-center">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto opacity-40 grayscale group-hover:grayscale-0 transition-all">
-             <div className="p-8 glass-card">
-                <div className="w-12 h-12 bg-accent/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-accent/10">
-                   <TargetIcon className="w-6 h-6 text-accent" />
+        <div className="py-16 text-center">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+             <div className="p-6 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl text-left shadow-xs">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-lg flex items-center justify-center mb-3 border border-[var(--hf-border)] text-[var(--hf-teal)]">
+                   <TargetIcon className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-ink uppercase tracking-tighter mb-2">LinkedIn Vectors</h4>
-                <p className="text-[10px] text-ink-dim">Deep scan professional network indices.</p>
+                <h4 className="text-sm font-semibold font-sans text-[var(--hf-text)] mb-1">Live market index</h4>
+                <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Verified open roles from live web portals and verified employer boards.</p>
              </div>
-             <div className="p-8 glass-card">
-                <div className="w-12 h-12 bg-success/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-success/10">
-                   <Zap className="w-6 h-6 text-success" />
+             <div className="p-6 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl text-left shadow-xs">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-lg flex items-center justify-center mb-3 border border-[var(--hf-border)] text-[var(--hf-cta)]">
+                   <Zap className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-ink uppercase tracking-tighter mb-2">Rapid Response</h4>
-                <p className="text-[10px] text-ink-dim">Real-time listing extraction engine.</p>
+                <h4 className="text-sm font-semibold font-sans text-[var(--hf-text)] mb-1">Real-time matching</h4>
+                <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Direct comparison against your latest analyzed resume skills and profile.</p>
              </div>
-             <div className="p-8 glass-card">
-                <div className="w-12 h-12 bg-warning/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-warning/10">
-                   <Building2 className="w-6 h-6 text-warning" />
+             <div className="p-6 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl text-left shadow-xs">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-lg flex items-center justify-center mb-3 border border-[var(--hf-border)] text-[var(--hf-teal)]">
+                   <Building2 className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-ink uppercase tracking-tighter mb-2">Sector Clarity</h4>
-                <p className="text-[10px] text-ink-dim">Unfiltered access to global hiring signals.</p>
+                <h4 className="text-sm font-semibold font-sans text-[var(--hf-text)] mb-1">Direct pipeline</h4>
+                <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Save openings to your job tracker pipeline and trigger tailored interview prep.</p>
              </div>
           </div>
         </div>
@@ -1005,79 +1022,60 @@ function JobListingCard({
   const isExact = job.relevanceCategory === 'exact' || (job.relevanceLabel && job.relevanceLabel.toLowerCase().includes('exact'));
 
   const getLocationBadgeClass = (locMatch?: string) => {
-    if (!locMatch) return 'bg-surface-light text-ink-dim border-border';
+    if (!locMatch) return 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)]';
     const l = locMatch.toLowerCase();
-    if (l.includes('india match') || l.includes('verified local')) {
-      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25';
-    }
     if (l.includes('incompatible')) {
-      return 'bg-rose-500/10 text-rose-400 border-rose-500/25';
+      return 'bg-rose-500/10 text-[var(--hf-error)] border-rose-500/20';
     }
-    if (l.includes('worldwide') || l.includes('remote')) {
-      return 'bg-amber-500/10 text-amber-400 border-amber-500/25';
-    }
-    return 'bg-surface-light text-ink-dim border-border';
+    // Supporting metadata: quiet neutral styling rather than intense green
+    return 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)]';
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.4) }}
-      className={`glass-card p-6 flex flex-col hover:border-accent/40 transition-all shadow-sm group ${
-        isSelected ? 'border-accent ring-1 ring-accent/30' : ''
+      transition={{ delay: Math.min(index * 0.04, 0.3) }}
+      className={`bg-[var(--hf-surface)] p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] flex flex-col hover:border-[var(--hf-text-muted)]/40 transition-all shadow-xs relative group font-sans ${
+        isSelected ? 'ring-2 ring-[var(--hf-teal)] border-[var(--hf-teal)]' : ''
       }`}
     >
-      <div className="flex justify-between items-start mb-4">
-        <div className="bg-background/80 p-3 rounded-2xl border border-border">
-          <Building2 className="w-6 h-6 text-accent" />
+      {/* 1. Opportunity Header (Company & Top-Level Match Signals) */}
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-teal)] shrink-0">
+            <Building2 className="w-4 h-4" />
+          </div>
+          <p className="text-xs font-semibold font-sans text-[var(--hf-text-secondary)] truncate">
+            {job.company}
+          </p>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          {/* Relevance Badge */}
+
+        {/* 2. MATCH SIGNALS (Primary fit score + Secondary relevance) */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* SECONDARY: Relevance Label */}
           <span
-            className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+            className={`text-xs font-medium font-sans px-2 py-0.5 rounded-md border ${
               isExact
-                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                ? 'bg-[var(--hf-mint)]/20 text-[var(--hf-success)] border-[var(--hf-success)]/30'
+                : 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)]'
             }`}
           >
-            {job.relevanceLabel || (isExact ? 'Exact Match' : 'Related Match')}
+            {job.relevanceLabel || (isExact ? 'Exact match' : 'Related match')}
           </span>
 
-          {/* Location Match Badge */}
-          {job.locationMatch && (
-            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${getLocationBadgeClass(job.locationMatch)}`}>
-              {job.locationMatch}
-            </span>
-          )}
-
-          {/* Fit Score */}
+          {/* PRIMARY: Fit Score (Strongest visual emphasis) */}
           {job.matchScore !== undefined && (
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              className={`text-xs font-bold font-sans tabular-nums px-2.5 py-0.5 rounded-md border ${
                 job.matchScore >= 80
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  ? 'bg-[var(--hf-mint)]/40 text-[var(--hf-success)] border-[var(--hf-success)]/40'
                   : job.matchScore >= 60
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30'
+                  : 'bg-rose-500/15 text-[var(--hf-error)] border-rose-500/30'
               }`}
             >
-              {job.matchScore}% FIT
-            </span>
-          )}
-
-          {/* Role Tier */}
-          {job.roleTier && (
-            <span
-              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                job.roleTier.toLowerCase() === 'safe'
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                  : job.roleTier.toLowerCase() === 'stretch'
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                  : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-              }`}
-            >
-              {job.roleTier} ROLE
+              {job.matchScore}% fit
             </span>
           )}
 
@@ -1085,56 +1083,84 @@ function JobListingCard({
             href={job.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-ink-dim hover:text-accent transition-colors p-1"
+            className="min-w-[32px] min-h-[32px] flex items-center justify-center p-1.5 text-[var(--hf-text-muted)] hover:text-[var(--hf-cta)] transition-colors rounded-md"
             title="Open official job post"
+            aria-label={`Open official job post for ${job.title}`}
           >
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
       </div>
 
-      <h3 className="text-lg font-bold text-ink group-hover:text-accent transition-colors mb-1 leading-tight">
+      {/* JOB TITLE */}
+      <h3 className="text-base sm:text-lg font-bold font-sans text-[var(--hf-text)] group-hover:text-[var(--hf-cta)] transition-colors mb-2 leading-snug">
         {job.title}
       </h3>
-      <p className="text-sm font-bold text-ink-dim mb-3">{job.company}</p>
 
-      <div className="flex flex-wrap gap-2 mb-3">
+      {/* SUPPORTING METADATA: Visually quiet neutral chips */}
+      <div className="flex flex-wrap items-center gap-1.5 mb-3.5 text-xs text-[var(--hf-text-secondary)] font-sans">
+        {job.roleTier && (
+          <span className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md text-[var(--hf-text-muted)] font-medium">
+            {job.roleTier} role
+          </span>
+        )}
+        {job.locationMatch && (
+          <span className={`px-2 py-0.5 rounded-md border font-medium ${getLocationBadgeClass(job.locationMatch)}`}>
+            {job.locationMatch}
+          </span>
+        )}
         {job.source && (
-          <div className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{job.source}</span>
+          <div className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md flex items-center gap-1.5 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--hf-cta)]" />
+            <span>{job.source}</span>
           </div>
         )}
-        <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
-          <MapPin className="w-3 h-3 text-ink-dim" />
-          <span className="text-[10px] font-bold text-ink-dim uppercase">{job.location}</span>
+        <div className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md flex items-center gap-1 font-medium">
+          <MapPin className="w-3 h-3 text-[var(--hf-text-muted)]" />
+          <span>{job.location}</span>
         </div>
         {job.isRemote && (
-          <div className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center">
-            <span className="text-[10px] font-bold text-emerald-400 uppercase">Remote</span>
+          <div className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md flex items-center font-medium">
+            <span>Remote</span>
           </div>
         )}
         {job.jobType && (
-          <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center">
-            <span className="text-[10px] font-bold text-ink-dim uppercase">{job.jobType}</span>
+          <div className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md flex items-center font-medium">
+            <span>{job.jobType}</span>
           </div>
         )}
         {job.datePosted && (
-          <div className="px-2.5 py-1 bg-surface-light/50 border border-border rounded-lg flex items-center gap-1.5">
-            <Calendar className="w-3 h-3 text-ink-dim" />
-            <span className="text-[10px] font-bold text-ink-dim uppercase">{job.datePosted}</span>
+          <div className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md flex items-center gap-1 font-medium text-[var(--hf-text-muted)]">
+            <Calendar className="w-3 h-3 text-[var(--hf-text-muted)]" />
+            <span>{job.datePosted}</span>
           </div>
         )}
       </div>
 
-      {/* Honest Differences Callout if present */}
-      {job.missingCriteria && job.missingCriteria.length > 0 && (
-        <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
-          <div className="flex items-center gap-1.5 text-amber-400 font-bold uppercase tracking-wider text-[10px] mb-1.5">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            Requirement Differences
+      {/* 3. WHY: AI Fit Assessment & Reasoning */}
+      {job.matchExplanation && (
+        <div className="mb-3 p-3 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-xs font-sans text-[var(--hf-text-secondary)]">
+          <div className="flex items-center justify-between font-semibold text-[var(--hf-teal)] mb-1">
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[var(--hf-teal)]" />
+              <span>Fit assessment</span>
+            </span>
+            <span className="text-[11px] text-[var(--hf-text-muted)] font-normal">AI match</span>
           </div>
-          <ul className="space-y-1 text-[11px] text-amber-300/90 list-disc list-inside">
+          <p className="italic text-[var(--hf-text)] leading-relaxed">
+            &ldquo;{job.matchExplanation}&rdquo;
+          </p>
+        </div>
+      )}
+
+      {/* Differences Callout if present */}
+      {job.missingCriteria && job.missingCriteria.length > 0 && (
+        <div className="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-sans text-amber-900 dark:text-amber-200">
+          <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-semibold mb-1">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>Requirement differences</span>
+          </div>
+          <ul className="space-y-1 text-xs text-amber-900/90 dark:text-amber-200/90 list-disc list-inside">
             {job.missingCriteria.map((diff, dIdx) => (
               <li key={dIdx} className="leading-snug">{diff}</li>
             ))}
@@ -1142,73 +1168,64 @@ function JobListingCard({
         </div>
       )}
 
-      {job.matchExplanation && (
-        <div className="mb-4 p-3 rounded-2xl bg-accent/5 border border-accent/15 text-xs text-ink-dim font-medium">
-          <div className="flex items-center justify-between text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3" /> Fit Assessment
-            </span>
-            <span className="text-[9px] text-ink-dim/80 font-normal lowercase tracking-normal">ai match</span>
-          </div>
-          <p className="italic text-ink leading-relaxed">
-            "{job.matchExplanation}"
-          </p>
-        </div>
-      )}
-
-      <p className="text-sm text-ink-dim line-clamp-3 mb-4 flex-1 leading-relaxed">
-        "{job.description}"
+      {/* Job Description Excerpt */}
+      <p className="text-sm font-sans text-[var(--hf-text-secondary)] line-clamp-3 mb-3.5 flex-1 leading-relaxed">
+        &ldquo;{job.description}&rdquo;
       </p>
 
-      <div className="mb-4 pt-3 border-t border-border/50 flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-dim">
-          {job.source ? `Source: ${job.source}` : 'External Listing'}
+      {/* 4. ACTION: Source, Official Job Post & Card Controls */}
+      <div className="mb-3 pt-2.5 border-t border-[var(--hf-border)] flex items-center justify-between text-xs font-sans text-[var(--hf-text-muted)]">
+        <span>
+          {job.source ? `Source: ${job.source}` : 'External listing'}
         </span>
         <a 
           href={job.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+          className="min-h-[44px] inline-flex items-center gap-1 font-medium text-[var(--hf-cta)] hover:underline"
         >
-          Official Job Post <ExternalLink className="w-3 h-3" />
+          <span>Official job post</span>
+          <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
 
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-2">
         <button 
           onClick={() => onSelect(job)}
-          className={`w-full py-2.5 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`w-full min-h-[44px] py-2 px-3 rounded-lg text-xs font-semibold font-sans transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             isSelected 
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
-              : 'bg-surface hover:bg-accent/10 text-ink-dim hover:text-accent border border-border'
+              ? 'bg-[var(--hf-mint)]/30 text-[var(--hf-success)] border border-[var(--hf-success)]/40' 
+              : 'bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-border)]'
           }`}
         >
           {isSelected ? (
             <>
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Active Selected Job
+              <ShieldCheck className="w-4 h-4 text-[var(--hf-success)]" />
+              <span>Active selected job</span>
             </>
           ) : (
             <>
-              <Target className="w-3.5 h-3.5" />
-              Select As Active Job
+              <Target className="w-4 h-4 text-[var(--hf-teal)]" />
+              <span>Select as active job</span>
             </>
           )}
         </button>
       </div>
 
       {isSelected && (
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-2">
           <button 
             onClick={() => onAlignResume(job)}
-            className="flex-1 bg-accent/10 border border-accent/20 text-accent font-bold text-[10px] uppercase tracking-widest py-3 rounded-xl hover:bg-accent/20 transition-all flex items-center justify-center gap-2"
+            className="flex-1 min-h-[44px] bg-[var(--hf-cta)] hover:opacity-90 text-white font-medium font-sans text-xs py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
           >
-            Analyze Compatibility <ChevronRight className="w-3 h-3" />
+            <span>Analyze compatibility</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
           <button 
             onClick={() => onTrackJob(job)}
-            className="px-4 bg-surface border border-border text-ink-dim hover:border-ink hover:text-ink py-3 rounded-xl transition-all"
-            title="Add to Pipeline"
+            className="min-h-[44px] min-w-[44px] px-3.5 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] rounded-lg transition-all flex items-center justify-center cursor-pointer"
+            title="Add to pipeline"
+            aria-label="Add to pipeline"
           >
             <Briefcase className="w-4 h-4" />
           </button>

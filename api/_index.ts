@@ -184,9 +184,9 @@ export async function callVelonaChatCompletion({
   const isCoverLetter = operation === 'cover_letter';
   const isLearningPath = operation === 'learning_path';
 
-  // For Z.ai GLM-5.3-Flash: Allocate sufficient tokens (up to 3200) so reasoning and complete ATS JSON fit comfortably
-  // without risking output truncation (finish_reason=length). Cover letter is allocated 2400 to prevent cuts.
-  const safeMaxTokens = Math.min(3200, Math.max(1000, maxTokens || (isJob ? 2800 : (isCoverLetter ? 2400 : 1600))));
+  // For Z.ai GLM-5.3-Flash: Allocate targeted tokens (1900 tokens) so complete ATS JSON fits comfortably
+  // without triggering excessive reasoning loops or timeouts. Cover letter is allocated 2400.
+  const safeMaxTokens = Math.min(3200, Math.max(1000, maxTokens || (isJob ? 1900 : (isCoverLetter ? 2400 : 1600))));
   const safeTemperature = typeof temperature === 'number' && !isNaN(temperature)
     ? Math.max(0.0, Math.min(1.0, temperature))
     : (isCoverLetter ? 0.3 : 0.1);
@@ -194,13 +194,11 @@ export async function callVelonaChatCompletion({
   const velonaStart = Date.now();
   // Strictly ZERO retries for ATS resume analysis jobs: exactly one Velona request per ATS analysis
   const maxRetries = isAtsJob ? 0 : 1;
-  // Vercel Serverless Function Execution Budget:
-  // Vercel platform maxDuration is configured to 60 seconds (60,000ms).
-  // Total overall execution budget is strictly bounded to 48,000ms, ensuring a guaranteed 12,000ms safety
-  // cushion for response serialization, error handling, and socket flushing before Vercel terminates the function.
-  const maxTotalBudgetMs = 48000;
-  // Clamped per-attempt timeout: 42,000ms for ATS job, 38,000ms for Cover Letter
-  const perAttemptTimeoutMs = isJob ? 42000 : (isCoverLetter ? 38000 : (isLearningPath ? 38000 : 40000));
+  // Execution Budget:
+  // Total overall execution budget is bounded to 54,000ms, ensuring a safe cushion before termination.
+  const maxTotalBudgetMs = 54000;
+  // Clamped per-attempt timeout: 48,000ms for ATS job, 40,000ms for Cover Letter
+  const perAttemptTimeoutMs = isJob ? 48000 : (isCoverLetter ? 40000 : (isLearningPath ? 40000 : 42000));
   let lastError: any = null;
 
   const inputChars = meta?.charCount || formattedMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
@@ -1529,13 +1527,8 @@ Schema:
     {
       "keyword": "Exact missing skill name",
       "gapType": "direct_evidence_unclear" | "transferable_evidence" | "genuine_gap" | "weak_evidence",
-      "whyItMatters": "Specific explanation grounded in THIS job posting and candidate's actual resume. State what the role expects, what related work the candidate has, and what is specifically missing. Never use boilerplate.",
-      "suggestedRewrite": "Actionable, truthful recommendation tailored to the specific gap situation:
-        - If direct evidence exists: Move or refine the existing resume bullet where candidate used it.
-        - If transferable evidence exists: Show how to connect real existing projects to this skill IF actually used.
-        - If genuine gap (no evidence): State honestly that no direct evidence was found and do NOT manufacture a fake bullet; guide candidate on what real project to add if practiced.
-        - If weak evidence (in skills list only): Expand the real project bullet with actual steps performed.
-        NEVER invent metrics, percentages, employers, or tools. DO NOT use generic repetitive phrases.",
+      "whyItMatters": "max 15 words explaining role requirement",
+      "suggestedRewrite": "Actionable, truthful suggestion (max 25 words). Never fabricate experience or numbers.",
       "confidence_level": "high" | "medium" | "low",
       "isInferred": false,
       "inferredNote": ""
@@ -1544,8 +1537,8 @@ Schema:
   "specificImprovements": [
     {
       "original": "Exact quote of a real bullet from candidate resume",
-      "issue": "Specific weakness of this exact bullet (e.g. describes tasks without highlighting technical approach, architecture, or verifiable outcomes)",
-      "improved": "Truthful upgrade grounded in candidate resume evidence. NEVER fabricate metrics or numbers; if no metric is in resume, use: 'Add a measurable result here if you have a verified figure.' If no safe rewrite is possible, explain what information is missing."
+      "issue": "Specific weakness of this exact bullet (max 15 words)",
+      "improved": "Truthful upgrade grounded in candidate resume evidence (max 25 words). Never fabricate metrics."
     }
   ],
   "recommendations": ["max 3 items, max 10 words each"]
@@ -1568,7 +1561,7 @@ CANDIDATE RESUME:
 ${cleanResume}
 `;
 
-    // 4. Call Velona with direct scoring instruction and adequate tokens (2800 tokens for reasoning + JSON)
+    // 4. Call Velona with direct scoring instruction and adequate tokens (1900 tokens for reasoning + JSON)
     let velonaResult = await callVelonaChatCompletion({
       messages: [
         { role: 'system', content: 'You are an ultra-fast ATS scoring engine for AI HireFlow. Do not perform extended internal reasoning or chain of thought. Evaluate immediately and concisely. Emit raw valid JSON instantly adhering strictly to word and item limits.' },
@@ -1576,7 +1569,7 @@ ${cleanResume}
       ],
       temperature: 0.1,
       jsonMode: true,
-      maxTokens: 2800,
+      maxTokens: 1900,
       requestId: job.analysisId,
       operation: 'resume_analysis_job',
       meta: {

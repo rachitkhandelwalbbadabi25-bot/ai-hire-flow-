@@ -46,32 +46,33 @@ export default function EmptyState({
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       className={cn(
-        "flex flex-col items-center justify-center p-8 sm:p-10 text-center bg-surface border border-border rounded-lg my-4 relative overflow-hidden",
+        "hf-card flex flex-col items-center justify-center p-8 sm:p-10 text-center my-4 relative overflow-hidden",
         className
       )}
     >
       {/* Target Role Tag if available */}
       {targetRole && (
-        <div className="mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/10 border border-accent/20 rounded text-[10px] font-mono font-bold text-accent uppercase tracking-wider">
-          <Sparkles className="w-3 h-3" /> Target role: {targetRole}
+        <div className="mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--hf-mint)]/25 border border-[var(--hf-ai-teal)]/30 rounded-md text-xs font-medium text-[var(--hf-ai-teal)]">
+          <Sparkles className="w-3.5 h-3.5" /> Target role: {targetRole}
         </div>
       )}
 
       {/* Icon Badge */}
-      <div className="p-3.5 rounded-md border border-accent/20 bg-accent/10 text-accent mb-4 flex items-center justify-center" aria-hidden="true">
-        <Icon className="w-7 h-7" />
+      <div className="p-3.5 rounded-lg border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] mb-4 flex items-center justify-center" aria-hidden="true">
+        <Icon className="w-6 h-6" />
       </div>
 
       {/* Title & Description */}
-      <h3 className="text-xl sm:text-2xl font-bold font-mono text-ink mb-2 tracking-tight">{title}</h3>
-      <p className="text-xs sm:text-sm text-ink-dim max-w-lg leading-relaxed mb-6 font-medium">{description}</p>
+      <h3 className="text-lg sm:text-xl font-semibold text-[var(--hf-text)] mb-1.5 tracking-tight">{title}</h3>
+      <p className="text-sm text-[var(--hf-text-secondary)] max-w-lg leading-relaxed mb-6">{description}</p>
 
       {/* Conversion Benefit Metric Box */}
       {benefitMetric && (
-        <div className="mb-6 px-4 py-2.5 bg-accent/10 border border-accent/20 rounded-md font-mono text-xs font-bold text-accent flex items-center gap-2 max-w-md">
+        <div className="mb-6 px-4 py-2 bg-[var(--hf-mint)]/20 border border-[var(--hf-ai-teal)]/20 rounded-lg text-xs font-medium text-[var(--hf-ai-teal)] flex items-center gap-2 max-w-md">
           <TrendingUp className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span>{benefitMetric}</span>
         </div>
@@ -84,7 +85,7 @@ export default function EmptyState({
             type="button"
             onClick={effectivePrimary.onClick}
             aria-label={effectivePrimary.label}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-md font-mono font-bold text-xs text-black bg-accent hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="hf-btn-primary w-full sm:w-auto gap-2"
           >
             <span>{effectivePrimary.label}</span>
             <PrimaryIcon className="w-4 h-4" aria-hidden="true" />
@@ -96,9 +97,9 @@ export default function EmptyState({
             type="button"
             onClick={effectiveSecondary.onClick}
             aria-label={effectiveSecondary.label}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-md font-mono font-bold text-xs text-ink bg-surface-light hover:bg-surface border border-border hover:border-accent/40 transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="hf-btn-secondary w-full sm:w-auto gap-2"
           >
-            <SecondaryIcon className="w-4 h-4 text-accent" aria-hidden="true" />
+            <SecondaryIcon className="w-4 h-4 text-[var(--hf-cta)]" aria-hidden="true" />
             <span>{effectiveSecondary.label}</span>
           </button>
         )}

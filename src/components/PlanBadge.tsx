@@ -12,26 +12,26 @@ export default function PlanBadge() {
         return {
           label: 'Admin',
           icon: <Crown className="w-3.5 h-3.5" />,
-          className: 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20'
+          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-error)] border-[var(--hf-error)]/30 hover:border-[var(--hf-error)]/60'
         };
       case 'premium':
         return {
           label: 'Premium',
           icon: <Sparkles className="w-3.5 h-3.5" />,
-          className: 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20'
+          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-warning)] border-[var(--hf-warning)]/30 hover:border-[var(--hf-warning)]/60'
         };
       case 'pro':
       case 'standard':
         return {
           label: 'Pro',
           icon: <Zap className="w-3.5 h-3.5" />,
-          className: 'bg-accent/10 text-accent border-accent/20 hover:bg-accent/20'
+          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] border-[var(--hf-cta)]/30 hover:border-[var(--hf-cta)]/60'
         };
       default:
         return {
           label: 'Free',
           icon: <Shield className="w-3.5 h-3.5" />,
-          className: 'bg-ink-dim/10 text-ink-dim border-border hover:bg-ink-dim/20'
+          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)] hover:border-[var(--hf-text-muted)]'
         };
     }
   };
@@ -40,12 +40,12 @@ export default function PlanBadge() {
 
   return (
     <Link to="/credits" className={cn(
-      "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-widest transition-all hover:scale-105 cursor-pointer",
+      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors cursor-pointer",
       config.className
     )}>
       {config.icon}
       <span>{config.label}</span>
-      {plan === 'admin' && <span className="ml-1 opacity-50">👑</span>}
+      {plan === 'admin' && <span className="ml-1 opacity-70">👑</span>}
     </Link>
   );
 }

@@ -1,28 +1,25 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signInWithGoogle } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
-import SEOHead from '../components/SEOHead';
+import SEOFeatureLayout from '../components/SEOFeatureLayout';
+import { SAMPLE_JOB_FINDER } from '../data/sampleData';
 import { 
-  Briefcase, 
-  CheckCircle2, 
+  Target, 
+  BarChart3, 
   Zap, 
-  ArrowRight, 
-  ShieldCheck, 
   Search, 
-  Sparkles, 
-  HelpCircle,
-  Mic,
-  GraduationCap,
-  FileSearch,
-  FileEdit,
-  Target,
-  BarChart3,
-  Compass
+  Briefcase, 
+  MapPin, 
+  Sparkles,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export default function JobFinderSEO() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [isLaunching, setIsLaunching] = useState(false);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -39,236 +36,181 @@ export default function JobFinderSEO() {
       navigate('/finder');
       return;
     }
+    if (isLaunching) return;
+    setIsLaunching(true);
     try {
       const loggedInUser = await signInWithGoogle();
       if (loggedInUser) {
         navigate('/finder');
       }
-    } catch (error) {
-      console.error('Sign in error:', error);
+    } catch (error: any) {
+      if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
+        console.error('Sign in error:', error);
+      }
+    } finally {
+      setIsLaunching(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background text-ink selection:bg-accent selection:text-black">
-      <SEOHead 
-        title="AI Job Finder | Semantic Job Search & Match Engine — AI HireFlow"
-        description="Discover targeted job openings with AI HireFlow's AI Job Finder. Compare your skills directly against job descriptions with semantic compatibility scoring and instant application intelligence."
-        canonicalPath="/job-finder"
-        jsonLd={jsonLd}
-      />
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden border-b border-border">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[500px] -z-10 opacity-40 pointer-events-none">
-          <div className="absolute top-[-10%] left-[20%] w-[350px] h-[350px] bg-accent/10 rounded-full blur-[100px]" />
-          <div className="absolute top-[20%] right-[20%] w-[300px] h-[300px] bg-emerald-500/10 rounded-full blur-[90px]" />
+  // Sample Visual: Search query, filters, match score, matched and missing skills, and "why this role" explanation
+  const sampleVisual = (
+    <div className="hf-card p-5 sm:p-7 shadow-xs space-y-5">
+      {/* Search Header Bar Mockup */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hf-border)] pb-4">
+        <div className="flex items-center gap-2">
+          <span className="hf-badge hf-badge-teal">Sample discovery</span>
+          <span className="text-xs text-[var(--hf-text-secondary)] font-medium">
+            Search: &ldquo;Senior Frontend Engineer&rdquo; [Sample]
+          </span>
         </div>
+        <div className="flex items-center gap-2 text-xs text-[var(--hf-text-muted)]">
+          <span>Filter: Remote &bull; Full-time [Sample]</span>
+        </div>
+      </div>
 
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-surface px-3.5 py-1.5 rounded-full text-accent text-xs font-mono font-bold uppercase tracking-wider mb-6 border border-border">
-            <Search className="w-3.5 h-3.5" /> Semantic Opportunity Discovery Engine
+      {/* Matched Job Card Mockup */}
+      <div className="p-4 sm:p-5 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div>
+            <span className="text-xs font-semibold text-[var(--hf-text)] block">
+              {SAMPLE_JOB_FINDER.role}
+            </span>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--hf-text-secondary)] mt-1">
+              <span>{SAMPLE_JOB_FINDER.company}</span>
+              <span>&bull;</span>
+              <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-[var(--hf-text-muted)]" /> {SAMPLE_JOB_FINDER.location}</span>
+              <span>&bull;</span>
+              <span>{SAMPLE_JOB_FINDER.salary}</span>
+            </div>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-sans font-black tracking-tight text-ink leading-[1.05] mb-6">
-            AI Job Finder
-          </h1>
+          <div className="shrink-0 self-start">
+            <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--hf-surface)] text-[var(--hf-cta)] border border-[var(--hf-border)] tabular-nums flex items-center gap-1.5 shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-[var(--hf-ai-teal)]" />
+              <span>{SAMPLE_JOB_FINDER.matchScoreLabel}</span>
+            </span>
+          </div>
+        </div>
 
-          <p className="text-base sm:text-lg text-ink-dim max-w-2xl mx-auto mb-10 leading-relaxed">
-            Stop scrolling endless generic job boards. Discover roles that genuinely match your tech stack, evaluate qualification alignment in seconds, and target opportunities with verified hiring velocity.
+        {/* Matched & Missing Skills Breakdown */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div className="p-3 rounded bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1.5">
+            <span className="text-[11px] font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--hf-success)]" />
+              <span>Matched skills [Sample]</span>
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {SAMPLE_JOB_FINDER.matchedSkills.map((sk, idx) => (
+                <span key={idx} className="px-2 py-0.5 rounded text-[11px] bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] border border-[var(--hf-border)]">
+                  {sk}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-3 rounded bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1.5">
+            <span className="text-[11px] font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 text-[var(--hf-warning)]" />
+              <span>Missing skills [Sample]</span>
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {SAMPLE_JOB_FINDER.missingSkills.map((sk, idx) => (
+                <span key={idx} className="px-2 py-0.5 rounded text-[11px] bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border border-[var(--hf-border)]">
+                  {sk}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Why This Role Explanation */}
+        <div className="p-3.5 rounded bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1">
+          <span className="text-xs font-semibold text-[var(--hf-text)]">
+            Why this role matches your profile [Sample]
+          </span>
+          <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">
+            {SAMPLE_JOB_FINDER.whyThisRole}
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-            <button
-              onClick={handleLaunch}
-              className="bg-accent text-black font-mono font-bold text-sm uppercase tracking-wider px-8 py-4 rounded-lg hover:opacity-90 transition-all shadow-lg shadow-accent/20 w-full sm:w-auto flex items-center justify-center gap-2 cursor-pointer"
-            >
-              Find Jobs <ArrowRight className="w-4 h-4" />
-            </button>
-            <a 
-              href="#finder-features"
-              className="text-ink-dim hover:text-ink px-6 py-4 rounded-lg text-sm font-medium border border-border bg-surface hover:bg-surface-light transition-all w-full sm:w-auto text-center"
-            >
-              How It Matches
-            </a>
-          </div>
-
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-xs text-ink-dim font-mono">
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-accent" /> Semantic Skill Matching</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-accent" /> Objective Compatibility Scores</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-accent" /> Direct Pipeline Integration</span>
-          </div>
         </div>
-      </section>
-
-      {/* Feature Deep Dive */}
-      <section id="finder-features" className="py-20 px-4 sm:px-6 lg:px-8 border-b border-border bg-surface/20">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-xs font-mono font-bold text-accent uppercase tracking-widest mb-3">Precision Job Search</h2>
-            <p className="text-3xl font-sans font-black text-ink uppercase tracking-tight">Search By Skill Alignment Rather Than Just Keywords</p>
-            <p className="text-sm text-ink-dim mt-4 leading-relaxed">
-              Traditional job portals rely on crude keyword filters that flood you with irrelevant or outdated postings. AI HireFlow performs semantic analysis across job descriptions to measure actual technology overlap, seniority requirements, and role expectations.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-surface border border-border p-8 rounded-xl">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 text-accent flex items-center justify-center mb-6">
-                <Target className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-ink mb-2">Automated Match Scoring</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Every listing is scored against your resume profile so you immediately see your strengths and missing requirements before submitting an application.
-              </p>
-            </div>
-
-            <div className="bg-surface border border-border p-8 rounded-xl">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 text-accent flex items-center justify-center mb-6">
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-ink mb-2">Verified Tech Stacks</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Filter by specific languages, cloud providers, frameworks, and engineering tools to find roles that match your hands-on competencies.
-              </p>
-            </div>
-
-            <div className="bg-surface border border-border p-8 rounded-xl">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 text-accent flex items-center justify-center mb-6">
-                <Zap className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-ink mb-2">One-Click Pipeline Push</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Save prospective positions straight to your AI Job Tracker board to manage interview stages, recruiter contacts, and deadline alerts.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-b border-border">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-xs font-mono font-bold text-accent uppercase tracking-widest mb-3">Workflow</h2>
-            <p className="text-3xl font-sans font-black text-ink uppercase tracking-tight">How the AI Job Finder Works</p>
-          </div>
-
-          <div className="space-y-6">
-            {[
-              {
-                step: "01",
-                title: "Define Target Roles & Locations",
-                desc: "Search for specific engineering titles, remote preferences, industry domains, and experience levels."
-              },
-              {
-                step: "02",
-                title: "AI Skill Gap Cross-Check",
-                desc: "Instantly compare the job description with your resume to see which qualifications you meet and where you have gaps."
-              },
-              {
-                step: "03",
-                title: "Tailor Your Application",
-                desc: "Use the Resume Analyzer and Editor to tailor your bullets for high-match roles before applying."
-              },
-              {
-                step: "04",
-                title: "Track Application Status",
-                desc: "Send opportunities directly to your Kanban pipeline board to monitor follow-up timing and interview milestones."
-              }
-            ].map((s, i) => (
-              <div key={i} className="flex gap-6 p-6 bg-surface border border-border rounded-xl items-start">
-                <span className="font-mono text-xl font-bold text-accent">{s.step}</span>
-                <div>
-                  <h3 className="text-base font-bold text-ink mb-1">{s.title}</h3>
-                  <p className="text-xs text-ink-dim leading-relaxed">{s.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <button
-              onClick={handleLaunch}
-              className="bg-accent text-black font-mono font-bold text-sm uppercase tracking-wider px-8 py-4 rounded-lg hover:opacity-90 transition-all cursor-pointer inline-flex items-center gap-2"
-            >
-              Start Finding Relevant Roles <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Related Tools / Internal Linking */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-b border-border bg-surface/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-xs font-mono font-bold text-accent uppercase tracking-widest mb-2">Connected Career Operations</h2>
-            <p className="text-2xl font-sans font-bold text-ink">Explore AI HireFlow's Platform Capabilities</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link to="/job-tracker" className="p-6 bg-surface border border-border rounded-xl hover:border-accent/40 transition-all flex flex-col justify-between group">
-              <div>
-                <Briefcase className="w-6 h-6 text-accent mb-4" />
-                <h3 className="font-bold text-ink mb-1 group-hover:text-accent transition-colors">AI Job Tracker</h3>
-                <p className="text-xs text-ink-dim">Organize active applications on a Kanban board from initial reach-out to final offers.</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-accent mt-4">Open Job Tracker <ArrowRight className="w-3.5 h-3.5" /></span>
-            </Link>
-
-            <Link to="/resume-analyzer" className="p-6 bg-surface border border-border rounded-xl hover:border-accent/40 transition-all flex flex-col justify-between group">
-              <div>
-                <FileSearch className="w-6 h-6 text-accent mb-4" />
-                <h3 className="font-bold text-ink mb-1 group-hover:text-accent transition-colors">AI Resume Analyzer</h3>
-                <p className="text-xs text-ink-dim">Audit your resume compatibility against the exact job description before submitting.</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-accent mt-4">Run Resume Audit <ArrowRight className="w-3.5 h-3.5" /></span>
-            </Link>
-
-            <Link to="/interview-lab" className="p-6 bg-surface border border-border rounded-xl hover:border-accent/40 transition-all flex flex-col justify-between group">
-              <div>
-                <Mic className="w-6 h-6 text-accent mb-4" />
-                <h3 className="font-bold text-ink mb-1 group-hover:text-accent transition-colors">AI Interview Lab</h3>
-                <p className="text-xs text-ink-dim">Rehearse technical interview questions tailored directly to the job you just discovered.</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-accent mt-4">Practice Interview <ArrowRight className="w-3.5 h-3.5" /></span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-xs font-mono font-bold text-accent uppercase tracking-widest mb-2">FAQ</h2>
-            <p className="text-2xl font-sans font-bold text-ink">Frequently Asked Questions</p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="bg-surface border border-border p-6 rounded-xl">
-              <h3 className="text-sm font-bold text-ink mb-2">How does semantic job matching work?</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Rather than checking if an exact keyword appears, our engine evaluates the semantic relationship between your demonstrated project work and the job's core technical requirements.
-              </p>
-            </div>
-
-            <div className="bg-surface border border-border p-6 rounded-xl">
-              <h3 className="text-sm font-bold text-ink mb-2">Can I search for remote and hybrid positions?</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Yes. You can specify remote, hybrid, or on-site preferences along with preferred technical compensation benchmarks.
-              </p>
-            </div>
-
-            <div className="bg-surface border border-border p-6 rounded-xl">
-              <h3 className="text-sm font-bold text-ink mb-2">How frequently are job listings refreshed?</h3>
-              <p className="text-xs text-ink-dim leading-relaxed">
-                Openings are continuously indexed from active tech employers and startup hiring boards to ensure you only apply to genuine open positions.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
+  );
+
+  return (
+    <SEOFeatureLayout
+      title="AI Job Finder | Semantic Job Search & Match Engine — AI HireFlow"
+      metaDescription="Discover targeted job openings with AI HireFlow's AI Job Finder. Compare your skills directly against job descriptions with semantic compatibility scoring and instant application intelligence."
+      canonicalPath="/job-finder"
+      jsonLd={jsonLd}
+      badgeText="Semantic Opportunity Discovery Engine"
+      h1="AI Job Finder"
+      heroDescription="Stop scrolling endless generic job boards. Discover roles that genuinely match your tech stack, evaluate qualification alignment in seconds, and target opportunities with verified hiring velocity."
+      ctaLabel="Find Jobs"
+      onCtaClick={handleLaunch}
+      isCtaLoading={isLaunching}
+      sampleVisual={sampleVisual}
+      howItWorksTitle="How the AI Job Finder Works"
+      howItWorksSubtitle="Connect your qualifications directly to matching opportunities."
+      howItWorks={[
+        {
+          step: "01",
+          title: "Define Target Roles & Locations",
+          desc: "Search for specific engineering titles, remote preferences, industry domains, and experience levels."
+        },
+        {
+          step: "02",
+          title: "AI Skill Gap Cross-Check",
+          desc: "Instantly compare the job description with your resume to see which qualifications you meet and where you have gaps."
+        },
+        {
+          step: "03",
+          title: "Tailor Your Application",
+          desc: "Use the Resume Analyzer and Editor to tailor your bullets for high-match roles before applying."
+        },
+        {
+          step: "04",
+          title: "Track Application Status",
+          desc: "Send opportunities directly to your Kanban pipeline board to monitor follow-up timing and interview milestones."
+        }
+      ]}
+      capabilitiesTitle="Search By Skill Alignment Rather Than Just Keywords"
+      capabilitiesSubtitle="Traditional job portals rely on crude keyword filters that flood you with irrelevant postings. AI HireFlow measures technology overlap and role expectations."
+      capabilities={[
+        {
+          icon: Target,
+          title: "Automated Match Scoring",
+          desc: "Every listing is scored against your resume profile so you immediately see your strengths and missing requirements before submitting an application."
+        },
+        {
+          icon: BarChart3,
+          title: "Verified Tech Stacks",
+          desc: "Filter by specific languages, cloud providers, frameworks, and engineering tools to find roles that match your hands-on competencies."
+        },
+        {
+          icon: Zap,
+          title: "One-Click Pipeline Push",
+          desc: "Save prospective positions straight to your AI Job Tracker board to manage interview stages, recruiter contacts, and deadline alerts."
+        }
+      ]}
+      faqTitle="Frequently Asked Questions"
+      faqSubtitle="Search intelligence and indexation details."
+      faqItems={[
+        {
+          q: "How does semantic job matching work?",
+          a: "Rather than checking if an exact keyword appears, our engine evaluates the semantic relationship between your demonstrated project work and the job's core technical requirements."
+        },
+        {
+          q: "Can I search for remote and hybrid positions?",
+          a: "Yes. You can specify remote, hybrid, or on-site preferences along with preferred technical compensation benchmarks."
+        },
+        {
+          q: "How frequently are job listings refreshed?",
+          a: "Openings are continuously indexed from active tech employers and startup hiring boards to ensure you only apply to genuine open positions."
+        }
+      ]}
+      finalCtaTitle="Ready to Discover High-Match Opportunities?"
+      finalCtaDesc="Search roles aligned with your genuine tech stack and evaluate compatibility before submitting."
+      finalCtaLabel="Start Finding Relevant Roles"
+    />
   );
 }

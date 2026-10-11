@@ -58,6 +58,19 @@
     { "source": "/ai-job-search", "destination": "/job-finder.html" },
     { "source": "/career-roadmap", "destination": "/career-advisor.html" },
     { "source": "/ai-interview-preparation", "destination": "/interview-lab.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/jobs", "destination": "/jobs.html" },
+    { "source": "/tracker", "destination": "/tracker.html" },
+    { "source": "/finder", "destination": "/finder.html" },
+    { "source": "/analyzer", "destination": "/analyzer.html" },
+    { "source": "/interview", "destination": "/interview.html" },
+    { "source": "/learning", "destination": "/learning.html" },
+    { "source": "/roadmap", "destination": "/roadmap.html" },
+    { "source": "/editor", "destination": "/editor.html" },
+    { "source": "/campus", "destination": "/campus.html" },
+    { "source": "/outreach", "destination": "/outreach.html" },
+    { "source": "/profile", "destination": "/profile.html" },
+    { "source": "/credits", "destination": "/credits.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

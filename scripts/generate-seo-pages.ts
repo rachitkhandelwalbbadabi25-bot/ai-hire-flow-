@@ -259,6 +259,48 @@ export function generateAllSeoPages() {
     }
   }
 
+  // 4. Generate static SPA entry files for all client-side application routes
+  // This ensures Vercel cleanUrls static resolution serves the app with HTTP 200
+  // directly from static files, eliminating reliance on client-side rewrite regex matching.
+  const spaRoutes = [
+    'dashboard',
+    'jobs',
+    'tracker',
+    'finder',
+    'analyzer',
+    'interview',
+    'learning',
+    'roadmap',
+    'editor',
+    'campus',
+    'outreach',
+    'profile',
+    'credits',
+    'privacy',
+    'privacy-policy',
+    'terms',
+    'terms-and-conditions',
+    'refund',
+    'refund-policy',
+    'refund-and-cancellation',
+    'contact',
+    'contact-us'
+  ];
+
+  console.log('[AI HireFlow SPA Generator] Generating static fallback entry points for client routes...');
+  for (const route of spaRoutes) {
+    const flatFile = path.join(distDir, `${route}.html`);
+    fs.writeFileSync(flatFile, templateHtml, 'utf-8');
+
+    const subDir = path.join(distDir, route);
+    if (!fs.existsSync(subDir)) {
+      fs.mkdirSync(subDir, { recursive: true });
+    }
+    const nestedFile = path.join(subDir, 'index.html');
+    fs.writeFileSync(nestedFile, templateHtml, 'utf-8');
+  }
+  console.log(`✓ Generated static fallback HTML for ${spaRoutes.length} client SPA routes.`);
+
   console.log('[AI HireFlow SEO Generator] All SEO pages pre-rendered successfully.');
 }
 

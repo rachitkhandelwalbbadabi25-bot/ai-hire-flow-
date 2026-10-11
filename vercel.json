@@ -45,6 +45,7 @@
   ],
   "cleanUrls": true,
   "rewrites": [
+    { "source": "/api", "destination": "/api" },
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/resume-analyzer", "destination": "/resume-analyzer.html" },
     { "source": "/resume-editor", "destination": "/resume-editor.html" },
@@ -57,6 +58,6 @@
     { "source": "/ai-job-search", "destination": "/job-finder.html" },
     { "source": "/career-roadmap", "destination": "/career-advisor.html" },
     { "source": "/ai-interview-preparation", "destination": "/interview-lab.html" },
-    { "source": "/((?!api/|.*\\.[\\w]+$).*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

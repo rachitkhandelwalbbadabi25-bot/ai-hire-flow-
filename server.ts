@@ -29,30 +29,23 @@ async function startServer() {
   // Client serving (Vite in dev, Static in prod)
   const distPath = path.join(process.cwd(), 'dist');
 
-  // Intercept public SEO routes to serve pre-rendered HTML with exact canonical and JSON-LD
-  app.get([
-    '/resume-analyzer', '/resume-editor', '/job-finder', '/job-tracker', '/career-advisor', '/interview-lab',
-    '/ats-resume-checker', '/resume-builder', '/ai-job-search', '/career-roadmap', '/ai-interview-preparation'
-  ], (req, res, next) => {
-    const cleanPath = req.path.replace(/\/+$/, '') || '/';
-    const targetHtml = seoPageMap[cleanPath];
-    if (targetHtml) {
-      const filePath = path.join(distPath, targetHtml);
-      if (fs.existsSync(filePath)) {
-        return res.sendFile(filePath);
+  if (process.env.NODE_ENV === 'production') {
+    // Intercept public SEO routes to serve pre-rendered HTML with exact canonical and JSON-LD
+    app.get([
+      '/resume-analyzer', '/resume-editor', '/job-finder', '/job-tracker', '/career-advisor', '/interview-lab',
+      '/ats-resume-checker', '/resume-builder', '/ai-job-search', '/career-roadmap', '/ai-interview-preparation'
+    ], (req, res, next) => {
+      const cleanPath = req.path.replace(/\/+$/, '') || '/';
+      const targetHtml = seoPageMap[cleanPath];
+      if (targetHtml) {
+        const filePath = path.join(distPath, targetHtml);
+        if (fs.existsSync(filePath)) {
+          return res.sendFile(filePath);
+        }
       }
-    }
-    next();
-  });
-
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
+      next();
     });
-    app.use(vite.middlewares);
-  } else {
+
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       const cleanPath = req.path.replace(/\/+$/, '') || '/';
@@ -65,6 +58,13 @@ async function startServer() {
       }
       res.sendFile(path.join(distPath, 'index.html'));
     });
+  } else {
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
   }
 
   app.listen(PORT, '0.0.0.0', () => {

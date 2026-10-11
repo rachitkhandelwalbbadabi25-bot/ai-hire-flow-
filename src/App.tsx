@@ -94,6 +94,7 @@ function AppRoutes() {
           <Route path="/roadmap" element={user ? <LearningPath /> : <Navigate to="/" replace />} />
           <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" replace />} />
           <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" replace />} />
+          <Route path="/tracker" element={user ? <JobTracker /> : <Navigate to="/" replace />} />
           <Route path="/campus" element={user ? <CampusPlacement /> : <Navigate to="/" replace />} />
           <Route path="/outreach" element={user ? <OutreachHub /> : <Navigate to="/" replace />} />
           <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" replace />} />

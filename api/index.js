@@ -2266,12 +2266,12 @@ IMPORTANT: Output valid, parseable raw JSON only without markdown fences or extr
   const isJob = isAtsJob || (operation || "").includes("job");
   const isCoverLetter = operation === "cover_letter";
   const isLearningPath = operation === "learning_path";
-  const safeMaxTokens = Math.min(3200, Math.max(1e3, maxTokens || (isJob ? 2800 : isCoverLetter ? 2400 : 1600)));
+  const safeMaxTokens = Math.min(3200, Math.max(1e3, maxTokens || (isJob ? 1900 : isCoverLetter ? 2400 : 1600)));
   const safeTemperature = typeof temperature === "number" && !isNaN(temperature) ? Math.max(0, Math.min(1, temperature)) : isCoverLetter ? 0.3 : 0.1;
   const velonaStart = Date.now();
   const maxRetries = isAtsJob ? 0 : 1;
-  const maxTotalBudgetMs = 48e3;
-  const perAttemptTimeoutMs = isJob ? 42e3 : isCoverLetter ? 38e3 : isLearningPath ? 38e3 : 4e4;
+  const maxTotalBudgetMs = 54e3;
+  const perAttemptTimeoutMs = isJob ? 48e3 : isCoverLetter ? 4e4 : isLearningPath ? 4e4 : 42e3;
   let lastError = null;
   const inputChars = meta?.charCount || formattedMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
   const approxInputTokens = Math.round(inputChars / 4);
@@ -3272,13 +3272,8 @@ Schema:
     {
       "keyword": "Exact missing skill name",
       "gapType": "direct_evidence_unclear" | "transferable_evidence" | "genuine_gap" | "weak_evidence",
-      "whyItMatters": "Specific explanation grounded in THIS job posting and candidate's actual resume. State what the role expects, what related work the candidate has, and what is specifically missing. Never use boilerplate.",
-      "suggestedRewrite": "Actionable, truthful recommendation tailored to the specific gap situation:
-        - If direct evidence exists: Move or refine the existing resume bullet where candidate used it.
-        - If transferable evidence exists: Show how to connect real existing projects to this skill IF actually used.
-        - If genuine gap (no evidence): State honestly that no direct evidence was found and do NOT manufacture a fake bullet; guide candidate on what real project to add if practiced.
-        - If weak evidence (in skills list only): Expand the real project bullet with actual steps performed.
-        NEVER invent metrics, percentages, employers, or tools. DO NOT use generic repetitive phrases.",
+      "whyItMatters": "max 15 words explaining role requirement",
+      "suggestedRewrite": "Actionable, truthful suggestion (max 25 words). Never fabricate experience or numbers.",
       "confidence_level": "high" | "medium" | "low",
       "isInferred": false,
       "inferredNote": ""
@@ -3287,8 +3282,8 @@ Schema:
   "specificImprovements": [
     {
       "original": "Exact quote of a real bullet from candidate resume",
-      "issue": "Specific weakness of this exact bullet (e.g. describes tasks without highlighting technical approach, architecture, or verifiable outcomes)",
-      "improved": "Truthful upgrade grounded in candidate resume evidence. NEVER fabricate metrics or numbers; if no metric is in resume, use: 'Add a measurable result here if you have a verified figure.' If no safe rewrite is possible, explain what information is missing."
+      "issue": "Specific weakness of this exact bullet (max 15 words)",
+      "improved": "Truthful upgrade grounded in candidate resume evidence (max 25 words). Never fabricate metrics."
     }
   ],
   "recommendations": ["max 3 items, max 10 words each"]
@@ -3317,7 +3312,7 @@ ${cleanResume}
       ],
       temperature: 0.1,
       jsonMode: true,
-      maxTokens: 2800,
+      maxTokens: 1900,
       requestId: job.analysisId,
       operation: "resume_analysis_job",
       meta: {

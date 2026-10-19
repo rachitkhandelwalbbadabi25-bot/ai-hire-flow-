@@ -17,9 +17,15 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, UserPlan } from './AuthContext';
-import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
 import { Award, Zap, Sparkles, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+
+const triggerConfetti = (opts: any) => {
+  import('canvas-confetti').then((mod) => {
+    const fn = mod.default || mod;
+    if (typeof fn === 'function') fn(opts);
+  }).catch(() => {});
+};
 
 // Default credit values per feature
 export interface CreditCosts {
@@ -278,8 +284,12 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     { id: 'weekly_apply_10', title: 'Opportunity Seeker', description: 'Apply and track 10 jobs.', maxProgress: 10, rewardCredits: 100, type: 'weekly' as const }
   ];
 
-  // Load Configurable Backend Costs
+  // Load Configurable Backend Costs only when authenticated
   useEffect(() => {
+    if (!user) {
+      setCreditCosts(DEFAULT_CREDIT_COSTS);
+      return;
+    }
     const costDocRef = doc(db, 'config', 'creditCosts');
     const unsubscribe = onSnapshot(
       costDocRef,
@@ -296,7 +306,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       }
     );
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid]);
 
   // Sync user Credit Wallet and Transactions
   useEffect(() => {
@@ -523,6 +533,45 @@ export function PlanProvider({ children }: { children: ReactNode }) {
           }
 
           setCreditWallet(wallet);
+
+          // Sync Achievements, Daily Missions, Weekly Challenges from the same user snapshot
+          const userAchievements = data.achievementsState || {};
+          const userMissions = data.missionsState || {};
+
+          const mergedAchievements = staticAchievements.map((ach) => {
+            const state = userAchievements[ach.id] || {};
+            return {
+              ...ach,
+              progress: Math.min(ach.maxProgress, state.progress || 0),
+              unlocked: !!state.unlocked,
+              unlockedAt: state.unlockedAt || undefined
+            };
+          });
+          setAchievements(mergedAchievements);
+
+          const todayStr = new Date().toISOString().split('T')[0];
+          const mergedMissions = staticDailyMissions.map((mis) => {
+            const state = userMissions[mis.id] || {};
+            const isToday = state.date === todayStr;
+            return {
+              ...mis,
+              progress: isToday ? Math.min(mis.maxProgress, state.progress || 0) : 0,
+              completed: isToday ? !!state.completed : false
+            };
+          });
+          setDailyMissions(mergedMissions);
+
+          const currentWeek = Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 7)).toString();
+          const mergedWeekly = staticWeeklyChallenges.map((weekly) => {
+            const state = userMissions[weekly.id] || {};
+            const isThisWeek = state.weekId === currentWeek;
+            return {
+              ...weekly,
+              progress: isThisWeek ? Math.min(weekly.maxProgress, state.progress || 0) : 0,
+              completed: isThisWeek ? !!state.completed : false
+            };
+          });
+          setWeeklyChallenges(mergedWeekly);
         }
       },
       (error) => {
@@ -572,76 +621,14 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       unsubTransactions();
       unsubReferrals();
     };
-  }, [user, plan]);
+  }, [user?.uid, plan]);
 
-  // Sync Achievements, Daily Missions, Weekly Challenges from Firestore
+  // Fetch Referral Leaderboard once per authenticated user session with bounded limit
   useEffect(() => {
-    if (!user || !creditWallet) return;
-
-    const userRef = doc(db, 'users', user.uid);
-    const unsubProgress = onSnapshot(
-      userRef,
-      (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          const userAchievements = data.achievementsState || {};
-          const userMissions = data.missionsState || {};
-
-          // Merge achievements
-          const mergedAchievements = staticAchievements.map((ach) => {
-            const state = userAchievements[ach.id] || {};
-            return {
-              ...ach,
-              progress: Math.min(ach.maxProgress, state.progress || 0),
-              unlocked: !!state.unlocked,
-              unlockedAt: state.unlockedAt || undefined
-            };
-          });
-          setAchievements(mergedAchievements);
-
-          // Merge daily missions
-          const mergedMissions = staticDailyMissions.map((mis) => {
-            const state = userMissions[mis.id] || {};
-            // If date doesn't match today, reset daily progress
-            const todayStr = new Date().toISOString().split('T')[0];
-            const isToday = state.date === todayStr;
-            return {
-              ...mis,
-              progress: isToday ? Math.min(mis.maxProgress, state.progress || 0) : 0,
-              completed: isToday ? !!state.completed : false
-            };
-          });
-          setDailyMissions(mergedMissions);
-
-          // Merge weekly challenges
-          const mergedWeekly = staticWeeklyChallenges.map((weekly) => {
-            const state = userMissions[weekly.id] || {};
-            // Simple week check (UTC days since epoch / 7)
-            const currentWeek = Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 7)).toString();
-            const isThisWeek = state.weekId === currentWeek;
-            return {
-              ...weekly,
-              progress: isThisWeek ? Math.min(weekly.maxProgress, state.progress || 0) : 0,
-              completed: isThisWeek ? !!state.completed : false
-            };
-          });
-          setWeeklyChallenges(mergedWeekly);
-        }
-      },
-      (error) => {
-        console.warn("User progress sync warning:", error.message);
-      }
-    );
-
-    return () => unsubProgress();
-  }, [user, creditWallet]);
-
-  // Fetch Referral Leaderboard
-  useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
     const fetchLeaderboard = async () => {
       try {
-        const usersSnap = await getDocs(collection(db, 'users'));
+        const usersSnap = await getDocs(query(collection(db, 'users'), limit(20)));
         const boards: any[] = [];
         usersSnap.forEach((docSnap) => {
           const data = docSnap.data();
@@ -661,7 +648,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       }
     };
     fetchLeaderboard();
-  }, [user, creditWallet]);
+  }, [user?.uid]);
 
   // Toast Notification System
   const triggerNotification = (title: string, description: string, type: NotificationAlert['type'], creditsAwarded?: number) => {
@@ -789,7 +776,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
     if (isUnlocked) {
       // Trigger canvas confetti!
-      confetti({
+      triggerConfetti({
         particleCount: 150,
         spread: 80,
         origin: { y: 0.6 }
@@ -1015,7 +1002,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       timestamp: new Date().toISOString()
     });
 
-    confetti({
+    triggerConfetti({
       particleCount: 180,
       spread: 100,
       origin: { y: 0.5 }

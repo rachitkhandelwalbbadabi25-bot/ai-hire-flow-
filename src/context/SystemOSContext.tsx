@@ -129,13 +129,19 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     try {
-      // 1. Fetch Latest Evaluated Resume
-      const resumeQ = query(
-        collection(db, 'users', user.uid, 'resumes'),
-        orderBy('createdAt', 'desc'),
-        limit(1)
-      );
-      const resumeSnap = await getDocs(resumeQ);
+      const [resumeSnap, jobsSnap, contactsSnap, roadmapSnap, simSnap] = await Promise.all([
+        // 1. Fetch Latest Evaluated Resume
+        getDocs(query(collection(db, 'users', user.uid, 'resumes'), orderBy('createdAt', 'desc'), limit(1))),
+        // 2. Fetch Tracked Job Applications
+        getDocs(query(collection(db, 'users', user.uid, 'jobs'), orderBy('createdAt', 'desc'), limit(20))),
+        // 3. Fetch Outreach Contacts
+        getDocs(query(collection(db, 'users', user.uid, 'contacts'), orderBy('createdAt', 'desc'), limit(10))),
+        // 4. Fetch Latest Learning Roadmap
+        getDocs(query(collection(db, 'users', user.uid, 'learningPaths'), orderBy('createdAt', 'desc'), limit(1))),
+        // 5. Fetch Simulations
+        getDocs(query(collection(db, 'users', user.uid, 'simulations'), orderBy('createdAt', 'desc'), limit(10)))
+      ]);
+
       if (!resumeSnap.empty) {
         const d = resumeSnap.docs[0].data();
         const rawRole = d.targetRole || d.title || (d.analysis?.targetRole) || '';
@@ -156,13 +162,6 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLatestResume(null);
       }
 
-      // 2. Fetch Tracked Job Applications
-      const jobsQ = query(
-        collection(db, 'users', user.uid, 'jobs'),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      );
-      const jobsSnap = await getDocs(jobsQ);
       const fetchedJobs: TrackedJobContext[] = jobsSnap.docs
         .map(doc => ({
           id: doc.id,
@@ -175,13 +174,6 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .filter(j => !isDemoRole(j.role) && !isDemoRole(j.company));
       setTrackedJobs(fetchedJobs);
 
-      // 3. Fetch Outreach Contacts
-      const contactsQ = query(
-        collection(db, 'users', user.uid, 'contacts'),
-        orderBy('createdAt', 'desc'),
-        limit(10)
-      );
-      const contactsSnap = await getDocs(contactsQ);
       const fetchedContacts: ContactContext[] = contactsSnap.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name || '',
@@ -191,13 +183,6 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }));
       setOutreachContacts(fetchedContacts);
 
-      // 4. Fetch Latest Learning Roadmap
-      const roadmapQ = query(
-        collection(db, 'users', user.uid, 'learningPaths'),
-        orderBy('createdAt', 'desc'),
-        limit(1)
-      );
-      const roadmapSnap = await getDocs(roadmapQ);
       if (!roadmapSnap.empty) {
         const rd = roadmapSnap.docs[0].data();
         const isDemo = isDemoRole(rd.targetRole) || isDemoSkills(rd.skillsStr);
@@ -215,13 +200,6 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLatestRoadmap(null);
       }
 
-      // 5. Fetch Simulations
-      const simQ = query(
-        collection(db, 'users', user.uid, 'simulations'),
-        orderBy('createdAt', 'desc'),
-        limit(10)
-      );
-      const simSnap = await getDocs(simQ);
       const fetchedSims: SimulationContext[] = simSnap.docs.map(doc => {
         const data = doc.data();
         const rawScore = data.score !== undefined ? data.score : data.overallScore;
@@ -242,14 +220,18 @@ export const SystemOSProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     sanitizeBrowserStorage();
+    fetchSystemContext();
+
     if (user?.uid) {
-      sanitizeUserFirestoreData(user.uid).then(() => {
-        fetchSystemContext();
-      }).catch(() => {
-        fetchSystemContext();
-      });
-    } else {
-      fetchSystemContext();
+      const sanitizedKey = `hf_sanitized_${user.uid}`;
+      try {
+        if (!sessionStorage.getItem(sanitizedKey)) {
+          sessionStorage.setItem(sanitizedKey, '1');
+          sanitizeUserFirestoreData(user.uid).catch(() => {});
+        }
+      } catch {
+        sanitizeUserFirestoreData(user.uid).catch(() => {});
+      }
     }
   }, [user]);
 

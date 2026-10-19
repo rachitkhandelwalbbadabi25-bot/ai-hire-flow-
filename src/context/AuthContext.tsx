@@ -33,14 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Set persistence to local (survives browser restart/refresh)
-    setPersistence(auth, browserLocalPersistence).catch(console.error);
-
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       cleanup();
 
       if (firebaseUser) {
+        const isEmailAdmin = !!(firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email));
+        if (isEmailAdmin) {
+          setPlan('admin');
+        }
         setUser(firebaseUser);
+        setLoading(false);
         
         const userRef = doc(db, 'users', firebaseUser.uid);
         
@@ -48,14 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unsubRef.current = onSnapshot(userRef, async (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
-            const isEmailAdmin = !!(firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email));
-            
             // Respect stored user plan, normalize 'standard' to 'pro', default to admin if admin email and no plan set
             const rawPlan = data.plan || (isEmailAdmin ? 'admin' : 'free');
             const currentPlan: UserPlan = (rawPlan === 'standard' ? 'pro' : rawPlan);
             setPlan(currentPlan);
           } else {
-            const isEmailAdmin = !!(firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email));
             const initialPlan: UserPlan = isEmailAdmin ? 'admin' : 'free';
             
             await setDoc(userRef, {

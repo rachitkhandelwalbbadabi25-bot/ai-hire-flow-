@@ -1,11 +1,13 @@
 import { User } from 'firebase/auth';
 import Navbar from './Navbar';
-import UpgradeModal from './UpgradeModal';
-import OnboardingTour from './OnboardingTour';
 import { motion } from 'motion/react';
 import { useLocation, Link } from 'react-router-dom';
-import { ReactNode } from 'react';
+import { ReactNode, lazy, Suspense } from 'react';
 import HireFlowLogo from './HireFlowLogo';
+import { usePlan } from '../context/PlanContext';
+
+const UpgradeModal = lazy(() => import('./UpgradeModal'));
+const OnboardingTour = lazy(() => import('./OnboardingTour'));
 
 interface LayoutProps {
   user: User | null;
@@ -38,14 +40,23 @@ export const PUBLIC_SEO_ROUTES = [
 
 export default function Layout({ user, children }: LayoutProps) {
   const location = useLocation();
+  const { isUpgradeModalOpen } = usePlan();
   const isPublicRoute = PUBLIC_SEO_ROUTES.includes(location.pathname);
   const showAppSidebar = Boolean(user && !isPublicRoute);
 
   return (
     <div className="min-h-screen bg-[var(--hf-bg)] selection:bg-[var(--hf-cta)] selection:text-white text-[var(--hf-text)] transition-colors duration-150">
       <Navbar user={user} />
-      <UpgradeModal />
-      {showAppSidebar && <OnboardingTour />}
+      {isUpgradeModalOpen && (
+        <Suspense fallback={null}>
+          <UpgradeModal />
+        </Suspense>
+      )}
+      {showAppSidebar && (
+        <Suspense fallback={null}>
+          <OnboardingTour />
+        </Suspense>
+      )}
       <main className={showAppSidebar ? "pt-20 sm:pt-24 pb-28 md:pb-12 lg:ml-64 transition-all" : ""}>
         <motion.div
           key={location.pathname}

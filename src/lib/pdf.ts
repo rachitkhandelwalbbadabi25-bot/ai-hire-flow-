@@ -1,16 +1,25 @@
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import { performOcr } from './ocr.ts';
 
-// Synchronous in-memory worker handler to guarantee 100% infallible execution in iframes, Vite dev server, and production
-if (typeof window !== 'undefined') {
-  (window as any).pdfjsWorker = pdfjsWorker;
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
-  } catch {
-    // Falls back to in-memory window.pdfjsWorker handler
+let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
+
+async function getPdfJs() {
+  if (!pdfjsPromise) {
+    pdfjsPromise = (async () => {
+      const [pdfjsLib, pdfWorkerModule] = await Promise.all([
+        import('pdfjs-dist'),
+        import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+      ]);
+      if (typeof window !== 'undefined') {
+        try {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerModule.default;
+        } catch {
+          // Falls back if workerSrc assignment is restricted
+        }
+      }
+      return pdfjsLib;
+    })();
   }
+  return pdfjsPromise;
 }
 
 /**
@@ -119,6 +128,7 @@ export const extractTextFromPDF = async (
 
   // STEP 1: Attempt standard client-side text layer extraction
   try {
+    const pdfjsLib = await getPdfJs();
     pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);

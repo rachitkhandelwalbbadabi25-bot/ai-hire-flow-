@@ -37,7 +37,18 @@ export function AIProviderProvider({ children }: { children: React.ReactNode }) 
   };
 
   useEffect(() => {
-    refreshProviders();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = (window as any).requestIdleCallback(() => {
+        refreshProviders();
+      }, { timeout: 2000 });
+    } else {
+      timeoutId = setTimeout(() => {
+        refreshProviders();
+      }, 300);
+    }
 
     const handleStorageChange = (e: CustomEvent<AIProviderId>) => {
       if (e.detail) {
@@ -47,6 +58,12 @@ export function AIProviderProvider({ children }: { children: React.ReactNode }) 
 
     window.addEventListener('ai-provider-changed' as any, handleStorageChange);
     return () => {
+      if (idleId !== null && typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
+        (window as any).cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
       window.removeEventListener('ai-provider-changed' as any, handleStorageChange);
     };
   }, []);

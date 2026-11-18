@@ -70,6 +70,7 @@ export default function JobTracker() {
 
   const handleAddJob = async (e: FormEvent) => {
     e.preventDefault();
+    if (!user?.uid) return;
     if (!canAddJob) {
       openUpgradeModal('jobsTracked');
       return;
@@ -101,6 +102,7 @@ export default function JobTracker() {
   };
 
   const updateStatus = async (id: string, status: string) => {
+    if (!user?.uid) return;
     await updateDoc(doc(db, 'users', user.uid, 'jobs', id), { status });
     fetchJobs();
   };

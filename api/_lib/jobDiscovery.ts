@@ -278,7 +278,7 @@ async function fetchArbeitnowJobs(): Promise<RealJobListing[]> {
         isRemote,
         tags: rawTags
       };
-    }).filter(j => j.title && j.link);
+    }).filter((j: any) => j.title && j.link);
 
     arbeitnowCache = { jobs: normalized, timestamp: now };
     return normalized;
@@ -1006,7 +1006,7 @@ async function fetchRemotiveJobs(query?: string): Promise<RealJobListing[]> {
         isRemote: true,
         tags: rawTags
       };
-    }).filter(j => j.title && j.link);
+    }).filter((j: any) => j.title && j.link);
 
     if (remotiveQueryCache.size > 30) {
       remotiveQueryCache.clear();

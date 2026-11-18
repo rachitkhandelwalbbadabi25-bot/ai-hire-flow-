@@ -826,10 +826,10 @@ export default function LearningPath() {
 
                 <div className="pt-5">
                   <h2 className="text-xl sm:text-2xl font-bold text-[var(--hf-text)] tracking-tight">
-                    {roadmap.roadmapTitle}
+                    {roadmap?.roadmapTitle}
                   </h2>
                   <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] mt-1.5">
-                    {roadmap.sections?.length || 0} milestone {(roadmap.sections?.length || 0) === 1 ? 'phase' : 'phases'} covering targeted skills and practical project milestones.
+                    {roadmap?.sections?.length || 0} milestone {(roadmap?.sections?.length || 0) === 1 ? 'phase' : 'phases'} covering targeted skills and practical project milestones.
                   </p>
                 </div>
 
@@ -845,7 +845,7 @@ export default function LearningPath() {
                 {(roadmap?.sections || []).map((section, idx) => (
                   <div key={idx} className="relative pl-12 sm:pl-16">
                     {/* Vertical Connecting Line */}
-                    {idx !== roadmap.sections.length - 1 && (
+                    {idx !== (roadmap?.sections?.length || 0) - 1 && (
                       <div 
                         className="absolute left-[19px] sm:left-[23px] top-12 bottom-0 w-px bg-[var(--hf-border)]" 
                         aria-hidden="true"
@@ -863,7 +863,7 @@ export default function LearningPath() {
                     <div className="hf-card p-5 sm:p-7">
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                         <span className="text-xs font-semibold text-[var(--hf-ai-teal)]">
-                          Phase {idx + 1} of {roadmap.sections.length}
+                          Phase {idx + 1} of {roadmap?.sections?.length || 0}
                         </span>
                         <span className="text-xs text-[var(--hf-text-muted)] font-normal">
                           {section.resources?.length || 0} suggested {(section.resources?.length || 0) === 1 ? 'resource' : 'resources'}
@@ -986,7 +986,7 @@ export default function LearningPath() {
               {/* Plain Roadmap Footnote */}
               <div className="text-center py-6 border-t border-[var(--hf-border)]">
                 <p className="text-xs text-[var(--hf-text-muted)]">
-                  {roadmap.roadmapTitle} · Target role: {targetRole || 'Target role'}
+                  {roadmap?.roadmapTitle} · Target role: {targetRole || 'Target role'}
                 </p>
               </div>
             </motion.div>

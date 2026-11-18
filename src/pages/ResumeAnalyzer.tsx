@@ -1141,7 +1141,7 @@ export default function ResumeAnalyzer() {
     // 5. Skills Table (skillsAnalysis): Cross-checked against missing keywords and resume evidence
     const rawSkillsAnalysis = Array.isArray(analysis.skillsAnalysis) && analysis.skillsAnalysis.length > 0
       ? analysis.skillsAnalysis
-      : keywordsFound.slice(0, 5).map(kw => ({
+      : keywordsFound.slice(0, 5).map((kw: string) => ({
           skill: kw,
           type: 'explicit',
           confidence_level: 'high',
@@ -1321,6 +1321,7 @@ export default function ResumeAnalyzer() {
 
   // Dedicated on-demand cover letter generator
   const handleGenerateCoverLetter = async () => {
+    if (!user?.uid) return;
     if (isGeneratingCLRef.current) return;
     if (!canGenCL) {
       setCoverLetterError(`Cover letter capacity reached: ${clLeft}/${clLimit} remaining.`);
@@ -1497,6 +1498,7 @@ export default function ResumeAnalyzer() {
   };
 
   const handleStartAnalysis = async () => {
+    if (!user?.uid) return;
     if (isAnalyzing || isAnalyzingRef.current) return; // Synchronous guard against concurrent submissions!
     isAnalyzingRef.current = true;
 

@@ -1,7 +1,9 @@
 import React, { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LucideIcon, ArrowRight, ChevronDown } from 'lucide-react';
+import { LucideIcon, ArrowRight, ChevronDown, Terminal } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import SEOHead from './SEOHead';
+import { SpotlightCard, FadeInSection } from './AnimatedPrimitives';
 
 export interface SEOFeatureStep {
   step: string;
@@ -102,12 +104,25 @@ export default function SEOFeatureLayout({
         jsonLd={jsonLd}
       />
 
-      {/* 1. Hero Section */}
-      <section className="relative pt-28 sm:pt-36 pb-16 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)]">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-12">
+      {/* 1. Hero Section with Architectural Grid Canvas */}
+      <section className="relative pt-28 sm:pt-36 pb-16 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)] overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0 hf-grid-canvas hf-radial-mask"
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10 max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center max-w-3xl mx-auto mb-12"
+          >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] border border-[var(--hf-border)] shadow-2xs mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--hf-cta)]" />
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--hf-cta)] opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--hf-cta)]" />
+              </span>
               <span>{badgeText}</span>
             </div>
 
@@ -137,12 +152,36 @@ export default function SEOFeatureLayout({
                 See how it works
               </a>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Sample Product Visual */}
-          <div className="max-w-4xl mx-auto">
-            {sampleVisual}
-          </div>
+          {/* Framed Interactive Product Preview */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-4xl mx-auto rounded-2xl border border-[var(--hf-border)] bg-[var(--hf-surface)] shadow-xl overflow-hidden"
+          >
+            <div className="px-4 py-2.5 bg-[var(--hf-surface-secondary)]/80 border-b border-[var(--hf-border)] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-1.5" aria-hidden="true">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-400/70" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
+                </div>
+                <div className="h-3.5 w-[1px] bg-[var(--hf-border)]" />
+                <span className="text-[11px] font-mono text-[var(--hf-text-secondary)] flex items-center gap-1.5">
+                  <Terminal className="w-3 h-3 text-[var(--hf-cta)]" />
+                  <span>hireflow.in{canonicalPath}</span>
+                </span>
+              </div>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-text-muted)]">
+                Interactive Workbench
+              </span>
+            </div>
+            <div className="p-2 sm:p-3 bg-[var(--hf-surface-secondary)]/20">
+              {sampleVisual}
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -150,7 +189,7 @@ export default function SEOFeatureLayout({
       {howItWorks && howItWorks.length > 0 && (
         <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)] bg-[var(--hf-surface)]">
           <div className="max-w-6xl mx-auto">
-            <div className="max-w-2xl mb-12">
+            <FadeInSection className="max-w-2xl mb-12">
               <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
                 Workflow
               </span>
@@ -160,17 +199,19 @@ export default function SEOFeatureLayout({
               <p className="text-sm text-[var(--hf-text-secondary)] mt-2.5 leading-relaxed">
                 {howItWorksSubtitle}
               </p>
-            </div>
+            </FadeInSection>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {howItWorks.map((item, idx) => (
-                <div key={idx} className="hf-card p-6 space-y-3">
-                  <span className="font-mono text-xs font-semibold text-[var(--hf-cta)] px-2 py-0.5 rounded bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] inline-block">
-                    STEP {item.step}
-                  </span>
-                  <h3 className="text-base font-semibold text-[var(--hf-text)]">{item.title}</h3>
-                  <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{item.desc}</p>
-                </div>
+                <FadeInSection key={idx} delay={idx * 0.06}>
+                  <SpotlightCard className="p-6 h-full space-y-3">
+                    <span className="font-mono text-xs font-semibold text-[var(--hf-cta)] px-2 py-0.5 rounded bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] inline-block">
+                      STEP {item.step}
+                    </span>
+                    <h3 className="text-base font-semibold text-[var(--hf-text)]">{item.title}</h3>
+                    <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{item.desc}</p>
+                  </SpotlightCard>
+                </FadeInSection>
               ))}
             </div>
           </div>
@@ -181,7 +222,7 @@ export default function SEOFeatureLayout({
       {capabilities && capabilities.length > 0 && (
         <section className="py-20 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)]">
           <div className="max-w-6xl mx-auto">
-            <div className="max-w-2xl mb-12">
+            <FadeInSection className="max-w-2xl mb-12">
               <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
                 Architecture &amp; Benefits
               </span>
@@ -191,19 +232,21 @@ export default function SEOFeatureLayout({
               <p className="text-sm text-[var(--hf-text-secondary)] mt-2.5 leading-relaxed">
                 {capabilitiesSubtitle}
               </p>
-            </div>
+            </FadeInSection>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {capabilities.map((cap, idx) => {
                 const IconComponent = cap.icon;
                 return (
-                  <div key={idx} className="hf-card p-6 space-y-3">
-                    <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-cta)] flex items-center justify-center">
-                      <IconComponent className="w-4 h-4" />
-                    </div>
-                    <h3 className="text-base font-semibold text-[var(--hf-text)]">{cap.title}</h3>
-                    <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{cap.desc}</p>
-                  </div>
+                  <FadeInSection key={idx} delay={idx * 0.08}>
+                    <SpotlightCard className="p-6 h-full space-y-3">
+                      <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-cta)] flex items-center justify-center">
+                        <IconComponent className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-base font-semibold text-[var(--hf-text)]">{cap.title}</h3>
+                      <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{cap.desc}</p>
+                    </SpotlightCard>
+                  </FadeInSection>
                 );
               })}
             </div>
@@ -217,35 +260,35 @@ export default function SEOFeatureLayout({
       {/* 5. Cross-Feature Exploration Links */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)] bg-[var(--hf-surface)]">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
+          <FadeInSection className="mb-8">
             <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-1.5">
               Connected Platform
             </span>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hf-text)]">
               Explore other modules in the workspace
             </h2>
-          </div>
+          </FadeInSection>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {otherFeatures.map((feat, idx) => (
-              <Link
-                key={idx}
-                to={feat.path}
-                className="hf-card p-4 flex flex-col justify-between hover:border-[var(--hf-border-hover)] transition-colors group"
-              >
-                <div>
-                  <h3 className="text-xs font-semibold text-[var(--hf-text)] group-hover:text-[var(--hf-cta)] transition-colors mb-1">
-                    {feat.name}
-                  </h3>
-                  <p className="text-[11px] text-[var(--hf-text-secondary)] leading-relaxed">
-                    {feat.desc}
-                  </p>
-                </div>
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--hf-cta)] pt-3">
-                  <span>Explore</span>
-                  <ArrowRight className="w-3 h-3" />
-                </span>
-              </Link>
+              <FadeInSection key={idx} delay={idx * 0.05}>
+                <Link to={feat.path} className="block h-full group">
+                  <SpotlightCard className="p-4 h-full flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-xs font-semibold text-[var(--hf-text)] group-hover:text-[var(--hf-cta)] transition-colors mb-1">
+                        {feat.name}
+                      </h3>
+                      <p className="text-[11px] text-[var(--hf-text-secondary)] leading-relaxed">
+                        {feat.desc}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--hf-cta)] pt-3">
+                      <span>Explore</span>
+                      <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </SpotlightCard>
+                </Link>
+              </FadeInSection>
             ))}
           </div>
         </div>
@@ -255,7 +298,7 @@ export default function SEOFeatureLayout({
       {faqItems && faqItems.length > 0 && (
         <section className="py-20 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)]">
           <div className="max-w-3xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-12">
+            <FadeInSection className="text-center max-w-2xl mx-auto mb-12">
               <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
                 FAQ
               </span>
@@ -265,33 +308,45 @@ export default function SEOFeatureLayout({
               <p className="text-sm text-[var(--hf-text-secondary)] mt-2.5 leading-relaxed">
                 {faqSubtitle}
               </p>
-            </div>
+            </FadeInSection>
 
             <div className="space-y-3">
               {faqItems.map((faq, idx) => {
                 const isOpen = openFaqIndex === idx;
                 return (
-                  <div key={idx} className="hf-card overflow-hidden transition-colors">
-                    <button
-                      type="button"
-                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                      className="w-full min-h-[48px] p-4 sm:p-5 flex items-center justify-between gap-4 text-left cursor-pointer"
-                      aria-expanded={isOpen}
-                    >
-                      <span className="text-sm font-semibold text-[var(--hf-text)]">
-                        {faq.q}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-[var(--hf-text-secondary)] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                    </button>
+                  <FadeInSection key={idx} delay={idx * 0.04}>
+                    <div className="hf-card overflow-hidden transition-colors">
+                      <button
+                        type="button"
+                        onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                        className="w-full min-h-[52px] p-4 sm:p-5 flex items-center justify-between gap-4 text-left cursor-pointer"
+                        aria-expanded={isOpen}
+                      >
+                        <span className="text-sm font-semibold text-[var(--hf-text)]">
+                          {faq.q}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-[var(--hf-text-secondary)] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--hf-cta)]' : ''}`} />
+                      </button>
 
-                    {isOpen && (
-                      <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
-                        <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed border-t border-[var(--hf-border)] pt-3">
-                          {faq.a}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
+                              <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed border-t border-[var(--hf-border)] pt-3">
+                                {faq.a}
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </FadeInSection>
                 );
               })}
             </div>
@@ -300,8 +355,12 @@ export default function SEOFeatureLayout({
       )}
 
       {/* 7. Final Conversion CTA */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 text-center relative bg-[var(--hf-surface)]">
-        <div className="max-w-2xl mx-auto space-y-5">
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8 text-center bg-[var(--hf-surface)] overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0 hf-grid-canvas hf-radial-mask"
+          aria-hidden="true"
+        />
+        <FadeInSection className="relative z-10 max-w-2xl mx-auto space-y-5">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--hf-text)]">
             {finalCtaTitle}
           </h2>
@@ -325,7 +384,7 @@ export default function SEOFeatureLayout({
               Back to platform overview
             </Link>
           </div>
-        </div>
+        </FadeInSection>
       </section>
     </div>
   );

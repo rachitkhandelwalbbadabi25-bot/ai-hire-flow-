@@ -539,12 +539,19 @@ export default function CreditsPage() {
                   type="button"
                   onClick={() => setActiveTab(tab.id as any)}
                   className={cn(
-                    "min-h-[44px] shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]",
+                    "relative min-h-[42px] shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer z-10",
                     isActive
-                      ? "bg-[var(--hf-surface)] text-[var(--hf-cta)] border border-[var(--hf-border)] shadow-xs font-semibold"
-                      : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] border border-transparent"
+                      ? "text-[var(--hf-cta)] font-semibold"
+                      : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)]"
                   )}
                 >
+                  {isActive && (
+                    <motion.span
+                      layoutId="billing-tab-pill"
+                      transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                      className="absolute inset-0 rounded-lg bg-[var(--hf-surface)] border border-[var(--hf-border)] shadow-xs -z-10"
+                    />
+                  )}
                   <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-[var(--hf-cta)]" : "text-[var(--hf-text-muted)]")} />
                   <span>{tab.label}</span>
                 </button>

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /**
- * AI HireFlow — Professional Enterprise Design System
- * Clean, high-contrast editorial typography, subtle elevation, and crisp borders.
+ * AI HireFlow — High-Craft Enterprise Design System
+ * Inspired by Linear, Stripe, Teal HQ, and Simplify.
  */
 
 @theme {
@@ -60,46 +60,49 @@
   --border: #E2E8F0;
   --accent-rgb: 37, 99, 235;
 
-  /* Light Mode Palette — Crisp Slate & Royal Indigo/Blue */
+  /* Light Mode Palette — Crisp Alabaster Slate & Royal Indigo-Blue */
   --hf-bg: #F8FAFC;
   --hf-surface: #FFFFFF;
   --hf-surface-secondary: #F1F5F9;
   --hf-text: #0F172A;
   --hf-text-secondary: #475569;
   --hf-text-muted: #64748B;
-  --hf-cta: #1D4ED8;
-  --hf-cta-hover: #1E40AF;
-  --hf-accent: #1D4ED8;
-  --hf-primary: #1D4ED8;
+  --hf-cta: #2563EB;
+  --hf-cta-hover: #1D4ED8;
+  --hf-accent: #2563EB;
+  --hf-primary: #2563EB;
   --hf-btn-primary-bg: #0F172A;
   --hf-btn-primary-text: #FFFFFF;
   --hf-navy: #0F172A;
   --hf-dark-panel: #0F172A;
-  --hf-ai-teal: #0F766E;
-  --hf-teal: #0F766E;
+  --hf-ai-teal: #0D9488;
+  --hf-teal: #0D9488;
   --hf-mint: #CCFBF1;
-  --hf-success: #15803D;
-  --hf-warning: #B45309;
-  --hf-error: #B91C1C;
+  --hf-success: #16A34A;
+  --hf-warning: #D97706;
+  --hf-error: #DC2626;
   --hf-error-bg: #FEF2F2;
   --hf-border: #E2E8F0;
   --hf-border-hover: #CBD5E1;
+  --hf-grid-line: rgba(15, 23, 42, 0.045);
+  --hf-spotlight: rgba(37, 99, 235, 0.06);
+  --hf-card-inner-shine: rgba(255, 255, 255, 0.8);
 }
 
 .dark {
-  --background: #090D16;
-  --surface: #111827;
-  --surface-light: #1E293B;
+  --background: #070A12;
+  --surface: #0D131F;
+  --surface-light: #161F30;
   --ink: #F8FAFC;
   --ink-dim: #94A3B8;
   --ink-muted: #64748B;
   --border: #1E293B;
   --accent-rgb: 59, 130, 246;
 
-  /* Dark Mode Palette — Deep Obsidian Slate */
-  --hf-bg: #090D16;
-  --hf-surface: #111827;
-  --hf-surface-secondary: #1E293B;
+  /* Dark Mode Palette — Deep Obsidian Carbon */
+  --hf-bg: #070A12;
+  --hf-surface: #0D131F;
+  --hf-surface-secondary: #151E2E;
   --hf-text: #F8FAFC;
   --hf-text-secondary: #94A3B8;
   --hf-text-muted: #64748B;
@@ -109,8 +112,8 @@
   --hf-primary: #3B82F6;
   --hf-btn-primary-bg: #3B82F6;
   --hf-btn-primary-text: #FFFFFF;
-  --hf-navy: #090D16;
-  --hf-dark-panel: #111827;
+  --hf-navy: #070A12;
+  --hf-dark-panel: #0D131F;
   --hf-ai-teal: #2DD4BF;
   --hf-teal: #2DD4BF;
   --hf-mint: #115E59;
@@ -120,6 +123,9 @@
   --hf-error-bg: #450A0A;
   --hf-border: #1E293B;
   --hf-border-hover: #334155;
+  --hf-grid-line: rgba(248, 250, 252, 0.04);
+  --hf-spotlight: rgba(59, 130, 246, 0.11);
+  --hf-card-inner-shine: rgba(255, 255, 255, 0.05);
 }
 
 @layer base {
@@ -134,7 +140,7 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-sans);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
   }
 
   /* Accessible Keyboard Focus Ring */
@@ -173,8 +179,8 @@
   .glass-panel {
     background-color: var(--hf-surface);
     border: 1px solid var(--hf-border);
-    border-radius: 0.75rem;
-    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+    border-radius: 0.875rem;
+    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 0 var(--hf-card-inner-shine);
   }
   
   .status-pill {
@@ -186,13 +192,42 @@
   .status-offer { @apply bg-success/10 text-success border-success/25; }
   .status-rejected { @apply bg-rose-500/10 text-rose-500 border-rose-500/25; }
 
-  /* Professional Surface & Button Primitives */
+  /* Architectural Grid & Dot Canvas */
+  .hf-grid-canvas {
+    background-size: 36px 36px;
+    background-image: 
+      linear-gradient(to right, var(--hf-grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--hf-grid-line) 1px, transparent 1px);
+  }
+
+  .hf-dot-canvas {
+    background-image: radial-gradient(var(--hf-border-hover) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .hf-radial-mask {
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 25%, #000 45%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 25%, #000 45%, transparent 100%);
+  }
+
+  /* High-Craft Card Surface with Specular Inner Top Edge */
   .hf-card {
     background-color: var(--hf-surface);
     border: 1px solid var(--hf-border);
-    border-radius: 0.75rem;
-    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03), 0 1px 3px 0 rgba(15, 23, 42, 0.04);
-    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    border-radius: 0.875rem;
+    box-shadow: 
+      0 1px 2px 0 rgba(15, 23, 42, 0.03), 
+      0 2px 6px -1px rgba(15, 23, 42, 0.04),
+      inset 0 1px 0 0 var(--hf-card-inner-shine);
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .hf-card-interactive:hover {
+    border-color: var(--hf-border-hover);
+    box-shadow: 
+      0 8px 24px -6px rgba(15, 23, 42, 0.08),
+      0 2px 6px -1px rgba(15, 23, 42, 0.04),
+      inset 0 1px 0 0 var(--hf-card-inner-shine);
   }
 
   .hf-card-secondary {
@@ -213,15 +248,22 @@
     padding: 0.5rem 1rem;
     background-color: var(--hf-btn-primary-bg);
     color: var(--hf-btn-primary-text);
-    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.08);
-    transition: all 0.15s ease;
+    box-shadow: 
+      0 1px 2px 0 rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
   }
   .hf-btn-primary:hover {
-    opacity: 0.92;
+    transform: translateY(-1px);
+    box-shadow: 
+      0 4px 12px -2px rgba(37, 99, 235, 0.25),
+      0 1px 2px 0 rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+    opacity: 0.96;
   }
   .hf-btn-primary:active {
-    transform: translateY(0.5px);
+    transform: translateY(0px) scale(0.985);
   }
 
   .hf-btn-secondary {
@@ -236,16 +278,17 @@
     background-color: var(--hf-surface);
     color: var(--hf-text);
     border: 1px solid var(--hf-border);
-    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
-    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03), inset 0 1px 0 0 var(--hf-card-inner-shine);
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
   }
   .hf-btn-secondary:hover {
     background-color: var(--hf-surface-secondary);
     border-color: var(--hf-border-hover);
+    transform: translateY(-1px);
   }
   .hf-btn-secondary:active {
-    transform: translateY(0.5px);
+    transform: translateY(0px) scale(0.985);
   }
 
   .hf-badge {

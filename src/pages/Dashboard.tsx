@@ -37,6 +37,12 @@ import QuickStartChecklist from '../components/QuickStartChecklist';
 import { useSystemOS } from '../context/SystemOSContext';
 import { askAICoach } from '../lib/gemini';
 import AILoadingStepper from '../components/AILoadingStepper';
+import {
+  SpotlightCard,
+  AnimatedCircularGauge,
+  AnimatedCounter,
+  FadeInSection
+} from '../components/AnimatedPrimitives';
 
 interface RecommendedJob {
   id: string;
@@ -141,10 +147,10 @@ export default function Dashboard() {
             if (typeof e?.rating === 'number' && !isNaN(e.rating)) return e.rating;
             return null;
           })
-          .filter((s): s is number => s !== null && !isNaN(s));
+          .filter((s: number | null): s is number => s !== null && !isNaN(s));
 
         if (scores.length > 0) {
-          const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+          const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
           return avg <= 10 && avg > 0 ? Math.round(avg * 10) : Math.min(100, Math.max(0, Math.round(avg)));
         }
       }
@@ -696,148 +702,153 @@ export default function Dashboard() {
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* 2. Current Resume Score */}
-        <div className="hf-card p-6 sm:p-7 flex flex-col justify-between border border-[var(--hf-border)]">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
-                <FileText className="w-5 h-5 text-[var(--hf-accent)]" />
-              </div>
-              <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
-                Resume ATS match
-              </span>
-            </div>
-
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-text-muted)] mb-1">
-              Resume compatibility
-            </h3>
-
-            <div className="flex items-baseline gap-3 mb-2">
-              <span 
-                className="text-4xl font-extrabold tabular-nums tracking-tight"
-                style={{
-                  color: stats.latestResumeScore >= 80 ? 'var(--hf-success)' : stats.latestResumeScore > 0 ? 'var(--hf-text)' : 'var(--hf-text-muted)'
-                }}
-              >
-                {stats.latestResumeScore > 0 ? `${stats.latestResumeScore}%` : 'N/A'}
-              </span>
-              {stats.latestResumeScore > 0 && (
-                <span className="text-xs font-medium text-[var(--hf-text-secondary)]">
-                  Evaluated match
+        <FadeInSection delay={0.05}>
+          <SpotlightCard className="p-6 sm:p-7 h-full flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start mb-5">
+                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
+                  <FileText className="w-5 h-5 text-[var(--hf-accent)]" />
+                </div>
+                <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
+                  Resume ATS match
                 </span>
-              )}
-            </div>
+              </div>
 
-            {/* Target context & Date */}
-            <div className="space-y-1 mb-3 text-xs text-[var(--hf-text-secondary)]">
-              {latestTargetRole && (
-                <p>
-                  <strong className="text-[var(--hf-text)] font-semibold">Target role:</strong> {latestTargetRole}
-                </p>
-              )}
-              {latestAnalysisDate && (
-                <p>
-                  <strong className="text-[var(--hf-text)] font-semibold">Latest analysis:</strong> {latestAnalysisDate}
-                </p>
-              )}
-            </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-[var(--hf-border)]">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-text-muted)] mb-1">
+                    Resume compatibility
+                  </h3>
+                  <p className="text-sm font-semibold text-[var(--hf-text)]">
+                    {stats.latestResumeScore >= 80
+                      ? 'Strong ATS alignment'
+                      : stats.latestResumeScore >= 60
+                      ? 'Competitive baseline'
+                      : stats.latestResumeScore > 0
+                      ? 'Needs keyword & metric refinement'
+                      : 'Not evaluated yet'}
+                  </p>
+                  {latestTargetRole && (
+                    <p className="text-xs text-[var(--hf-text-secondary)] mt-1">
+                      Target: <strong className="text-[var(--hf-text)] font-semibold">{latestTargetRole}</strong>
+                    </p>
+                  )}
+                  {latestAnalysisDate && (
+                    <p className="text-[11px] text-[var(--hf-text-muted)] mt-0.5">
+                      Audited {latestAnalysisDate}
+                    </p>
+                  )}
+                </div>
 
-            <p className="text-xs leading-relaxed text-[var(--hf-text-secondary)]">
-              {stats.latestResumeScore > 0 ? (
-                stats.missingKeywords.length > 0 ? (
-                  `Identified skill gaps: ${stats.missingKeywords.slice(0, 3).join(', ')}. Optimize in the Resume Analyzer.`
+                <AnimatedCircularGauge
+                  score={stats.latestResumeScore}
+                  size={84}
+                  strokeWidth={7}
+                />
+              </div>
+
+              <p className="text-xs leading-relaxed text-[var(--hf-text-secondary)]">
+                {stats.latestResumeScore > 0 ? (
+                  stats.missingKeywords.length > 0 ? (
+                    `Identified skill gaps: ${stats.missingKeywords.slice(0, 3).join(', ')}. Optimize in the Resume Analyzer.`
+                  ) : (
+                    "Your resume aligns cleanly with target technical job listings."
+                  )
                 ) : (
-                  "Your resume aligns cleanly with target technical job listings."
-                )
-              ) : (
-                "Upload your master resume to calculate 4-category ATS scoring and identified keyword gaps."
-              )}
-            </p>
-          </div>
+                  "Upload your master resume to calculate 4-category ATS scoring and identified keyword gaps."
+                )}
+              </p>
+            </div>
 
-          <div className="pt-6 border-t border-[var(--hf-border)] mt-6">
-            <button 
-              onClick={() => navigate('/analyzer')}
-              className="min-h-[44px] w-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] hover:bg-[var(--hf-surface)] text-[var(--hf-text)] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-            >
-              Audit in resume analyzer <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
-            </button>
-          </div>
-        </div>
+            <div className="pt-5 border-t border-[var(--hf-border)] mt-5">
+              <button 
+                onClick={() => navigate('/analyzer')}
+                className="hf-btn-secondary min-h-[42px] w-full py-2.5 px-4 text-xs sm:text-sm font-semibold gap-2"
+              >
+                <span>Audit in resume analyzer</span>
+                <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
+              </button>
+            </div>
+          </SpotlightCard>
+        </FadeInSection>
 
         {/* 3. Upcoming Interviews */}
-        <div className="hf-card p-6 sm:p-7 flex flex-col justify-between border border-[var(--hf-border)]">
-          <div>
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-[var(--hf-border)]">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[var(--hf-accent)]" />
-                <h3 className="text-sm font-semibold text-[var(--hf-text)]">Upcoming interviews</h3>
-              </div>
-              <span className="text-xs font-medium text-[var(--hf-text-secondary)]">
-                {stats.upcomingEvents.length} scheduled
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {stats.upcomingEvents.length > 0 ? (
-                stats.upcomingEvents.map((event, idx) => (
-                  <div 
-                    key={idx} 
-                    className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      {event.hasRealDate && event.month && event.day ? (
-                        <div className="bg-[var(--hf-surface)] px-2.5 py-1.5 rounded-lg border border-[var(--hf-border)] text-center shrink-0 min-w-[44px]">
-                          <span className="text-[10px] font-semibold text-[var(--hf-accent)] uppercase block leading-none">{event.month}</span>
-                          <span className="text-sm font-bold text-[var(--hf-text)] tabular-nums leading-none mt-1">{event.day}</span>
-                        </div>
-                      ) : (
-                        <div className="bg-[var(--hf-surface)] p-2 rounded-lg border border-[var(--hf-border)] text-[var(--hf-accent)] shrink-0">
-                          <Briefcase className="w-4 h-4 text-[var(--hf-accent)]" />
-                        </div>
-                      )}
-                      <div>
-                        <h4 className="font-semibold text-[var(--hf-text)] text-xs sm:text-sm">{event.title}</h4>
-                        <p className="text-[11px] text-[var(--hf-text-secondary)] mt-0.5">
-                          {event.hasRealDate && event.formattedDate ? `Scheduled for ${event.formattedDate}` : 'In interview stage (date not specified)'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button 
-                      onClick={() => navigate('/interview')}
-                      className="min-h-[44px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-3.5 py-2 rounded-lg text-xs font-semibold hover:opacity-90 transition-all shrink-0"
-                    >
-                      Prep round
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="p-6 bg-[var(--hf-surface-secondary)] rounded-xl border border-[var(--hf-border)] text-center space-y-2">
-                  <p className="text-xs font-semibold text-[var(--hf-text)]">No upcoming interviews scheduled</p>
-                  <p className="text-[11px] text-[var(--hf-text-secondary)] max-w-sm mx-auto">
-                    When you update an application in the Job Tracker to the &ldquo;Interview&rdquo; stage, it will appear here for practice.
-                  </p>
+        <FadeInSection delay={0.1}>
+          <SpotlightCard className="p-6 sm:p-7 h-full flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-[var(--hf-border)]">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[var(--hf-accent)]" />
+                  <h3 className="text-sm font-semibold text-[var(--hf-text)]">Upcoming interviews</h3>
                 </div>
-              )}
-            </div>
-          </div>
+                <span className="text-xs font-medium text-[var(--hf-text-secondary)]">
+                  {stats.upcomingEvents.length} scheduled
+                </span>
+              </div>
 
-          <div className="pt-6 border-t border-[var(--hf-border)] mt-6">
-            <button 
-              onClick={() => navigate('/interview')}
-              className="min-h-[44px] w-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] hover:bg-[var(--hf-surface)] text-[var(--hf-text)] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-            >
-              Practice in interview lab <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
-            </button>
-          </div>
-        </div>
+              <div className="space-y-3">
+                {stats.upcomingEvents.length > 0 ? (
+                  stats.upcomingEvents.map((event, idx) => (
+                    <div 
+                      key={idx} 
+                      className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        {event.hasRealDate && event.month && event.day ? (
+                          <div className="bg-[var(--hf-surface)] px-2.5 py-1.5 rounded-lg border border-[var(--hf-border)] text-center shrink-0 min-w-[44px]">
+                            <span className="text-[10px] font-semibold text-[var(--hf-accent)] uppercase block leading-none">{event.month}</span>
+                            <span className="text-sm font-bold text-[var(--hf-text)] tabular-nums leading-none mt-1">{event.day}</span>
+                          </div>
+                        ) : (
+                          <div className="bg-[var(--hf-surface)] p-2 rounded-lg border border-[var(--hf-border)] text-[var(--hf-accent)] shrink-0">
+                            <Briefcase className="w-4 h-4 text-[var(--hf-accent)]" />
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="font-semibold text-[var(--hf-text)] text-xs sm:text-sm">{event.title}</h4>
+                          <p className="text-[11px] text-[var(--hf-text-secondary)] mt-0.5">
+                            {event.hasRealDate && event.formattedDate ? `Scheduled for ${event.formattedDate}` : 'In interview stage (date not specified)'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => navigate('/interview')}
+                        className="hf-btn-primary min-h-[38px] px-3.5 py-1.5 text-xs font-semibold shrink-0"
+                      >
+                        Prep round
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 bg-[var(--hf-surface-secondary)]/60 rounded-xl border border-[var(--hf-border)] text-center space-y-2">
+                    <p className="text-xs font-semibold text-[var(--hf-text)]">No upcoming interviews scheduled</p>
+                    <p className="text-[11px] text-[var(--hf-text-secondary)] max-w-sm mx-auto">
+                      When you update an application in the Job Tracker to the &ldquo;Interview&rdquo; stage, it will appear here for practice.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-5 border-t border-[var(--hf-border)] mt-5">
+              <button 
+                onClick={() => navigate('/interview')}
+                className="hf-btn-secondary min-h-[42px] w-full py-2.5 px-4 text-xs sm:text-sm font-semibold gap-2"
+              >
+                <span>Practice in interview lab</span>
+                <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
+              </button>
+            </div>
+          </SpotlightCard>
+        </FadeInSection>
       </div>
 
       {/* ========================================================================= */}
       {/* 4. SAVED JOBS & APPLICATION PROGRESS (PIPELINE SUMMARY)                   */}
       {/* ========================================================================= */}
-      <section className="mb-8">
-        <div className="hf-card p-6 sm:p-7 border border-[var(--hf-border)]">
+      <FadeInSection delay={0.12} className="mb-8">
+        <SpotlightCard hoverLift={false} className="p-6 sm:p-7">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[var(--hf-border)]">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -850,146 +861,199 @@ export default function Dashboard() {
             </div>
             <button 
               onClick={() => navigate('/jobs')}
-              className="min-h-[44px] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-text)] hover:bg-[var(--hf-surface)] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all self-start sm:self-center"
+              className="hf-btn-secondary min-h-[40px] px-4 py-2 text-xs sm:text-sm font-semibold gap-2 self-start sm:self-center"
             >
-              Manage job tracker <ArrowRight className="w-3.5 h-3.5 text-[var(--hf-text-secondary)]" />
+              <span>Manage job tracker</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[var(--hf-text-secondary)]" />
             </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-4 rounded-xl">
+            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] p-4 rounded-xl">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Total tracked</p>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-text)] mt-1">{stats.totalJobs}</p>
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-text)] mt-1">
+                <AnimatedCounter value={stats.totalJobs} />
+              </p>
               <p className="text-[11px] text-[var(--hf-text-secondary)] mt-1">Applications in pipeline</p>
             </div>
-            <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-4 rounded-xl">
+            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] p-4 rounded-xl">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Interviews</p>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-accent)] mt-1">{stats.interviews}</p>
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-accent)] mt-1">
+                <AnimatedCounter value={stats.interviews} />
+              </p>
               <p className="text-[11px] text-[var(--hf-text-secondary)] mt-1">In interview stage</p>
             </div>
-            <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-4 rounded-xl">
+            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] p-4 rounded-xl">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Offers</p>
               <p 
                 className="text-2xl sm:text-3xl font-bold tabular-nums mt-1"
                 style={{ color: stats.offers > 0 ? 'var(--hf-success)' : 'var(--hf-text)' }}
               >
-                {stats.offers}
+                <AnimatedCounter value={stats.offers} />
               </p>
               <p className="text-[11px] text-[var(--hf-text-secondary)] mt-1">Offers received</p>
             </div>
-            <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-4 rounded-xl">
+            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] p-4 rounded-xl">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Average practice score</p>
               <p className="text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-text)] mt-1">
-                {stats.simulationsRun > 0 ? `${stats.interviewReadiness}%` : 'N/A'}
+                {stats.simulationsRun > 0 ? <AnimatedCounter value={stats.interviewReadiness} suffix="%" /> : 'N/A'}
               </p>
               <p className="text-[11px] text-[var(--hf-text-secondary)] mt-1">
                 {stats.simulationsRun} drill{stats.simulationsRun === 1 ? '' : 's'} completed
               </p>
             </div>
           </div>
-        </div>
-      </section>
+
+          {/* Visual Multi-Stage Funnel Progress Bar */}
+          {stats.totalJobs > 0 && (
+            <div className="mt-5 pt-4 border-t border-[var(--hf-border)] space-y-2">
+              <div className="flex items-center justify-between text-xs text-[var(--hf-text-secondary)]">
+                <span className="font-medium">Pipeline Stage Distribution</span>
+                <span className="font-mono text-[11px]">
+                  {Math.round(((stats.interviews + stats.offers) / Math.max(1, stats.totalJobs)) * 100)}% interview conversion
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] overflow-hidden flex">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(8, ((stats.totalJobs - stats.interviews - stats.offers) / Math.max(1, stats.totalJobs)) * 100)}%` }}
+                  transition={{ duration: 0.7 }}
+                  className="h-full bg-slate-400/70"
+                  title="Applied"
+                />
+                {stats.interviews > 0 && (
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(stats.interviews / Math.max(1, stats.totalJobs)) * 100}%` }}
+                    transition={{ duration: 0.7, delay: 0.1 }}
+                    className="h-full bg-[var(--hf-cta)]"
+                    title="Interviewing"
+                  />
+                )}
+                {stats.offers > 0 && (
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(stats.offers / Math.max(1, stats.totalJobs)) * 100}%` }}
+                    transition={{ duration: 0.7, delay: 0.2 }}
+                    className="h-full bg-[var(--hf-success)]"
+                    title="Offers"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </SpotlightCard>
+      </FadeInSection>
 
       {/* ========================================================================= */}
       {/* 5 & 6. SKILL GAPS & LAST 7 DAYS                                           */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* 5. Skill Gaps from latest analysis */}
-        <div className="hf-card p-6 sm:p-7 flex flex-col justify-between border border-[var(--hf-border)]">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
-                <GraduationCap className="w-5 h-5 text-[var(--hf-accent)]" />
+        <FadeInSection delay={0.14}>
+          <SpotlightCard className="p-6 sm:p-7 h-full flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
+                  <GraduationCap className="w-5 h-5 text-[var(--hf-accent)]" />
+                </div>
+                <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
+                  Learning focus
+                </span>
               </div>
-              <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
-                Learning focus
-              </span>
+
+              <h3 className="text-sm font-semibold text-[var(--hf-text)] mb-1">
+                Skill gaps from your latest analysis
+              </h3>
+              <p className="text-xs text-[var(--hf-text-secondary)] mb-4">
+                Identified competencies recommended to strengthen your target role readiness.
+              </p>
+
+              {stats.missingKeywords && stats.missingKeywords.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {stats.missingKeywords.slice(0, 8).map((skill, idx) => (
+                    <motion.span 
+                      key={idx}
+                      initial={{ opacity: 0, scale: 0.92 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.04 }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-text)]"
+                    >
+                      {skill}
+                    </motion.span>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 bg-[var(--hf-surface-secondary)]/60 border border-[var(--hf-border)] rounded-xl text-xs text-[var(--hf-text-secondary)]">
+                  No skill gaps identified yet. Run a resume analysis against a target job to generate focused learning recommendations.
+                </div>
+              )}
             </div>
 
-            <h3 className="text-sm font-semibold text-[var(--hf-text)] mb-1">
-              Skill gaps from your latest analysis
-            </h3>
-            <p className="text-xs text-[var(--hf-text-secondary)] mb-4">
-              Identified competencies recommended to strengthen your target role readiness.
-            </p>
-
-            {stats.missingKeywords && stats.missingKeywords.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {stats.missingKeywords.slice(0, 8).map((skill, idx) => (
-                  <span 
-                    key={idx}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-text)]"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl text-xs text-[var(--hf-text-secondary)]">
-                No skill gaps identified yet. Run a resume analysis against a target job to generate focused learning recommendations.
-              </div>
-            )}
-          </div>
-
-          <div className="pt-6 border-t border-[var(--hf-border)] mt-6">
-            <button 
-              onClick={() => navigate('/learning')}
-              className="min-h-[44px] w-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] hover:bg-[var(--hf-surface)] text-[var(--hf-text)] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-            >
-              View learning roadmap <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
-            </button>
-          </div>
-        </div>
+            <div className="pt-5 border-t border-[var(--hf-border)] mt-5">
+              <button 
+                onClick={() => navigate('/learning')}
+                className="hf-btn-secondary min-h-[42px] w-full py-2.5 px-4 text-xs sm:text-sm font-semibold gap-2"
+              >
+                <span>View learning roadmap</span>
+                <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
+              </button>
+            </div>
+          </SpotlightCard>
+        </FadeInSection>
 
         {/* 6. Last 7 Days (Recent Activity) */}
-        <div className="hf-card p-6 sm:p-7 flex flex-col justify-between border border-[var(--hf-border)]">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
-                <Activity className="w-5 h-5 text-[var(--hf-accent)]" />
+        <FadeInSection delay={0.18}>
+          <SpotlightCard className="p-6 sm:p-7 h-full flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
+                  <Activity className="w-5 h-5 text-[var(--hf-accent)]" />
+                </div>
+                <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
+                  Activity summary
+                </span>
               </div>
-              <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
-                Activity summary
-              </span>
+
+              <h3 className="text-sm font-semibold text-[var(--hf-text)] mb-1">
+                Last 7 days
+              </h3>
+              <div className="flex items-baseline gap-2 mb-4">
+                <span className="text-3xl font-extrabold tabular-nums text-[var(--hf-text)]">
+                  <AnimatedCounter value={stats.weeklyMilestoneCount} />
+                </span>
+                <span className="text-xs font-medium text-[var(--hf-text-secondary)]">
+                  actions completed
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
+                  <span className="text-[var(--hf-text-secondary)]">Applications tracked</span>
+                  <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklyJobsCount}</span>
+                </div>
+                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
+                  <span className="text-[var(--hf-text-secondary)]">Resumes evaluated</span>
+                  <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklyResumesCount}</span>
+                </div>
+                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
+                  <span className="text-[var(--hf-text-secondary)]">Mock interview drills</span>
+                  <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklySimulationsCount}</span>
+                </div>
+              </div>
             </div>
 
-            <h3 className="text-sm font-semibold text-[var(--hf-text)] mb-1">
-              Last 7 days
-            </h3>
-            <div className="flex items-baseline gap-2 mb-4">
-              <span className="text-3xl font-extrabold tabular-nums text-[var(--hf-text)]">
-                {stats.weeklyMilestoneCount}
-              </span>
-              <span className="text-xs font-medium text-[var(--hf-text-secondary)]">
-                actions completed
-              </span>
+            <div className="pt-5 border-t border-[var(--hf-border)] mt-5">
+              <button 
+                onClick={() => navigate('/jobs')}
+                className="hf-btn-secondary min-h-[42px] w-full py-2.5 px-4 text-xs sm:text-sm font-semibold gap-2"
+              >
+                <span>Review pipeline activity</span>
+                <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
+              </button>
             </div>
-
-            <div className="space-y-2.5">
-              <div className="p-2.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
-                <span className="text-[var(--hf-text-secondary)]">Applications tracked</span>
-                <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklyJobsCount}</span>
-              </div>
-              <div className="p-2.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
-                <span className="text-[var(--hf-text-secondary)]">Resumes evaluated</span>
-                <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklyResumesCount}</span>
-              </div>
-              <div className="p-2.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
-                <span className="text-[var(--hf-text-secondary)]">Mock interview drills</span>
-                <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklySimulationsCount}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-[var(--hf-border)] mt-6">
-            <button 
-              onClick={() => navigate('/jobs')}
-              className="min-h-[44px] w-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] hover:bg-[var(--hf-surface)] text-[var(--hf-text)] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-            >
-              Review pipeline activity <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
-            </button>
-          </div>
-        </div>
+          </SpotlightCard>
+        </FadeInSection>
       </div>
 
       {/* ========================================================================= */}

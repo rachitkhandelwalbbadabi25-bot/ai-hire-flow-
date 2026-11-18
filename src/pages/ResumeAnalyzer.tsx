@@ -2443,7 +2443,7 @@ export default function ResumeAnalyzer() {
                           )}
                         </span>
                       </div>
-                      <h2 className="text-xl md:text-2xl font-bold text-[var(--hf-text)] tracking-tight">
+                      <h2 className="font-serif-display text-2xl md:text-3xl font-normal text-[var(--hf-text)] tracking-tight">
                         ATS compatibility evaluation
                       </h2>
                       <p className="text-sm text-[var(--hf-text-secondary)] max-w-2xl leading-relaxed">
@@ -2451,24 +2451,24 @@ export default function ResumeAnalyzer() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-4 p-4 rounded-xl border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] shrink-0 self-start md:self-center">
+                    <div className="flex items-center gap-4 p-4 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] shrink-0 self-start md:self-center">
                       <div>
-                        <span className="text-xs font-medium text-[var(--hf-text-muted)] block">ATS match score</span>
+                        <span className="text-xs font-semibold text-[var(--hf-text-muted)] block">ATS match score</span>
                         <div className="flex items-baseline gap-1">
                           <span className={cn(
-                            "text-3xl font-bold tabular-nums",
+                            "font-mono text-3xl font-bold tabular-nums",
                             isHigh ? "text-[var(--hf-success)]" : isMedium ? "text-[var(--hf-cta)]" : "text-[var(--hf-warning)]"
                           )}>
                             {scoreVal}
                           </span>
-                          <span className="text-sm font-normal text-[var(--hf-text-muted)]">/ 100</span>
+                          <span className="font-mono text-sm font-normal text-[var(--hf-text-muted)]">/ 100</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Limitations notice under score */}
-                  <div className="flex items-start gap-2.5 p-3.5 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-xs text-[var(--hf-text-secondary)]">
+                  <div className="flex items-start gap-2.5 p-3.5 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-xs text-[var(--hf-text-secondary)]">
                     <Info className="w-4 h-4 text-[var(--hf-text-muted)] mt-0.5 shrink-0" />
                     <p className="leading-relaxed">
                       <strong>Limitations notice:</strong> This score is an AI estimate. Employer ATS configurations and recruiter screening criteria vary, and an ATS score is not a guarantee of interviews or employment offers.
@@ -2508,7 +2508,7 @@ export default function ResumeAnalyzer() {
                       : Math.round((catScore * catWeight) / 100);
 
                     return (
-                      <div key={idx} className="p-4 sm:p-5 rounded-xl border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] flex flex-col justify-between space-y-4">
+                      <div key={idx} className="p-4 sm:p-5 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] flex flex-col justify-between space-y-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-semibold text-[var(--hf-text)]">{cat.category}</span>
@@ -2581,7 +2581,7 @@ export default function ResumeAnalyzer() {
                 </div>
 
                 {/* Formula equation summary bar */}
-                <div className="p-4 rounded-xl border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] flex flex-col gap-2 text-xs">
+                <div className="p-4 rounded-sm border border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] flex flex-col gap-2 text-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span className="font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
                       <Calculator className="w-3.5 h-3.5 text-[var(--hf-teal)]" />
@@ -3182,17 +3182,17 @@ export default function ResumeAnalyzer() {
               )}
 
               {isGeneratingCL ? (
-                <div className="p-8 rounded-xl border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] text-center space-y-2">
+                <div className="p-8 rounded-sm border border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] text-center space-y-2">
                   <Loader2 className="w-6 h-6 text-[var(--hf-teal)] animate-spin mx-auto" />
                   <p className="text-xs font-semibold text-[var(--hf-text)]">Drafting tailored 3-paragraph cover letter...</p>
                   <p className="text-xs text-[var(--hf-text-muted)]">Aligning your audited achievements with the specific requirements in the job description.</p>
                 </div>
               ) : coverLetter && coverLetter.length >= 120 ? (
-                <div className="p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] text-xs sm:text-sm leading-relaxed font-sans whitespace-pre-wrap max-h-[420px] overflow-y-auto">
+                <div className="p-5 sm:p-6 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] text-xs sm:text-sm leading-relaxed font-sans whitespace-pre-wrap max-h-[420px] overflow-y-auto">
                   {coverLetter}
                 </div>
               ) : (
-                <div className="p-6 rounded-xl border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] text-center space-y-2">
+                <div className="p-6 rounded-sm border border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] text-center space-y-2">
                   <p className="text-xs text-[var(--hf-text-muted)] font-sans">
                     {jobDesc.trim() 
                       ? "A tailored cover letter can be generated directly using this resume and target job." 

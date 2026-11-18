@@ -595,7 +595,7 @@ export default function InterviewSimulator() {
       </div>
 
       {isGenerating && (
-        <div className="my-8 hf-card p-6 rounded-xl space-y-4">
+        <div className="my-8 hf-card p-6 space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-[var(--hf-text)]">
             <Loader2 className="w-4 h-4 animate-spin text-[var(--hf-cta)]" />
             <span>Preparing customized interview questions...</span>
@@ -613,12 +613,12 @@ export default function InterviewSimulator() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.18 }}
-            className="hf-card p-6 sm:p-7 rounded-xl space-y-6"
+            className="hf-card p-6 sm:p-7 space-y-6"
           >
             {/* Mode Selection Cards */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-xs font-medium text-[var(--hf-text-secondary)] block">
+                <label className="text-xs font-semibold text-[var(--hf-text)] block">
                   Select practice mode
                 </label>
                 <span className="text-xs text-[var(--hf-text-muted)]">Choose how questions and answers are scored</span>
@@ -628,18 +628,18 @@ export default function InterviewSimulator() {
                   type="button"
                   onClick={() => setMode('ai')}
                   className={cn(
-                    "p-4 rounded-xl border text-left transition-colors cursor-pointer flex flex-col justify-between",
+                    "p-4 rounded-sm border-[1.5px] text-left transition-all cursor-pointer flex flex-col justify-between",
                     mode === 'ai'
-                      ? "bg-[var(--hf-surface)] border-[var(--hf-cta)] ring-1 ring-[var(--hf-cta)]"
-                      : "bg-[var(--hf-surface-secondary)] border-[var(--hf-border)] hover:border-[var(--hf-text-muted)]"
+                      ? "bg-[var(--hf-surface)] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-cta)]"
+                      : "bg-[var(--hf-surface-secondary)] border-[var(--hf-border)] hover:border-[var(--hf-ink-border)]"
                   )}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-[var(--hf-cta)]" />
-                      <span className="text-sm font-semibold text-[var(--hf-text)]">AI-evaluated practice</span>
+                      <span className="font-serif-display text-base font-semibold text-[var(--hf-text)]">AI-evaluated practice</span>
                     </div>
-                    <span className="hf-badge hf-badge-cta text-[11px] font-medium">
+                    <span className="hf-badge hf-badge-cta">
                       Uses 1 session
                     </span>
                   </div>
@@ -655,18 +655,18 @@ export default function InterviewSimulator() {
                   type="button"
                   onClick={() => setMode('text_practice')}
                   className={cn(
-                    "p-4 rounded-xl border text-left transition-colors cursor-pointer flex flex-col justify-between",
+                    "p-4 rounded-sm border-[1.5px] text-left transition-all cursor-pointer flex flex-col justify-between",
                     mode === 'text_practice'
-                      ? "bg-[var(--hf-surface)] border-[var(--hf-cta)] ring-1 ring-[var(--hf-cta)]"
-                      : "bg-[var(--hf-surface-secondary)] border-[var(--hf-border)] hover:border-[var(--hf-text-muted)]"
+                      ? "bg-[var(--hf-surface)] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-cta)]"
+                      : "bg-[var(--hf-surface-secondary)] border-[var(--hf-border)] hover:border-[var(--hf-ink-border)]"
                   )}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-[var(--hf-ai-teal)]" />
-                      <span className="text-sm font-semibold text-[var(--hf-text)]">Text practice with rubric</span>
+                      <span className="font-serif-display text-base font-semibold text-[var(--hf-text)]">Text practice with rubric</span>
                     </div>
-                    <span className="hf-badge text-[11px] font-medium">
+                    <span className="hf-badge">
                       0 credits
                     </span>
                   </div>
@@ -679,7 +679,7 @@ export default function InterviewSimulator() {
 
             {/* Target Role & Weak Skills Selection */}
             {mode === 'text_practice' && (
-              <div className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl space-y-3">
+              <div className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[var(--hf-text)] flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-[var(--hf-ai-teal)]" /> Focus on target weak skills
@@ -855,28 +855,28 @@ export default function InterviewSimulator() {
             className="space-y-6"
           >
             {/* Mode & Progress Row */}
-            <div className="hf-card p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="hf-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   {isDegradedFallback || mode === 'text_practice' ? (
-                    <span className="hf-badge hf-badge-teal text-xs font-medium flex items-center gap-1.5">
+                    <span className="hf-badge hf-badge-teal flex items-center gap-1.5">
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Text practice with rubric</span>
                     </span>
                   ) : (
-                    <span className="hf-badge hf-badge-cta text-xs font-medium flex items-center gap-1.5">
+                    <span className="hf-badge hf-badge-cta flex items-center gap-1.5">
                       <Zap className="w-3.5 h-3.5" />
                       <span>AI-evaluated practice</span>
                     </span>
                   )}
 
                   {isDegradedFallback && (
-                    <span className="hf-badge text-xs font-normal text-[var(--hf-text-secondary)]">
+                    <span className="hf-badge font-normal text-[var(--hf-text-secondary)]">
                       Standard question bank
                     </span>
                   )}
 
                   {isFromCache && (
-                    <span className="hf-badge text-xs font-normal">
+                    <span className="hf-badge font-normal">
                       Cached questions
                     </span>
                   )}
@@ -889,7 +889,7 @@ export default function InterviewSimulator() {
                     <div 
                       key={i} 
                       className={cn(
-                        "h-1.5 w-6 rounded-full transition-all duration-200",
+                        "h-1.5 w-6 rounded-xs transition-all duration-200",
                         i < currentIdx 
                           ? "bg-[var(--hf-success)]" 
                           : i === currentIdx 
@@ -899,24 +899,24 @@ export default function InterviewSimulator() {
                     />
                   ))}
                 </div>
-                <span className="text-xs font-medium text-[var(--hf-text-secondary)] tabular-nums">
-                  Question {currentIdx + 1} of {questions.length}
+                <span className="font-mono text-xs font-medium text-[var(--hf-text-secondary)] tabular-nums">
+                  {currentIdx + 1} / {questions.length}
                 </span>
               </div>
             </div>
 
             {/* Question Card */}
-            <div className="hf-card p-6 sm:p-7 rounded-xl space-y-6">
+            <div className="hf-card p-6 sm:p-7 space-y-6">
               <div>
-                <span className="hf-badge text-xs font-medium mb-3 inline-block">
+                <span className="hf-badge mb-3 inline-block">
                   {currentQ.category}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-semibold text-[var(--hf-text)] tracking-tight leading-snug">
+                <h2 className="font-serif-display text-2xl sm:text-3xl font-normal text-[var(--hf-text)] tracking-tight leading-snug">
                   {currentQ.question}
                 </h2>
                 {currentQ.rationale && (
                   <p className="text-xs text-[var(--hf-text-secondary)] mt-2 leading-relaxed italic">
-                    "{currentQ.rationale}"
+                    &ldquo;{currentQ.rationale}&rdquo;
                   </p>
                 )}
               </div>
@@ -925,10 +925,10 @@ export default function InterviewSimulator() {
               {!currentEvaluation && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="interview-user-response" className="text-xs font-medium text-[var(--hf-text-secondary)] block">
+                    <label htmlFor="interview-user-response" className="text-xs font-semibold text-[var(--hf-text)] block">
                       Your technical answer
                     </label>
-                    <span className="text-xs text-[var(--hf-text-muted)] tabular-nums">
+                    <span className="font-mono text-xs text-[var(--hf-text-muted)] tabular-nums">
                       {userAnswer.trim().split(/\s+/).filter(Boolean).length} words
                     </span>
                   </div>
@@ -939,7 +939,7 @@ export default function InterviewSimulator() {
                     onChange={(e) => setUserAnswer(e.target.value)}
                     placeholder="Structure your answer clearly: outline core architecture, trade-offs, algorithms, failure modes, or STAR situation..."
                     aria-label="Your response to the interview question"
-                    className="w-full h-48 sm:h-56 p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] text-[var(--hf-text)] resize-none leading-relaxed transition-colors"
+                    className="w-full h-48 sm:h-56 p-4 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] text-[var(--hf-text)] resize-none leading-relaxed transition-colors"
                   />
                 </div>
               )}
@@ -1461,28 +1461,28 @@ export default function InterviewSimulator() {
             className="space-y-8"
           >
             {/* Score Banner */}
-            <div className="hf-card p-6 sm:p-8 rounded-xl space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--hf-border)] pb-6">
+            <div className="hf-card p-6 sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-[1.5px] border-[var(--hf-ink-border)] pb-6">
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="hf-badge hf-badge-teal text-xs font-medium flex items-center gap-1.5">
+                    <span className="hf-badge hf-badge-teal flex items-center gap-1.5">
                       <Target className="w-3.5 h-3.5" />
                       <span>Interview practice complete</span>
                     </span>
 
                     {isDegradedFallback && (
-                      <span className="hf-badge text-xs font-normal text-[var(--hf-text-secondary)]">
+                      <span className="hf-badge font-normal text-[var(--hf-text-secondary)]">
                         Standard question bank
                       </span>
                     )}
 
                     {isFromCache && (
-                      <span className="hf-badge text-xs font-normal">
+                      <span className="hf-badge font-normal">
                         Cached questions
                       </span>
                     )}
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-semibold text-[var(--hf-text)] tracking-tight">
+                  <h2 className="font-serif-display text-2xl sm:text-3xl font-normal text-[var(--hf-text)] tracking-tight">
                     Practice summary report
                   </h2>
                   <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] mt-1 max-w-xl leading-relaxed">
@@ -1490,22 +1490,22 @@ export default function InterviewSimulator() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-4 rounded-xl self-start sm:self-auto shrink-0">
+                <div className="flex items-center gap-4 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-ink-border)] p-4 rounded-sm self-start sm:self-auto shrink-0">
                   <div className="text-right">
                     <span className="text-xs font-medium text-[var(--hf-text-secondary)] block">
                       Practice score
                     </span>
-                    <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tabular-nums">
+                    <span className="font-mono text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tabular-nums">
                       {calculateTotalScore()}
                       <span className="text-xs sm:text-sm font-normal text-[var(--hf-text-muted)]"> / 100</span>
                     </span>
                   </div>
-                  <div className="h-10 w-[1px] bg-[var(--hf-border)]" aria-hidden="true" />
+                  <div className="h-10 w-[1.5px] bg-[var(--hf-ink-border)]" aria-hidden="true" />
                   <div>
                     <span className="text-xs font-medium text-[var(--hf-text-secondary)] block">
                       Questions
                     </span>
-                    <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tabular-nums">
+                    <span className="font-mono text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tabular-nums">
                       {questions.length}
                     </span>
                   </div>
@@ -1566,8 +1566,8 @@ export default function InterviewSimulator() {
                 const kind = getQuestionEvaluationKind(evalData);
 
                 return (
-                  <div key={q.id} className="hf-card p-5 sm:p-6 rounded-xl space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--hf-border)] pb-3">
+                  <div key={q.id} className="hf-card p-5 sm:p-6 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-[1.5px] border-[var(--hf-ink-border)] pb-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs text-[var(--hf-text-muted)] font-mono">
                           #{idx + 1}
@@ -1611,18 +1611,18 @@ export default function InterviewSimulator() {
                       )}
                     </div>
 
-                    <h4 className="text-base sm:text-lg font-semibold text-[var(--hf-text)] leading-snug">
+                    <h4 className="font-serif-display text-lg sm:text-xl font-normal text-[var(--hf-text)] leading-snug">
                       {q.question}
                     </h4>
 
                     {q.rationale && (
                       <p className="text-xs text-[var(--hf-text-secondary)] italic leading-relaxed">
-                        "{q.rationale}"
+                        &ldquo;{q.rationale}&rdquo;
                       </p>
                     )}
 
                     {evalData && (
-                      <div className="bg-[var(--hf-surface-secondary)] p-4 rounded-xl border border-[var(--hf-border)] space-y-4 text-xs">
+                      <div className="bg-[var(--hf-surface-secondary)] p-4 rounded-sm border border-[var(--hf-ink-border)] space-y-4 text-xs">
                         {/* Feedback / Self-reflection quote */}
                         {evalData.feedback && (
                           <div>

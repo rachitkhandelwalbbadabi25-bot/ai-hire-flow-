@@ -533,12 +533,12 @@ export default function Dashboard() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-[var(--hf-surface)] px-3.5 py-2 border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-3">
+          <div className="bg-[var(--hf-surface)] px-3.5 py-2 border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] rounded-sm flex items-center gap-3">
             <div className="text-left">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[var(--hf-text-muted)]">MEMBERSHIP TIER</p>
+              <p className="font-sans text-[11px] font-medium text-[var(--hf-text-muted)]">Active plan</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 bg-[var(--hf-cta)]" />
-                <span className="font-mono text-xs font-bold text-[var(--hf-text)] uppercase">{planBadgeLabel}</span>
+                <span className="w-2 h-2 rounded-full bg-[var(--hf-cta)]" />
+                <span className="font-sans text-xs font-semibold text-[var(--hf-text)]">{planBadgeLabel}</span>
               </div>
             </div>
           </div>
@@ -546,23 +546,23 @@ export default function Dashboard() {
           {!hasResume ? (
             <button 
               onClick={() => navigate('/analyzer')}
-              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs gap-2"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 gap-2"
             >
-              <FileText className="w-4 h-4" /> UPLOAD RESUME →
+              <FileText className="w-4 h-4" /> Upload resume
             </button>
           ) : !hasJobs ? (
             <button 
               onClick={() => navigate('/finder')}
-              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs gap-2"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 gap-2"
             >
-              <Search className="w-4 h-4" /> DISCOVER ROLES →
+              <Search className="w-4 h-4" /> Find jobs
             </button>
           ) : (
             <button 
               onClick={() => navigate('/jobs')}
-              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs gap-2"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 gap-2"
             >
-              <Plus className="w-4 h-4" /> LOG APPLICATION →
+              <Plus className="w-4 h-4" /> Add application
             </button>
           )}
         </div>
@@ -580,31 +580,31 @@ export default function Dashboard() {
       {/* ========================================================================= */}
       <section className="mb-8">
         {!hasResume ? (
-          <div className="hf-card p-6 sm:p-8 border border-[var(--hf-border)]">
+          <div className="hf-card p-6 sm:p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
                 <div className="flex items-center gap-2">
-                  <span className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-accent)] text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                  <span className="hf-badge hf-badge-cta">
                     <AlertCircle className="w-3.5 h-3.5" /> Next recommended step
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hf-text)]">
+                <h2 className="font-serif-display text-2xl sm:text-3xl font-normal tracking-tight text-[var(--hf-text)]">
                   Upload and analyze your master resume
                 </h2>
                 <p className="text-xs sm:text-sm leading-relaxed text-[var(--hf-text-secondary)]">
                   To calculate ATS match scores, discover tailored roles, and practice focused interview questions, upload your resume or paste its text.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-3 rounded-xl flex items-center gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-[var(--hf-accent)]/15 text-[var(--hf-accent)] text-xs font-bold flex items-center justify-center shrink-0">1</span>
-                    <span className="text-xs font-medium text-[var(--hf-text)]">Score resume</span>
+                  <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] p-3 rounded-sm flex items-center gap-2.5">
+                    <span className="w-5 h-5 rounded-sm bg-[var(--hf-cta)] text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
+                    <span className="text-xs font-semibold text-[var(--hf-text)]">Score resume</span>
                   </div>
-                  <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-3 rounded-xl flex items-center gap-2.5 opacity-60">
-                    <span className="w-5 h-5 rounded-full bg-[var(--hf-border)] text-[var(--hf-text-muted)] text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                  <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-3 rounded-sm flex items-center gap-2.5 opacity-70">
+                    <span className="w-5 h-5 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-text-muted)] text-xs font-bold flex items-center justify-center shrink-0">2</span>
                     <span className="text-xs text-[var(--hf-text-muted)]">Discover target jobs</span>
                   </div>
-                  <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-3 rounded-xl flex items-center gap-2.5 opacity-60">
-                    <span className="w-5 h-5 rounded-full bg-[var(--hf-border)] text-[var(--hf-text-muted)] text-xs font-bold flex items-center justify-center shrink-0">3</span>
+                  <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-3 rounded-sm flex items-center gap-2.5 opacity-70">
+                    <span className="w-5 h-5 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-text-muted)] text-xs font-bold flex items-center justify-center shrink-0">3</span>
                     <span className="text-xs text-[var(--hf-text-muted)]">Practice interview</span>
                   </div>
                 </div>
@@ -612,7 +612,7 @@ export default function Dashboard() {
               <div className="shrink-0 flex flex-col items-stretch md:items-end gap-2">
                 <button 
                   onClick={() => navigate('/analyzer')}
-                  className="min-h-[44px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-6 py-3 rounded-xl text-xs sm:text-sm font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-sm"
+                  className="hf-btn-primary min-h-[44px] px-6 py-3 gap-2"
                 >
                   <FileText className="w-4 h-4" /> Upload resume
                 </button>
@@ -621,13 +621,13 @@ export default function Dashboard() {
             </div>
           </div>
         ) : !hasJobs ? (
-          <div className="hf-card p-6 sm:p-8 border border-[var(--hf-border)]">
+          <div className="hf-card p-6 sm:p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2 max-w-2xl">
-                <span className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-accent)] text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                <span className="hf-badge hf-badge-cta">
                   <Search className="w-3.5 h-3.5" /> Next recommended step
                 </span>
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hf-text)]">
+                <h2 className="font-serif-display text-2xl sm:text-3xl font-normal tracking-tight text-[var(--hf-text)]">
                   Discover matching jobs for your profile
                 </h2>
                 <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)]">
@@ -636,20 +636,20 @@ export default function Dashboard() {
               </div>
               <button 
                 onClick={() => navigate('/finder')}
-                className="min-h-[44px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-6 py-3 rounded-xl text-xs sm:text-sm font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 shrink-0 shadow-sm"
+                className="hf-btn-primary min-h-[44px] px-6 py-3 gap-2 shrink-0"
               >
                 <Search className="w-4 h-4" /> Discover jobs
               </button>
             </div>
           </div>
         ) : stats.interviews > 0 ? (
-          <div className="hf-card p-6 sm:p-8 border border-[var(--hf-border)]">
+          <div className="hf-card p-6 sm:p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2 max-w-2xl">
-                <span className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-accent)] text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                <span className="hf-badge hf-badge-cta">
                   <Mic className="w-3.5 h-3.5" /> Active interview preparation
                 </span>
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hf-text)]">
+                <h2 className="font-serif-display text-2xl sm:text-3xl font-normal tracking-tight text-[var(--hf-text)]">
                   Prepare for your upcoming interview
                 </h2>
                 <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)]">
@@ -658,20 +658,20 @@ export default function Dashboard() {
               </div>
               <button 
                 onClick={() => navigate('/interview')}
-                className="min-h-[44px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-6 py-3 rounded-xl text-xs sm:text-sm font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 shrink-0 shadow-sm"
+                className="hf-btn-primary min-h-[44px] px-6 py-3 gap-2 shrink-0"
               >
                 <Mic className="w-4 h-4" /> Practice mock interview
               </button>
             </div>
           </div>
         ) : (
-          <div className="hf-card p-6 sm:p-8 border border-[var(--hf-border)]">
+          <div className="hf-card p-6 sm:p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2 max-w-2xl">
-                <span className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-accent)] text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                <span className="hf-badge hf-badge-teal">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Pipeline active
                 </span>
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hf-text)]">
+                <h2 className="font-serif-display text-2xl sm:text-3xl font-normal tracking-tight text-[var(--hf-text)]">
                   Continue application momentum
                 </h2>
                 <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)]">
@@ -681,13 +681,13 @@ export default function Dashboard() {
               <div className="flex flex-wrap items-center gap-3 shrink-0">
                 <button 
                   onClick={() => navigate('/jobs')}
-                  className="min-h-[44px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-sm"
+                  className="hf-btn-primary min-h-[44px] px-5 py-2.5 gap-2"
                 >
                   <Plus className="w-4 h-4" /> Track job
                 </button>
                 <button 
                   onClick={() => navigate('/interview')}
-                  className="min-h-[44px] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-text)] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[var(--hf-surface)] transition-all flex items-center justify-center gap-2"
+                  className="hf-btn-secondary min-h-[44px] px-5 py-2.5 gap-2"
                 >
                   <Mic className="w-4 h-4" /> Practice drill
                 </button>
@@ -706,10 +706,10 @@ export default function Dashboard() {
           <SpotlightCard className="p-6 sm:p-7 h-full flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-5">
-                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
-                  <FileText className="w-5 h-5 text-[var(--hf-accent)]" />
+                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-sm border border-[var(--hf-ink-border)] text-[var(--hf-cta)]">
+                  <FileText className="w-5 h-5 text-[var(--hf-cta)]" />
                 </div>
-                <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
+                <span className="hf-badge hf-badge-cta">
                   Resume ATS match
                 </span>
               </div>
@@ -776,9 +776,9 @@ export default function Dashboard() {
         <FadeInSection delay={0.1}>
           <SpotlightCard className="p-6 sm:p-7 h-full flex flex-col justify-between">
             <div>
-              <div className="flex justify-between items-center mb-4 pb-3 border-b border-[var(--hf-border)]">
+              <div className="flex justify-between items-center mb-4 pb-3 border-b-[1.5px] border-[var(--hf-ink-border)]">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[var(--hf-accent)]" />
+                  <Calendar className="w-4 h-4 text-[var(--hf-cta)]" />
                   <h3 className="text-sm font-semibold text-[var(--hf-text)]">Upcoming interviews</h3>
                 </div>
                 <span className="text-xs font-medium text-[var(--hf-text-secondary)]">
@@ -791,17 +791,17 @@ export default function Dashboard() {
                   stats.upcomingEvents.map((event, idx) => (
                     <div 
                       key={idx} 
-                      className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl flex items-center justify-between gap-4"
+                      className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm flex items-center justify-between gap-4"
                     >
                       <div className="flex items-center gap-3">
                         {event.hasRealDate && event.month && event.day ? (
-                          <div className="bg-[var(--hf-surface)] px-2.5 py-1.5 rounded-lg border border-[var(--hf-border)] text-center shrink-0 min-w-[44px]">
-                            <span className="text-[10px] font-semibold text-[var(--hf-accent)] uppercase block leading-none">{event.month}</span>
+                          <div className="bg-[var(--hf-surface)] px-2.5 py-1.5 rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] text-center shrink-0 min-w-[44px]">
+                            <span className="text-[10px] font-semibold text-[var(--hf-cta)] uppercase block leading-none">{event.month}</span>
                             <span className="text-sm font-bold text-[var(--hf-text)] tabular-nums leading-none mt-1">{event.day}</span>
                           </div>
                         ) : (
-                          <div className="bg-[var(--hf-surface)] p-2 rounded-lg border border-[var(--hf-border)] text-[var(--hf-accent)] shrink-0">
-                            <Briefcase className="w-4 h-4 text-[var(--hf-accent)]" />
+                          <div className="bg-[var(--hf-surface)] p-2 rounded-sm border border-[var(--hf-ink-border)] text-[var(--hf-cta)] shrink-0">
+                            <Briefcase className="w-4 h-4 text-[var(--hf-cta)]" />
                           </div>
                         )}
                         <div>
@@ -814,14 +814,14 @@ export default function Dashboard() {
 
                       <button 
                         onClick={() => navigate('/interview')}
-                        className="hf-btn-primary min-h-[38px] px-3.5 py-1.5 text-xs font-semibold shrink-0"
+                        className="hf-btn-primary min-h-[38px] px-3.5 py-1.5 text-xs shrink-0"
                       >
                         Prep round
                       </button>
                     </div>
                   ))
                 ) : (
-                  <div className="p-6 bg-[var(--hf-surface-secondary)]/60 rounded-xl border border-[var(--hf-border)] text-center space-y-2">
+                  <div className="p-6 bg-[var(--hf-surface-secondary)]/60 rounded-sm border border-[var(--hf-ink-border)] text-center space-y-2">
                     <p className="text-xs font-semibold text-[var(--hf-text)]">No upcoming interviews scheduled</p>
                     <p className="text-[11px] text-[var(--hf-text-secondary)] max-w-sm mx-auto">
                       When you update an application in the Job Tracker to the &ldquo;Interview&rdquo; stage, it will appear here for practice.
@@ -849,19 +849,19 @@ export default function Dashboard() {
       {/* ========================================================================= */}
       <FadeInSection delay={0.12} className="mb-8">
         <SpotlightCard hoverLift={false} className="p-6 sm:p-7">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[var(--hf-border)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b-[1.5px] border-[var(--hf-ink-border)]">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Briefcase className="w-4 h-4 text-[var(--hf-accent)]" />
-                <span className="text-[11px] font-semibold text-[var(--hf-accent)] uppercase tracking-wider">Application progress</span>
+                <Briefcase className="w-4 h-4 text-[var(--hf-cta)]" />
+                <span className="text-xs font-semibold text-[var(--hf-cta)]">Application progress</span>
               </div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--hf-text)]">
+              <h2 className="font-serif-display text-2xl font-normal tracking-tight text-[var(--hf-text)]">
                 Job pipeline summary
               </h2>
             </div>
             <button 
               onClick={() => navigate('/jobs')}
-              className="hf-btn-secondary min-h-[40px] px-4 py-2 text-xs sm:text-sm font-semibold gap-2 self-start sm:self-center"
+              className="hf-btn-secondary min-h-[40px] px-4 py-2 gap-2 self-start sm:self-center"
             >
               <span>Manage job tracker</span>
               <ArrowRight className="w-3.5 h-3.5 text-[var(--hf-text-secondary)]" />
@@ -869,33 +869,33 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] p-4 rounded-xl">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Total tracked</p>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-text)] mt-1">
+            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-ink-border)] p-4 rounded-sm">
+              <p className="text-xs font-medium text-[var(--hf-text-muted)]">Total tracked</p>
+              <p className="font-mono text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-text)] mt-1">
                 <AnimatedCounter value={stats.totalJobs} />
               </p>
               <p className="text-[11px] text-[var(--hf-text-secondary)] mt-1">Applications in pipeline</p>
             </div>
-            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] p-4 rounded-xl">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Interviews</p>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-accent)] mt-1">
+            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-ink-border)] p-4 rounded-sm">
+              <p className="text-xs font-medium text-[var(--hf-text-muted)]">Interviews</p>
+              <p className="font-mono text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-cta)] mt-1">
                 <AnimatedCounter value={stats.interviews} />
               </p>
               <p className="text-[11px] text-[var(--hf-text-secondary)] mt-1">In interview stage</p>
             </div>
-            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] p-4 rounded-xl">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Offers</p>
+            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-ink-border)] p-4 rounded-sm">
+              <p className="text-xs font-medium text-[var(--hf-text-muted)]">Offers</p>
               <p 
-                className="text-2xl sm:text-3xl font-bold tabular-nums mt-1"
+                className="font-mono text-2xl sm:text-3xl font-bold tabular-nums mt-1"
                 style={{ color: stats.offers > 0 ? 'var(--hf-success)' : 'var(--hf-text)' }}
               >
                 <AnimatedCounter value={stats.offers} />
               </p>
               <p className="text-[11px] text-[var(--hf-text-secondary)] mt-1">Offers received</p>
             </div>
-            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] p-4 rounded-xl">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Average practice score</p>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-text)] mt-1">
+            <div className="bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-ink-border)] p-4 rounded-sm">
+              <p className="text-xs font-medium text-[var(--hf-text-muted)]">Average practice score</p>
+              <p className="font-mono text-2xl sm:text-3xl font-bold tabular-nums text-[var(--hf-text)] mt-1">
                 {stats.simulationsRun > 0 ? <AnimatedCounter value={stats.interviewReadiness} suffix="%" /> : 'N/A'}
               </p>
               <p className="text-[11px] text-[var(--hf-text-secondary)] mt-1">
@@ -913,12 +913,12 @@ export default function Dashboard() {
                   {Math.round(((stats.interviews + stats.offers) / Math.max(1, stats.totalJobs)) * 100)}% interview conversion
                 </span>
               </div>
-              <div className="w-full h-2 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] overflow-hidden flex">
+              <div className="w-full h-2 rounded-xs bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] overflow-hidden flex">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.max(8, ((stats.totalJobs - stats.interviews - stats.offers) / Math.max(1, stats.totalJobs)) * 100)}%` }}
                   transition={{ duration: 0.7 }}
-                  className="h-full bg-slate-400/70"
+                  className="h-full bg-[var(--hf-text)]"
                   title="Applied"
                 />
                 {stats.interviews > 0 && (
@@ -954,10 +954,10 @@ export default function Dashboard() {
           <SpotlightCard className="p-6 sm:p-7 h-full flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-4">
-                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
-                  <GraduationCap className="w-5 h-5 text-[var(--hf-accent)]" />
+                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-sm border border-[var(--hf-ink-border)] text-[var(--hf-cta)]">
+                  <GraduationCap className="w-5 h-5 text-[var(--hf-cta)]" />
                 </div>
-                <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
+                <span className="hf-badge hf-badge-cta">
                   Learning focus
                 </span>
               </div>
@@ -977,14 +977,14 @@ export default function Dashboard() {
                       initial={{ opacity: 0, scale: 0.92 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.04 }}
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-text)]"
+                      className="px-2.5 py-1 rounded-sm text-xs font-medium bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-[var(--hf-text)]"
                     >
                       {skill}
                     </motion.span>
                   ))}
                 </div>
               ) : (
-                <div className="p-4 bg-[var(--hf-surface-secondary)]/60 border border-[var(--hf-border)] rounded-xl text-xs text-[var(--hf-text-secondary)]">
+                <div className="p-4 bg-[var(--hf-surface-secondary)]/60 border border-[var(--hf-ink-border)] rounded-sm text-xs text-[var(--hf-text-secondary)]">
                   No skill gaps identified yet. Run a resume analysis against a target job to generate focused learning recommendations.
                 </div>
               )}
@@ -993,7 +993,7 @@ export default function Dashboard() {
             <div className="pt-5 border-t border-[var(--hf-border)] mt-5">
               <button 
                 onClick={() => navigate('/learning')}
-                className="hf-btn-secondary min-h-[42px] w-full py-2.5 px-4 text-xs sm:text-sm font-semibold gap-2"
+                className="hf-btn-secondary min-h-[42px] w-full py-2.5 px-4 gap-2"
               >
                 <span>View learning roadmap</span>
                 <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
@@ -1007,10 +1007,10 @@ export default function Dashboard() {
           <SpotlightCard className="p-6 sm:p-7 h-full flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-4">
-                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-xl border border-[var(--hf-border)] text-[var(--hf-accent)]">
-                  <Activity className="w-5 h-5 text-[var(--hf-accent)]" />
+                <div className="bg-[var(--hf-surface-secondary)] p-2.5 rounded-sm border border-[var(--hf-ink-border)] text-[var(--hf-cta)]">
+                  <Activity className="w-5 h-5 text-[var(--hf-cta)]" />
                 </div>
-                <span className="text-[11px] font-semibold text-[var(--hf-accent)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-2.5 py-1 rounded-full">
+                <span className="hf-badge hf-badge-cta">
                   Activity summary
                 </span>
               </div>
@@ -1019,7 +1019,7 @@ export default function Dashboard() {
                 Last 7 days
               </h3>
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-3xl font-extrabold tabular-nums text-[var(--hf-text)]">
+                <span className="font-mono text-3xl font-extrabold tabular-nums text-[var(--hf-text)]">
                   <AnimatedCounter value={stats.weeklyMilestoneCount} />
                 </span>
                 <span className="text-xs font-medium text-[var(--hf-text-secondary)]">
@@ -1028,17 +1028,17 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-2.5">
-                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
+                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-ink-border)] rounded-sm flex items-center justify-between text-xs">
                   <span className="text-[var(--hf-text-secondary)]">Applications tracked</span>
-                  <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklyJobsCount}</span>
+                  <span className="font-mono font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklyJobsCount}</span>
                 </div>
-                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
+                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-ink-border)] rounded-sm flex items-center justify-between text-xs">
                   <span className="text-[var(--hf-text-secondary)]">Resumes evaluated</span>
-                  <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklyResumesCount}</span>
+                  <span className="font-mono font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklyResumesCount}</span>
                 </div>
-                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-border)] rounded-xl flex items-center justify-between text-xs">
+                <div className="p-2.5 bg-[var(--hf-surface-secondary)]/70 border border-[var(--hf-ink-border)] rounded-sm flex items-center justify-between text-xs">
                   <span className="text-[var(--hf-text-secondary)]">Mock interview drills</span>
-                  <span className="font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklySimulationsCount}</span>
+                  <span className="font-mono font-semibold tabular-nums text-[var(--hf-text)]">{stats.weeklySimulationsCount}</span>
                 </div>
               </div>
             </div>
@@ -1046,7 +1046,7 @@ export default function Dashboard() {
             <div className="pt-5 border-t border-[var(--hf-border)] mt-5">
               <button 
                 onClick={() => navigate('/jobs')}
-                className="hf-btn-secondary min-h-[42px] w-full py-2.5 px-4 text-xs sm:text-sm font-semibold gap-2"
+                className="hf-btn-secondary min-h-[42px] w-full py-2.5 px-4 gap-2"
               >
                 <span>Review pipeline activity</span>
                 <ArrowRight className="w-4 h-4 text-[var(--hf-text-secondary)]" />
@@ -1059,18 +1059,18 @@ export default function Dashboard() {
       {/* ========================================================================= */}
       {/* 7. AI CAREER ADVISOR                                                      */}
       {/* ========================================================================= */}
-      <section className="hf-card p-6 sm:p-8 border border-[var(--hf-border)]">
+      <section className="hf-card p-6 sm:p-8">
         <div className="flex flex-col lg:flex-row gap-8 items-stretch">
           {/* Left info column */}
           <div className="lg:w-1/3 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-[var(--hf-cta)] uppercase tracking-wider">Career Advisory</span>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-md bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-text-secondary)]">
+                <span className="text-xs font-semibold text-[var(--hf-cta)]">Career advisory</span>
+                <span className="hf-badge">
                   {typeof advisorAccess.limit === 'number' && advisorAccess.limit < 9999 ? `${advisorAccess.remaining} left today` : 'Daily allowance'}
                 </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hf-text)] mb-2">
+              <h2 className="font-serif-display text-2xl sm:text-3xl font-normal tracking-tight text-[var(--hf-text)] mb-2">
                 Career Strategy Advisor
               </h2>
               <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed mb-4">
@@ -1078,27 +1078,27 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="bg-[var(--hf-surface-secondary)] p-4 rounded-xl border border-[var(--hf-border)] space-y-2 mt-auto">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Suggested questions:</p>
+            <div className="bg-[var(--hf-surface-secondary)] p-4 rounded-sm border border-[var(--hf-ink-border)] space-y-2 mt-auto">
+              <p className="text-xs font-semibold text-[var(--hf-text-muted)]">Suggested questions</p>
               <ul className="space-y-2 text-xs text-[var(--hf-text-secondary)]">
                 <li 
-                  className="cursor-pointer hover:text-[var(--hf-accent)] transition-colors flex items-center gap-1.5 group/q" 
+                  className="cursor-pointer hover:text-[var(--hf-cta)] transition-colors flex items-center gap-1.5 group/q" 
                   onClick={() => setCoachQuestion("How do I address a 6-month employment gap elegantly?")}
                 >
-                  <ChevronRight className="w-3.5 h-3.5 text-[var(--hf-accent)] shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--hf-cta)] shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
                   <span>Addressing employment gaps</span>
                 </li>
                 <li 
-                  className="cursor-pointer hover:text-[var(--hf-accent)] transition-colors flex items-center gap-1.5 group/q" 
+                  className="cursor-pointer hover:text-[var(--hf-cta)] transition-colors flex items-center gap-1.5 group/q" 
                   onClick={() => setCoachQuestion("What are the best negotiation strategies for tech offers?")}
                 >
-                  <ChevronRight className="w-3.5 h-3.5 text-[var(--hf-accent)] shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--hf-cta)] shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
                   <span>Offer negotiation strategy</span>
                 </li>
                 <li 
-                  className="cursor-pointer hover:text-[var(--hf-accent)] transition-colors flex items-center gap-1.5 group/q" 
+                  className="cursor-pointer hover:text-[var(--hf-cta)] transition-colors flex items-center gap-1.5 group/q" 
                   onClick={() => setCoachQuestion("How can I frame myself as a tech leader without official title?")}>
-                  <ChevronRight className="w-3.5 h-3.5 text-[var(--hf-accent)] shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--hf-cta)] shrink-0 group-hover/q:translate-x-0.5 transition-transform" /> 
                   <span>Framing informal leadership</span>
                 </li>
               </ul>
@@ -1106,24 +1106,24 @@ export default function Dashboard() {
           </div>
 
           {/* Right chat & answer column */}
-          <div className="lg:w-2/3 w-full flex flex-col justify-between space-y-4 bg-[var(--hf-surface-secondary)] p-4 sm:p-6 rounded-2xl border border-[var(--hf-border)]">
+          <div className="lg:w-2/3 w-full flex flex-col justify-between space-y-4 bg-[var(--hf-surface-secondary)] p-4 sm:p-6 rounded-sm border-[1.5px] border-[var(--hf-ink-border)]">
             {/* Conversation / Response display area */}
             <div className="flex-1 min-h-[160px] flex flex-col justify-center">
               <AnimatePresence mode="wait">
                 {isCoachLoading ? (
                   <div className="py-4">
-                    <AILoadingStepper presetKey="career_coach" title="Executive Strategy & Negotiation Engine" />
+                    <AILoadingStepper presetKey="career_coach" title="Preparing tailored career guidance" />
                   </div>
                 ) : coachAnswer ? (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="p-5 bg-[var(--hf-surface)] rounded-xl border border-[var(--hf-border)] space-y-3 shadow-sm"
+                    className="p-5 bg-[var(--hf-surface)] rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-ink-border)] space-y-3"
                   >
                     <div className="flex items-center justify-between pb-2 border-b border-[var(--hf-border)]">
                       <div className="flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-[var(--hf-accent)]" />
+                        <UserCheck className="w-4 h-4 text-[var(--hf-cta)]" />
                         <span className="text-xs font-semibold text-[var(--hf-text)]">Advisory insight</span>
                       </div>
                       <button
@@ -1132,7 +1132,7 @@ export default function Dashboard() {
                           setCoachAnswer(null);
                           setCoachQuestion("");
                         }}
-                        className="text-[11px] text-[var(--hf-text-secondary)] hover:text-[var(--hf-accent)] transition-colors"
+                        className="text-xs font-medium text-[var(--hf-text-secondary)] hover:text-[var(--hf-cta)] transition-colors cursor-pointer"
                       >
                         New question
                       </button>
@@ -1144,11 +1144,11 @@ export default function Dashboard() {
 
                     {coachAnswer.actionItems && coachAnswer.actionItems.length > 0 && (
                       <div className="pt-3 border-t border-[var(--hf-border)] mt-3">
-                        <p className="text-[11px] font-semibold text-[var(--hf-accent)] uppercase tracking-wider mb-2">Recommended action items</p>
+                        <p className="text-xs font-semibold text-[var(--hf-cta)] mb-2">Recommended next steps</p>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                           {coachAnswer.actionItems.map((item: string, idx: number) => (
-                            <div key={idx} className="p-2.5 bg-[var(--hf-surface-secondary)] rounded-lg border border-[var(--hf-border)] flex items-start gap-2">
-                              <span className="bg-[var(--hf-accent)]/15 text-[var(--hf-accent)] text-xs font-bold w-4 h-4 rounded flex items-center justify-center shrink-0">
+                            <div key={idx} className="p-2.5 bg-[var(--hf-surface-secondary)] rounded-sm border border-[var(--hf-ink-border)] flex items-start gap-2">
+                              <span className="bg-[var(--hf-cta)]/15 text-[var(--hf-cta)] text-xs font-bold w-4 h-4 rounded-xs flex items-center justify-center shrink-0">
                                 {idx + 1}
                               </span>
                               <span className="text-xs text-[var(--hf-text)] font-medium leading-snug">{item}</span>
@@ -1160,12 +1160,12 @@ export default function Dashboard() {
                   </motion.div>
                 ) : (
                   <div className="text-center py-6 px-4 space-y-2">
-                    <div className="w-10 h-10 rounded-full bg-[var(--hf-surface)] border border-[var(--hf-border)] flex items-center justify-center mx-auto mb-3 text-[var(--hf-accent)]">
+                    <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center justify-center mx-auto mb-3 text-[var(--hf-cta)]">
                       <Sparkles className="w-5 h-5" />
                     </div>
-                    <h4 className="text-sm font-semibold text-[var(--hf-text)]">Ready to assist your career strategy</h4>
+                    <h4 className="text-sm font-semibold text-[var(--hf-text)]">Ask a question to get started</h4>
                     <p className="text-xs text-[var(--hf-text-secondary)] max-w-md mx-auto">
-                      Ask any question below or click a suggested query on the left. The advisor analyzes your live resume, pipeline, and skills context.
+                      Type below or choose a prompt on the left. Answers use your saved resume, applications, and skill goals.
                     </p>
                   </div>
                 )}
@@ -1179,14 +1179,14 @@ export default function Dashboard() {
                   type="text" 
                   value={coachQuestion}
                   onChange={(e) => setCoachQuestion(e.target.value)}
-                  placeholder="Ask the executive coach about your job search strategy..."
-                  className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl pl-4 pr-24 py-3 text-xs sm:text-sm text-[var(--hf-text)] focus:outline-none focus:border-[var(--hf-accent)] focus:ring-1 focus:ring-[var(--hf-accent)]/30 transition-all placeholder:text-[var(--hf-text-muted)] shadow-sm"
+                  placeholder="Ask about offer negotiation, career transitions, or interview positioning..."
+                  className="w-full bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm pl-4 pr-24 py-3 text-xs sm:text-sm text-[var(--hf-text)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-all placeholder:text-[var(--hf-text-muted)]"
                 />
                 <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   <button 
                     type="submit" 
                     disabled={isCoachLoading || !coachQuestion.trim()}
-                    className="min-h-[38px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-4 py-2 rounded-lg text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    className="hf-btn-primary min-h-[36px] px-4 py-1.5 text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
                     <span>Ask</span>
                     <Send className="w-3.5 h-3.5" />

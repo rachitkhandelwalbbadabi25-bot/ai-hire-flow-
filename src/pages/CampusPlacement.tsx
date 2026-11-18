@@ -498,13 +498,13 @@ export default function CampusPlacement() {
         <div className="lg:col-span-8 space-y-8">
           
           {/* SECTION 1: Company Prep Search Engine */}
-          <div className="hf-card p-6 sm:p-7 rounded-xl space-y-6">
+          <div className="hf-card p-6 sm:p-7 space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center">
+              <div className="w-9 h-9 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center">
                 <Search className="w-4.5 h-4.5 text-[var(--hf-ai-teal)]" />
               </div>
               <div>
-                <h2 className="text-base sm:text-lg font-semibold text-[var(--hf-text)] tracking-tight">
+                <h2 className="font-serif-display text-xl font-normal text-[var(--hf-text)] tracking-tight">
                   Company recruitment preparation
                 </h2>
                 <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
@@ -514,7 +514,7 @@ export default function CampusPlacement() {
             </div>
 
             {/* Search Input Bar */}
-            <div className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl">
+            <div className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm">
               <div className="flex flex-col sm:flex-row gap-3">
                 <input 
                   type="text"
@@ -523,13 +523,13 @@ export default function CampusPlacement() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCompanySearch(searchQuery)}
                   aria-label="Target company name"
-                  className="flex-1 bg-[var(--hf-surface)] border border-[var(--hf-border)] px-4 py-3 rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
+                  className="flex-1 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] px-4 py-3 rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
                 />
                 <button 
                   type="button"
                   onClick={() => handleCompanySearch(searchQuery)}
                   disabled={searching || !searchQuery.trim()}
-                  className="hf-btn-primary min-h-[44px] px-5 py-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] shrink-0"
+                  className="hf-btn-primary min-h-[44px] px-5 py-3 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
                   {searching ? (
                     <>
@@ -551,7 +551,7 @@ export default function CampusPlacement() {
               <div 
                 role="alert" 
                 aria-live="assertive"
-                className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-error)] rounded-xl flex items-center gap-3 text-xs"
+                className="p-4 bg-[var(--hf-surface-secondary)] border border-[var(--hf-error)] rounded-sm flex items-center gap-3 text-xs"
               >
                 <AlertCircle className="w-4 h-4 text-[var(--hf-error)] shrink-0" />
                 <span className="text-[var(--hf-text)] leading-relaxed font-medium">{searchError}</span>

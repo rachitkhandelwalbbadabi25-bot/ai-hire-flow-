@@ -470,11 +470,11 @@ export default function JobFinder() {
       </div>
 
       {/* Search Console */}
-      <div className="mb-8 p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] bg-[var(--hf-surface)] shadow-xs">
+      <div className="mb-8 hf-card p-5 sm:p-6">
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
           <div className="md:col-span-5">
             <div className="flex items-center justify-between mb-1.5 px-0.5">
-              <label htmlFor="job-role-input" className="text-xs font-medium text-[var(--hf-text-secondary)] block">
+              <label htmlFor="job-role-input" className="text-xs font-semibold text-[var(--hf-text)] block">
                 Job role or title
               </label>
               {query && (
@@ -492,7 +492,7 @@ export default function JobFinder() {
                 id="job-role-input"
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
-                className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]/20 focus:border-[var(--hf-cta)] transition-all"
+                className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-all"
                 placeholder="e.g. AI Product Intern at Mumbai, Software Engineer"
                 aria-label="Job Role or Title"
               />
@@ -501,7 +501,7 @@ export default function JobFinder() {
                 <button
                   type="button"
                   onClick={() => handleQueryChange('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] p-1 text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] rounded-md transition-colors cursor-pointer flex items-center justify-center"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] p-1 text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] rounded-sm transition-colors cursor-pointer flex items-center justify-center"
                   aria-label="Clear job role"
                 >
                   <X className="w-4 h-4" />
@@ -512,7 +512,7 @@ export default function JobFinder() {
           
           <div className="md:col-span-3">
             <div className="flex items-center justify-between mb-1.5 px-0.5">
-              <label htmlFor="job-location-input" className="text-xs font-medium text-[var(--hf-text-secondary)] block">
+              <label htmlFor="job-location-input" className="text-xs font-semibold text-[var(--hf-text)] block">
                 Location or remote
               </label>
               {location && (
@@ -530,7 +530,7 @@ export default function JobFinder() {
                 id="job-location-input"
                 value={location}
                 onChange={(e) => handleLocationChange(e.target.value)}
-                className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]/20 focus:border-[var(--hf-cta)] transition-all"
+                className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-all"
                 placeholder="e.g. Remote or Worldwide"
                 aria-label="Job Location or Remote"
               />
@@ -539,7 +539,7 @@ export default function JobFinder() {
                 <button
                   type="button"
                   onClick={() => handleLocationChange('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] p-1 text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] rounded-md transition-colors cursor-pointer flex items-center justify-center"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] p-1 text-[var(--hf-text-muted)] hover:text-[var(--hf-text)] rounded-sm transition-colors cursor-pointer flex items-center justify-center"
                   aria-label="Clear location"
                 >
                   <X className="w-4 h-4" />
@@ -552,7 +552,7 @@ export default function JobFinder() {
             <button 
               type="submit" 
               disabled={loading}
-              className="flex-1 min-h-[44px] bg-[var(--hf-cta)] hover:opacity-90 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs"
+              className="hf-btn-primary flex-1 min-h-[44px] py-2.5 px-4 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -573,7 +573,7 @@ export default function JobFinder() {
               onClick={handleResetSearch}
               title="Reset and clear search"
               aria-label="Reset Search"
-              className="min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-border)] rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              className="hf-btn-secondary min-h-[44px] px-3.5 py-2.5 flex items-center justify-center gap-1.5"
             >
               <RotateCcw className="w-4 h-4" />
               <span className="hidden sm:inline">Reset</span>
@@ -583,13 +583,13 @@ export default function JobFinder() {
 
         {/* Popular Searches */}
         <div className="mt-5 pt-4 border-t border-[var(--hf-border)]">
-          <span className="text-xs font-medium text-[var(--hf-text-muted)] block mb-2">Popular searches:</span>
+          <span className="text-xs font-medium text-[var(--hf-text-muted)] block mb-2">Popular searches</span>
           <div className="flex flex-wrap gap-2">
             {popularSearches.map((chip) => (
               <button
                 key={chip}
                 onClick={() => handlePopularSearch(chip)}
-                className="min-h-[36px] sm:min-h-[32px] px-3 py-1 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-border)] rounded-md text-xs font-medium transition-all cursor-pointer flex items-center"
+                className="min-h-[34px] px-3 py-1 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-ink-border)] rounded-sm text-xs font-medium transition-all cursor-pointer flex items-center shadow-[1px_1px_0px_var(--hf-ink-border)] hover:-translate-y-0.5"
               >
                 {chip}
               </button>
@@ -708,14 +708,14 @@ export default function JobFinder() {
         ) : (
           <>
             {currentActiveJob && (
-              <div className="mb-6 p-4 sm:p-5 rounded-xl bg-[var(--hf-surface)] border border-[var(--hf-border)] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans">
+              <div className="mb-6 p-4 sm:p-5 hf-card flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans">
                 <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-teal)] shrink-0 mt-0.5">
+                  <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-teal)] shrink-0 mt-0.5 shadow-[2px_2px_0px_var(--hf-ink-border)]">
                     <Target className="w-5 h-5 text-[var(--hf-teal)]" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--hf-surface-secondary)] text-[var(--hf-teal)] border border-[var(--hf-border)] text-xs font-semibold">
+                      <span className="hf-badge hf-badge-teal">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--hf-teal)]" />
                         Active job
                       </span>
@@ -723,22 +723,22 @@ export default function JobFinder() {
                         Selected for analysis and application actions
                       </span>
                       {currentActiveJob.relevanceLabel && (
-                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${
+                        <span className={`px-2 py-0.5 rounded-sm text-[11px] font-semibold border ${
                           currentActiveJob.relevanceLabel.toLowerCase().includes('exact')
-                            ? 'bg-[var(--hf-mint)]/30 text-[var(--hf-success)] border-[var(--hf-success)]/30'
-                            : 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20'
+                            ? 'bg-[var(--hf-mint)]/30 text-[var(--hf-success)] border-[var(--hf-success)]'
+                            : 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/40'
                         }`}>
                           {currentActiveJob.relevanceLabel}
                         </span>
                       )}
                       {currentActiveJob.provider && (
-                        <span className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-md text-[11px] font-medium text-[var(--hf-text-secondary)]">
+                        <span className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm text-[11px] font-medium text-[var(--hf-text-secondary)]">
                           {currentActiveJob.provider}
                         </span>
                       )}
                     </div>
                     <div className="mt-1">
-                      <p className="text-base font-bold text-[var(--hf-text)] leading-snug">
+                      <p className="font-serif-display text-lg font-semibold text-[var(--hf-text)] leading-snug">
                         {currentActiveJob.title}
                       </p>
                       <p className="text-sm font-medium text-[var(--hf-text-secondary)]">
@@ -948,25 +948,25 @@ export default function JobFinder() {
       {!hasSearched && (
         <div className="py-16 text-center">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
-             <div className="p-6 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl text-left shadow-xs">
-                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-lg flex items-center justify-center mb-3 border border-[var(--hf-border)] text-[var(--hf-teal)]">
+             <div className="hf-card p-6 text-left">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-teal)] shadow-[2px_2px_0px_var(--hf-ink-border)]">
                    <TargetIcon className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-semibold font-sans text-[var(--hf-text)] mb-1">Live market index</h4>
-                <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Verified open roles from live web portals and verified employer boards.</p>
+                <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">Live job feeds</h4>
+                <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Open roles pulled from verified external portals and employer job boards.</p>
              </div>
-             <div className="p-6 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl text-left shadow-xs">
-                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-lg flex items-center justify-center mb-3 border border-[var(--hf-border)] text-[var(--hf-cta)]">
+             <div className="hf-card p-6 text-left">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-cta)] shadow-[2px_2px_0px_var(--hf-ink-border)]">
                    <Zap className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-semibold font-sans text-[var(--hf-text)] mb-1">Real-time matching</h4>
+                <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">Real-time matching</h4>
                 <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Direct comparison against your latest analyzed resume skills and profile.</p>
              </div>
-             <div className="p-6 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl text-left shadow-xs">
-                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-lg flex items-center justify-center mb-3 border border-[var(--hf-border)] text-[var(--hf-teal)]">
+             <div className="hf-card p-6 text-left">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-teal)] shadow-[2px_2px_0px_var(--hf-ink-border)]">
                    <Building2 className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-semibold font-sans text-[var(--hf-text)] mb-1">Direct pipeline</h4>
+                <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">One-click tracking</h4>
                 <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Save openings to your job tracker pipeline and trigger tailored interview prep.</p>
              </div>
           </div>
@@ -1035,14 +1035,14 @@ function JobListingCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3) }}
-      className={`bg-[var(--hf-surface)] p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] flex flex-col hover:border-[var(--hf-text-muted)]/40 transition-all shadow-xs relative group font-sans ${
-        isSelected ? 'ring-2 ring-[var(--hf-teal)] border-[var(--hf-teal)]' : ''
+      className={`hf-card hf-card-interactive p-5 sm:p-6 flex flex-col relative group font-sans ${
+        isSelected ? 'ring-2 ring-[var(--hf-cta)]' : ''
       }`}
     >
       {/* 1. Opportunity Header (Company & Top-Level Match Signals) */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-teal)] shrink-0">
+          <div className="w-9 h-9 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-teal)] shrink-0">
             <Building2 className="w-4 h-4" />
           </div>
           <p className="text-xs font-semibold font-sans text-[var(--hf-text-secondary)] truncate">

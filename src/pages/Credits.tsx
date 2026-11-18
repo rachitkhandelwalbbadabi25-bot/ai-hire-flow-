@@ -1327,9 +1327,9 @@ export default function CreditsPage() {
                     <div 
                       key={a.id} 
                       className={cn(
-                        "p-5 rounded-xl border flex flex-col justify-between transition-all",
+                        "p-5 rounded-sm border flex flex-col justify-between transition-all",
                         a.unlocked 
-                          ? "bg-[var(--hf-surface)] border-[var(--hf-success)]/40 shadow-xs" 
+                          ? "bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]" 
                           : "bg-[var(--hf-surface-secondary)]/50 border-[var(--hf-border)] opacity-90"
                       )}
                     >
@@ -1404,23 +1404,23 @@ export default function CreditsPage() {
 
                   {/* Metrics Summary Row */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="hf-card-secondary p-4 rounded-xl">
+                    <div className="p-4 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
                       <p className="text-xs text-[var(--hf-text-secondary)] font-medium">Total invites</p>
                       <p className="text-2xl font-bold font-mono tabular-nums text-[var(--hf-text)] mt-1">{referrals.length}</p>
                     </div>
-                    <div className="hf-card-secondary p-4 rounded-xl">
+                    <div className="p-4 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
                       <p className="text-xs text-[var(--hf-text-secondary)] font-medium">Rewarded</p>
                       <p className="text-2xl font-bold font-mono tabular-nums text-[var(--hf-success)] mt-1">
                         {referrals.filter(r => r.status === 'completed').length}
                       </p>
                     </div>
-                    <div className="hf-card-secondary p-4 rounded-xl">
+                    <div className="p-4 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
                       <p className="text-xs text-[var(--hf-text-secondary)] font-medium">Pending scan</p>
                       <p className="text-2xl font-bold font-mono tabular-nums text-[var(--hf-warning)] mt-1">
                         {referrals.filter(r => r.status === 'pending').length}
                       </p>
                     </div>
-                    <div className="hf-card-secondary p-4 rounded-xl">
+                    <div className="p-4 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
                       <p className="text-xs text-[var(--hf-text-secondary)] font-medium">Credits earned</p>
                       <p className="text-2xl font-bold font-mono tabular-nums text-[var(--hf-cta)] mt-1">
                         +{referrals.filter(r => r.status === 'completed').reduce((sum, r) => sum + (r.rewardCredits || 100), 0)} CR
@@ -1431,7 +1431,7 @@ export default function CreditsPage() {
                   {/* Share Boxes: Code and Direct Link */}
                   <div className="space-y-4">
                     {/* Invite Code Box */}
-                    <div className="hf-card-secondary p-5 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="p-5 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div>
                         <p className="text-xs font-medium text-[var(--hf-text-secondary)]">Your personal referral code</p>
                         <span className="text-2xl font-bold font-mono tabular-nums text-[var(--hf-text)] block mt-1 tracking-wider">
@@ -1441,7 +1441,7 @@ export default function CreditsPage() {
                       <button 
                         type="button"
                         onClick={handleCopyCode}
-                        className="hf-btn-primary min-h-[44px] w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                        className="hf-btn-primary min-h-[44px] w-full sm:w-auto px-5 py-2.5 flex items-center justify-center gap-2 cursor-pointer"
                       >
                         {copyCodeSuccess ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
                         <span>{copyCodeSuccess ? 'Copied code' : 'Copy code'}</span>
@@ -1449,10 +1449,10 @@ export default function CreditsPage() {
                     </div>
 
                     {/* Direct Invite Link Box */}
-                    <div className="hf-card-secondary p-5 rounded-xl space-y-2">
+                    <div className="p-5 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] space-y-2">
                       <p className="text-xs font-medium text-[var(--hf-text-secondary)]">Shareable invite link</p>
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="flex-1 flex items-center bg-[var(--hf-surface)] border border-[var(--hf-border)] px-3.5 py-2.5 rounded-lg text-xs font-mono text-[var(--hf-text-secondary)] overflow-hidden">
+                        <div className="flex-1 flex items-center bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] px-3.5 py-2.5 rounded-sm text-xs font-mono text-[var(--hf-text-secondary)] overflow-hidden">
                           <Link2 className="w-4 h-4 mr-2 shrink-0 text-[var(--hf-text-muted)]" />
                           <span className="truncate select-all text-[var(--hf-text)]">
                             {creditWallet?.referralCode ? `${window.location.origin}/?ref=${creditWallet.referralCode}` : 'Generating link...'}
@@ -1688,28 +1688,28 @@ export default function CreditsPage() {
               className="space-y-8"
             >
               {loadingAdmin ? (
-                <div className="flex items-center justify-center py-20 text-ink-dim">
+                <div className="flex items-center justify-center py-20 text-[var(--hf-text-secondary)]">
                   <RefreshCw className="w-8 h-8 animate-spin" />
                 </div>
               ) : (
                 <>
                   {adminAnalytics && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="bg-surface border border-border p-5 rounded-2xl">
-                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase">Total Platform Users</span>
-                        <p className="text-2xl font-black font-mono text-ink mt-1">{adminAnalytics.totalUsers}</p>
+                      <div className="hf-card p-5">
+                        <span className="text-xs font-medium text-[var(--hf-text-muted)]">Total Platform Users</span>
+                        <p className="text-2xl font-bold font-mono text-[var(--hf-text)] mt-1">{adminAnalytics.totalUsers}</p>
                       </div>
-                      <div className="bg-surface border border-border p-5 rounded-2xl">
-                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase">Total Credits Spent</span>
-                        <p className="text-2xl font-black font-mono text-ink mt-1">{adminAnalytics.creditsSpent}</p>
+                      <div className="hf-card p-5">
+                        <span className="text-xs font-medium text-[var(--hf-text-muted)]">Total Credits Spent</span>
+                        <p className="text-2xl font-bold font-mono text-[var(--hf-text)] mt-1">{adminAnalytics.creditsSpent}</p>
                       </div>
-                      <div className="bg-surface border border-border p-5 rounded-2xl">
-                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase">Premium Tier Users</span>
-                        <p className="text-2xl font-black font-mono text-amber-400 mt-1">{adminAnalytics.premiumUsers}</p>
+                      <div className="hf-card p-5">
+                        <span className="text-xs font-medium text-[var(--hf-text-muted)]">Premium Tier Users</span>
+                        <p className="text-2xl font-bold font-mono text-[var(--hf-cta)] mt-1">{adminAnalytics.premiumUsers}</p>
                       </div>
-                      <div className="bg-surface border border-border p-5 rounded-2xl">
-                        <span className="text-[10px] font-mono font-bold text-ink-dim uppercase">Gross Invoiced Revenue</span>
-                        <p className="text-2xl font-black font-mono text-emerald-400 mt-1">₹{adminAnalytics.estimatedRevenue}</p>
+                      <div className="hf-card p-5">
+                        <span className="text-xs font-medium text-[var(--hf-text-muted)]">Gross Invoiced Revenue</span>
+                        <p className="text-2xl font-bold font-mono text-[var(--hf-success)] mt-1">₹{adminAnalytics.estimatedRevenue}</p>
                       </div>
                     </div>
                   )}

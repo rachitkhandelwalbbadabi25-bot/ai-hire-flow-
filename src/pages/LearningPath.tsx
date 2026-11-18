@@ -589,7 +589,7 @@ export default function LearningPath() {
 
       {/* Active Job Context Banner */}
       {currentActiveJob && (currentActiveJob.source || !isDemoRole(currentActiveJob.title)) && !currentActiveJob.title?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('sarvam') && !currentActiveJob.company?.toLowerCase().includes('target organization') && (
-        <div className="mb-6 p-4 sm:p-5 rounded-xl bg-[var(--hf-surface)] border border-[var(--hf-border)] shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="mb-6 p-4 sm:p-5 hf-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3 min-w-0">
             <div className="w-2.5 h-2.5 rounded-full bg-[var(--hf-ai-teal)] shrink-0 mt-1.5 sm:mt-0" />
             <div className="min-w-0">
@@ -929,14 +929,14 @@ export default function LearningPath() {
                                   href={resource.link} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="group block p-4 sm:p-5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl hover:border-[var(--hf-border-hover)] hover:shadow-xs transition-all"
+                                  className="group block p-4 sm:p-5 hf-card hf-card-interactive"
                                 >
                                   {cardContent}
                                 </a>
                               ) : (
                                 <div 
                                   key={i} 
-                                  className="p-4 sm:p-5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl"
+                                  className="p-4 sm:p-5 hf-card"
                                 >
                                   {cardContent}
                                 </div>

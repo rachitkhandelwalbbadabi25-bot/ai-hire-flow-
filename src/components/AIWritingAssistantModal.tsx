@@ -93,21 +93,21 @@ export default function AIWritingAssistantModal({
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 10 }}
-        className="bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl w-full max-w-3xl shadow-xl overflow-hidden my-auto relative max-h-[90vh] flex flex-col text-[var(--hf-text)]"
+        className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm w-full max-w-3xl shadow-[6px_6px_0px_var(--hf-ink-border)] overflow-hidden my-auto relative max-h-[90vh] flex flex-col text-[var(--hf-text)]"
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-[var(--hf-border)] flex items-center justify-between bg-[var(--hf-surface-secondary)]/40 shrink-0">
+        <div className="p-4 sm:p-5 border-b-[1.5px] border-[var(--hf-ink-border)] flex items-center justify-between bg-[var(--hf-surface-secondary)]/60 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[color-mix(in_srgb,var(--hf-ai-teal)_12%,transparent)] border border-[color-mix(in_srgb,var(--hf-ai-teal)_25%,transparent)] text-[var(--hf-ai-teal)] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] text-[var(--hf-cta)] flex items-center justify-center shrink-0 shadow-[2px_2px_0px_var(--hf-ink-border)]">
               <Wand2 className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 id="ai-assistant-modal-title" className="text-base sm:text-lg font-semibold text-[var(--hf-text)] tracking-tight">
-                  AI writing assistant
+                <h2 id="ai-assistant-modal-title" className="font-serif-display text-lg sm:text-xl font-semibold text-[var(--hf-text)] tracking-tight">
+                  Bullet Writing Assistant
                 </h2>
-                <span className="hf-badge hf-badge-teal text-[10px]">
-                  Google XYZ formula
+                <span className="hf-badge hf-badge-teal">
+                  XYZ format
                 </span>
               </div>
               <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
@@ -119,7 +119,7 @@ export default function AIWritingAssistantModal({
           <button
             onClick={onClose}
             aria-label="Close AI writing assistant"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] rounded-lg hover:bg-[var(--hf-surface-secondary)] transition-colors cursor-pointer"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] rounded-sm border border-transparent hover:border-[var(--hf-ink-border)] hover:bg-[var(--hf-surface)] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -128,17 +128,17 @@ export default function AIWritingAssistantModal({
         {/* Scrollable Content */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
           {/* Original Bullet Point */}
-          <div className="bg-[var(--hf-surface-secondary)]/50 border border-[var(--hf-border)] rounded-lg p-3.5 sm:p-4">
+          <div className="bg-[var(--hf-surface-secondary)]/50 border border-[var(--hf-ink-border)] rounded-sm p-3.5 sm:p-4">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
                 <Edit3 className="w-3.5 h-3.5 text-[var(--hf-cta)]" /> Original bullet point
               </span>
-              <span className="text-xs text-[var(--hf-text-muted)] tabular-nums">
-                {originalText.length} characters
+              <span className="font-mono text-xs text-[var(--hf-text-muted)] tabular-nums">
+                {originalText.length} chars
               </span>
             </div>
-            <p className="text-sm text-[var(--hf-text-secondary)] italic bg-[var(--hf-surface)] p-3 rounded-lg border border-[var(--hf-border)] mt-2 leading-relaxed">
-              "{originalText || 'No bullet text provided'}"
+            <p className="text-sm text-[var(--hf-text-secondary)] italic bg-[var(--hf-surface)] p-3 rounded-sm border border-[var(--hf-border)] mt-2 leading-relaxed">
+              &ldquo;{originalText || 'No bullet text provided'}&rdquo;
             </p>
           </div>
 
@@ -147,10 +147,10 @@ export default function AIWritingAssistantModal({
               <Loader2 className="w-8 h-8 text-[var(--hf-cta)] animate-spin" />
               <div>
                 <h3 className="text-base font-semibold text-[var(--hf-text)]">
-                  Synthesizing Google XYZ impact bullet...
+                  Rewriting bullet in XYZ format...
                 </h3>
                 <p className="text-xs text-[var(--hf-text-secondary)] mt-1 max-w-sm">
-                  Deconstructing accomplished [X], measured by [Y], and doing [Z] with honest metric proxies.
+                  Structuring what you accomplished, how it was measured, and how you built it using realistic metric placeholders.
                 </p>
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function AIWritingAssistantModal({
               {result.suggestions.length > 1 && (
                 <div>
                   <label className="text-xs font-semibold text-[var(--hf-text)] mb-2 block">
-                    Choose strategic focus:
+                    Choose rewrite angle
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     {result.suggestions.map((sug, idx) => (
@@ -168,10 +168,10 @@ export default function AIWritingAssistantModal({
                         key={idx}
                         type="button"
                         onClick={() => setSelectedIndex(idx)}
-                        className={`p-3 rounded-lg border text-left transition-colors cursor-pointer min-h-[44px] ${
+                        className={`p-3 rounded-sm border-[1.5px] text-left transition-all cursor-pointer min-h-[44px] ${
                           selectedIndex === idx
-                            ? 'bg-[color-mix(in_srgb,var(--hf-cta)_8%,transparent)] border-[var(--hf-cta)] text-[var(--hf-text)] shadow-xs'
-                            : 'bg-[var(--hf-surface)] border-[var(--hf-border)] hover:bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)]'
+                            ? 'bg-[var(--hf-surface-secondary)] border-[var(--hf-ink-border)] text-[var(--hf-text)] shadow-[2px_2px_0px_var(--hf-cta)]'
+                            : 'bg-[var(--hf-surface)] border-[var(--hf-border)] hover:border-[var(--hf-ink-border)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)]'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">

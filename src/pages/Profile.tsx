@@ -21,8 +21,8 @@ export default function Profile() {
     return (
       <div className="min-h-[400px] w-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <p className="text-xs font-mono text-ink-dim uppercase tracking-wider animate-pulse">Loading Profile Dashboard...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--hf-cta)]" />
+          <p className="text-xs font-medium text-[var(--hf-text-secondary)] animate-pulse">Loading your profile...</p>
         </div>
       </div>
     );
@@ -296,12 +296,12 @@ export default function Profile() {
         <div className="hf-card p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Total experience</span>
-            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-warning)]">
+            <div className="w-8 h-8 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-warning)]">
               <Award className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{xp}</span>
+            <span className="font-mono text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{xp}</span>
             <span className="text-xs font-semibold text-[var(--hf-text-secondary)]">XP</span>
           </div>
           <p className="text-xs text-[var(--hf-text-secondary)] mt-2 truncate">
@@ -313,12 +313,12 @@ export default function Profile() {
         <div className="hf-card p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Current level</span>
-            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
+            <div className="w-8 h-8 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-cta)]">
               <Zap className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">Level {userLevel}</span>
+            <span className="font-serif-display text-2xl sm:text-3xl font-semibold text-[var(--hf-text)] tracking-tight tabular-nums">Level {userLevel}</span>
           </div>
           <p className="text-xs text-[var(--hf-cta)] font-medium mt-2 tabular-nums">
             {levelInfo.progress}% to next tier
@@ -329,12 +329,12 @@ export default function Profile() {
         <div className="hf-card p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Daily streak</span>
-            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-warning)]">
+            <div className="w-8 h-8 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-warning)]">
               <Flame className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{currentStreak}</span>
+            <span className="font-mono text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{currentStreak}</span>
             <span className="text-xs font-semibold text-[var(--hf-text-secondary)]">{currentStreak === 1 ? 'day' : 'days'}</span>
           </div>
           <p className="text-xs text-[var(--hf-text-secondary)] mt-2">
@@ -346,13 +346,13 @@ export default function Profile() {
         <div className="hf-card p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Badges unlocked</span>
-            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
+            <div className="w-8 h-8 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-cta)]">
               <Star className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{unlockedBadges.length}</span>
-            <span className="text-xs font-semibold text-[var(--hf-text-secondary)] tabular-nums">/ {premiumBadges.length}</span>
+            <span className="font-mono text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">{unlockedBadges.length}</span>
+            <span className="font-mono text-xs font-semibold text-[var(--hf-text-secondary)] tabular-nums">/ {premiumBadges.length}</span>
           </div>
           <p className="text-xs text-[var(--hf-text-secondary)] mt-2 tabular-nums">
             {Math.round((unlockedBadges.length / premiumBadges.length) * 100)}% completed
@@ -372,7 +372,7 @@ export default function Profile() {
 
           {/* SECTION A: Career Progression & Milestones */}
           <div className="hf-card p-6 sm:p-7">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--hf-border)] pb-5 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-[1.5px] border-[var(--hf-ink-border)] pb-5 mb-6">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Award className="w-4 h-4 text-[var(--hf-cta)]" />
@@ -380,8 +380,8 @@ export default function Profile() {
                     Career progression
                   </span>
                 </div>
-                <h2 className="text-lg font-bold text-[var(--hf-text)] tracking-tight">
-                  Experience & rank milestones
+                <h2 className="font-serif-display text-xl sm:text-2xl font-normal text-[var(--hf-text)] tracking-tight">
+                  Experience &amp; rank milestones
                 </h2>
               </div>
               <div className="text-left sm:text-right">
@@ -400,17 +400,17 @@ export default function Profile() {
                 <span className="font-semibold text-[var(--hf-text)] flex items-center gap-2">
                   Level {userLevel}: {levelInfo.rank}
                 </span>
-                <span className="text-[var(--hf-cta)] font-semibold tabular-nums">
+                <span className="font-mono text-[var(--hf-cta)] font-bold tabular-nums">
                   {levelInfo.progress}%
                 </span>
               </div>
 
-              <div className="h-2.5 w-full bg-[var(--hf-surface-secondary)] rounded-full overflow-hidden border border-[var(--hf-border)]">
+              <div className="h-2.5 w-full bg-[var(--hf-surface-secondary)] rounded-xs overflow-hidden border border-[var(--hf-ink-border)]">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${levelInfo.progress}%` }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="h-full rounded-full bg-[var(--hf-cta)]"
+                  className="h-full bg-[var(--hf-cta)]"
                 />
               </div>
             </div>
@@ -423,14 +423,14 @@ export default function Profile() {
                 return (
                   <div 
                     key={m.lvl} 
-                    className={`p-3 rounded-xl border transition-colors flex flex-col justify-between ${
+                    className={`p-3 rounded-sm border transition-colors flex flex-col justify-between ${
                       m.lvl === 5 ? 'col-span-2 sm:col-span-1' : ''
                     } ${
                       isCurrent 
-                        ? 'bg-[var(--hf-cta)]/10 border-[var(--hf-cta)] text-[var(--hf-text)] shadow-sm' 
+                        ? 'bg-[var(--hf-cta)]/10 border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-cta)] text-[var(--hf-text)]' 
                         : isPassed 
-                        ? 'bg-[var(--hf-surface-secondary)] border-[var(--hf-border)] text-[var(--hf-text)]' 
-                        : 'bg-[var(--hf-surface)]/40 border-[var(--hf-border)]/60 text-[var(--hf-text-muted)] opacity-75'
+                        ? 'bg-[var(--hf-surface-secondary)] border-[var(--hf-ink-border)] text-[var(--hf-text)]' 
+                        : 'bg-[var(--hf-surface)]/40 border-[var(--hf-border)] text-[var(--hf-text-muted)] opacity-75'
                     }`}
                   >
                     <div>
@@ -473,7 +473,7 @@ export default function Profile() {
 
           {/* SECTION B: Badges & Rewards Showcase */}
           <div className="hf-card p-6 sm:p-7">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--hf-border)] pb-5 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-[1.5px] border-[var(--hf-ink-border)] pb-5 mb-6">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Star className="w-4 h-4 text-[var(--hf-cta)]" />
@@ -481,19 +481,19 @@ export default function Profile() {
                     Achievements
                   </span>
                 </div>
-                <h2 className="text-lg font-bold text-[var(--hf-text)] tracking-tight">
+                <h2 className="font-serif-display text-xl sm:text-2xl font-normal text-[var(--hf-text)] tracking-tight">
                   Profile badges
                 </h2>
               </div>
 
               {/* Filter Tabs */}
-              <div className="flex items-center gap-1.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-1 rounded-xl flex-wrap">
+              <div className="flex items-center gap-1 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] p-1 rounded-sm flex-wrap">
                 <button
                   type="button"
                   onClick={() => setBadgeFilter('all')}
-                  className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] ${
+                  className={`min-h-[38px] px-3 py-1.5 rounded-sm text-xs font-semibold transition-colors cursor-pointer ${
                     badgeFilter === 'all' 
-                      ? 'bg-[var(--hf-cta)] text-white shadow-sm' 
+                      ? 'bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)]' 
                       : 'text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface)]'
                   }`}
                 >
@@ -502,9 +502,9 @@ export default function Profile() {
                 <button
                   type="button"
                   onClick={() => setBadgeFilter('unlocked')}
-                  className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] ${
+                  className={`min-h-[38px] px-3 py-1.5 rounded-sm text-xs font-semibold transition-colors cursor-pointer ${
                     badgeFilter === 'unlocked' 
-                      ? 'bg-[var(--hf-cta)] text-white shadow-sm' 
+                      ? 'bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)]' 
                       : 'text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface)]'
                   }`}
                 >
@@ -513,9 +513,9 @@ export default function Profile() {
                 <button
                   type="button"
                   onClick={() => setBadgeFilter('locked')}
-                  className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] ${
+                  className={`min-h-[38px] px-3 py-1.5 rounded-sm text-xs font-semibold transition-colors cursor-pointer ${
                     badgeFilter === 'locked' 
-                      ? 'bg-[var(--hf-cta)] text-white shadow-sm' 
+                      ? 'bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)]' 
                       : 'text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface)]'
                   }`}
                 >
@@ -535,19 +535,19 @@ export default function Profile() {
                 return (
                   <div
                     key={badge.id}
-                    className={`p-4 rounded-xl border transition-colors flex flex-col justify-between ${
+                    className={`p-4 rounded-sm border transition-colors flex flex-col justify-between ${
                       isUnlocked
-                        ? 'bg-[var(--hf-surface)] border-[var(--hf-border)] shadow-sm'
-                        : 'bg-[var(--hf-surface-secondary)]/40 border-[var(--hf-border)]/60 opacity-80'
+                        ? 'bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]'
+                        : 'bg-[var(--hf-surface-secondary)]/40 border-[var(--hf-border)] opacity-80'
                     }`}
                   >
                     <div>
                       {/* Badge Card Header */}
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${
+                          <div className={`w-9 h-9 rounded-sm border flex items-center justify-center shrink-0 ${
                             isUnlocked 
-                              ? 'bg-[var(--hf-cta)]/10 border-[var(--hf-cta)]/20 text-[var(--hf-cta)]' 
+                              ? 'bg-[var(--hf-cta)]/10 border-[var(--hf-ink-border)] text-[var(--hf-cta)]' 
                               : 'bg-[var(--hf-surface-secondary)] border-[var(--hf-border)] text-[var(--hf-text-muted)]'
                           }`}>
                             <BadgeIcon className="w-4 h-4" />
@@ -612,26 +612,26 @@ export default function Profile() {
           {/* CARD 1: Credit Wallet */}
           <div className="hf-card p-6">
             <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
+              <div className="w-8 h-8 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-cta)]">
                 <Coins className="w-4 h-4" />
               </div>
               <div>
                 <span className="text-xs font-semibold text-[var(--hf-cta)] block">
                   AI usage
                 </span>
-                <h2 className="text-base font-bold text-[var(--hf-text)] tracking-tight">
+                <h2 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] tracking-tight">
                   Credit balance
                 </h2>
               </div>
             </div>
 
             {/* Balance Big Readout */}
-            <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl p-5 mb-5 text-center">
+            <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm p-5 mb-5 text-center">
               <span className="text-xs text-[var(--hf-text-secondary)] block mb-1">
                 Available balance
               </span>
               <div className="flex items-center justify-center gap-2">
-                <span className="text-3xl sm:text-4xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">
+                <span className="font-mono text-3xl sm:text-4xl font-bold text-[var(--hf-text)] tracking-tight tabular-nums">
                   {creditWallet?.balance ?? 250}
                 </span>
                 <span className="text-sm font-semibold text-[var(--hf-cta)]">
@@ -641,11 +641,11 @@ export default function Profile() {
               <div className="grid grid-cols-2 gap-2 border-t border-[var(--hf-border)] mt-4 pt-3 text-xs">
                 <div>
                   <span className="text-[var(--hf-text-secondary)] block">Monthly usage</span>
-                  <span className="font-semibold text-[var(--hf-text)] tabular-nums">{creditWallet?.usedThisMonth ?? 0} used</span>
+                  <span className="font-mono font-semibold text-[var(--hf-text)] tabular-nums">{creditWallet?.usedThisMonth ?? 0} used</span>
                 </div>
                 <div>
                   <span className="text-[var(--hf-text-secondary)] block">Total granted</span>
-                  <span className="font-semibold text-[var(--hf-text)] tabular-nums">{creditWallet?.totalEarned ?? creditWallet?.balance ?? 250} earned</span>
+                  <span className="font-mono font-semibold text-[var(--hf-text)] tabular-nums">{creditWallet?.totalEarned ?? creditWallet?.balance ?? 250} earned</span>
                 </div>
               </div>
             </div>
@@ -700,7 +700,7 @@ export default function Profile() {
             </div>
 
             <div className="space-y-4">
-              <div className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-xl">
+              <div className="p-3.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-[var(--hf-text-secondary)]">Active plan</span>
                   <span className={`text-xs font-semibold ${isAdmin ? 'text-[var(--hf-error)]' : isPremium ? 'text-[var(--hf-cta)]' : 'text-[var(--hf-text)]'}`}>
@@ -717,7 +717,7 @@ export default function Profile() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)]">
+              <div className="flex items-center justify-between text-xs p-2.5 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
                 <span className="text-[var(--hf-text-secondary)]">Email status</span>
                 <span className={`font-semibold inline-flex items-center gap-1 ${user.emailVerified ? 'text-[var(--hf-success)]' : 'text-[var(--hf-warning)]'}`}>
                   {user.emailVerified ? (
@@ -753,7 +753,7 @@ export default function Profile() {
               <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed mb-3">
                 Share your referral code with peers. Earn bonus credits when they join.
               </p>
-              <div className="flex items-center gap-2 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] p-1.5 rounded-xl">
+              <div className="flex items-center gap-2 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] p-1.5 rounded-sm">
                 <code className="flex-1 text-sm font-semibold text-[var(--hf-cta)] px-2 font-mono tracking-wide">
                   {creditWallet.referralCode}
                 </code>

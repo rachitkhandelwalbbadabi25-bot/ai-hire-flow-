@@ -527,25 +527,25 @@ export default function OutreachHub() {
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
-                  className="hf-card w-full max-w-md p-6 relative shadow-xl"
+                  className="hf-card w-full max-w-md p-6 relative shadow-[6px_6px_0px_var(--hf-ink-border)]"
                 >
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
                     aria-label="Close dialog"
-                    className="absolute top-4 right-4 p-2.5 rounded-lg text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors"
+                    className="absolute top-4 right-4 p-2 rounded-sm text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] min-h-[40px] min-w-[40px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
 
-                  <h2 id="add-contact-title" className="text-base font-semibold text-[var(--hf-text)] mb-5 flex items-center gap-2">
+                  <h2 id="add-contact-title" className="font-serif-display text-xl font-semibold text-[var(--hf-text)] mb-5 flex items-center gap-2">
                     <Users className="w-5 h-5 text-[var(--hf-cta)]" />
                     Add contact
                   </h2>
 
                   <form onSubmit={handleAddContact} className="space-y-4">
                     <div>
-                      <label htmlFor="new-contact-name" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+                      <label htmlFor="new-contact-name" className="block text-xs font-semibold text-[var(--hf-text)] mb-1.5">
                         Contact name
                       </label>
                       <input
@@ -555,12 +555,12 @@ export default function OutreachHub() {
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
                         placeholder="e.g. Priyesh Patel"
-                        className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
+                        className="w-full bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="new-contact-company" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+                      <label htmlFor="new-contact-company" className="block text-xs font-semibold text-[var(--hf-text)] mb-1.5">
                         Company
                       </label>
                       <input
@@ -570,12 +570,12 @@ export default function OutreachHub() {
                         value={newCompany}
                         onChange={(e) => setNewCompany(e.target.value)}
                         placeholder="e.g. Google India"
-                        className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
+                        className="w-full bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="new-contact-email" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+                      <label htmlFor="new-contact-email" className="block text-xs font-semibold text-[var(--hf-text)] mb-1.5">
                         Email address
                       </label>
                       <input
@@ -585,14 +585,14 @@ export default function OutreachHub() {
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                         placeholder="e.g. contact@example.com"
-                        className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
+                        className="w-full bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px]"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={addingContact}
-                      className="hf-btn-primary w-full min-h-[44px] py-2.5 text-sm flex items-center justify-center gap-2 mt-4 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                      className="hf-btn-primary w-full min-h-[44px] py-2.5 flex items-center justify-center gap-2 mt-4 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                     >
                       {addingContact ? (
                         <>
@@ -618,11 +618,11 @@ export default function OutreachHub() {
           {/* Email settings card */}
           <div className="hf-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center shrink-0">
                 <Mail className="w-5 h-5 text-[var(--hf-cta)]" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-[var(--hf-text)]">
+                <h2 className="font-serif-display text-lg font-semibold text-[var(--hf-text)]">
                   Your email address
                 </h2>
                 <p className="text-xs text-[var(--hf-text-secondary)]">
@@ -632,7 +632,7 @@ export default function OutreachHub() {
             </div>
 
             <div className="mb-3">
-              <label htmlFor="outreach-gmail-input" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+              <label htmlFor="outreach-gmail-input" className="block text-xs font-semibold text-[var(--hf-text)] mb-1.5">
                 Gmail or sender address
               </label>
               <div className="relative">
@@ -645,12 +645,12 @@ export default function OutreachHub() {
                   value={gmailAddress}
                   onChange={(e) => setGmailAddress(e.target.value)}
                   placeholder="your.name@gmail.com"
-                  className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px] pl-9"
+                  className="w-full bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm px-3.5 py-2.5 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors min-h-[44px] pl-9"
                 />
               </div>
             </div>
 
-            <div className="p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg text-xs text-[var(--hf-text-secondary)] flex items-start gap-2">
+            <div className="p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm text-xs text-[var(--hf-text-secondary)] flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-[var(--hf-text-secondary)] shrink-0 mt-0.5" />
               <span>
                 Saved on this device only, and used to pre-fill the Gmail compose link. Nothing is sent from this page.
@@ -662,11 +662,11 @@ export default function OutreachHub() {
           <div className="hf-card p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center shrink-0">
                   <FileText className="w-5 h-5 text-[var(--hf-cta)]" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-[var(--hf-text)]">
+                  <h2 className="font-serif-display text-lg font-semibold text-[var(--hf-text)]">
                     Candidate background
                   </h2>
                   <p className="text-xs text-[var(--hf-text-secondary)]">
@@ -679,7 +679,7 @@ export default function OutreachHub() {
                 type="button"
                 onClick={loadLatestResumeContext}
                 disabled={loadingContext}
-                className="hf-btn-secondary text-xs min-h-[44px] px-3.5 py-2 inline-flex items-center justify-center gap-2"
+                className="hf-btn-secondary text-xs min-h-[40px] px-3.5 py-2 inline-flex items-center justify-center gap-2"
                 title="Load from latest resume"
               >
                 <RefreshCw
@@ -694,7 +694,7 @@ export default function OutreachHub() {
             </p>
 
             <div>
-              <label htmlFor="outreach-candidate-context" className="block text-xs font-medium text-[var(--hf-text)] mb-1.5">
+              <label htmlFor="outreach-candidate-context" className="block text-xs font-semibold text-[var(--hf-text)] mb-1.5">
                 Background summary
               </label>
               <textarea
@@ -702,11 +702,11 @@ export default function OutreachHub() {
                 value={candidateContext}
                 onChange={(e) => setCandidateContext(e.target.value)}
                 rows={7}
-                className="w-full bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg p-3 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors resize-y"
+                className="w-full bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm p-3 text-sm text-[var(--hf-text)] placeholder-[var(--hf-text-secondary)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] transition-colors resize-y"
                 placeholder="Detail your technology stack, notable milestones, and what specific types of positions you are seeking..."
               />
               <div className="mt-2 text-xs text-[var(--hf-text-secondary)]">
-                <span className="tabular-nums font-medium">{candidateContext.length}</span> characters
+                <span className="font-mono tabular-nums font-semibold">{candidateContext.length}</span> characters
               </div>
             </div>
           </div>
@@ -714,7 +714,7 @@ export default function OutreachHub() {
           {/* Drafting tips card */}
           <div className="hf-card p-6">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center shrink-0">
                 <Lightbulb className="w-5 h-5 text-[var(--hf-warning)]" />
               </div>
               <h3 className="text-sm font-semibold text-[var(--hf-text)]">
@@ -741,13 +741,13 @@ export default function OutreachHub() {
         {/* Right Column - Referral Contacts */}
         <div className="lg:col-span-12 xl:col-span-7 space-y-6">
           <div className="hf-card p-6 min-h-[500px]">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-[var(--hf-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center shrink-0">
                   <Users className="w-5 h-5 text-[var(--hf-cta)]" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-[var(--hf-text)]">
+                  <h2 className="font-serif-display text-lg font-semibold text-[var(--hf-text)]">
                     Referral contacts
                   </h2>
                   <p className="text-xs text-[var(--hf-text-secondary)]">
@@ -758,7 +758,7 @@ export default function OutreachHub() {
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
-                className="hf-btn-primary text-xs min-h-[44px] px-3.5 py-2 inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
+                className="hf-btn-primary text-xs min-h-[42px] px-3.5 py-2 inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add contact</span>

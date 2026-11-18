@@ -275,7 +275,7 @@ export default function ResumeEditor() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="text-xs text-[var(--hf-text-secondary)] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-3 py-2 rounded-lg hidden sm:inline-flex items-center gap-2">
+          <span className="text-xs font-medium text-[var(--hf-text-secondary)] bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] px-3 py-1.5 rounded-sm hidden sm:inline-flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[var(--hf-cta)] inline-block"></span>
             {typeof editAccess.limit === 'number' && editAccess.limit < 9999 ? `${editAccess.remaining} edits left this month` : 'Unlimited edits'}
           </span>
@@ -283,7 +283,7 @@ export default function ResumeEditor() {
           <button
             type="button"
             onClick={handleClearAll}
-            className="min-h-[44px] px-3.5 py-2 bg-[var(--hf-surface)] hover:bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] border border-[var(--hf-border)] rounded-lg text-xs font-medium transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+            className="hf-btn-secondary min-h-[42px] px-3.5 py-2 text-xs hover:text-[var(--hf-error)] gap-2"
             title="Reset editor"
           >
             <RotateCcw className="w-4 h-4" />
@@ -294,7 +294,7 @@ export default function ResumeEditor() {
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="hf-btn-primary min-h-[44px] px-5 py-2.5 text-xs sm:text-sm font-medium flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
+            className="hf-btn-primary min-h-[42px] px-5 py-2 gap-2 disabled:opacity-50"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
             {isSaving ? 'Syncing...' : saveSuccess ? 'Saved to cloud' : 'Save resume'}
@@ -304,10 +304,10 @@ export default function ResumeEditor() {
 
       <div className="space-y-8">
         {/* Professional Summary */}
-        <section className="bg-[var(--hf-surface)] p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <section className="hf-card p-5 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--hf-border)]">
             <div>
-              <h2 className="text-sm sm:text-base font-semibold text-[var(--hf-text)] flex items-center gap-2">
+              <h2 className="font-serif-display text-xl font-normal text-[var(--hf-text)] flex items-center gap-2">
                 <BrainCircuit className="w-4 h-4 text-[var(--hf-cta)]" /> Professional summary
               </h2>
               <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
@@ -324,7 +324,7 @@ export default function ResumeEditor() {
                 experienceList[0]?.role, 
                 experienceList[0]?.company
               )}
-              className="self-start sm:self-auto min-h-[36px] px-3.5 py-1.5 rounded-lg border text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer bg-[color-mix(in_srgb,var(--hf-ai-teal)_10%,transparent)] border-[color-mix(in_srgb,var(--hf-ai-teal)_25%,transparent)] text-[var(--hf-ai-teal)] hover:bg-[color-mix(in_srgb,var(--hf-ai-teal)_18%,transparent)]"
+              className="self-start sm:self-auto min-h-[36px] px-3.5 py-1.5 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[var(--hf-mint)] text-[var(--hf-success)] hover:-translate-y-0.5"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Improve with AI</span>
@@ -335,7 +335,7 @@ export default function ResumeEditor() {
               value={data.summary || ''}
               onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
               placeholder="Introduce your engineering background, specializations, and quantifiable career achievements..."
-              className="w-full min-h-[120px] p-4 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent resize-none leading-relaxed font-sans"
+              className="w-full min-h-[120px] p-4 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] resize-none leading-relaxed font-sans"
             />
           </div>
         </section>
@@ -344,7 +344,7 @@ export default function ResumeEditor() {
         <section className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
             <div>
-              <h2 className="text-base sm:text-lg font-semibold text-[var(--hf-text)] flex items-center gap-2">
+              <h2 className="font-serif-display text-2xl font-normal text-[var(--hf-text)] flex items-center gap-2">
                 <Briefcase className="w-4 h-4 text-[var(--hf-cta)]" /> Work experience
               </h2>
               <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
@@ -354,7 +354,7 @@ export default function ResumeEditor() {
             <button
               type="button"
               onClick={addExperience}
-              className="self-start sm:self-auto hf-btn-secondary min-h-[40px] px-3.5 py-2 text-xs sm:text-sm font-medium flex items-center gap-2 cursor-pointer"
+              className="self-start sm:self-auto hf-btn-secondary min-h-[40px] px-3.5 py-2 gap-2"
             >
               <Plus className="w-4 h-4" /> Add experience entry
             </button>
@@ -362,10 +362,10 @@ export default function ResumeEditor() {
 
           <div className="space-y-4">
             {experienceList.length === 0 ? (
-              <div className="bg-[var(--hf-surface)] border border-dashed border-[var(--hf-border)] rounded-xl p-8 sm:p-10 text-center space-y-3">
+              <div className="bg-[var(--hf-surface)] border-[1.5px] border-dashed border-[var(--hf-ink-border)] rounded-sm p-8 sm:p-10 text-center space-y-3">
                 <Briefcase className="w-9 h-9 text-[var(--hf-text-muted)] mx-auto stroke-[1.5]" />
                 <div>
-                  <h3 className="text-base font-semibold text-[var(--hf-text)]">No experience entries added yet</h3>
+                  <h3 className="font-serif-display text-lg font-semibold text-[var(--hf-text)]">No experience entries added yet</h3>
                   <p className="text-xs text-[var(--hf-text-secondary)] mt-1 max-w-md mx-auto">
                     Add your previous roles to structure your accomplishments using Google's XYZ bullet formula.
                   </p>
@@ -373,7 +373,7 @@ export default function ResumeEditor() {
                 <button
                   type="button"
                   onClick={addExperience}
-                  className="hf-btn-primary min-h-[40px] px-4 py-2 text-xs font-medium inline-flex items-center gap-2 cursor-pointer"
+                  className="hf-btn-primary min-h-[40px] px-4 py-2 gap-2"
                 >
                   <Plus className="w-4 h-4" /> Add first experience
                 </button>
@@ -387,14 +387,14 @@ export default function ResumeEditor() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.98 }}
-                    className="bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-xl overflow-hidden shadow-xs"
+                    className="hf-card overflow-hidden"
                   >
                     <div 
                       className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-[var(--hf-surface-secondary)]/50 transition-colors"
                       onClick={() => updateExperience(exp.id, 'isExpanded', !exp.isExpanded)}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-[var(--hf-surface-secondary)] rounded-lg flex items-center justify-center border border-[var(--hf-border)] shrink-0 text-[var(--hf-cta)]">
+                        <div className="w-9 h-9 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center border border-[var(--hf-ink-border)] shrink-0 text-[var(--hf-cta)]">
                           <Briefcase className="w-4 h-4" />
                         </div>
                         <div>
@@ -406,7 +406,7 @@ export default function ResumeEditor() {
                         <button 
                           type="button"
                           onClick={(e) => { e.stopPropagation(); removeExperience(exp.id); }}
-                          className="min-h-[36px] min-w-[36px] flex items-center justify-center p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-lg hover:bg-[var(--hf-surface-secondary)] transition-colors cursor-pointer mr-1"
+                          className="min-h-[36px] min-w-[36px] flex items-center justify-center p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-sm hover:bg-[var(--hf-surface-secondary)] transition-colors cursor-pointer mr-1"
                           aria-label="Delete experience"
                           title="Delete experience"
                         >
@@ -420,7 +420,7 @@ export default function ResumeEditor() {
                       <motion.div 
                         initial={{ height: 0 }}
                         animate={{ height: 'auto' }}
-                        className="px-4 sm:px-6 pb-6 pt-4 space-y-5 border-t border-[var(--hf-border)]"
+                        className="px-4 sm:px-6 pb-6 pt-4 space-y-5 border-t-[1.5px] border-[var(--hf-ink-border)]"
                       >
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                           <div>
@@ -429,7 +429,7 @@ export default function ResumeEditor() {
                               value={exp.company || ''}
                               onChange={(e) => updateExperience(exp.id, 'company', e.target.value)}
                               placeholder="e.g. Acme Corp"
-                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent"
+                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                             />
                           </div>
                           <div>
@@ -438,7 +438,7 @@ export default function ResumeEditor() {
                               value={exp.role || ''}
                               onChange={(e) => updateExperience(exp.id, 'role', e.target.value)}
                               placeholder="e.g. Senior Frontend Engineer"
-                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent"
+                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                             />
                           </div>
                           <div>
@@ -446,7 +446,7 @@ export default function ResumeEditor() {
                             <input 
                               value={exp.period || ''}
                               onChange={(e) => updateExperience(exp.id, 'period', e.target.value)}
-                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent"
+                              className="w-full min-h-[42px] px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)]"
                               placeholder="e.g. 2022 – Present"
                             />
                           </div>
@@ -460,14 +460,14 @@ export default function ResumeEditor() {
                             <button 
                               type="button"
                               onClick={() => updateExperience(exp.id, 'bullets', [...(exp.bullets || []), ''])}
-                              className="min-h-[36px] px-2.5 py-1 text-xs font-medium text-[var(--hf-cta)] hover:underline cursor-pointer flex items-center gap-1"
+                              className="min-h-[36px] px-2.5 py-1 text-xs font-semibold text-[var(--hf-cta)] hover:underline cursor-pointer flex items-center gap-1"
                             >
                               <Plus className="w-3.5 h-3.5" /> Add bullet
                             </button>
                           </div>
                           <div className="space-y-3">
                             {(exp.bullets || []).map((bullet, bIdx) => (
-                              <div key={bIdx} className="bg-[var(--hf-surface-secondary)]/50 border border-[var(--hf-border)] rounded-lg p-3 sm:p-3.5 space-y-2.5 transition-colors focus-within:border-[var(--hf-cta)]/50">
+                              <div key={bIdx} className="bg-[var(--hf-surface-secondary)]/50 border border-[var(--hf-ink-border)] rounded-sm p-3 sm:p-3.5 space-y-2.5 transition-colors">
                                 <textarea
                                   value={bullet || ''}
                                   onChange={(e) => {
@@ -475,7 +475,7 @@ export default function ResumeEditor() {
                                     newBullets[bIdx] = e.target.value;
                                     updateExperience(exp.id, 'bullets', newBullets);
                                   }}
-                                  className="w-full p-3 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent resize-none leading-relaxed font-sans"
+                                  className="w-full p-3 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] resize-none leading-relaxed font-sans"
                                   rows={2}
                                   placeholder="Accomplished [X] as measured by [Y] by doing [Z]..."
                                 />
@@ -484,7 +484,7 @@ export default function ResumeEditor() {
                                   <button
                                     type="button"
                                     onClick={() => handleOpenWritingAssistant(bullet, 'bullet', exp.id, bIdx, exp.role, exp.company)}
-                                    className="min-h-[36px] px-3 py-1.5 bg-[color-mix(in_srgb,var(--hf-ai-teal)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--hf-ai-teal)_18%,transparent)] border border-[color-mix(in_srgb,var(--hf-ai-teal)_25%,transparent)] rounded-lg text-[var(--hf-ai-teal)] text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                                    className="min-h-[36px] px-3 py-1.5 bg-[var(--hf-mint)] border border-[var(--hf-ink-border)] rounded-sm text-[var(--hf-success)] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-[1px_1px_0px_var(--hf-ink-border)] hover:-translate-y-0.5"
                                   >
                                     <Wand2 className="w-3.5 h-3.5" />
                                     <span>Improve with AI</span>
@@ -496,7 +496,7 @@ export default function ResumeEditor() {
                                       const newBullets = (exp.bullets || []).filter((_, i) => i !== bIdx);
                                       updateExperience(exp.id, 'bullets', newBullets);
                                     }}
-                                    className="min-h-[36px] min-w-[36px] flex items-center justify-center p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-lg hover:bg-[var(--hf-surface)] transition-colors cursor-pointer"
+                                    className="min-h-[36px] min-w-[36px] flex items-center justify-center p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-sm hover:bg-[var(--hf-surface)] transition-colors cursor-pointer"
                                     aria-label="Delete bullet"
                                     title="Delete bullet"
                                   >
@@ -517,9 +517,9 @@ export default function ResumeEditor() {
         </section>
 
         {/* Skills Section */}
-        <section className="bg-[var(--hf-surface)] p-5 sm:p-6 rounded-xl border border-[var(--hf-border)] shadow-xs">
-          <div className="mb-4">
-            <h2 className="text-sm sm:text-base font-semibold text-[var(--hf-text)] flex items-center gap-2">
+        <section className="hf-card p-5 sm:p-6">
+          <div className="mb-4 pb-3 border-b border-[var(--hf-border)]">
+            <h2 className="font-serif-display text-xl font-normal text-[var(--hf-text)] flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-[var(--hf-cta)]" /> Core skills
             </h2>
             <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
@@ -538,18 +538,18 @@ export default function ResumeEditor() {
                     }
                   }
                 }}
-                className="flex-1 min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] focus:border-transparent font-sans"
+                className="flex-1 min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] font-sans"
                 placeholder="Type a skill (e.g. React, Docker, Python) and press Enter..."
               />
             </div>
             <div className="flex flex-wrap gap-2">
               {skillsList.map((skill, i) => (
-                <span key={i} className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--hf-text)] flex items-center gap-2">
+                <span key={i} className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] px-3 py-1.5 rounded-sm text-xs font-semibold text-[var(--hf-text)] flex items-center gap-2 shadow-[1px_1px_0px_var(--hf-ink-border)]">
                   <span>{skill}</span>
                   <button 
                     type="button"
                     onClick={() => setData(prev => ({ ...prev, skills: (prev.skills || []).filter((_, idx) => idx !== i) }))}
-                    className="min-h-[24px] min-w-[24px] flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded transition-colors cursor-pointer"
+                    className="min-h-[24px] min-w-[24px] flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-sm transition-colors cursor-pointer"
                     aria-label={`Remove skill ${skill}`}
                     title="Remove skill"
                   >
@@ -590,7 +590,7 @@ export default function ResumeEditor() {
       </div>
 
       {/* Floating Status Bar */}
-      <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--hf-surface)]/95 backdrop-blur-sm border border-[var(--hf-border)] px-4 sm:px-5 py-2.5 rounded-full shadow-md flex items-center gap-4 sm:gap-6 text-xs whitespace-nowrap">
+      <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] px-4 sm:px-5 py-2.5 rounded-sm shadow-[3px_3px_0px_var(--hf-ink-border)] flex items-center gap-4 sm:gap-6 text-xs whitespace-nowrap">
         <div className="flex items-center gap-2 border-r border-[var(--hf-border)] pr-3 sm:pr-4">
           <div className="w-2 h-2 rounded-full bg-[var(--hf-success)]" />
           <span className="font-semibold text-[var(--hf-text)]">Master resume</span>
@@ -598,11 +598,11 @@ export default function ResumeEditor() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="text-[var(--hf-text-secondary)]">Bullets:</span>
-            <span className="font-semibold text-[var(--hf-text)] tabular-nums">{experienceList.reduce((acc, curr) => acc + (curr.bullets?.length || 0), 0)}</span>
+            <span className="font-mono font-bold text-[var(--hf-text)] tabular-nums">{experienceList.reduce((acc, curr) => acc + (curr.bullets?.length || 0), 0)}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-[var(--hf-text-secondary)]">Skills:</span>
-            <span className="font-semibold text-[var(--hf-text)] tabular-nums">{skillsList.length}</span>
+            <span className="font-mono font-bold text-[var(--hf-text)] tabular-nums">{skillsList.length}</span>
           </div>
         </div>
       </div>

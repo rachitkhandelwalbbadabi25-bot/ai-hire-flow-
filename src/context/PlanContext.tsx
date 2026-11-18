@@ -1871,35 +1871,35 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     <PlanContext.Provider value={value}>
       {children}
       
-      {/* Animated Floating Toasts Notification Overlay */}
-      <div className="fixed bottom-6 right-6 z-[999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+      {/* Floating Toast Notifications */}
+      <div className="fixed bottom-6 right-6 z-[999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
         <AnimatePresence>
           {notifications.map((n) => (
             <motion.div
               key={n.id}
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="bg-surface/90 backdrop-blur-xl border border-border p-4 rounded-3xl shadow-2xl flex gap-3 pointer-events-auto items-start"
+              exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15 } }}
+              className="bg-[var(--hf-surface)] border border-[var(--hf-border)] p-3.5 rounded-xl shadow-lg flex gap-3 pointer-events-auto items-start"
             >
-              <div className="p-2.5 rounded-xl bg-accent/10 text-accent mt-0.5">
-                {n.type === 'achievement' && <Award className="w-5 h-5 text-amber-500" />}
-                {n.type === 'mission' && <CheckCircle2 className="w-5 h-5 text-success" />}
-                {n.type === 'streak' && <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />}
-                {n.type === 'referral' && <Sparkles className="w-5 h-5 text-blue-500" />}
-                {n.type === 'low-credits' && <AlertCircle className="w-5 h-5 text-rose-500" />}
-                {n.type === 'info' && <RefreshCw className="w-5 h-5 text-accent" />}
+              <div className="p-2 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-cta)] mt-0.5 shrink-0">
+                {n.type === 'achievement' && <Award className="w-4 h-4 text-[var(--hf-warning)]" />}
+                {n.type === 'mission' && <CheckCircle2 className="w-4 h-4 text-[var(--hf-success)]" />}
+                {n.type === 'streak' && <Zap className="w-4 h-4 text-[var(--hf-warning)]" />}
+                {n.type === 'referral' && <Sparkles className="w-4 h-4 text-[var(--hf-cta)]" />}
+                {n.type === 'low-credits' && <AlertCircle className="w-4 h-4 text-[var(--hf-error)]" />}
+                {n.type === 'info' && <RefreshCw className="w-4 h-4 text-[var(--hf-cta)]" />}
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-ink uppercase tracking-wide flex items-center gap-1.5">
-                  {n.title}
+                <h4 className="text-xs font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
+                  <span>{n.title}</span>
                   {n.creditsAwarded && (
-                    <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-mono font-bold">
+                    <span className="text-[10px] bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-cta)] px-1.5 py-0.5 rounded font-mono font-semibold">
                       +{n.creditsAwarded} CR
                     </span>
                   )}
                 </h4>
-                <p className="text-[10px] text-ink-dim leading-relaxed font-semibold mt-1">
+                <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed mt-0.5">
                   {n.description}
                 </p>
               </div>

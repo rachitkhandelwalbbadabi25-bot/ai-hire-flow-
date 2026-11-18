@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Sparkles, FileText, BarChart2, CheckCircle, ArrowRight, X } from 'lucide-react';
+import { FileText, BarChart2, CheckCircle, ArrowRight, X } from 'lucide-react';
 
 export default function OnboardingTour() {
   const { user } = useAuth();
@@ -26,7 +26,6 @@ export default function OnboardingTour() {
             setShowTour(true);
           }
         } else {
-          // New user profile
           setShowTour(true);
         }
       } catch (e) {
@@ -51,28 +50,25 @@ export default function OnboardingTour() {
 
   const steps = [
     {
-      title: 'Step 1: Upload Your Resume',
-      description: 'Start by uploading your current resume in PDF format to receive instant AI feedback and keyword matching.',
+      title: '1. Upload your resume',
+      description: 'Upload your current resume in PDF or DOCX format to calculate baseline ATS readability and keyword coverage.',
       path: '/analyzer',
       icon: FileText,
-      accent: 'text-accent bg-accent/10 border-accent/20',
       actionText: 'Go to Resume Analyzer'
     },
     {
-      title: 'Step 2: Check Your ATS Match Score',
-      description: 'Analyze your compatibility against target job descriptions and optimize your resume keywords for applicant tracking systems.',
+      title: '2. Compare against a target role',
+      description: 'Paste any job description to inspect your 4-factor compatibility score and rewrite experience bullets.',
       path: '/analyzer',
       icon: BarChart2,
-      accent: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
-      actionText: 'View Analysis Setup'
+      actionText: 'Continue'
     },
     {
-      title: 'Step 3: Dashboard Command Center',
-      description: 'Your Dashboard features a live progress checklist and career metrics—use it as your daily home base to track actions and placement progress.',
+      title: '3. Manage your search from the Dashboard',
+      description: 'Use your workspace dashboard to track applications, run mock interviews, and monitor weekly momentum.',
       path: '/dashboard',
       icon: CheckCircle,
-      accent: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-      actionText: 'Finish Onboarding'
+      actionText: 'Complete Setup'
     }
   ];
 
@@ -94,73 +90,68 @@ export default function OnboardingTour() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          initial={{ opacity: 0, scale: 0.96, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          exit={{ opacity: 0, scale: 0.96, y: 10 }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="tour-step-title"
-          className="bg-surface border border-border p-8 rounded-[2.5rem] max-w-lg w-full shadow-2xl relative overflow-hidden"
+          className="bg-[var(--hf-surface)] border border-[var(--hf-border)] p-6 sm:p-7 rounded-xl max-w-md w-full shadow-xl relative overflow-hidden"
         >
           <button
             onClick={markCompleted}
-            className="absolute top-6 right-6 p-2 text-ink-dim hover:text-ink hover:bg-surface-light rounded-xl transition-all cursor-pointer"
+            className="absolute top-4 right-4 p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors cursor-pointer"
             aria-label="Skip onboarding tour"
             title="Skip tour"
           >
-            <X className="w-5 h-5" aria-hidden="true" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
 
-          <div className="flex items-center gap-2 mb-6">
-            <Sparkles className="w-5 h-5 text-accent" aria-hidden="true" />
-            <span className="text-xs font-bold text-accent uppercase tracking-widest font-mono">
-              Quick Start Guide ({currentStep + 1}/{steps.length})
+          <div className="mb-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)]">
+              Workspace Guide ({currentStep + 1} of {steps.length})
             </span>
           </div>
 
-          <div className="flex items-start gap-4 mb-6">
-            <div className={`p-4 rounded-2xl border flex items-center justify-center shrink-0 ${step.accent}`} aria-hidden="true">
-              <StepIcon className="w-7 h-7" />
+          <div className="flex items-start gap-3.5 mb-6">
+            <div className="p-3 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-cta)] flex items-center justify-center shrink-0" aria-hidden="true">
+              <StepIcon className="w-5 h-5" />
             </div>
             <div>
-              <h3 id="tour-step-title" className="text-xl font-bold text-ink mb-2 tracking-tight">{step.title}</h3>
-              <p className="text-sm text-ink-dim leading-relaxed font-medium">{step.description}</p>
+              <h3 id="tour-step-title" className="text-base font-semibold text-[var(--hf-text)] mb-1 tracking-tight">{step.title}</h3>
+              <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{step.description}</p>
             </div>
           </div>
 
-          {/* Progress dots */}
-          <div className="flex items-center justify-between pt-6 border-t border-border" aria-label={`Step ${currentStep + 1} of ${steps.length}`}>
-            <div className="flex gap-2" role="tablist" aria-label="Tour step indicators">
+          <div className="flex items-center justify-between pt-4 border-t border-[var(--hf-border)]">
+            <div className="flex gap-1.5" role="tablist" aria-label="Tour step indicators">
               {steps.map((_, idx) => (
                 <div
                   key={idx}
                   role="tab"
                   aria-selected={idx === currentStep}
-                  aria-label={`Step ${idx + 1}`}
-                  className={`h-2 rounded-full transition-all ${
-                    idx === currentStep ? 'w-8 bg-accent' : 'w-2 bg-white/20'
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    idx === currentStep ? 'w-6 bg-[var(--hf-cta)]' : 'w-1.5 bg-[var(--hf-border)]'
                   }`}
                 />
               ))}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={markCompleted}
-                className="text-xs font-bold text-ink-dim hover:text-ink px-3 py-2 rounded-xl transition-colors cursor-pointer"
-                aria-label="Skip the onboarding walkthrough"
+                className="px-3 py-1.5 text-xs font-medium text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] transition-colors cursor-pointer"
               >
-                Skip Tour
+                Skip
               </button>
               <button
                 onClick={handleNext}
-                className="bg-accent text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-accent/20 cursor-pointer"
-                aria-label={step.actionText}
+                className="hf-btn-primary px-4 py-2 text-xs gap-1.5"
               >
                 <span>{step.actionText}</span>
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
           </div>

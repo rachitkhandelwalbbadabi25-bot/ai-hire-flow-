@@ -27,7 +27,7 @@ export default function RefundPolicy() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-ink selection:bg-accent selection:text-black">
+    <div className="min-h-screen bg-[var(--hf-bg)] text-[var(--hf-text)] selection:bg-[var(--hf-cta)] selection:text-white">
       <SEOHead 
         title="Refund & Cancellation Policy | AI HireFlow"
         description="Review AI HireFlow's Refund and Cancellation Policy. Understand subscription renewals, consumable credit pack terms, duplicate transaction resolutions, and support procedures."
@@ -36,24 +36,26 @@ export default function RefundPolicy() {
       />
 
       {/* Header Banner */}
-      <div className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 border-b border-border bg-surface/50">
+      <div className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)] bg-[var(--hf-surface)]">
         <div className="max-w-4xl mx-auto">
           <Link 
             to="/" 
-            className="inline-flex items-center gap-2 text-xs font-mono text-ink-dim hover:text-accent transition-colors mb-6"
+            className="inline-flex items-center gap-2 text-xs font-medium text-[var(--hf-text-secondary)] hover:text-[var(--hf-cta)] transition-colors mb-5"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
           </Link>
 
-          <div className="inline-flex items-center gap-2 bg-surface px-3 py-1 rounded-full text-accent text-xs font-mono font-bold uppercase tracking-wider mb-4 border border-border">
-            <RotateCcw className="w-3.5 h-3.5" /> Billing &amp; Cancellations
+          <div className="mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)]">
+              Billing &amp; Cancellations
+            </span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-black tracking-tight text-ink mb-4">
+          <h1 className="text-3xl sm:text-4xl font-sans font-bold tracking-tight text-[var(--hf-text)] mb-3">
             Refund &amp; Cancellation Policy
           </h1>
 
-          <p className="text-sm text-ink-dim font-mono">
+          <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)]">
             Effective Date: September 2026 &bull; Platform: AI HireFlow
           </p>
         </div>

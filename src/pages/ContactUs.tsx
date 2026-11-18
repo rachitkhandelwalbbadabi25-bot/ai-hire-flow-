@@ -95,7 +95,7 @@ export default function ContactUs() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-ink selection:bg-accent selection:text-black">
+    <div className="min-h-screen bg-[var(--hf-bg)] text-[var(--hf-text)] selection:bg-[var(--hf-cta)] selection:text-white">
       <SEOHead 
         title="Contact Us | AI HireFlow Support"
         description="Get in touch with the AI HireFlow team for account help, payment issues, credit questions, and technical support. Direct support email: rrachitkhandelwal@gmail.com"
@@ -104,24 +104,26 @@ export default function ContactUs() {
       />
 
       {/* Header Banner */}
-      <div className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 border-b border-border bg-surface/50">
+      <div className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)] bg-[var(--hf-surface)]">
         <div className="max-w-4xl mx-auto">
           <Link 
             to="/" 
-            className="inline-flex items-center gap-2 text-xs font-mono text-ink-dim hover:text-accent transition-colors mb-6"
+            className="inline-flex items-center gap-2 text-xs font-medium text-[var(--hf-text-secondary)] hover:text-[var(--hf-cta)] transition-colors mb-5"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
           </Link>
 
-          <div className="inline-flex items-center gap-2 bg-surface px-3 py-1 rounded-full text-accent text-xs font-mono font-bold uppercase tracking-wider mb-4 border border-border">
-            <Mail className="w-3.5 h-3.5" /> Customer Support Desk
+          <div className="mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)]">
+              Customer Support Desk
+            </span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-black tracking-tight text-ink mb-4">
+          <h1 className="text-3xl sm:text-4xl font-sans font-bold tracking-tight text-[var(--hf-text)] mb-3">
             Contact Us
           </h1>
 
-          <p className="text-base text-ink-dim max-w-2xl">
+          <p className="text-sm sm:text-base text-[var(--hf-text-secondary)] max-w-2xl">
             Have a question about your AI HireFlow account, credit wallet, Razorpay payment, or resume diagnostics? We are here to assist you.
           </p>
         </div>
@@ -238,7 +240,7 @@ export default function ContactUs() {
 
                 <a
                   href={constructMailto()}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-black font-mono text-xs font-bold uppercase tracking-wider hover:bg-accent/90 transition-colors"
+                  className="hf-btn-primary px-5 py-2.5 text-xs gap-2"
                 >
                   <Send className="w-3.5 h-3.5" /> Launch Email Client
                 </a>

@@ -58,13 +58,13 @@ export default function JobFinderSEO() {
       {/* Search Header Bar Mockup */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hf-border)] pb-4">
         <div className="flex items-center gap-2">
-          <span className="hf-badge hf-badge-teal">Sample discovery</span>
+          <span className="hf-badge hf-badge-teal">Discovery preview</span>
           <span className="text-xs text-[var(--hf-text-secondary)] font-medium">
-            Search: &ldquo;Senior Frontend Engineer&rdquo; [Sample]
+            Search: &ldquo;Senior Frontend Engineer&rdquo;
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--hf-text-muted)]">
-          <span>Filter: Remote &bull; Full-time [Sample]</span>
+          <span>Filter: Remote &bull; Full-time</span>
         </div>
       </div>
 
@@ -86,7 +86,6 @@ export default function JobFinderSEO() {
 
           <div className="shrink-0 self-start">
             <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--hf-surface)] text-[var(--hf-cta)] border border-[var(--hf-border)] tabular-nums flex items-center gap-1.5 shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[var(--hf-ai-teal)]" />
               <span>{SAMPLE_JOB_FINDER.matchScoreLabel}</span>
             </span>
           </div>
@@ -97,7 +96,7 @@ export default function JobFinderSEO() {
           <div className="p-3 rounded bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1.5">
             <span className="text-[11px] font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-[var(--hf-success)]" />
-              <span>Matched skills [Sample]</span>
+              <span>Matched skills</span>
             </span>
             <div className="flex flex-wrap gap-1">
               {SAMPLE_JOB_FINDER.matchedSkills.map((sk, idx) => (
@@ -111,7 +110,7 @@ export default function JobFinderSEO() {
           <div className="p-3 rounded bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1.5">
             <span className="text-[11px] font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
               <AlertCircle className="w-3.5 h-3.5 text-[var(--hf-warning)]" />
-              <span>Missing skills [Sample]</span>
+              <span>Preferred gaps</span>
             </span>
             <div className="flex flex-wrap gap-1">
               {SAMPLE_JOB_FINDER.missingSkills.map((sk, idx) => (
@@ -126,7 +125,7 @@ export default function JobFinderSEO() {
         {/* Why This Role Explanation */}
         <div className="p-3.5 rounded bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1">
           <span className="text-xs font-semibold text-[var(--hf-text)]">
-            Why this role matches your profile [Sample]
+            Compatibility summary
           </span>
           <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">
             {SAMPLE_JOB_FINDER.whyThisRole}

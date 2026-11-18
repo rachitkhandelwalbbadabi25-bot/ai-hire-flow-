@@ -55,13 +55,13 @@ export default function JobTrackerSEO() {
     <div className="hf-card p-5 sm:p-7 shadow-xs space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hf-border)] pb-4">
         <div className="flex items-center gap-2">
-          <span className="hf-badge hf-badge-teal">Sample pipeline</span>
+          <span className="hf-badge hf-badge-teal">Pipeline preview</span>
           <span className="text-xs text-[var(--hf-text-secondary)] font-medium">
-            Active search board [Sample]
+            Active search board
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--hf-text-muted)]">
-          <span>4 stages &bull; 10 tracked positions [Sample]</span>
+          <span>4 stages &bull; 10 tracked positions</span>
         </div>
       </div>
 
@@ -104,7 +104,7 @@ export default function JobTrackerSEO() {
             </div>
 
             <div className="pt-2 text-[10px] text-[var(--hf-text-muted)] text-center">
-              Real-time sync [Sample]
+              Cloud synced
             </div>
           </div>
         ))}

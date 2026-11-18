@@ -1,6 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertCircle, Zap, Terminal } from 'lucide-react';
-import { motion } from 'motion/react';
+import { AlertCircle, RotateCcw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -28,46 +27,44 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="max-w-2xl w-full bg-[#111] border-2 border-rose-500/20 rounded-[2.5rem] p-12 text-center shadow-[0_0_50px_rgba(244,63,94,0.1)]"
-          >
-            <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-8 border border-rose-500/20">
-              <AlertCircle className="w-10 h-10 text-rose-500" />
-            </div>
-            
-            <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Unexpected Error Detected</h1>
-            <p className="text-zinc-500 text-sm mb-10 leading-relaxed">
-              An unexpected application error occurred. Please refresh or return home to restore your session.
-            </p>
-
-            <div className="bg-black/50 border border-zinc-800 rounded-2xl p-6 mb-8 text-left font-mono">
-               <div className="flex items-center gap-2 mb-3">
-                  <Terminal className="w-4 h-4 text-rose-500" />
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Error Trace</span>
-               </div>
-               <p className="text-rose-400 text-xs overflow-x-auto whitespace-pre-wrap">
-                  {this.state.error?.toString()}
-               </p>
+        <div className="min-h-screen bg-[var(--hf-bg)] text-[var(--hf-text)] flex items-center justify-center p-6">
+          <div className="max-w-lg w-full hf-card p-8 text-center space-y-5">
+            <div className="w-12 h-12 bg-rose-500/10 rounded-xl flex items-center justify-center mx-auto border border-rose-500/20">
+              <AlertCircle className="w-6 h-6 text-[var(--hf-error)]" />
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-               <button 
-                onClick={() => window.location.href = '/rabbit'}
-                className="flex-1 bg-accent text-white py-4 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-accent/20"
-               >
-                 <Zap className="w-4 h-4" /> Ask Code Rabbit for Fix
-               </button>
-               <button 
+            <div>
+              <h1 className="text-xl font-bold text-[var(--hf-text)] tracking-tight mb-1.5">
+                Something went wrong
+              </h1>
+              <p className="text-[var(--hf-text-secondary)] text-xs sm:text-sm leading-relaxed">
+                An unexpected application error occurred while rendering this view. Refresh the page to continue.
+              </p>
+            </div>
+
+            {this.state.error && (
+              <div className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] rounded-lg p-3.5 text-left font-mono">
+                <p className="text-[var(--hf-error)] text-xs overflow-x-auto whitespace-pre-wrap">
+                  {this.state.error.toString()}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
                 onClick={() => window.location.reload()}
-                className="flex-1 bg-zinc-900 text-zinc-400 border border-zinc-800 py-4 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:text-white transition-all"
-               >
-                 Re-initialize Interface
-               </button>
+                className="hf-btn-primary flex-1 py-2.5 text-xs gap-2"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reload workspace
+              </button>
+              <button
+                onClick={() => (window.location.href = '/')}
+                className="hf-btn-secondary flex-1 py-2.5 text-xs"
+              >
+                Return to Home
+              </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       );
     }

@@ -56,13 +56,13 @@ export default function CareerAdvisorSEO() {
     <div className="hf-card p-5 sm:p-7 shadow-xs space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hf-border)] pb-4">
         <div className="flex items-center gap-2">
-          <span className="hf-badge hf-badge-teal">Sample roadmap</span>
+          <span className="hf-badge hf-badge-teal">Roadmap preview</span>
           <span className="text-xs text-[var(--hf-text-secondary)] font-medium">
             Path: {SAMPLE_CAREER_ADVISOR.currentRole} &rarr; {SAMPLE_CAREER_ADVISOR.targetRole}
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--hf-text-muted)]">
-          <span>3 structured milestones [Sample]</span>
+          <span>3 structured milestones</span>
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export default function CareerAdvisorSEO() {
         <div className="p-3.5 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] space-y-2">
           <span className="text-xs font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-[var(--hf-success)]" />
-            <span>Demonstrated skills [Sample]</span>
+            <span>Demonstrated skills</span>
           </span>
           <div className="flex flex-wrap gap-1.5">
             {SAMPLE_CAREER_ADVISOR.currentSkills.map((sk, idx) => (
@@ -85,7 +85,7 @@ export default function CareerAdvisorSEO() {
         <div className="p-3.5 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] space-y-2">
           <span className="text-xs font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 text-[var(--hf-warning)]" />
-            <span>Target qualification gaps [Sample]</span>
+            <span>Target qualification gaps</span>
           </span>
           <div className="flex flex-wrap gap-1.5">
             {SAMPLE_CAREER_ADVISOR.missingSkills.map((sk, idx) => (
@@ -100,7 +100,7 @@ export default function CareerAdvisorSEO() {
       {/* 3 Milestones */}
       <div className="space-y-2.5 pt-1">
         <span className="text-xs font-semibold text-[var(--hf-text)] block">
-          Sequential milestone curriculum [Sample]
+          Sequential milestone curriculum
         </span>
         <div className="space-y-2">
           {SAMPLE_CAREER_ADVISOR.milestones.map((m, idx) => (

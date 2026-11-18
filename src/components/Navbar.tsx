@@ -15,19 +15,19 @@ import {
   Briefcase, 
   User as UserIcon, 
   LogOut, 
-  Sparkles,
+  CreditCard,
   LayoutDashboard,
   Search,
   FileEdit,
   Menu,
   X,
-  Home,
   GraduationCap,
   Mic,
   Award,
   MessageCircle,
   Sun,
-  Moon
+  Moon,
+  ArrowRight
 } from 'lucide-react';
 
 import { usePlan } from '../context/PlanContext';
@@ -42,6 +42,7 @@ export default function Navbar({ user }: NavbarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isPublicMenuOpen, setIsPublicMenuOpen] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const isPublicRoute = PUBLIC_SEO_ROUTES.includes(location.pathname);
@@ -65,45 +66,80 @@ export default function Navbar({ user }: NavbarProps) {
     }
   };
 
-  const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Job finder', path: '/finder', icon: Search },
-    { name: 'Campus prep', path: '/campus', icon: Award },
-    { name: 'Outreach & alerts', path: '/outreach', icon: MessageCircle },
-    { name: 'Resume analyzer', path: '/analyzer', icon: BarChart3 },
-    { name: 'Interview lab', path: '/interview', icon: Mic },
-    { name: 'Learning path', path: '/learning', icon: GraduationCap },
-    { name: 'Resume editor', path: '/editor', icon: FileEdit },
-    { name: 'Job tracker', path: '/jobs', icon: Briefcase },
-    { name: 'Credit wallet', path: '/credits', icon: Sparkles },
-    { name: 'Profile', path: '/profile', icon: UserIcon },
+  const publicNavLinks = [
+    { name: 'Resume Analyzer', path: '/resume-analyzer' },
+    { name: 'Resume Editor', path: '/resume-editor' },
+    { name: 'Job Search', path: '/job-finder' },
+    { name: 'Job Tracker', path: '/job-tracker' },
+    { name: 'Interview Lab', path: '/interview-lab' },
+    { name: 'Career Roadmap', path: '/career-advisor' },
+  ];
+
+  const navGroups = [
+    {
+      label: 'Overview',
+      items: [
+        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      ]
+    },
+    {
+      label: 'Documents & Audit',
+      items: [
+        { name: 'Resume Analyzer', path: '/analyzer', icon: BarChart3 },
+        { name: 'Resume Editor', path: '/editor', icon: FileEdit },
+      ]
+    },
+    {
+      label: 'Opportunities',
+      items: [
+        { name: 'Job Finder', path: '/finder', icon: Search },
+        { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
+        { name: 'Outreach Hub', path: '/outreach', icon: MessageCircle },
+      ]
+    },
+    {
+      label: 'Preparation',
+      items: [
+        { name: 'Interview Lab', path: '/interview', icon: Mic },
+        { name: 'Learning Path', path: '/learning', icon: GraduationCap },
+        { name: 'Campus Prep', path: '/campus', icon: Award },
+      ]
+    },
+    {
+      label: 'Account',
+      items: [
+        { name: 'Billing & Credits', path: '/credits', icon: CreditCard },
+        { name: 'Profile', path: '/profile', icon: UserIcon },
+      ]
+    }
   ];
 
   const getPlanLabel = (p: string) => {
     switch (p) {
-      case 'admin': return 'System admin';
-      case 'premium': return 'Premium';
+      case 'admin': return 'Administrator';
+      case 'premium': return 'Premium Plan';
       case 'pro':
-      case 'standard': return 'Pro';
-      default: return 'Free';
+      case 'standard': return 'Pro Plan';
+      default: return 'Free Plan';
     }
   };
 
-  // Close drawer on path change
   useEffect(() => {
     setIsDrawerOpen(false);
+    setIsPublicMenuOpen(false);
   }, [location.pathname]);
 
   return (
     <>
-      <nav aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-[100] bg-[var(--hf-surface)] border-b border-[var(--hf-border)] shadow-xs transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
+      <nav aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-[100] bg-[var(--hf-surface)]/95 backdrop-blur-xs border-b border-[var(--hf-border)] transition-colors">
+        <div className={cn("mx-auto px-4 sm:px-6 lg:px-8", isPublicRoute ? "max-w-7xl" : "max-w-full")}>
+          <div className="flex justify-between h-16 items-center gap-4">
+            {/* Left: Menu Trigger + Brand */}
             <div className="flex items-center gap-3">
               {user && !isPublicRoute && (
                 <button 
                   onClick={() => setIsDrawerOpen(true)}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors lg:hidden cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
+                  className="min-h-[40px] min-w-[40px] flex items-center justify-center -ml-1.5 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors lg:hidden cursor-pointer"
                   aria-label="Open navigation menu"
                   aria-expanded={isDrawerOpen}
                   aria-controls="mobile-navigation-drawer"
@@ -111,29 +147,62 @@ export default function Navbar({ user }: NavbarProps) {
                   <Menu className="w-5 h-5" aria-hidden="true" />
                 </button>
               )}
-              <Link to={user ? "/dashboard" : "/"} className="min-h-[44px] flex items-center gap-3 group focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded-lg" aria-label="AI HireFlow Home">
-                <HireFlowLogo className="w-8 h-8 shrink-0 transition-transform group-hover:scale-105" />
-                <div className="flex flex-col leading-tight">
-                  <span className="font-sans font-bold text-base tracking-tight text-[var(--hf-text)]">
-                    AI HireFlow
+              {isPublicRoute && (
+                <button
+                  onClick={() => setIsPublicMenuOpen((prev) => !prev)}
+                  className="min-h-[40px] min-w-[40px] flex items-center justify-center -ml-1.5 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors lg:hidden cursor-pointer"
+                  aria-label="Toggle menu"
+                  aria-expanded={isPublicMenuOpen}
+                >
+                  {isPublicMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+              )}
+              <Link to={user && !isPublicRoute ? "/dashboard" : "/"} className="flex items-center gap-2.5 group rounded-lg py-1" aria-label="AI HireFlow Home">
+                <HireFlowLogo className="w-7 h-7 shrink-0" />
+                <div className="flex items-baseline gap-2">
+                  <span className="font-sans font-semibold text-base tracking-tight text-[var(--hf-text)]">
+                    HireFlow
                   </span>
-                  <span className="text-[11px] font-normal text-[var(--hf-text-secondary)]">
-                    Career platform
+                  <span className="hidden sm:inline-block text-[11px] font-medium text-[var(--hf-text-muted)] border-l border-[var(--hf-border)] pl-2">
+                    Career Platform
                   </span>
                 </div>
               </Link>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4">
+            {/* Center: Public Navigation Links */}
+            {isPublicRoute && (
+              <div className="hidden lg:flex items-center gap-1">
+                {publicNavLinks.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                        isActive
+                          ? "text-[var(--hf-text)] bg-[var(--hf-surface-secondary)] font-semibold"
+                          : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/60"
+                      )}
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Right: Search, Theme, Account / Auth CTA */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
               {user && !isPublicRoute && <HeaderQuickSearch />}
 
-              {/* Theme Toggle */}
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="min-h-[44px] min-w-[44px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
+                className="min-h-[38px] min-w-[38px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg border border-transparent hover:border-[var(--hf-border)] transition-colors flex items-center justify-center cursor-pointer"
                 aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                title={`Toggle theme (${theme})`}
+                title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               >
                 {theme === 'dark' ? (
                   <Sun className="w-4 h-4 text-amber-400" />
@@ -143,95 +212,140 @@ export default function Navbar({ user }: NavbarProps) {
               </button>
 
               {user ? (
-                <div className="flex items-center gap-2 sm:gap-3">
-                   {!isPublicRoute && (
-                     <div className="hidden sm:block">
-                        <PlanBadge />
-                     </div>
-                   )}
-                   {isPublicRoute && (
-                     <Link
-                       to="/dashboard"
-                       className="hf-btn-primary min-h-[40px] px-3.5 py-1.5 text-xs gap-1.5"
-                     >
-                       <LayoutDashboard className="w-3.5 h-3.5" />
-                       <span>Dashboard</span>
-                     </Link>
-                   )}
-                   <button
+                <div className="flex items-center gap-2">
+                  {!isPublicRoute && (
+                    <div className="hidden sm:block">
+                      <PlanBadge />
+                    </div>
+                  )}
+                  {isPublicRoute && (
+                    <Link
+                      to="/dashboard"
+                      className="hf-btn-primary min-h-[38px] px-3.5 py-1.5 text-xs gap-1.5"
+                    >
+                      <span>Open Workspace</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
+                  <button
                     onClick={handleSignOut}
-                    className="min-h-[44px] min-w-[44px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
+                    className="min-h-[38px] min-w-[38px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer"
                     aria-label="Sign out of account"
-                    title="Sign Out"
+                    title="Sign out"
                   >
                     <LogOut className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={handleSignIn}
-                  disabled={isSigningIn}
-                  className="hf-btn-primary min-h-[44px] px-4 py-2 text-sm font-medium disabled:opacity-60"
-                  aria-label="Get Started with Google Sign In"
-                >
-                  {isSigningIn ? 'Signing in...' : 'Get started'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSignIn}
+                    disabled={isSigningIn}
+                    className="hidden sm:inline-flex px-3 py-1.5 text-xs font-medium text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    onClick={handleSignIn}
+                    disabled={isSigningIn}
+                    className="hf-btn-primary min-h-[38px] px-4 py-1.5 text-xs font-medium gap-1.5 disabled:opacity-60"
+                    aria-label="Get Started with Google Sign In"
+                  >
+                    <span>{isSigningIn ? 'Signing in...' : 'Get started'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
-      </nav>
 
-      {/* Desktop Persistent Sidebar Rail (Only on authenticated app routes) */}
-      {user && !isPublicRoute && (
-        <aside aria-label="Sidebar Navigation" className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r lg:border-[var(--hf-border)] lg:bg-[var(--hf-surface)] transition-colors">
-          <div className="px-5 py-4 border-b border-[var(--hf-border)]">
-            <div className="flex items-center gap-2 mb-0.5">
-              <Sparkles className="w-3.5 h-3.5 text-[var(--hf-ai-teal)]" />
-              <span className="text-[11px] font-medium text-[var(--hf-text-secondary)]">Workspace</span>
-            </div>
-            <h2 className="text-xs font-semibold text-[var(--hf-text)]">Navigation modules</h2>
-          </div>
-
-          <div className="flex-1 px-3 py-3 space-y-1 overflow-y-auto custom-scrollbar">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
+        {/* Public Mobile Dropdown Menu */}
+        <AnimatePresence>
+          {isPublicRoute && isPublicMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="lg:hidden border-t border-[var(--hf-border)] bg-[var(--hf-surface)] px-4 py-3 space-y-1 overflow-hidden"
+            >
+              {publicNavLinks.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]",
-                    isActive
-                      ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] font-semibold border border-[var(--hf-border)] shadow-xs"
-                      : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/60"
+                    "block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname === item.path
+                      ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] font-semibold"
+                      : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]"
                   )}
                 >
-                  <item.icon className={cn(
-                    "w-4 h-4 shrink-0 transition-colors",
-                    isActive ? "text-[var(--hf-cta)]" : "text-[var(--hf-text-secondary)]"
-                  )} />
-                  <span className="text-xs">{item.name}</span>
+                  {item.name}
                 </Link>
-              );
-            })}
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+
+      {/* Desktop Persistent Sidebar Rail (Authenticated App Routes) */}
+      {user && !isPublicRoute && (
+        <aside aria-label="Sidebar Navigation" className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r lg:border-[var(--hf-border)] lg:bg-[var(--hf-surface)] transition-colors">
+          <div className="flex-1 px-3 py-4 space-y-5 overflow-y-auto custom-scrollbar">
+            {navGroups.map((group) => (
+              <div key={group.label} className="space-y-1">
+                <div className="px-3 mb-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">
+                    {group.label}
+                  </span>
+                </div>
+                {group.items.map((item) => {
+                  const isActive = location.pathname === item.path || (item.path === '/jobs' && location.pathname === '/tracker') || (item.path === '/learning' && location.pathname === '/roadmap');
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                        isActive
+                          ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] font-semibold border border-[var(--hf-border)]"
+                          : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/60 border border-transparent"
+                      )}
+                    >
+                      <item.icon className={cn(
+                        "w-4 h-4 shrink-0 transition-colors",
+                        isActive ? "text-[var(--hf-cta)]" : "text-[var(--hf-text-muted)]"
+                      )} />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </div>
 
-          <div className="p-3.5 border-t border-[var(--hf-border)] bg-[var(--hf-surface-secondary)]/40 mt-auto">
-            <div className="bg-[var(--hf-surface)] p-3 rounded-lg border border-[var(--hf-border)] flex items-center gap-3 shadow-xs">
-              <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 text-[var(--hf-cta)]">
-                <UserIcon className="w-4 h-4" />
+          <div className="p-3 border-t border-[var(--hf-border)] bg-[var(--hf-surface-secondary)]/30 mt-auto">
+            <Link
+              to="/profile"
+              className="p-2.5 rounded-lg hover:bg-[var(--hf-surface-secondary)] transition-colors flex items-center gap-2.5"
+            >
+              <div className="w-8 h-8 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 text-xs font-semibold text-[var(--hf-text)] overflow-hidden">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  (user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()
+                )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-[var(--hf-text)] truncate">{user?.displayName || 'User'}</p>
-                <p className="text-[11px] text-[var(--hf-cta)] font-medium truncate">{getPlanLabel(plan)}</p>
+                <p className="text-xs font-semibold text-[var(--hf-text)] truncate">{user?.displayName || 'Account'}</p>
+                <p className="text-[11px] text-[var(--hf-text-muted)] truncate">{getPlanLabel(plan)}</p>
               </div>
-            </div>
+            </Link>
           </div>
         </aside>
       )}
 
-      {/* Side Drawer Overlay (Mobile / Tablet below lg, only on authenticated app routes) */}
+      {/* Side Drawer Overlay (Mobile / Tablet below lg, Authenticated App Routes) */}
       <AnimatePresence>
         {isDrawerOpen && user && !isPublicRoute && (
           <div className="lg:hidden">
@@ -246,64 +360,73 @@ export default function Navbar({ user }: NavbarProps) {
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 240 }}
               id="mobile-navigation-drawer"
               role="dialog"
               aria-modal="true"
               aria-label="Mobile Navigation Menu"
-              className="fixed top-0 left-0 bottom-0 w-80 bg-[var(--hf-surface)] border-r border-[var(--hf-border)] z-[120] flex flex-col pt-16 shadow-xl"
+              className="fixed top-0 left-0 bottom-0 w-72 bg-[var(--hf-surface)] border-r border-[var(--hf-border)] z-[120] flex flex-col pt-16 shadow-xl"
             >
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-3.5 right-3.5">
                 <button 
                    onClick={() => setIsDrawerOpen(false)}
-                   className="min-h-[44px] min-w-[44px] p-2 flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]"
+                   className="min-h-[40px] min-w-[40px] p-2 flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors cursor-pointer"
                    aria-label="Close navigation menu"
                 >
                   <X className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
 
-              <div className="px-5 mb-3">
-                 <div className="flex items-center gap-3">
-                    <HireFlowLogo className="w-7 h-7" />
-                    <div>
-                      <h2 className="text-sm font-bold text-[var(--hf-text)]">AI HireFlow</h2>
-                      <span className="text-[11px] font-normal text-[var(--hf-text-secondary)]">Career platform</span>
-                    </div>
-                 </div>
+              <div className="px-4 pb-3 border-b border-[var(--hf-border)]">
+                <div className="flex items-center gap-2.5">
+                  <HireFlowLogo className="w-6 h-6" />
+                  <span className="text-sm font-semibold text-[var(--hf-text)]">HireFlow</span>
+                </div>
               </div>
 
-              <div className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      "min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)]",
-                      location.pathname === item.path
-                        ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] font-semibold border border-[var(--hf-border)]"
-                        : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/60"
-                    )}
-                  >
-                    <item.icon className={cn(
-                      "w-4 h-4 shrink-0 transition-colors",
-                      location.pathname === item.path ? "text-[var(--hf-cta)]" : "text-[var(--hf-text-secondary)]"
-                    )} />
-                    <span className="text-xs">{item.name}</span>
-                  </Link>
+              <div className="flex-1 px-3 py-4 space-y-5 overflow-y-auto custom-scrollbar">
+                {navGroups.map((group) => (
+                  <div key={group.label} className="space-y-1">
+                    <div className="px-3 mb-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">
+                        {group.label}
+                      </span>
+                    </div>
+                    {group.items.map((item) => {
+                      const isActive = location.pathname === item.path;
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={cn(
+                            "min-h-[40px] flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                            isActive
+                              ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] font-semibold border border-[var(--hf-border)]"
+                              : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/60 border border-transparent"
+                          )}
+                        >
+                          <item.icon className={cn(
+                            "w-4 h-4 shrink-0 transition-colors",
+                            isActive ? "text-[var(--hf-cta)]" : "text-[var(--hf-text-muted)]"
+                          )} />
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 ))}
               </div>
 
-              <div className="p-4 border-t border-[var(--hf-border)] mt-auto bg-[var(--hf-surface-secondary)]/40">
-                 <div className="bg-[var(--hf-surface)] p-3 rounded-lg border border-[var(--hf-border)] flex items-center gap-3 shadow-xs">
-                    <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 text-[var(--hf-cta)]">
-                       <UserIcon className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                       <p className="text-xs font-semibold text-[var(--hf-text)] truncate">{user?.displayName || 'User'}</p>
-                       <p className="text-[11px] text-[var(--hf-cta)] font-medium truncate">{getPlanLabel(plan)}</p>
-                    </div>
-                 </div>
+              <div className="p-3 border-t border-[var(--hf-border)] mt-auto bg-[var(--hf-surface-secondary)]/30">
+                <div className="p-2.5 rounded-lg flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 text-xs font-semibold text-[var(--hf-text)]">
+                    {(user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-[var(--hf-text)] truncate">{user?.displayName || 'Account'}</p>
+                    <p className="text-[11px] text-[var(--hf-text-muted)] truncate">{getPlanLabel(plan)}</p>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>

@@ -56,9 +56,9 @@ export default function InterviewLabSEO() {
     <div className="hf-card p-5 sm:p-7 shadow-xs space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hf-border)] pb-4">
         <div className="flex items-center gap-2">
-          <span className="hf-badge hf-badge-teal">Sample simulation</span>
+          <span className="hf-badge hf-badge-teal">Simulation preview</span>
           <span className="text-xs text-[var(--hf-text-secondary)] font-medium">
-            Category: {SAMPLE_INTERVIEW_LAB.category} [Sample]
+            Category: {SAMPLE_INTERVIEW_LAB.category}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -72,7 +72,7 @@ export default function InterviewLabSEO() {
       {/* Question Card */}
       <div className="p-4 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] space-y-1.5">
         <span className="text-[11px] font-semibold text-[var(--hf-cta)] uppercase tracking-wider block">
-          Interviewer prompt [Sample]
+          Interviewer prompt
         </span>
         <p className="text-xs sm:text-sm font-medium text-[var(--hf-text)] leading-relaxed">
           &ldquo;{SAMPLE_INTERVIEW_LAB.question}&rdquo;
@@ -82,7 +82,7 @@ export default function InterviewLabSEO() {
       {/* Candidate Response Card */}
       <div className="p-4 rounded-lg bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1.5">
         <span className="text-[11px] font-semibold text-[var(--hf-text-muted)] uppercase tracking-wider block">
-          Candidate answer [Sample]
+          Candidate answer
         </span>
         <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed italic">
           &ldquo;{SAMPLE_INTERVIEW_LAB.userAnswerSnippet}&rdquo;
@@ -93,19 +93,19 @@ export default function InterviewLabSEO() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <div className="p-3 rounded-md bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-center">
           <span className="text-[11px] text-[var(--hf-text-secondary)] block">Situation</span>
-          <span className="text-xs font-semibold text-[var(--hf-text)] mt-0.5 block tabular-nums">22 / 25 [Sample]</span>
+          <span className="text-xs font-semibold text-[var(--hf-text)] mt-0.5 block tabular-nums">22 / 25</span>
         </div>
         <div className="p-3 rounded-md bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-center">
           <span className="text-[11px] text-[var(--hf-text-secondary)] block">Task</span>
-          <span className="text-xs font-semibold text-[var(--hf-text)] mt-0.5 block tabular-nums">21 / 25 [Sample]</span>
+          <span className="text-xs font-semibold text-[var(--hf-text)] mt-0.5 block tabular-nums">21 / 25</span>
         </div>
         <div className="p-3 rounded-md bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-center">
           <span className="text-[11px] text-[var(--hf-text-secondary)] block">Action</span>
-          <span className="text-xs font-semibold text-[var(--hf-text)] mt-0.5 block tabular-nums">23 / 25 [Sample]</span>
+          <span className="text-xs font-semibold text-[var(--hf-text)] mt-0.5 block tabular-nums">23 / 25</span>
         </div>
         <div className="p-3 rounded-md bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-center">
           <span className="text-[11px] text-[var(--hf-text-secondary)] block">Result</span>
-          <span className="text-xs font-semibold text-[var(--hf-text)] mt-0.5 block tabular-nums">20 / 25 [Sample]</span>
+          <span className="text-xs font-semibold text-[var(--hf-text)] mt-0.5 block tabular-nums">20 / 25</span>
         </div>
       </div>
 
@@ -114,7 +114,7 @@ export default function InterviewLabSEO() {
         <div className="p-3 rounded-md bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1.5">
           <span className="text-[11px] font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-[var(--hf-success)]" />
-            <span>Demonstrated strengths [Sample]</span>
+            <span>Demonstrated strengths</span>
           </span>
           <ul className="space-y-1 text-[11px] text-[var(--hf-text-secondary)]">
             {SAMPLE_INTERVIEW_LAB.strengths.map((str, idx) => (
@@ -129,7 +129,7 @@ export default function InterviewLabSEO() {
         <div className="p-3 rounded-md bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-1.5">
           <span className="text-[11px] font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 text-[var(--hf-warning)]" />
-            <span>Improvement opportunities [Sample]</span>
+            <span>Improvement opportunities</span>
           </span>
           <ul className="space-y-1 text-[11px] text-[var(--hf-text-secondary)]">
             {SAMPLE_INTERVIEW_LAB.improvementTips.map((tip, idx) => (

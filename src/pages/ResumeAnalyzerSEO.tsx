@@ -89,10 +89,10 @@ export default function ResumeAnalyzerSEO() {
       <div className="p-4 rounded-lg bg-[var(--hf-surface-secondary)]/60 border border-[var(--hf-border)] space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-semibold text-[var(--hf-text)]">
-            Keyword coverage analysis [Sample]
+            Keyword coverage analysis
           </span>
           <span className="text-[11px] text-[var(--hf-text-muted)]">
-            5 matched &bull; 3 missing [Sample]
+            5 matched &bull; 3 missing
           </span>
         </div>
 
@@ -101,7 +101,7 @@ export default function ResumeAnalyzerSEO() {
             <span className="text-[11px] text-[var(--hf-text-secondary)] font-medium mr-1">Matched:</span>
             {SAMPLE_PERSONA.matchedKeywords.map((kw, i) => (
               <span key={i} className="px-2 py-0.5 rounded text-[11px] bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-success)] font-medium">
-                {kw} [Sample]
+                {kw}
               </span>
             ))}
           </div>
@@ -110,7 +110,7 @@ export default function ResumeAnalyzerSEO() {
             <span className="text-[11px] text-[var(--hf-text-secondary)] font-medium mr-1">Missing:</span>
             {SAMPLE_PERSONA.missingKeywords.map((kw, i) => (
               <span key={i} className="px-2 py-0.5 rounded text-[11px] bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-error)] font-medium">
-                {kw} [Sample]
+                {kw}
               </span>
             ))}
           </div>
@@ -123,7 +123,7 @@ export default function ResumeAnalyzerSEO() {
           <SlidersHorizontal className="w-4 h-4" />
         </div>
         <div>
-          <p className="text-xs font-semibold text-[var(--hf-text)]">Actionable evidence rewrite [Sample]</p>
+          <p className="text-xs font-semibold text-[var(--hf-text)]">Actionable evidence rewrite</p>
           <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5 leading-relaxed">
             {SAMPLE_PERSONA.recommendation}
           </p>

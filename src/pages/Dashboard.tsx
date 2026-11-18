@@ -513,27 +513,25 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 gap-6 pt-4">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 gap-6 pt-2 pb-6 border-b border-[var(--hf-border)]">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-accent)] text-xs font-medium tracking-wide">
-              <Sparkles className="w-3.5 h-3.5 text-[var(--hf-accent)]" /> Career workspace
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--hf-text)]">
-            {greeting}, <span className="text-[var(--hf-accent)]">{user.displayName?.split(' ')[0] || "Professional"}</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-text-muted)] block mb-1">
+            Overview
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--hf-text)]">
+            {greeting}, {user.displayName?.split(' ')[0] || "Professional"}
           </h1>
           <p className="text-xs sm:text-sm mt-1 max-w-xl text-[var(--hf-text-secondary)]">
-            Your workspace for resume scoring, job pipeline tracking, and interview preparation.
+            Resume diagnostics, application pipeline metrics, and interview readiness in one view.
           </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-[var(--hf-surface)] px-4 py-2.5 rounded-xl border border-[var(--hf-border)] flex items-center gap-4 shadow-sm">
+          <div className="bg-[var(--hf-surface)] px-3.5 py-2 rounded-lg border border-[var(--hf-border)] flex items-center gap-3">
             <div className="text-left">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">Account tier</p>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--hf-text-muted)]">Plan</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <Crown className="w-3.5 h-3.5 text-[var(--hf-warning)]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--hf-cta)]" />
                 <span className="text-xs font-semibold text-[var(--hf-text)]">{planBadgeLabel}</span>
               </div>
             </div>
@@ -542,21 +540,21 @@ export default function Dashboard() {
           {!hasResume ? (
             <button 
               onClick={() => navigate('/analyzer')}
-              className="min-h-[44px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all shadow-sm"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs sm:text-sm gap-2"
             >
               <FileText className="w-4 h-4" /> Upload resume
             </button>
           ) : !hasJobs ? (
             <button 
               onClick={() => navigate('/finder')}
-              className="min-h-[44px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all shadow-sm"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs sm:text-sm gap-2"
             >
               <Search className="w-4 h-4" /> Discover roles
             </button>
           ) : (
             <button 
               onClick={() => navigate('/jobs')}
-              className="min-h-[44px] bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all shadow-sm"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs sm:text-sm gap-2"
             >
               <Plus className="w-4 h-4" /> Track application
             </button>
@@ -1003,19 +1001,16 @@ export default function Dashboard() {
           <div className="lg:w-1/3 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[var(--hf-accent)]" />
-                  <span className="text-[11px] font-semibold text-[var(--hf-accent)] uppercase tracking-wider">Career advisor</span>
-                </div>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-text-secondary)]">
+                <span className="text-xs font-semibold text-[var(--hf-cta)] uppercase tracking-wider">Career Advisory</span>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-md bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-text-secondary)]">
                   {typeof advisorAccess.limit === 'number' && advisorAccess.limit < 9999 ? `${advisorAccess.remaining} left today` : 'Daily allowance'}
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hf-text)] mb-2">
-                AI Career Advisor
+                Career Strategy Advisor
               </h2>
               <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed mb-4">
-                Consult with our career coach for tailored guidance on offer negotiations, addressing resume gaps, and positioning your experience.
+                Ask questions about offer negotiations, addressing employment gaps, or positioning your technical background using your live profile context.
               </p>
             </div>
 

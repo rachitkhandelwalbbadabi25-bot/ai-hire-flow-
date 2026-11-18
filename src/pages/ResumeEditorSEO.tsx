@@ -55,15 +55,15 @@ export default function ResumeEditorSEO() {
     <div className="hf-card p-5 sm:p-7 shadow-xs space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hf-border)] pb-4">
         <div className="flex items-center gap-2">
-          <span className="hf-badge hf-badge-teal">Sample editor workspace</span>
+          <span className="hf-badge hf-badge-teal">Editor preview</span>
           <span className="text-xs text-[var(--hf-text-secondary)] font-medium">
-            Single-column ATS format [Sample]
+            Single-column ATS format
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="px-2.5 py-1 rounded text-xs font-medium bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border border-[var(--hf-border)] flex items-center gap-1.5">
             <Download className="w-3.5 h-3.5 text-[var(--hf-cta)]" />
-            <span>PDF export ready [Sample]</span>
+            <span>PDF export ready</span>
           </span>
         </div>
       </div>
@@ -72,14 +72,14 @@ export default function ResumeEditorSEO() {
         {/* Left Column: Section Editing Mockup */}
         <div className="p-4 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] space-y-3.5">
           <div className="flex items-center justify-between text-xs border-b border-[var(--hf-border)] pb-2">
-            <span className="font-semibold text-[var(--hf-text)]">Section: Work Experience [Sample]</span>
-            <span className="text-[11px] text-[var(--hf-cta)] font-medium">Auto-saved [Sample]</span>
+            <span className="font-semibold text-[var(--hf-text)]">Section: Work Experience</span>
+            <span className="text-[11px] text-[var(--hf-cta)] font-medium">Auto-saved</span>
           </div>
 
           <div className="space-y-1">
             <span className="text-[11px] text-[var(--hf-text-secondary)] font-medium">Role title & tenure:</span>
             <div className="text-xs font-semibold text-[var(--hf-text)] bg-[var(--hf-surface)] p-2 rounded border border-[var(--hf-border)]">
-              {SAMPLE_PERSONA.targetRole} &bull; 2022 &ndash; Present [Sample]
+              {SAMPLE_PERSONA.targetRole} &bull; 2022 &ndash; Present
             </div>
           </div>
 
@@ -88,7 +88,7 @@ export default function ResumeEditorSEO() {
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-[var(--hf-text)] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[var(--hf-ai-teal)]" />
-                <span>AI bullet suggestion [Sample]</span>
+                <span>XYZ bullet rewrite</span>
               </span>
               <span className="text-[10px] text-[var(--hf-success)] font-medium bg-[var(--hf-surface-secondary)] px-1.5 py-0.5 rounded">
                 STAR metric added
@@ -98,7 +98,7 @@ export default function ResumeEditorSEO() {
               &ldquo;{SAMPLE_PERSONA.bulletExample.after}&rdquo;
             </p>
             <div className="flex items-center gap-2 pt-1">
-              <span className="text-[11px] text-[var(--hf-cta)] font-medium">Applied to draft [Sample]</span>
+              <span className="text-[11px] text-[var(--hf-cta)] font-medium">Applied to draft</span>
             </div>
           </div>
         </div>
@@ -106,14 +106,14 @@ export default function ResumeEditorSEO() {
         {/* Right Column: Live ATS Preview */}
         <div className="p-4 rounded-lg bg-[var(--hf-surface)] border border-[var(--hf-border)] space-y-3">
           <div className="flex items-center justify-between text-xs border-b border-[var(--hf-border)] pb-2 text-[var(--hf-text-muted)]">
-            <span>Live single-column preview [Sample]</span>
-            <span>Page 1 of 1 [Sample]</span>
+            <span>Live single-column preview</span>
+            <span>Page 1 of 1</span>
           </div>
 
           <div className="space-y-2 text-xs">
             <div className="border-b border-[var(--hf-border)] pb-2">
-              <h4 className="font-bold text-sm text-[var(--hf-text)]">Candidate Name [Sample]</h4>
-              <p className="text-[11px] text-[var(--hf-text-secondary)]">email@example.com &bull; +1 (555) 000-0000 &bull; Remote</p>
+              <h4 className="font-bold text-sm text-[var(--hf-text)]">Alex Rivera</h4>
+              <p className="text-[11px] text-[var(--hf-text-secondary)]">alex.rivera@example.com &bull; +1 (555) 000-0000 &bull; Remote</p>
             </div>
 
             <div>
@@ -122,8 +122,8 @@ export default function ResumeEditorSEO() {
               </h5>
               <p className="font-semibold text-xs text-[var(--hf-text)] mt-1">{SAMPLE_PERSONA.targetRole}</p>
               <ul className="list-disc list-inside text-[11px] text-[var(--hf-text-secondary)] space-y-1 mt-1 leading-relaxed">
-                <li>Architected modular data-fetching in React, reducing load latency by 42% [Sample].</li>
-                <li>Mentored 4 frontend engineers and established TypeScript lint standards [Sample].</li>
+                <li>Architected modular data-fetching in React, reducing load latency by 42%.</li>
+                <li>Mentored 4 frontend engineers and established TypeScript lint standards.</li>
               </ul>
             </div>
           </div>

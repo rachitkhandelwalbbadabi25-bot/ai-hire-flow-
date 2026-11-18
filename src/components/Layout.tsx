@@ -45,7 +45,7 @@ export default function Layout({ user, children }: LayoutProps) {
   const showAppSidebar = Boolean(user && !isPublicRoute);
 
   return (
-    <div className="min-h-screen bg-[var(--hf-bg)] selection:bg-[var(--hf-cta)] selection:text-white text-[var(--hf-text)] transition-colors duration-150">
+    <div className="min-h-screen flex flex-col bg-[var(--hf-bg)] selection:bg-[var(--hf-cta)] selection:text-white text-[var(--hf-text)] transition-colors duration-150">
       <Navbar user={user} />
       {isUpgradeModalOpen && (
         <Suspense fallback={null}>
@@ -57,43 +57,121 @@ export default function Layout({ user, children }: LayoutProps) {
           <OnboardingTour />
         </Suspense>
       )}
-      <main className={showAppSidebar ? "pt-20 sm:pt-24 pb-28 md:pb-12 lg:ml-64 transition-all" : ""}>
+      <main className={showAppSidebar ? "flex-1 pt-20 sm:pt-22 pb-28 md:pb-12 lg:ml-60 transition-all" : "flex-1"}>
         <motion.div
           key={location.pathname}
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.15, ease: "easeOut" }}
         >
           {children}
         </motion.div>
       </main>
-      <footer className={`py-12 border-t border-[var(--hf-border)] bg-[var(--hf-surface)] mb-16 md:mb-0 transition-colors ${showAppSidebar ? "lg:ml-64" : ""}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-6">
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-[var(--hf-text-secondary)] font-medium">
-            <Link to="/resume-analyzer" className="hover:text-[var(--hf-cta)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">AI resume analyzer</Link>
-            <Link to="/resume-editor" className="hover:text-[var(--hf-cta)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">AI resume editor</Link>
-            <Link to="/job-finder" className="hover:text-[var(--hf-cta)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">AI job finder</Link>
-            <Link to="/job-tracker" className="hover:text-[var(--hf-cta)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">AI job tracker</Link>
-            <Link to="/career-advisor" className="hover:text-[var(--hf-cta)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">AI career advisor</Link>
-            <Link to="/interview-lab" className="hover:text-[var(--hf-cta)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">AI interview lab</Link>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center justify-between w-full pt-6 border-t border-[var(--hf-border)] gap-4">
-            <div className="flex items-center gap-2.5">
-              <HireFlowLogo className="w-6 h-6" />
-              <p className="text-[var(--hf-text-secondary)] text-xs font-sans">
-                © 2026 AI HireFlow. AI-powered career operating platform.
-              </p>
+
+      {isPublicRoute ? (
+        <footer className="border-t border-[var(--hf-border)] bg-[var(--hf-surface)] transition-colors">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-10 pb-12 border-b border-[var(--hf-border)]">
+              {/* Brand Column */}
+              <div className="md:col-span-4 space-y-3.5">
+                <Link to="/" className="inline-flex items-center gap-2.5">
+                  <HireFlowLogo className="w-7 h-7" />
+                  <span className="font-sans font-semibold text-base tracking-tight text-[var(--hf-text)]">
+                    HireFlow
+                  </span>
+                </Link>
+                <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed max-w-sm">
+                  Structured career software for ATS resume diagnostics, single-column resume engineering, live job discovery, and interview preparation.
+                </p>
+              </div>
+
+              {/* Platform Column */}
+              <div className="md:col-span-3 space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-text)]">
+                  Core Tools
+                </h3>
+                <ul className="space-y-2.5 text-xs text-[var(--hf-text-secondary)]">
+                  <li>
+                    <Link to="/resume-analyzer" className="hover:text-[var(--hf-text)] transition-colors">Resume Analyzer</Link>
+                  </li>
+                  <li>
+                    <Link to="/resume-editor" className="hover:text-[var(--hf-text)] transition-colors">Resume Editor</Link>
+                  </li>
+                  <li>
+                    <Link to="/job-finder" className="hover:text-[var(--hf-text)] transition-colors">Job Finder</Link>
+                  </li>
+                  <li>
+                    <Link to="/job-tracker" className="hover:text-[var(--hf-text)] transition-colors">Application Tracker</Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Preparation Column */}
+              <div className="md:col-span-2 space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-text)]">
+                  Preparation
+                </h3>
+                <ul className="space-y-2.5 text-xs text-[var(--hf-text-secondary)]">
+                  <li>
+                    <Link to="/interview-lab" className="hover:text-[var(--hf-text)] transition-colors">Interview Lab</Link>
+                  </li>
+                  <li>
+                    <Link to="/career-advisor" className="hover:text-[var(--hf-text)] transition-colors">Career Roadmap</Link>
+                  </li>
+                  <li>
+                    <a href="/#pricing" className="hover:text-[var(--hf-text)] transition-colors">Pricing &amp; Plans</a>
+                  </li>
+                  <li>
+                    <a href="/#faq" className="hover:text-[var(--hf-text)] transition-colors">FAQ</a>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Legal & Support Column */}
+              <div className="md:col-span-3 space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-text)]">
+                  Legal &amp; Support
+                </h3>
+                <ul className="space-y-2.5 text-xs text-[var(--hf-text-secondary)]">
+                  <li>
+                    <Link to="/privacy" className="hover:text-[var(--hf-text)] transition-colors">Privacy Policy</Link>
+                  </li>
+                  <li>
+                    <Link to="/terms" className="hover:text-[var(--hf-text)] transition-colors">Terms &amp; Conditions</Link>
+                  </li>
+                  <li>
+                    <Link to="/refund" className="hover:text-[var(--hf-text)] transition-colors">Refund &amp; Cancellation</Link>
+                  </li>
+                  <li>
+                    <Link to="/contact" className="hover:text-[var(--hf-text)] transition-colors">Contact Support</Link>
+                  </li>
+                </ul>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-6">
-              <Link to="/" className="text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] text-xs transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">Home</Link>
-              <Link to="/privacy" className="text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] text-xs transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">Privacy policy</Link>
-              <Link to="/terms" className="text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] text-xs transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">Terms &amp; conditions</Link>
-              <Link to="/refund" className="text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] text-xs transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">Refund &amp; cancellation</Link>
-              <Link to="/contact" className="text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] text-xs transition-colors focus-visible:outline-2 focus-visible:outline-[var(--hf-cta)] rounded">Contact us</Link>
+
+            <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--hf-text-muted)]">
+              <p>© {new Date().getFullYear()} AI HireFlow. All rights reserved.</p>
+              <div className="flex items-center gap-6">
+                <Link to="/privacy" className="hover:text-[var(--hf-text)] transition-colors">Privacy</Link>
+                <Link to="/terms" className="hover:text-[var(--hf-text)] transition-colors">Terms</Link>
+                <Link to="/contact" className="hover:text-[var(--hf-text)] transition-colors">Contact</Link>
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      ) : (
+        <footer className="py-5 border-t border-[var(--hf-border)] bg-[var(--hf-surface)] mb-16 md:mb-0 lg:ml-60 transition-colors">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--hf-text-muted)]">
+            <span>© {new Date().getFullYear()} HireFlow Workspace</span>
+            <div className="flex items-center gap-5">
+              <Link to="/privacy" className="hover:text-[var(--hf-text)] transition-colors">Privacy</Link>
+              <Link to="/terms" className="hover:text-[var(--hf-text)] transition-colors">Terms</Link>
+              <Link to="/refund" className="hover:text-[var(--hf-text)] transition-colors">Refunds</Link>
+              <Link to="/contact" className="hover:text-[var(--hf-text)] transition-colors">Support</Link>
+            </div>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

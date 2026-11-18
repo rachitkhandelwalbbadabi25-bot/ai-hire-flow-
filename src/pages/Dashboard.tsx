@@ -519,26 +519,26 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 gap-6 pt-2 pb-6 border-b border-[var(--hf-border)]">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 gap-6 pt-2 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)]">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-text-muted)] block mb-1">
-            Overview
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1">
+            01 // CANDIDATE DOSSIER OVERVIEW
           </span>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--hf-text)]">
-            {greeting}, {user.displayName?.split(' ')[0] || "Professional"}
+          <h1 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
+            {greeting}, {user.displayName?.split(' ')[0] || "Candidate"}
           </h1>
           <p className="text-xs sm:text-sm mt-1 max-w-xl text-[var(--hf-text-secondary)]">
-            Resume diagnostics, application pipeline metrics, and interview readiness in one view.
+            Resume diagnostics, application requisition ledger, and interview readiness in one workspace.
           </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-[var(--hf-surface)] px-3.5 py-2 rounded-lg border border-[var(--hf-border)] flex items-center gap-3">
+          <div className="bg-[var(--hf-surface)] px-3.5 py-2 border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-3">
             <div className="text-left">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--hf-text-muted)]">Plan</p>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[var(--hf-text-muted)]">MEMBERSHIP TIER</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--hf-cta)]" />
-                <span className="text-xs font-semibold text-[var(--hf-text)]">{planBadgeLabel}</span>
+                <span className="w-2 h-2 bg-[var(--hf-cta)]" />
+                <span className="font-mono text-xs font-bold text-[var(--hf-text)] uppercase">{planBadgeLabel}</span>
               </div>
             </div>
           </div>
@@ -546,23 +546,23 @@ export default function Dashboard() {
           {!hasResume ? (
             <button 
               onClick={() => navigate('/analyzer')}
-              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs sm:text-sm gap-2"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs gap-2"
             >
-              <FileText className="w-4 h-4" /> Upload resume
+              <FileText className="w-4 h-4" /> UPLOAD RESUME →
             </button>
           ) : !hasJobs ? (
             <button 
               onClick={() => navigate('/finder')}
-              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs sm:text-sm gap-2"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs gap-2"
             >
-              <Search className="w-4 h-4" /> Discover roles
+              <Search className="w-4 h-4" /> DISCOVER ROLES →
             </button>
           ) : (
             <button 
               onClick={() => navigate('/jobs')}
-              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs sm:text-sm gap-2"
+              className="hf-btn-primary min-h-[42px] px-4 py-2 text-xs gap-2"
             >
-              <Plus className="w-4 h-4" /> Track application
+              <Plus className="w-4 h-4" /> LOG APPLICATION →
             </button>
           )}
         </div>

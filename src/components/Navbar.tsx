@@ -44,18 +44,9 @@ export default function Navbar({ user }: NavbarProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPublicMenuOpen, setIsPublicMenuOpen] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
 
   const isPublicRoute = PUBLIC_SEO_ROUTES.includes(location.pathname);
-
-  useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 12);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   const handleSignOut = () => signOut(auth);
 
@@ -77,30 +68,30 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   const publicNavLinks = [
-    { name: 'Resume Analyzer', path: '/resume-analyzer' },
-    { name: 'Resume Editor', path: '/resume-editor' },
-    { name: 'Job Search', path: '/job-finder' },
-    { name: 'Job Tracker', path: '/job-tracker' },
-    { name: 'Interview Lab', path: '/interview-lab' },
-    { name: 'Career Roadmap', path: '/career-advisor' },
+    { name: '01. AUDIT', path: '/resume-analyzer' },
+    { name: '02. EDITOR', path: '/resume-editor' },
+    { name: '03. JOB INDEX', path: '/job-finder' },
+    { name: '04. TRACKER', path: '/job-tracker' },
+    { name: '05. INTERVIEW', path: '/interview-lab' },
+    { name: '06. ROADMAP', path: '/career-advisor' },
   ];
 
   const navGroups = [
     {
-      label: 'Overview',
+      label: '01 // OVERVIEW',
       items: [
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
       ]
     },
     {
-      label: 'Documents & Audit',
+      label: '02 // DOCUMENTS',
       items: [
         { name: 'Resume Analyzer', path: '/analyzer', icon: BarChart3 },
         { name: 'Resume Editor', path: '/editor', icon: FileEdit },
       ]
     },
     {
-      label: 'Opportunities',
+      label: '03 // OPPORTUNITIES',
       items: [
         { name: 'Job Finder', path: '/finder', icon: Search },
         { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
@@ -108,7 +99,7 @@ export default function Navbar({ user }: NavbarProps) {
       ]
     },
     {
-      label: 'Preparation',
+      label: '04 // PREPARATION',
       items: [
         { name: 'Interview Lab', path: '/interview', icon: Mic },
         { name: 'Learning Path', path: '/learning', icon: GraduationCap },
@@ -116,7 +107,7 @@ export default function Navbar({ user }: NavbarProps) {
       ]
     },
     {
-      label: 'Account',
+      label: '05 // ACCOUNT',
       items: [
         { name: 'Billing & Credits', path: '/credits', icon: CreditCard },
         { name: 'Profile', path: '/profile', icon: UserIcon },
@@ -126,11 +117,11 @@ export default function Navbar({ user }: NavbarProps) {
 
   const getPlanLabel = (p: string) => {
     switch (p) {
-      case 'admin': return 'Administrator';
-      case 'premium': return 'Premium Plan';
+      case 'admin': return 'ADMIN // MASTER';
+      case 'premium': return 'TIER // PREMIUM';
       case 'pro':
-      case 'standard': return 'Pro Plan';
-      default: return 'Free Plan';
+      case 'standard': return 'TIER // PRO';
+      default: return 'TIER // FREE';
     }
   };
 
@@ -143,57 +134,50 @@ export default function Navbar({ user }: NavbarProps) {
     <>
       <nav
         aria-label="Main Navigation"
-        className={cn(
-          "fixed top-0 left-0 right-0 z-[100] transition-all duration-200 border-b",
-          scrolled
-            ? "bg-[var(--hf-surface)]/85 backdrop-blur-md border-[var(--hf-border)] shadow-xs"
-            : "bg-[var(--hf-surface)]/95 backdrop-blur-xs border-[var(--hf-border)]"
-        )}
+        className="fixed top-0 left-0 right-0 z-[100] bg-[var(--hf-bg)] border-b-[1.5px] border-[var(--hf-ink-border)] transition-colors"
       >
         <div className={cn("mx-auto px-4 sm:px-6 lg:px-8", isPublicRoute ? "max-w-7xl" : "max-w-full")}>
           <div className="flex justify-between h-16 items-center gap-4">
-            {/* Left: Menu Trigger + Brand */}
+            {/* Left: Menu Trigger + Editorial Masthead Brand */}
             <div className="flex items-center gap-3">
               {user && !isPublicRoute && (
                 <button 
                   onClick={() => setIsDrawerOpen(true)}
-                  className="min-h-[40px] min-w-[40px] flex items-center justify-center -ml-1.5 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors lg:hidden cursor-pointer"
+                  className="min-h-[38px] min-w-[38px] flex items-center justify-center -ml-1.5 text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded border border-[var(--hf-ink-border)] transition-colors lg:hidden cursor-pointer"
                   aria-label="Open navigation menu"
                   aria-expanded={isDrawerOpen}
                   aria-controls="mobile-navigation-drawer"
                 >
-                  <Menu className="w-5 h-5" aria-hidden="true" />
+                  <Menu className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
               {isPublicRoute && (
                 <button
                   onClick={() => setIsPublicMenuOpen((prev) => !prev)}
-                  className="min-h-[40px] min-w-[40px] flex items-center justify-center -ml-1.5 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors lg:hidden cursor-pointer"
+                  className="min-h-[38px] min-w-[38px] flex items-center justify-center -ml-1.5 text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded border border-[var(--hf-ink-border)] transition-colors lg:hidden cursor-pointer"
                   aria-label="Toggle menu"
                   aria-expanded={isPublicMenuOpen}
                 >
-                  {isPublicMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                  {isPublicMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                 </button>
               )}
-              <Link to={user && !isPublicRoute ? "/dashboard" : "/"} className="flex items-center gap-2.5 group rounded-lg py-1" aria-label="AI HireFlow Home">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
-                  <HireFlowLogo className="w-7 h-7 shrink-0" />
-                </motion.div>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-sans font-semibold text-base tracking-tight text-[var(--hf-text)]">
-                    HireFlow
+              <Link to={user && !isPublicRoute ? "/dashboard" : "/"} className="flex items-center gap-2.5 group py-1" aria-label="AI HireFlow Home">
+                <HireFlowLogo className="w-7 h-7 shrink-0" />
+                <div className="flex items-center gap-2">
+                  <span className="font-serif-display font-bold text-base sm:text-lg tracking-tight text-[var(--hf-text)]">
+                    HIREFLOW // DOSSIER
                   </span>
-                  <span className="hidden sm:inline-block text-[11px] font-medium text-[var(--hf-text-muted)] border-l border-[var(--hf-border)] pl-2">
-                    Career Platform
+                  <span className="hidden md:inline-block text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-[var(--hf-text)]">
+                    VOL. 2026
                   </span>
                 </div>
               </Link>
             </div>
 
-            {/* Center: Public Navigation Links with Shared Layout Hover/Active Pill */}
+            {/* Center: Numbered Monospace Index Links (Public Routes) */}
             {isPublicRoute && (
               <div
-                className="hidden lg:flex items-center gap-0.5 p-1 rounded-xl bg-[var(--hf-surface-secondary)]/60 border border-[var(--hf-border)]"
+                className="hidden lg:flex items-center gap-1"
                 onMouseLeave={() => setHoveredNav(null)}
               >
                 {publicNavLinks.map((item) => {
@@ -205,17 +189,17 @@ export default function Navbar({ user }: NavbarProps) {
                       to={item.path}
                       onMouseEnter={() => setHoveredNav(item.path)}
                       className={cn(
-                        "relative px-3 py-1.5 rounded-lg text-xs font-medium transition-colors z-10",
+                        "relative px-2.5 py-1.5 rounded-sm font-mono text-[11px] font-semibold tracking-wide transition-colors z-10",
                         isActive
-                          ? "text-[var(--hf-text)] font-semibold"
+                          ? "text-[var(--hf-text)] font-bold"
                           : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)]"
                       )}
                     >
                       {isHighlighted && (
                         <motion.span
                           layoutId="public-nav-pill"
-                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                          className="absolute inset-0 rounded-lg bg-[var(--hf-surface)] border border-[var(--hf-border)] shadow-2xs -z-10"
+                          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                          className="absolute inset-0 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] -z-10"
                         />
                       )}
                       {item.name}
@@ -225,24 +209,23 @@ export default function Navbar({ user }: NavbarProps) {
               </div>
             )}
 
-            {/* Right: Search, Theme, Account / Auth CTA */}
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Right: Search, Theme, Account / Enter CTA */}
+            <div className="flex items-center gap-2.5">
               {user && !isPublicRoute && <HeaderQuickSearch />}
 
-              <motion.button
+              <button
                 type="button"
-                whileTap={{ scale: 0.92 }}
                 onClick={toggleTheme}
-                className="min-h-[38px] min-w-[38px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg border border-transparent hover:border-[var(--hf-border)] transition-colors flex items-center justify-center cursor-pointer"
+                className="min-h-[36px] min-w-[36px] p-1.5 bg-[var(--hf-surface)] text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] transition-all flex items-center justify-center cursor-pointer"
                 aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                 title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               >
                 {theme === 'dark' ? (
                   <Sun className="w-4 h-4 text-amber-400" />
                 ) : (
-                  <Moon className="w-4 h-4 text-slate-600" />
+                  <Moon className="w-4 h-4 text-[var(--hf-text)]" />
                 )}
-              </motion.button>
+              </button>
 
               {user ? (
                 <div className="flex items-center gap-2">
@@ -254,15 +237,15 @@ export default function Navbar({ user }: NavbarProps) {
                   {isPublicRoute && (
                     <Link
                       to="/dashboard"
-                      className="hf-btn-primary min-h-[38px] px-3.5 py-1.5 text-xs gap-1.5"
+                      className="hf-btn-primary min-h-[36px] px-3.5 py-1.5 text-xs gap-1.5"
                     >
-                      <span>Open Workspace</span>
+                      <span>ENTER WORKSPACE</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   )}
                   <button
                     onClick={handleSignOut}
-                    className="min-h-[38px] min-w-[38px] p-2 text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors flex items-center justify-center cursor-pointer"
+                    className="min-h-[36px] min-w-[36px] p-1.5 bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] hover:bg-[var(--hf-surface-secondary)] rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] transition-all flex items-center justify-center cursor-pointer"
                     aria-label="Sign out of account"
                     title="Sign out"
                   >
@@ -270,24 +253,14 @@ export default function Navbar({ user }: NavbarProps) {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleSignIn}
-                    disabled={isSigningIn}
-                    className="hidden sm:inline-flex px-3 py-1.5 text-xs font-medium text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] transition-colors cursor-pointer disabled:opacity-60"
-                  >
-                    Sign in
-                  </button>
-                  <button
-                    onClick={handleSignIn}
-                    disabled={isSigningIn}
-                    className="hf-btn-primary min-h-[38px] px-4 py-1.5 text-xs font-medium gap-1.5 disabled:opacity-60"
-                    aria-label="Get Started with Google Sign In"
-                  >
-                    <span>{isSigningIn ? 'Signing in...' : 'Get started'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <button
+                  onClick={handleSignIn}
+                  disabled={isSigningIn}
+                  className="hf-btn-primary min-h-[38px] px-4 py-1.5 text-xs gap-1.5 disabled:opacity-60"
+                  aria-label="Enter Dossier with Google Sign In"
+                >
+                  <span>{isSigningIn ? 'AUTHENTICATING...' : 'ENTER →'}</span>
+                </button>
               )}
             </div>
           </div>
@@ -300,16 +273,16 @@ export default function Navbar({ user }: NavbarProps) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden border-t border-[var(--hf-border)] bg-[var(--hf-surface)] px-4 py-3 space-y-1 overflow-hidden"
+              className="lg:hidden border-t-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-bg)] px-4 py-3 space-y-1.5 overflow-hidden"
             >
               {publicNavLinks.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    "block px-3 py-2 rounded-sm font-mono text-xs font-semibold transition-colors",
                     location.pathname === item.path
-                      ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] font-semibold"
+                      ? "bg-[var(--hf-surface)] text-[var(--hf-text)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]"
                       : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]"
                   )}
                 >
@@ -321,14 +294,17 @@ export default function Navbar({ user }: NavbarProps) {
         </AnimatePresence>
       </nav>
 
-      {/* Desktop Persistent Sidebar Rail (Authenticated App Routes) */}
+      {/* Desktop Persistent Dossier Index Sidebar (Authenticated App Routes) */}
       {user && !isPublicRoute && (
-        <aside aria-label="Sidebar Navigation" className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r lg:border-[var(--hf-border)] lg:bg-[var(--hf-surface)] transition-colors">
+        <aside
+          aria-label="Sidebar Navigation"
+          className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r-[1.5px] lg:border-[var(--hf-ink-border)] lg:bg-[var(--hf-bg)] transition-colors"
+        >
           <div className="flex-1 px-3 py-4 space-y-5 overflow-y-auto custom-scrollbar">
             {navGroups.map((group) => (
-              <div key={group.label} className="space-y-1">
-                <div className="px-3 mb-1.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">
+              <div key={group.label} className="space-y-1.5">
+                <div className="px-2.5 mb-1">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--hf-text-muted)]">
                     {group.label}
                   </span>
                 </div>
@@ -339,24 +315,17 @@ export default function Navbar({ user }: NavbarProps) {
                       key={item.path}
                       to={item.path}
                       className={cn(
-                        "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors z-10",
+                        "relative flex items-center gap-2.5 px-3 py-2 rounded-sm text-xs font-medium transition-colors z-10",
                         isActive
-                          ? "text-[var(--hf-text)] font-semibold"
-                          : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/50"
+                          ? "text-[var(--hf-text)] font-bold"
+                          : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/70"
                       )}
                     >
                       {isActive && (
                         <motion.span
                           layoutId="sidebar-active-pill"
-                          transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-                          className="absolute inset-0 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] shadow-2xs -z-10"
-                        />
-                      )}
-                      {isActive && (
-                        <motion.span
-                          layoutId="sidebar-active-indicator"
-                          transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-                          className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-[var(--hf-cta)]"
+                          transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                          className="absolute inset-0 rounded-sm bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] -z-10"
                         />
                       )}
                       <item.icon className={cn(
@@ -371,24 +340,24 @@ export default function Navbar({ user }: NavbarProps) {
             ))}
           </div>
 
-          {/* Sidebar Bottom: Credit Balance + Account Card */}
-          <div className="p-3 border-t border-[var(--hf-border)] bg-[var(--hf-surface-secondary)]/30 mt-auto space-y-2">
+          {/* Sidebar Bottom Ledger Card */}
+          <div className="p-3 border-t-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)]/50 mt-auto space-y-2">
             {creditWallet && (
               <Link
                 to="/credits"
-                className="px-3 py-2 rounded-lg bg-[var(--hf-surface)] border border-[var(--hf-border)] hover:border-[var(--hf-border-hover)] flex items-center justify-between text-xs transition-colors"
+                className="px-3 py-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center justify-between text-xs transition-transform hover:-translate-y-0.5"
               >
-                <span className="text-[var(--hf-text-secondary)] font-medium">Available credits</span>
-                <span className="font-mono font-semibold text-[var(--hf-cta)] tabular-nums">
+                <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-secondary)]">CREDITS</span>
+                <span className="font-mono font-bold text-[var(--hf-cta)] tabular-nums">
                   {creditWallet.balance.toLocaleString()} CR
                 </span>
               </Link>
             )}
             <Link
               to="/profile"
-              className="p-2 rounded-lg hover:bg-[var(--hf-surface-secondary)] transition-colors flex items-center gap-2.5"
+              className="p-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] hover:bg-[var(--hf-surface-secondary)] transition-colors flex items-center gap-2.5"
             >
-              <div className="w-8 h-8 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 text-xs font-semibold text-[var(--hf-text)] overflow-hidden">
+              <div className="w-7 h-7 rounded-sm bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] border border-[var(--hf-ink-border)] flex items-center justify-center shrink-0 font-mono text-xs font-bold overflow-hidden">
                 {user?.photoURL ? (
                   <img src={user.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
@@ -396,8 +365,8 @@ export default function Navbar({ user }: NavbarProps) {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-[var(--hf-text)] truncate">{user?.displayName || 'Account'}</p>
-                <p className="text-[11px] text-[var(--hf-text-muted)] truncate">{getPlanLabel(plan)}</p>
+                <p className="text-xs font-bold text-[var(--hf-text)] truncate">{user?.displayName || 'CANDIDATE'}</p>
+                <p className="font-mono text-[10px] text-[var(--hf-cta)] font-semibold truncate">{getPlanLabel(plan)}</p>
               </div>
             </Link>
           </div>
@@ -424,30 +393,30 @@ export default function Navbar({ user }: NavbarProps) {
               role="dialog"
               aria-modal="true"
               aria-label="Mobile Navigation Menu"
-              className="fixed top-0 left-0 bottom-0 w-72 bg-[var(--hf-surface)] border-r border-[var(--hf-border)] z-[120] flex flex-col pt-16 shadow-xl"
+              className="fixed top-0 left-0 bottom-0 w-72 bg-[var(--hf-bg)] border-r-[1.5px] border-[var(--hf-ink-border)] z-[120] flex flex-col pt-16 shadow-xl"
             >
               <div className="absolute top-3.5 right-3.5">
                 <button 
                    onClick={() => setIsDrawerOpen(false)}
-                   className="min-h-[40px] min-w-[40px] p-2 flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-lg transition-colors cursor-pointer"
+                   className="min-h-[36px] min-w-[36px] p-1.5 flex items-center justify-center text-[var(--hf-text)] bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] rounded-sm cursor-pointer"
                    aria-label="Close navigation menu"
                 >
-                  <X className="w-5 h-5" aria-hidden="true" />
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
 
-              <div className="px-4 pb-3 border-b border-[var(--hf-border)]">
-                <div className="flex items-center gap-2.5">
+              <div className="px-4 pb-3 border-b-[1.5px] border-[var(--hf-ink-border)]">
+                <div className="flex items-center gap-2">
                   <HireFlowLogo className="w-6 h-6" />
-                  <span className="text-sm font-semibold text-[var(--hf-text)]">HireFlow</span>
+                  <span className="font-serif-display font-bold text-sm text-[var(--hf-text)]">HIREFLOW // DOSSIER</span>
                 </div>
               </div>
 
               <div className="flex-1 px-3 py-4 space-y-5 overflow-y-auto custom-scrollbar">
                 {navGroups.map((group) => (
-                  <div key={group.label} className="space-y-1">
-                    <div className="px-3 mb-1">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--hf-text-muted)]">
+                  <div key={group.label} className="space-y-1.5">
+                    <div className="px-2.5 mb-1">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--hf-text-muted)]">
                         {group.label}
                       </span>
                     </div>
@@ -458,10 +427,10 @@ export default function Navbar({ user }: NavbarProps) {
                           key={item.path}
                           to={item.path}
                           className={cn(
-                            "min-h-[40px] flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                            "min-h-[40px] flex items-center gap-2.5 px-3 py-2 rounded-sm text-xs font-medium transition-colors",
                             isActive
-                              ? "bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] font-semibold border border-[var(--hf-border)]"
-                              : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]/60 border border-transparent"
+                              ? "bg-[var(--hf-surface)] text-[var(--hf-text)] font-bold border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]"
+                              : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]"
                           )}
                         >
                           <item.icon className={cn(
@@ -476,14 +445,14 @@ export default function Navbar({ user }: NavbarProps) {
                 ))}
               </div>
 
-              <div className="p-3 border-t border-[var(--hf-border)] mt-auto bg-[var(--hf-surface-secondary)]/30">
-                <div className="p-2.5 rounded-lg flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center shrink-0 text-xs font-semibold text-[var(--hf-text)]">
+              <div className="p-3 border-t-[1.5px] border-[var(--hf-ink-border)] mt-auto bg-[var(--hf-surface-secondary)]">
+                <div className="p-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-sm bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] flex items-center justify-center shrink-0 font-mono text-xs font-bold">
                     {(user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-[var(--hf-text)] truncate">{user?.displayName || 'Account'}</p>
-                    <p className="text-[11px] text-[var(--hf-text-muted)] truncate">{getPlanLabel(plan)}</p>
+                    <p className="text-xs font-bold text-[var(--hf-text)] truncate">{user?.displayName || 'CANDIDATE'}</p>
+                    <p className="font-mono text-[10px] text-[var(--hf-cta)] font-semibold truncate">{getPlanLabel(plan)}</p>
                   </div>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LucideIcon, ArrowRight, ChevronDown, Terminal } from 'lucide-react';
+import { LucideIcon, ArrowRight, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import SEOHead from './SEOHead';
 import { SpotlightCard, FadeInSection } from './AnimatedPrimitives';
@@ -57,12 +57,12 @@ export interface SEOFeatureLayoutProps {
 }
 
 const ALL_FEATURES = [
-  { name: "Resume Analyzer", path: "/resume-analyzer", desc: "ATS compatibility & keyword gap diagnostic." },
-  { name: "Resume Editor", path: "/resume-editor", desc: "Clean single-column ATS builder with bullet refinement." },
-  { name: "Job Finder", path: "/job-finder", desc: "Live job discovery matching your exact skills." },
-  { name: "Application Tracker", path: "/job-tracker", desc: "Organize applications across pipeline stages." },
-  { name: "Career Roadmap", path: "/career-advisor", desc: "Personalized skill roadmaps and milestone learning." },
-  { name: "Interview Lab", path: "/interview-lab", desc: "Practice mock interview questions with STAR feedback." },
+  { code: "01", name: "Resume Analyzer", path: "/resume-analyzer", desc: "ATS compatibility & keyword gap diagnostic." },
+  { code: "02", name: "Resume Editor", path: "/resume-editor", desc: "Clean single-column ATS builder with bullet refinement." },
+  { code: "03", name: "Live Job Index", path: "/job-finder", desc: "Live job discovery matching your exact skills." },
+  { code: "04", name: "Application Tracker", path: "/job-tracker", desc: "Organize applications across pipeline stages." },
+  { code: "05", name: "Career Roadmap", path: "/career-advisor", desc: "Personalized skill roadmaps and milestone learning." },
+  { code: "06", name: "Interview Lab", path: "/interview-lab", desc: "Practice mock interview questions with STAR feedback." },
 ];
 
 export default function SEOFeatureLayout({
@@ -104,8 +104,8 @@ export default function SEOFeatureLayout({
         jsonLd={jsonLd}
       />
 
-      {/* 1. Hero Section with Architectural Grid Canvas */}
-      <section className="relative pt-28 sm:pt-36 pb-16 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)] overflow-hidden">
+      {/* 1. Editorial Dossier Hero Section */}
+      <section className="relative pt-24 sm:pt-32 pb-16 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)] overflow-hidden">
         <div
           className="pointer-events-none absolute inset-0 hf-grid-canvas hf-radial-mask"
           aria-hidden="true"
@@ -115,70 +115,60 @@ export default function SEOFeatureLayout({
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="text-center max-w-3xl mx-auto mb-12"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] border border-[var(--hf-border)] shadow-2xs mb-5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--hf-cta)] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--hf-cta)]" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] mb-5">
+              <span className="w-2 h-2 bg-[var(--hf-cta)] inline-block" />
+              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-[var(--hf-text)]">
+                SPECIFICATION // {badgeText}
               </span>
-              <span>{badgeText}</span>
             </div>
 
-            <h1 className="font-sans font-bold text-3xl sm:text-5xl tracking-tight text-[var(--hf-text)] leading-[1.1] mb-5">
+            <h1 className="font-serif-display font-normal text-4xl sm:text-5xl md:text-6xl tracking-tight text-[var(--hf-text)] leading-[1.08] mb-5">
               {h1}
             </h1>
 
-            <p className="text-base sm:text-lg text-[var(--hf-text-secondary)] font-normal leading-relaxed mb-8 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-[var(--hf-text-secondary)] font-normal leading-relaxed mb-8 max-w-2xl mx-auto">
               {heroDescription}
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md mx-auto">
               <button
                 type="button"
                 onClick={onCtaClick}
                 disabled={isCtaLoading}
-                className="hf-btn-primary min-h-[46px] px-6 text-sm w-full sm:w-auto gap-2 disabled:opacity-60 cursor-pointer"
+                className="hf-btn-primary min-h-[46px] px-6 text-xs sm:text-sm w-full sm:w-auto gap-2 disabled:opacity-60 cursor-pointer"
               >
-                <span>{isCtaLoading ? 'Opening...' : ctaLabel}</span>
+                <span>{isCtaLoading ? 'OPENING...' : ctaLabel}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <a
                 href="#how-it-works"
-                className="hf-btn-secondary min-h-[46px] px-6 text-sm w-full sm:w-auto"
+                className="hf-btn-secondary min-h-[46px] px-5 text-xs sm:text-sm w-full sm:w-auto"
               >
-                See how it works
+                READ WORKFLOW SPEC
               </a>
             </div>
           </motion.div>
 
-          {/* Framed Interactive Product Preview */}
+          {/* Framed Dossier Report Sheet */}
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-4xl mx-auto rounded-2xl border border-[var(--hf-border)] bg-[var(--hf-surface)] shadow-xl overflow-hidden"
+            transition={{ duration: 0.45, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-4xl mx-auto bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-ink-border)] overflow-hidden"
           >
-            <div className="px-4 py-2.5 bg-[var(--hf-surface-secondary)]/80 border-b border-[var(--hf-border)] flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center gap-1.5" aria-hidden="true">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-400/70" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
-                </div>
-                <div className="h-3.5 w-[1px] bg-[var(--hf-border)]" />
-                <span className="text-[11px] font-mono text-[var(--hf-text-secondary)] flex items-center gap-1.5">
-                  <Terminal className="w-3 h-3 text-[var(--hf-cta)]" />
-                  <span>hireflow.in{canonicalPath}</span>
-                </span>
-              </div>
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[var(--hf-surface)] border border-[var(--hf-border)] text-[var(--hf-text-muted)]">
-                Interactive Workbench
+            <div className="px-4 py-2.5 bg-[var(--hf-surface-secondary)] border-b-[1.5px] border-[var(--hf-ink-border)] flex items-center justify-between gap-3">
+              <span className="font-mono text-xs font-bold uppercase text-[var(--hf-text)]">
+                DOSSIER PREVIEW // HIREFLOW{canonicalPath.toUpperCase()}
+              </span>
+              <span className="font-mono text-[10px] font-bold uppercase px-2 py-0.5 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] text-[var(--hf-cta)]">
+                VERIFIED MODULE
               </span>
             </div>
-            <div className="p-2 sm:p-3 bg-[var(--hf-surface-secondary)]/20">
+            <div className="p-3 sm:p-5 bg-[var(--hf-bg)]/40">
               {sampleVisual}
             </div>
           </motion.div>
@@ -187,13 +177,13 @@ export default function SEOFeatureLayout({
 
       {/* 2. How It Works Section */}
       {howItWorks && howItWorks.length > 0 && (
-        <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)] bg-[var(--hf-surface)]">
+        <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)]">
           <div className="max-w-6xl mx-auto">
             <FadeInSection className="max-w-2xl mb-12">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
-                Workflow
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
+                SECTION 01 // EXECUTION SEQUENCE
               </span>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--hf-text)]">
+              <h2 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
                 {howItWorksTitle}
               </h2>
               <p className="text-sm text-[var(--hf-text-secondary)] mt-2.5 leading-relaxed">
@@ -205,10 +195,10 @@ export default function SEOFeatureLayout({
               {howItWorks.map((item, idx) => (
                 <FadeInSection key={idx} delay={idx * 0.06}>
                   <SpotlightCard className="p-6 h-full space-y-3">
-                    <span className="font-mono text-xs font-semibold text-[var(--hf-cta)] px-2 py-0.5 rounded bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] inline-block">
+                    <span className="font-mono text-xs font-bold text-[var(--hf-text)] px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] inline-block">
                       STEP {item.step}
                     </span>
-                    <h3 className="text-base font-semibold text-[var(--hf-text)]">{item.title}</h3>
+                    <h3 className="font-serif-display text-xl font-bold text-[var(--hf-text)]">{item.title}</h3>
                     <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{item.desc}</p>
                   </SpotlightCard>
                 </FadeInSection>
@@ -220,13 +210,13 @@ export default function SEOFeatureLayout({
 
       {/* 3. Capabilities / Benefits Grid */}
       {capabilities && capabilities.length > 0 && (
-        <section className="py-20 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)]">
+        <section className="py-20 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)]">
           <div className="max-w-6xl mx-auto">
             <FadeInSection className="max-w-2xl mb-12">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
-                Architecture &amp; Benefits
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
+                SECTION 02 // SYSTEM ARCHITECTURE
               </span>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--hf-text)]">
+              <h2 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
                 {capabilitiesTitle}
               </h2>
               <p className="text-sm text-[var(--hf-text-secondary)] mt-2.5 leading-relaxed">
@@ -240,10 +230,10 @@ export default function SEOFeatureLayout({
                 return (
                   <FadeInSection key={idx} delay={idx * 0.08}>
                     <SpotlightCard className="p-6 h-full space-y-3">
-                      <div className="w-9 h-9 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] text-[var(--hf-cta)] flex items-center justify-center">
+                      <div className="w-9 h-9 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-[var(--hf-cta)] flex items-center justify-center">
                         <IconComponent className="w-4 h-4" />
                       </div>
-                      <h3 className="text-base font-semibold text-[var(--hf-text)]">{cap.title}</h3>
+                      <h3 className="font-serif-display text-xl font-bold text-[var(--hf-text)]">{cap.title}</h3>
                       <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{cap.desc}</p>
                     </SpotlightCard>
                   </FadeInSection>
@@ -258,13 +248,13 @@ export default function SEOFeatureLayout({
       {extraContent}
 
       {/* 5. Cross-Feature Exploration Links */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)] bg-[var(--hf-surface)]">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)]">
         <div className="max-w-6xl mx-auto">
           <FadeInSection className="mb-8">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-1.5">
-              Connected Platform
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1.5">
+              CONNECTED DOSSIER
             </span>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--hf-text)]">
+            <h2 className="font-serif-display text-2xl sm:text-3xl font-normal tracking-tight text-[var(--hf-text)]">
               Explore other modules in the workspace
             </h2>
           </FadeInSection>
@@ -275,16 +265,18 @@ export default function SEOFeatureLayout({
                 <Link to={feat.path} className="block h-full group">
                   <SpotlightCard className="p-4 h-full flex flex-col justify-between">
                     <div>
-                      <h3 className="text-xs font-semibold text-[var(--hf-text)] group-hover:text-[var(--hf-cta)] transition-colors mb-1">
+                      <span className="font-mono text-[10px] font-bold text-[var(--hf-cta)] block mb-1">
+                        MODULE // {feat.code}
+                      </span>
+                      <h3 className="font-serif-display text-base font-bold text-[var(--hf-text)] group-hover:text-[var(--hf-cta)] transition-colors mb-1">
                         {feat.name}
                       </h3>
                       <p className="text-[11px] text-[var(--hf-text-secondary)] leading-relaxed">
                         {feat.desc}
                       </p>
                     </div>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--hf-cta)] pt-3">
-                      <span>Explore</span>
-                      <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                    <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-[var(--hf-text)] group-hover:text-[var(--hf-cta)] pt-3">
+                      <span>INSPECT →</span>
                     </span>
                   </SpotlightCard>
                 </Link>
@@ -296,16 +288,16 @@ export default function SEOFeatureLayout({
 
       {/* 6. FAQ Accordion */}
       {faqItems && faqItems.length > 0 && (
-        <section className="py-20 px-4 sm:px-6 lg:px-8 border-b border-[var(--hf-border)]">
+        <section className="py-20 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)]">
           <div className="max-w-3xl mx-auto">
-            <FadeInSection className="text-center max-w-2xl mx-auto mb-12">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
-                FAQ
+            <FadeInSection className="mb-12">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
+                REFERENCE FAQ
               </span>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--hf-text)]">
+              <h2 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
                 {faqTitle}
               </h2>
-              <p className="text-sm text-[var(--hf-text-secondary)] mt-2.5 leading-relaxed">
+              <p className="text-sm text-[var(--hf-text-secondary)] mt-2 leading-relaxed">
                 {faqSubtitle}
               </p>
             </FadeInSection>
@@ -315,17 +307,17 @@ export default function SEOFeatureLayout({
                 const isOpen = openFaqIndex === idx;
                 return (
                   <FadeInSection key={idx} delay={idx * 0.04}>
-                    <div className="hf-card overflow-hidden transition-colors">
+                    <div className="hf-card overflow-hidden">
                       <button
                         type="button"
                         onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
                         className="w-full min-h-[52px] p-4 sm:p-5 flex items-center justify-between gap-4 text-left cursor-pointer"
                         aria-expanded={isOpen}
                       >
-                        <span className="text-sm font-semibold text-[var(--hf-text)]">
-                          {faq.q}
+                        <span className="font-serif-display text-base sm:text-lg font-bold text-[var(--hf-text)]">
+                          0{idx + 1}. {faq.q}
                         </span>
-                        <ChevronDown className={`w-4 h-4 text-[var(--hf-text-secondary)] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--hf-cta)]' : ''}`} />
+                        <ChevronDown className={`w-4 h-4 text-[var(--hf-text)] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--hf-cta)]' : ''}`} />
                       </button>
 
                       <AnimatePresence initial={false}>
@@ -334,7 +326,7 @@ export default function SEOFeatureLayout({
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                            transition={{ duration: 0.22 }}
                             className="overflow-hidden"
                           >
                             <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
@@ -361,7 +353,7 @@ export default function SEOFeatureLayout({
           aria-hidden="true"
         />
         <FadeInSection className="relative z-10 max-w-2xl mx-auto space-y-5">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--hf-text)]">
+          <h2 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
             {finalCtaTitle}
           </h2>
           <p className="text-sm sm:text-base text-[var(--hf-text-secondary)] leading-relaxed max-w-lg mx-auto">
@@ -372,16 +364,16 @@ export default function SEOFeatureLayout({
               type="button"
               onClick={onCtaClick}
               disabled={isCtaLoading}
-              className="hf-btn-primary min-h-[46px] px-7 text-sm w-full sm:w-auto gap-2 cursor-pointer disabled:opacity-60"
+              className="hf-btn-primary min-h-[46px] px-7 text-xs sm:text-sm w-full sm:w-auto gap-2 cursor-pointer disabled:opacity-60"
             >
-              <span>{isCtaLoading ? 'Opening...' : finalCtaLabel}</span>
+              <span>{isCtaLoading ? 'OPENING...' : finalCtaLabel}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <Link
               to="/"
-              className="hf-btn-secondary min-h-[46px] px-6 text-sm w-full sm:w-auto"
+              className="hf-btn-secondary min-h-[46px] px-6 text-xs sm:text-sm w-full sm:w-auto"
             >
-              Back to platform overview
+              RETURN TO DOSSIER OVERVIEW
             </Link>
           </div>
         </FadeInSection>

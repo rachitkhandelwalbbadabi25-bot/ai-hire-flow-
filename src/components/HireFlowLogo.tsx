@@ -17,21 +17,23 @@ export default function HireFlowLogo({
 
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
-      {/* Precision Vector Icon matching user brand logo */}
+      {/* Precision Editorial Monogram Stamp */}
       <svg
         viewBox="0 0 512 512"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full shrink-0 shadow-xs rounded-[26%] overflow-hidden"
+        className="w-full h-full shrink-0 rounded-[18%] overflow-hidden border border-[var(--hf-ink-border)]"
         style={style}
         aria-label="AI HireFlow Logo"
       >
-        {/* Squircle Background */}
-        <rect width="512" height="512" rx="136" ry="136" fill="#2563EB" />
+        {/* Solid Charcoal Ink Background */}
+        <rect width="512" height="512" rx="88" ry="88" fill="#141413" />
+        {/* Corner Editorial Terracotta Accent Tab */}
+        <rect x="376" y="48" width="88" height="28" rx="6" fill="#B45309" />
 
-        {/* Brand Ligature Monogram */}
+        {/* Brand Ligature Monogram in Warm Ivory */}
         <path
-          fill="#FFFFFF"
+          fill="#F7F4ED"
           fillRule="evenodd"
           clipRule="evenodd"
           d="
@@ -68,11 +70,11 @@ export default function HireFlowLogo({
 
       {showText && (
         <div className={`flex flex-col leading-tight ${textClassName}`}>
-          <span className="font-sans font-bold text-base tracking-tight text-[var(--hf-text)]">
-            AI HireFlow
+          <span className="font-serif-display font-bold text-base tracking-tight text-[var(--hf-text)]">
+            HIREFLOW // DOSSIER
           </span>
-          <span className="text-[11px] font-normal text-[var(--hf-text-secondary)]">
-            Career platform
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--hf-text-secondary)]">
+            Career OS
           </span>
         </div>
       )}

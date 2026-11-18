@@ -1,12 +1,15 @@
 @import "tailwindcss";
 
 /**
- * AI HireFlow — High-Craft Enterprise Design System
- * Inspired by Linear, Stripe, Teal HQ, and Simplify.
+ * AI HireFlow — Option C (Style 3): Executive Paper & Tactile Ink Dossier
+ * Warm Ivory Paper (#F7F4ED), Espresso Charcoal Ink (#141413),
+ * Editorial Serif Display Typography (Newsreader/Georgia), Monospace Ledger Specs,
+ * and Tactile Offset Ink Shadows (3px 3px 0px #141413).
  */
 
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Newsreader", Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-background: var(--background);
@@ -21,11 +24,11 @@
   --color-error: var(--hf-error);
   --color-border: var(--border);
 
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.625rem;
-  --radius-2xl: 0.75rem;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
 
   /* Core Token Mappings */
   --color-hf-bg: var(--hf-bg);
@@ -44,88 +47,96 @@
   --color-hf-error: var(--hf-error);
   --color-hf-border: var(--hf-border);
 
-  --radius-hf-sm: 0.375rem;
-  --radius-hf-md: 0.5rem;
-  --radius-hf-lg: 0.625rem;
-  --radius-hf-xl: 0.75rem;
+  --radius-hf-sm: 0.25rem;
+  --radius-hf-md: 0.375rem;
+  --radius-hf-lg: 0.375rem;
+  --radius-hf-xl: 0.5rem;
 }
 
 :root {
-  --background: #F8FAFC;
+  --background: #F7F4ED;
   --surface: #FFFFFF;
-  --surface-light: #F1F5F9;
-  --ink: #0F172A;
-  --ink-dim: #475569;
-  --ink-muted: #64748B;
-  --border: #E2E8F0;
-  --accent-rgb: 37, 99, 235;
+  --surface-light: #EFECE4;
+  --ink: #141413;
+  --ink-dim: #44403C;
+  --ink-muted: #78716C;
+  --border: #D6D1C7;
+  --accent-rgb: 180, 83, 9;
 
-  /* Light Mode Palette — Crisp Alabaster Slate & Royal Indigo-Blue */
-  --hf-bg: #F8FAFC;
+  /* Light Mode Palette — Warm Ivory Paper & Espresso Charcoal Ink */
+  --hf-bg: #F7F4ED;
   --hf-surface: #FFFFFF;
-  --hf-surface-secondary: #F1F5F9;
-  --hf-text: #0F172A;
-  --hf-text-secondary: #475569;
-  --hf-text-muted: #64748B;
-  --hf-cta: #2563EB;
-  --hf-cta-hover: #1D4ED8;
-  --hf-accent: #2563EB;
-  --hf-primary: #2563EB;
-  --hf-btn-primary-bg: #0F172A;
-  --hf-btn-primary-text: #FFFFFF;
-  --hf-navy: #0F172A;
-  --hf-dark-panel: #0F172A;
-  --hf-ai-teal: #0D9488;
-  --hf-teal: #0D9488;
-  --hf-mint: #CCFBF1;
-  --hf-success: #16A34A;
-  --hf-warning: #D97706;
-  --hf-error: #DC2626;
+  --hf-surface-secondary: #EFECE4;
+  --hf-text: #141413;
+  --hf-text-secondary: #44403C;
+  --hf-text-muted: #78716C;
+  --hf-cta: #B45309;
+  --hf-cta-hover: #92400E;
+  --hf-accent: #B45309;
+  --hf-primary: #141413;
+  --hf-btn-primary-bg: #141413;
+  --hf-btn-primary-text: #FAF8F4;
+  --hf-navy: #141413;
+  --hf-dark-panel: #141413;
+  --hf-ai-teal: #15803D;
+  --hf-teal: #15803D;
+  --hf-mint: #DCFCE7;
+  --hf-success: #15803D;
+  --hf-warning: #B45309;
+  --hf-error: #B91C1C;
   --hf-error-bg: #FEF2F2;
-  --hf-border: #E2E8F0;
-  --hf-border-hover: #CBD5E1;
-  --hf-grid-line: rgba(15, 23, 42, 0.045);
-  --hf-spotlight: rgba(37, 99, 235, 0.06);
-  --hf-card-inner-shine: rgba(255, 255, 255, 0.8);
+  --hf-border: #D6D1C7;
+  --hf-border-hover: #141413;
+  --hf-ink-border: #141413;
+  --hf-shadow-ink: 3px 3px 0px #141413;
+  --hf-shadow-ink-sm: 2px 2px 0px #141413;
+  --hf-shadow-ink-lg: 5px 5px 0px #141413;
+  --hf-shadow-accent: 3px 3px 0px #B45309;
+  --hf-grid-line: rgba(20, 20, 19, 0.055);
+  --hf-spotlight: rgba(180, 83, 9, 0.06);
 }
 
 .dark {
-  --background: #070A12;
-  --surface: #0D131F;
-  --surface-light: #161F30;
-  --ink: #F8FAFC;
-  --ink-dim: #94A3B8;
-  --ink-muted: #64748B;
-  --border: #1E293B;
-  --accent-rgb: 59, 130, 246;
+  --background: #121210;
+  --surface: #1A1917;
+  --surface-light: #242320;
+  --ink: #F5F2EB;
+  --ink-dim: #A8A29E;
+  --ink-muted: #78716C;
+  --border: #33312C;
+  --accent-rgb: 217, 119, 6;
 
-  /* Dark Mode Palette — Deep Obsidian Carbon */
-  --hf-bg: #070A12;
-  --hf-surface: #0D131F;
-  --hf-surface-secondary: #151E2E;
-  --hf-text: #F8FAFC;
-  --hf-text-secondary: #94A3B8;
-  --hf-text-muted: #64748B;
-  --hf-cta: #3B82F6;
-  --hf-cta-hover: #2563EB;
-  --hf-accent: #3B82F6;
-  --hf-primary: #3B82F6;
-  --hf-btn-primary-bg: #3B82F6;
-  --hf-btn-primary-text: #FFFFFF;
-  --hf-navy: #070A12;
-  --hf-dark-panel: #0D131F;
-  --hf-ai-teal: #2DD4BF;
-  --hf-teal: #2DD4BF;
-  --hf-mint: #115E59;
-  --hf-success: #22C55E;
+  /* Dark Mode Palette — Archive Carbon Press & Warm Parchment */
+  --hf-bg: #121210;
+  --hf-surface: #1A1917;
+  --hf-surface-secondary: #242320;
+  --hf-text: #F5F2EB;
+  --hf-text-secondary: #A8A29E;
+  --hf-text-muted: #78716C;
+  --hf-cta: #F59E0B;
+  --hf-cta-hover: #D97706;
+  --hf-accent: #F59E0B;
+  --hf-primary: #F5F2EB;
+  --hf-btn-primary-bg: #F5F2EB;
+  --hf-btn-primary-text: #141413;
+  --hf-navy: #121210;
+  --hf-dark-panel: #1A1917;
+  --hf-ai-teal: #4ADE80;
+  --hf-teal: #4ADE80;
+  --hf-mint: #14532D;
+  --hf-success: #4ADE80;
   --hf-warning: #F59E0B;
-  --hf-error: #EF4444;
+  --hf-error: #F87171;
   --hf-error-bg: #450A0A;
-  --hf-border: #1E293B;
-  --hf-border-hover: #334155;
-  --hf-grid-line: rgba(248, 250, 252, 0.04);
-  --hf-spotlight: rgba(59, 130, 246, 0.11);
-  --hf-card-inner-shine: rgba(255, 255, 255, 0.05);
+  --hf-border: #33312C;
+  --hf-border-hover: #F5F2EB;
+  --hf-ink-border: #57534E;
+  --hf-shadow-ink: 3px 3px 0px #000000;
+  --hf-shadow-ink-sm: 2px 2px 0px #000000;
+  --hf-shadow-ink-lg: 5px 5px 0px #000000;
+  --hf-shadow-accent: 3px 3px 0px #B45309;
+  --hf-grid-line: rgba(245, 242, 235, 0.04);
+  --hf-spotlight: rgba(245, 158, 11, 0.08);
 }
 
 @layer base {
@@ -138,9 +149,19 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  /* Editorial Serif Display Headings for Dossier Authority */
+  h1, h2 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.02em;
+  }
+
+  h3, h4, h5, h6 {
     font-family: var(--font-sans);
-    letter-spacing: -0.025em;
+    letter-spacing: -0.015em;
+  }
+
+  .font-serif-display {
+    font-family: var(--font-serif);
   }
 
   /* Accessible Keyboard Focus Ring */
@@ -178,21 +199,21 @@
   .glass-card,
   .glass-panel {
     background-color: var(--hf-surface);
-    border: 1px solid var(--hf-border);
-    border-radius: 0.875rem;
-    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 0 var(--hf-card-inner-shine);
+    border: 1.5px solid var(--hf-ink-border);
+    border-radius: 0.375rem;
+    box-shadow: var(--hf-shadow-ink);
   }
   
   .status-pill {
-    @apply px-2.5 py-0.5 rounded-md text-xs font-medium border;
+    @apply px-2.5 py-0.5 rounded-sm text-xs font-mono font-semibold border;
   }
   
-  .status-applied { @apply bg-accent/10 text-accent border-accent/25; }
-  .status-interview { @apply bg-warning/10 text-warning border-warning/25; }
-  .status-offer { @apply bg-success/10 text-success border-success/25; }
-  .status-rejected { @apply bg-rose-500/10 text-rose-500 border-rose-500/25; }
+  .status-applied { @apply bg-accent/10 text-accent border-accent/40; }
+  .status-interview { @apply bg-warning/10 text-warning border-warning/40; }
+  .status-offer { @apply bg-success/10 text-success border-success/40; }
+  .status-rejected { @apply bg-rose-500/10 text-rose-600 border-rose-500/40; }
 
-  /* Architectural Grid & Dot Canvas */
+  /* Architectural Blueprint Grid & Dot Canvas */
   .hf-grid-canvas {
     background-size: 36px 36px;
     background-image: 
@@ -201,127 +222,130 @@
   }
 
   .hf-dot-canvas {
-    background-image: radial-gradient(var(--hf-border-hover) 1px, transparent 1px);
+    background-image: radial-gradient(var(--hf-border) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 
   .hf-radial-mask {
-    mask-image: radial-gradient(ellipse 80% 70% at 50% 25%, #000 45%, transparent 100%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 25%, #000 45%, transparent 100%);
+    mask-image: radial-gradient(ellipse 85% 75% at 50% 30%, #000 50%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 30%, #000 50%, transparent 100%);
   }
 
-  /* High-Craft Card Surface with Specular Inner Top Edge */
+  /* Tactile Dossier Card Surface with Hard Ink Offset Shadow */
   .hf-card {
     background-color: var(--hf-surface);
-    border: 1px solid var(--hf-border);
-    border-radius: 0.875rem;
-    box-shadow: 
-      0 1px 2px 0 rgba(15, 23, 42, 0.03), 
-      0 2px 6px -1px rgba(15, 23, 42, 0.04),
-      inset 0 1px 0 0 var(--hf-card-inner-shine);
-    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1.5px solid var(--hf-ink-border);
+    border-radius: 0.375rem;
+    box-shadow: var(--hf-shadow-ink);
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   }
 
   .hf-card-interactive:hover {
-    border-color: var(--hf-border-hover);
-    box-shadow: 
-      0 8px 24px -6px rgba(15, 23, 42, 0.08),
-      0 2px 6px -1px rgba(15, 23, 42, 0.04),
-      inset 0 1px 0 0 var(--hf-card-inner-shine);
+    transform: translate(-1.5px, -1.5px);
+    box-shadow: 4.5px 4.5px 0px var(--hf-ink-border);
   }
 
   .hf-card-secondary {
     background-color: var(--hf-surface-secondary);
     border: 1px solid var(--hf-border);
-    border-radius: 0.75rem;
+    border-radius: 0.375rem;
     transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
+  /* Tactile Mechanical Primary Button with Terracotta Offset Shadow */
   .hf-btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-weight: 500;
-    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     line-height: 1.25rem;
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    padding: 0.55rem 1.1rem;
     background-color: var(--hf-btn-primary-bg);
     color: var(--hf-btn-primary-text);
-    box-shadow: 
-      0 1px 2px 0 rgba(15, 23, 42, 0.12),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
-    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1.5px solid var(--hf-ink-border);
+    box-shadow: var(--hf-shadow-accent);
+    transition: all 0.14s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
   }
   .hf-btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 
-      0 4px 12px -2px rgba(37, 99, 235, 0.25),
-      0 1px 2px 0 rgba(15, 23, 42, 0.12),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
-    opacity: 0.96;
+    transform: translate(-1.5px, -1.5px);
+    box-shadow: 4.5px 4.5px 0px var(--hf-cta);
   }
   .hf-btn-primary:active {
-    transform: translateY(0px) scale(0.985);
+    transform: translate(1.5px, 1.5px);
+    box-shadow: 1px 1px 0px var(--hf-cta);
   }
 
+  /* Tactile Secondary Ink-Bordered Button */
   .hf-btn-secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-weight: 500;
-    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
     line-height: 1.25rem;
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    padding: 0.55rem 1.1rem;
     background-color: var(--hf-surface);
     color: var(--hf-text);
-    border: 1px solid var(--hf-border);
-    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03), inset 0 1px 0 0 var(--hf-card-inner-shine);
-    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1.5px solid var(--hf-ink-border);
+    box-shadow: var(--hf-shadow-ink-sm);
+    transition: all 0.14s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
   }
   .hf-btn-secondary:hover {
     background-color: var(--hf-surface-secondary);
-    border-color: var(--hf-border-hover);
-    transform: translateY(-1px);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0px var(--hf-ink-border);
   }
   .hf-btn-secondary:active {
-    transform: translateY(0px) scale(0.985);
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0px var(--hf-ink-border);
   }
 
   .hf-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    padding: 0.25rem 0.625rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 1px solid var(--hf-border);
+    padding: 0.2rem 0.55rem;
+    border-radius: 0.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--hf-ink-border);
     background-color: var(--hf-surface-secondary);
-    color: var(--hf-text-secondary);
+    color: var(--hf-text);
   }
 
   .hf-badge-teal {
-    background-color: color-mix(in srgb, var(--hf-ai-teal) 10%, transparent);
-    border-color: color-mix(in srgb, var(--hf-ai-teal) 24%, transparent);
-    color: var(--hf-ai-teal);
+    background-color: color-mix(in srgb, var(--hf-success) 12%, var(--hf-surface));
+    border-color: var(--hf-success);
+    color: var(--hf-success);
   }
 
   .hf-badge-cta {
-    background-color: color-mix(in srgb, var(--hf-cta) 10%, transparent);
-    border-color: color-mix(in srgb, var(--hf-cta) 24%, transparent);
+    background-color: color-mix(in srgb, var(--hf-cta) 12%, var(--hf-surface));
+    border-color: var(--hf-cta);
     color: var(--hf-cta);
   }
 
   .hf-status-pill {
-    padding: 0.125rem 0.625rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 1px solid var(--hf-border);
+    padding: 0.125rem 0.55rem;
+    border-radius: 0.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid var(--hf-ink-border);
   }
 }
 
@@ -335,7 +359,7 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--hf-border);
-  border-radius: 9999px;
+  border-radius: 0px;
 }
 
 @keyframes loading {

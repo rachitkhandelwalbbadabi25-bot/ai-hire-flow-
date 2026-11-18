@@ -563,27 +563,22 @@ export default function LearningPath() {
   return (
     <div className="max-w-5xl mx-auto px-4 pb-20">
       {/* 1. Header */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)] flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 rounded-lg border border-[var(--hf-border)] bg-[var(--hf-surface-secondary)] text-[var(--hf-ai-teal)]" aria-hidden="true">
-              <Map className="w-4 h-4" />
-            </div>
-            <span className="hf-badge hf-badge-teal text-xs">
-              Career advisor
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight">
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1">
+            06 // SKILL SYLLABUS &amp; ROADMAP
+          </span>
+          <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">
             Learning path
           </h1>
-          <p className="text-sm sm:text-base text-[var(--hf-text-secondary)] font-normal leading-relaxed max-w-2xl mt-1.5">
+          <p className="text-sm text-[var(--hf-text-secondary)] font-normal leading-relaxed max-w-2xl mt-1.5">
             Turn skill and role alignment gaps into a structured, step-by-step career learning plan.
           </p>
         </div>
         {(targetRole || skillsStr || roadmap) && (
           <button
             onClick={handleResetLearningPath}
-            className="hf-btn-ghost text-xs text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] border border-[var(--hf-border)] px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors self-start md:self-auto shrink-0 cursor-pointer"
+            className="hf-btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 self-start md:self-auto shrink-0 cursor-pointer"
             title="Reset role, skills, and roadmap"
           >
             <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />

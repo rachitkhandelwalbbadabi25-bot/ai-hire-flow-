@@ -154,9 +154,9 @@ export default function HeaderQuickSearch() {
       <div className="hidden md:block w-64 lg:w-80">
         <form onSubmit={handleSubmit} className="relative">
           <div
-            className={`flex items-center gap-2 bg-[var(--hf-surface-secondary)] border ${
-              isOpen ? 'border-[var(--hf-cta)] ring-1 ring-[var(--hf-cta)]/30 shadow-xs' : 'border-[var(--hf-border)] hover:border-[var(--hf-text-muted)]'
-            } rounded-lg px-3 py-1.5 transition-all`}
+            className={`flex items-center gap-2 bg-[var(--hf-surface)] border-[1.5px] ${
+              isOpen ? 'border-[var(--hf-cta)] shadow-[2px_2px_0px_var(--hf-cta)]' : 'border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]'
+            } rounded-sm px-3 py-1.5 transition-all`}
           >
             <Search className="w-4 h-4 text-[var(--hf-text-muted)] shrink-0" />
             <input

@@ -304,8 +304,11 @@ export default function OutreachHub() {
           </div>
 
           {/* Header */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight mb-1">
+          <div className="pb-5 border-b-[1.5px] border-[var(--hf-ink-border)]">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1.5">
+              08 // OUTREACH DISPATCH DRAFT
+            </span>
+            <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight mb-1.5">
               Email draft
             </h1>
             <p className="text-sm text-[var(--hf-text-secondary)]">
@@ -499,11 +502,14 @@ export default function OutreachHub() {
         </div>
       ) : (
         <>
-          <div className="mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight mb-2">
+          <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)]">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
+              08 // OUTREACH & COLD PITCH DESK
+            </span>
+            <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight mb-2">
               Outreach drafts
             </h1>
-            <p className="text-sm text-[var(--hf-text-secondary)] font-normal">
+            <p className="text-sm text-[var(--hf-text-secondary)] font-normal max-w-2xl">
               Draft personalized cold emails to contacts. Review and edit before sending.
             </p>
           </div>

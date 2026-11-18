@@ -462,17 +462,18 @@ export default function CampusPlacement() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
       {/* Top Heading */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+      <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)] flex flex-col sm:flex-row sm:items-end justify-between gap-4 font-sans">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center">
-              <GraduationCap className="w-4 h-4 text-[var(--hf-ai-teal)]" />
-            </div>
-            <span className="hf-badge hf-badge-teal text-xs font-medium">
-              Campus preparation
+          <div className="flex items-center gap-2.5 mb-2">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)]">
+              07 // CAMPUS PLACEMENT DRILL
+            </span>
+            <span className="px-2 py-0.5 border border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] rounded-sm font-mono text-[10px] font-bold uppercase tracking-wider text-[var(--hf-text-secondary)] flex items-center gap-1.5">
+              <GraduationCap className="w-3 h-3 text-[var(--hf-ai-teal)]" />
+              PREP SUITE
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--hf-text)] tracking-tight">
+          <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">
             Campus placement preparation
           </h1>
           <p className="text-sm text-[var(--hf-text-secondary)] mt-1.5 max-w-2xl leading-relaxed">

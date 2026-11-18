@@ -263,15 +263,12 @@ export default function ResumeEditor() {
   return (
     <div className="max-w-5xl mx-auto px-4 pb-32 relative">
       {/* Header Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)]">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center text-[var(--hf-cta)]">
-              <FileEdit className="w-4 h-4" />
-            </div>
-            <span className="text-xs font-medium text-[var(--hf-text-secondary)]">Master resume profile</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight">Resume editor</h1>
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1">
+            02 // MASTER RESUME BUILDER
+          </span>
+          <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">Resume editor</h1>
           <p className="text-sm text-[var(--hf-text-secondary)] mt-1">
             Craft your master profile with Google's XYZ formula and real-time AI bullet rewrites.
           </p>

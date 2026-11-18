@@ -10,28 +10,28 @@ export default function PlanBadge() {
     switch (plan) {
       case 'admin':
         return {
-          label: 'Admin',
+          label: 'ADMIN',
           icon: <Crown className="w-3.5 h-3.5" />,
-          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-error)] border-[var(--hf-error)]/30 hover:border-[var(--hf-error)]/60'
+          className: 'bg-[var(--hf-surface)] text-[var(--hf-error)] border-[var(--hf-error)]'
         };
       case 'premium':
         return {
-          label: 'Premium',
+          label: 'PREMIUM',
           icon: <Sparkles className="w-3.5 h-3.5" />,
-          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-warning)] border-[var(--hf-warning)]/30 hover:border-[var(--hf-warning)]/60'
+          className: 'bg-[var(--hf-surface)] text-[var(--hf-cta)] border-[var(--hf-ink-border)]'
         };
       case 'pro':
       case 'standard':
         return {
-          label: 'Pro',
+          label: 'PRO',
           icon: <Zap className="w-3.5 h-3.5" />,
-          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] border-[var(--hf-cta)]/30 hover:border-[var(--hf-cta)]/60'
+          className: 'bg-[var(--hf-surface)] text-[var(--hf-cta)] border-[var(--hf-ink-border)]'
         };
       default:
         return {
-          label: 'Free',
+          label: 'FREE',
           icon: <Shield className="w-3.5 h-3.5" />,
-          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)] hover:border-[var(--hf-text-muted)]'
+          className: 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text)] border-[var(--hf-ink-border)]'
         };
     }
   };
@@ -39,13 +39,15 @@ export default function PlanBadge() {
   const config = getBadgeConfig(plan);
 
   return (
-    <Link to="/credits" className={cn(
-      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors cursor-pointer",
-      config.className
-    )}>
+    <Link
+      to="/credits"
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm border-[1.5px] font-mono text-[11px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_var(--hf-ink-border)] hover:-translate-y-0.5 transition-all cursor-pointer",
+        config.className
+      )}
+    >
       {config.icon}
       <span>{config.label}</span>
-      {plan === 'admin' && <span className="ml-1 opacity-70">👑</span>}
     </Link>
   );
 }

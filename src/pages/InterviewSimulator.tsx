@@ -557,15 +557,10 @@ export default function InterviewSimulator() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--hf-surface-secondary)] border border-[var(--hf-border)] flex items-center justify-center">
-              <BrainCircuit className="w-4 h-4 text-[var(--hf-ai-teal)]" />
-            </div>
-            <span className="hf-badge hf-badge-teal text-xs font-medium">
-              Interview practice
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--hf-text)] tracking-tight">
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1">
+            05 // STAR INTERVIEW LABORATORY
+          </span>
+          <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">
             Interview practice
           </h1>
           <p className="text-sm text-[var(--hf-text-secondary)] mt-1.5 max-w-2xl leading-relaxed">
@@ -578,18 +573,18 @@ export default function InterviewSimulator() {
           {hasActiveSession && (
             <button
               onClick={handleResetInterview}
-              className="hf-btn-secondary px-3 py-2 text-xs font-medium rounded-lg flex items-center gap-2 cursor-pointer"
+              className="hf-btn-secondary px-3 py-2 text-xs flex items-center gap-2 cursor-pointer"
               title="Clear all interview practice state"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset session</span>
             </button>
           )}
-          <div className="px-3.5 py-2 bg-[var(--hf-surface)] border border-[var(--hf-border)] rounded-lg flex items-center gap-2.5 shadow-xs">
-            <div className="w-2 h-2 rounded-full bg-[var(--hf-ai-teal)]" />
+          <div className="px-3.5 py-2 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] rounded-sm flex items-center gap-2.5">
+            <div className="w-2 h-2 bg-[var(--hf-success)]" />
             <div className="flex flex-col">
-              <span className="text-xs font-medium text-[var(--hf-text)]">Available sessions</span>
-              <span className="text-xs text-[var(--hf-text-secondary)]">
+              <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-muted)]">SESSIONS AVAILABLE</span>
+              <span className="font-mono text-xs font-bold text-[var(--hf-text)]">
                 {creditCosts?.interviewSession
                   ? formatCreditAvailability(creditWallet?.balance, creditCosts.interviewSession, 'sessions')
                   : `${creditWallet?.balance ?? 0} credits available`}

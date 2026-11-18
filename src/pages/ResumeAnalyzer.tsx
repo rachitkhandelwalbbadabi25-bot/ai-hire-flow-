@@ -1758,25 +1758,28 @@ export default function ResumeAnalyzer() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)] flex flex-col md:flex-row md:items-end justify-between gap-4 font-sans">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight">
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
+            01 // ATS RESUME DIAGNOSTIC
+          </span>
+          <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">
             Resume analyzer
           </h1>
-          <p className="text-sm text-[var(--hf-text-secondary)] mt-1">
+          <p className="text-sm text-[var(--hf-text-secondary)] mt-1.5 max-w-2xl">
             Audit resume compatibility against target roles, identify keyword gaps, and generate tailored cover letters.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="hf-badge hf-badge-teal flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--hf-ai-teal)]" aria-hidden="true" />
-            <span className="tabular-nums">
+          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
+            <span className="w-2 h-2 bg-[var(--hf-ai-teal)]" aria-hidden="true" />
+            <span className="font-mono font-bold tabular-nums">
               {formatCreditAvailability(creditWallet?.balance, creditCosts?.resumeScan ?? 20, 'scans')}
             </span>
           </div>
-          <div className="hf-badge flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--hf-success)]" aria-hidden="true" />
-            <span className="tabular-nums">
+          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
+            <span className="w-2 h-2 bg-[var(--hf-success)]" aria-hidden="true" />
+            <span className="font-mono font-bold tabular-nums">
               {formatCreditAvailability(creditWallet?.balance, creditCosts?.coverLetter ?? 15, 'letters')}
             </span>
           </div>

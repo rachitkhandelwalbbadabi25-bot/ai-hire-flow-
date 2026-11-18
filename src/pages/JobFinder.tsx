@@ -451,21 +451,20 @@ export default function JobFinder() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 font-sans">
       {/* Header */}
-      <div className="mb-8 font-sans">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border border-[var(--hf-border)]">
-            <Search className="w-3.5 h-3.5 text-[var(--hf-teal)]" />
-            <span className="font-sans">Job finder</span>
-          </div>
-          <div className="px-3 py-1.5 border border-[var(--hf-border)] rounded-lg bg-[var(--hf-surface)] flex items-center gap-2 text-xs text-[var(--hf-text-secondary)]">
-            <span className="w-2 h-2 rounded-full bg-[var(--hf-teal)]" />
-            <span className="font-medium tabular-nums font-sans">
+      <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)] font-sans">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)]">
+            03 // LIVE REQUISITION INDEX
+          </span>
+          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
+            <span className="w-2 h-2 bg-[var(--hf-success)]" />
+            <span className="font-mono font-bold tabular-nums">
               {formatCreditAvailability(creditWallet?.balance, creditCosts?.jobMatchAnalysis ?? 20, 'searches')}
             </span>
           </div>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold font-sans text-[var(--hf-text)] tracking-tight mb-2">Job finder</h1>
-        <p className="text-sm sm:text-base text-[var(--hf-text-secondary)] max-w-2xl font-sans">
+        <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight mb-1.5">Job finder</h1>
+        <p className="text-sm text-[var(--hf-text-secondary)] max-w-2xl">
           Discover verified job vacancies from live external sources with AI-powered candidate compatibility matching.
         </p>
       </div>

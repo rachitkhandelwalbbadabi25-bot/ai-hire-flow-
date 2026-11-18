@@ -225,19 +225,22 @@ export default function Profile() {
 
             {/* Candidate Metadata */}
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`px-2.5 py-0.5 rounded-md text-xs font-medium border ${
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)]">
+                  09 // CANDIDATE PROFILE
+                </span>
+                <span className={`px-2 py-0.5 rounded-sm font-mono text-[10px] font-bold uppercase tracking-wider border-[1.5px] border-[var(--hf-ink-border)] shadow-[1px_1px_0px_var(--hf-ink-border)] ${
                   isAdmin 
-                    ? 'bg-[var(--hf-error)]/10 text-[var(--hf-error)] border-[var(--hf-error)]/20' 
+                    ? 'bg-[var(--hf-error)]/10 text-[var(--hf-error)]' 
                     : isPremium 
-                    ? 'bg-[var(--hf-cta)]/10 text-[var(--hf-cta)] border-[var(--hf-cta)]/20' 
-                    : 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)] border-[var(--hf-border)]'
+                    ? 'bg-[var(--hf-cta)]/10 text-[var(--hf-cta)]' 
+                    : 'bg-[var(--hf-surface-secondary)] text-[var(--hf-text-secondary)]'
                 }`}>
                   {planDisplay}
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tracking-tight">
+              <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">
                 {user.displayName || 'Candidate'}
               </h1>
 

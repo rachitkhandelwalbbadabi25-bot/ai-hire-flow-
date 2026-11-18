@@ -14,20 +14,15 @@ import {
   FileSearch, 
   Target, 
   Briefcase, 
-  ArrowRight, 
   FileEdit, 
   Mic, 
-  CheckCircle2,
   AlertCircle,
-  SlidersHorizontal,
   ChevronDown,
-  Lock,
   Compass,
   Check,
   X,
-  Building2,
-  MapPin,
-  Layers
+  RotateCcw,
+  Sparkles
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -135,6 +130,7 @@ export default function Landing() {
 
   const [activeHeroTab, setActiveHeroTab] = useState<HeroTabId>('audit');
   const [isHeroPaused, setIsHeroPaused] = useState(false);
+  const [heroXyzApplied, setHeroXyzApplied] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleBenchmarkId>('frontend');
 
   useEffect(() => {
@@ -145,7 +141,7 @@ export default function Landing() {
         const nextIdx = (order.indexOf(prev) + 1) % order.length;
         return order[nextIdx];
       });
-    }, 5500);
+    }, 6500);
     return () => clearInterval(timer);
   }, [isHeroPaused]);
 
@@ -227,6 +223,26 @@ export default function Landing() {
 
   const activeBenchmark = ROLE_BENCHMARKS[selectedRole];
 
+  const heroScore = heroXyzApplied ? 91 : 74;
+  const heroBars = [
+    { code: 'I. TECH_COVERAGE (40%)', val: heroXyzApplied ? 92 : 82, color: 'bg-[var(--hf-text)]' },
+    { code: 'II. IMPACT_METRICS (30%)', val: heroXyzApplied ? 94 : 58, color: heroXyzApplied ? 'bg-[var(--hf-success)]' : 'bg-[var(--hf-cta)]' },
+    { code: 'III. ROLE_SENIORITY (15%)', val: heroXyzApplied ? 88 : 79, color: 'bg-[var(--hf-success)]' },
+    { code: 'IV. ATS_PARSABILITY (15%)', val: 89, color: 'bg-[var(--hf-success)]' }
+  ];
+
+  const tickerSpecs = [
+    'TECH_COVERAGE: 40%',
+    'IMPACT_METRICS: 30%',
+    'ROLE_SENIORITY: 15%',
+    'ATS_PARSABILITY: 15%',
+    'XYZ_BULLET_FRAMEWORK',
+    'SINGLE_COLUMN_PDF_EXPORT',
+    'LIVE_JSEARCH_INDEXING',
+    'STAR_INTERVIEW_RUBRIC',
+    'ZERO_FABRICATED_METRICS'
+  ];
+
   return (
     <div className="flex flex-col bg-[var(--hf-bg)] text-[var(--hf-text)] selection:bg-[var(--hf-cta)] selection:text-white min-h-screen">
       <SEOHead 
@@ -237,9 +253,9 @@ export default function Landing() {
       />
 
       {/* ========================================================================= */}
-      {/* 1. SPLIT-SCREEN EDITORIAL DOSSIER HERO (OPTION C / STYLE 3)               */}
+      {/* 1. SPLIT-SCREEN EDITORIAL DOSSIER HERO                                    */}
       {/* ========================================================================= */}
-      <section className="relative pt-24 sm:pt-32 pb-20 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)] overflow-hidden">
+      <section className="relative pt-24 sm:pt-32 pb-16 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div
           className="pointer-events-none absolute inset-0 hf-grid-canvas hf-radial-mask"
           aria-hidden="true"
@@ -290,17 +306,17 @@ export default function Landing() {
               {/* Specification Ledger Table Below Hero Copy */}
               <div className="pt-4">
                 <div className="grid grid-cols-3 border-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)] shadow-[3px_3px_0px_var(--hf-ink-border)] divide-x-[1.5px] divide-[var(--hf-ink-border)]">
-                  <div className="p-3">
+                  <div className="p-3 sm:p-3.5">
                     <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-muted)] block">SPEC // 01</span>
                     <span className="font-serif-display text-lg sm:text-xl font-bold text-[var(--hf-text)] mt-0.5 block">4-Factor</span>
                     <span className="text-[11px] text-[var(--hf-text-secondary)]">Weighted Rubric</span>
                   </div>
-                  <div className="p-3">
+                  <div className="p-3 sm:p-3.5">
                     <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-muted)] block">SPEC // 02</span>
                     <span className="font-serif-display text-lg sm:text-xl font-bold text-[var(--hf-text)] mt-0.5 block">XYZ / STAR</span>
                     <span className="text-[11px] text-[var(--hf-text-secondary)]">Bullet Revision</span>
                   </div>
-                  <div className="p-3">
+                  <div className="p-3 sm:p-3.5">
                     <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-muted)] block">SPEC // 03</span>
                     <span className="font-serif-display text-lg sm:text-xl font-bold text-[var(--hf-cta)] mt-0.5 block">150 CR</span>
                     <span className="text-[11px] text-[var(--hf-text-secondary)]">Daily Free Quota</span>
@@ -319,7 +335,7 @@ export default function Landing() {
               className="lg:col-span-6 w-full"
             >
               {/* Tactile Dossier Folder Tabs */}
-              <div className="grid grid-cols-4 gap-1.5 mb-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
                 {heroTabs.map((tab) => {
                   const isActive = activeHeroTab === tab.id;
                   return (
@@ -327,7 +343,7 @@ export default function Landing() {
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveHeroTab(tab.id)}
-                      className={`px-2.5 py-2 font-mono text-[11px] font-bold uppercase tracking-wider border-[1.5px] border-[var(--hf-ink-border)] transition-all cursor-pointer flex items-center justify-between ${
+                      className={`px-2.5 py-2 font-mono text-[11px] font-bold uppercase tracking-wider border-[1.5px] border-[var(--hf-ink-border)] transition-all cursor-pointer flex items-center justify-center sm:justify-between ${
                         isActive
                           ? 'bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)] -translate-y-0.5'
                           : 'bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:bg-[var(--hf-surface-secondary)]'
@@ -340,16 +356,22 @@ export default function Landing() {
               </div>
 
               {/* Main Dossier Sheet with Hard 5px Offset Ink Shadow */}
-              <div className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-ink-border)] p-5 sm:p-6 min-h-[395px] flex flex-col justify-between">
+              <div className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-ink-border)] p-5 sm:p-6 min-h-[420px] flex flex-col justify-between">
                 {/* Dossier Stamp Header */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 mb-4 border-b-[1.5px] border-[var(--hf-ink-border)]">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-bold text-[var(--hf-text)]">
-                      REPORT #402 // SENIOR_FRONTEND_ENG
+                      REPORT #402 // SENIOR_FRONTEND
                     </span>
                   </div>
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 bg-[var(--hf-mint)] text-[var(--hf-success)] border border-[var(--hf-success)]">
-                    INDEX: 84 / 100
+                  <span
+                    className={`font-mono text-xs font-bold px-2 py-0.5 border transition-colors ${
+                      heroXyzApplied
+                        ? 'bg-[var(--hf-mint)] text-[var(--hf-success)] border-[var(--hf-success)]'
+                        : 'bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] border-[var(--hf-ink-border)]'
+                    }`}
+                  >
+                    INDEX: {heroScore} / 100
                   </span>
                 </div>
 
@@ -363,56 +385,70 @@ export default function Landing() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
                         transition={{ duration: 0.2 }}
-                        className="space-y-4"
+                        className="space-y-3.5"
                       >
                         <div className="flex items-center justify-between bg-[var(--hf-surface-secondary)] p-3.5 border border-[var(--hf-ink-border)]">
-                          <div>
+                          <div className="min-w-0 pr-3">
                             <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-cta)] block">
-                              CANDIDATE EVALUATION
+                              {heroXyzApplied ? 'STATUS: XYZ REVISION APPLIED (+17 PTS)' : 'CANDIDATE BASELINE AUDIT'}
                             </span>
-                            <h2 className="font-serif-display text-lg font-bold text-[var(--hf-text)]">
-                              Alex Rivera — Senior Frontend Requisition
+                            <h2 className="font-serif-display text-lg font-bold text-[var(--hf-text)] truncate">
+                              Alex Rivera — Senior Frontend
                             </h2>
                           </div>
-                          <AnimatedCircularGauge score={84} size={64} strokeWidth={6} />
+                          <AnimatedCircularGauge score={heroScore} size={62} strokeWidth={6} />
                         </div>
 
-                        {/* 4 Monospace Spec Bars */}
-                        <div className="space-y-2.5 font-mono text-xs">
-                          {[
-                            { code: 'I. TECH_COVERAGE (40%)', val: 85, color: 'bg-[var(--hf-text)]' },
-                            { code: 'II. IMPACT_METRICS (30%)', val: 75, color: 'bg-[var(--hf-cta)]' },
-                            { code: 'III. ROLE_SENIORITY (15%)', val: 84, color: 'bg-[var(--hf-success)]' },
-                            { code: 'IV. ATS_PARSABILITY (15%)', val: 86, color: 'bg-[var(--hf-success)]' }
-                          ].map((row, idx) => (
+                        {/* Interactive Live Simulator Toggle inside Hero Dossier */}
+                        <div className="p-3 bg-[var(--hf-bg)] border border-[var(--hf-ink-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="text-xs min-w-0">
+                            <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-muted)] block">
+                              {heroXyzApplied ? 'UPGRADED BULLET ACTIVE:' : 'FLAGGED PASSIVE BULLET:'}
+                            </span>
+                            <p className={`text-xs truncate mt-0.5 ${heroXyzApplied ? 'text-[var(--hf-success)] font-medium' : 'text-[var(--hf-text-secondary)] italic'}`}>
+                              {heroXyzApplied
+                                ? '“Architected modular React data-fetching, cutting p95 latency 42%...”'
+                                : '“Worked on the customer dashboard and improved loading speed.”'}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setHeroXyzApplied((v) => !v)}
+                            className={`px-3 py-1.5 font-mono text-[10px] font-bold uppercase border-[1.5px] border-[var(--hf-ink-border)] shrink-0 cursor-pointer transition-all flex items-center gap-1.5 ${
+                              heroXyzApplied
+                                ? 'bg-[var(--hf-surface)] text-[var(--hf-text)] shadow-[2px_2px_0px_var(--hf-ink-border)]'
+                                : 'bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)]'
+                            }`}
+                          >
+                            {heroXyzApplied ? (
+                              <>
+                                <RotateCcw className="w-3 h-3" /> REVERT DRAFT
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3 h-3" /> APPLY XYZ FIX
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* 4 Animated Monospace Spec Bars */}
+                        <div className="space-y-2 font-mono text-xs">
+                          {heroBars.map((row) => (
                             <div key={row.code} className="space-y-1">
                               <div className="flex justify-between">
                                 <span className="text-[var(--hf-text-secondary)]">{row.code}</span>
-                                <strong className="text-[var(--hf-text)]">{row.val}%</strong>
+                                <strong className="text-[var(--hf-text)] tabular-nums">{row.val}%</strong>
                               </div>
                               <div className="h-2 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] overflow-hidden">
                                 <motion.div
-                                  initial={{ width: 0 }}
+                                  initial={false}
                                   animate={{ width: `${row.val}%` }}
-                                  transition={{ duration: 0.7, delay: idx * 0.06 }}
+                                  transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                                   className={`h-full ${row.color}`}
                                 />
                               </div>
                             </div>
-                          ))}
-                        </div>
-
-                        {/* Keyword Tags */}
-                        <div className="pt-2 border-t border-[var(--hf-border)] flex flex-wrap gap-1.5 font-mono text-[11px]">
-                          {['✓ REACT_18', '✓ TYPESCRIPT', '✓ NEXT.JS', '✓ GRAPHQL'].map((k) => (
-                            <span key={k} className="px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-[var(--hf-text)] font-semibold">
-                              {k}
-                            </span>
-                          ))}
-                          {['+ WEB_VITALS', '+ BUNDLE_ANALYSIS'].map((k) => (
-                            <span key={k} className="px-2 py-0.5 bg-amber-500/15 border border-[var(--hf-cta)] text-[var(--hf-cta)] font-bold">
-                              {k}
-                            </span>
                           ))}
                         </div>
                       </motion.div>
@@ -432,7 +468,7 @@ export default function Landing() {
                             EDITORIAL REVISION MEMO // XYZ FORMULA
                           </span>
                           <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[var(--hf-mint)] text-[var(--hf-success)] border border-[var(--hf-success)]">
-                            +14 PT IMPACT LIFT
+                            +17 PT IMPACT LIFT
                           </span>
                         </div>
 
@@ -455,6 +491,7 @@ export default function Landing() {
                           <div className="flex flex-wrap gap-1.5 pt-1 font-mono text-[10px]">
                             <span className="px-1.5 py-0.5 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)]">VERB: ARCHITECTED</span>
                             <span className="px-1.5 py-0.5 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)]">METRIC: -42% LATENCY</span>
+                            <span className="px-1.5 py-0.5 bg-[var(--hf-mint)] border border-[var(--hf-success)] text-[var(--hf-success)] font-bold">SCALE: 120K MAU</span>
                           </div>
                         </div>
                       </motion.div>
@@ -471,7 +508,7 @@ export default function Landing() {
                       >
                         <div className="flex items-center justify-between font-mono text-xs pb-1">
                           <span className="font-bold text-[var(--hf-text)]">LIVE JSEARCH REQUISITION INDEX</span>
-                          <span className="text-[var(--hf-cta)] font-bold">3 HIGH-FIT ROLES</span>
+                          <span className="text-[var(--hf-cta)] font-bold">3 VERIFIED MATCHES</span>
                         </div>
                         {[
                           { company: 'CLOUDSCALE PAYMENTS', role: 'Senior Frontend Engineer', loc: 'Remote', fit: '94% FIT' },
@@ -527,7 +564,7 @@ export default function Landing() {
 
                   {/* Dossier Footer Note */}
                   <div className="pt-3 mt-4 border-t border-[var(--hf-border)] flex items-center justify-between font-mono text-[10px] text-[var(--hf-text-muted)]">
-                    <span>{isHeroPaused ? 'STATUS: INTERACTIVE_HOLD' : 'STATUS: AUTO_CYCLE (CLICK TABS ABOVE)'}</span>
+                    <span>{isHeroPaused ? 'STATUS: INTERACTIVE_HOLD' : 'STATUS: AUTO_CYCLE · TRY [APPLY XYZ FIX]'}</span>
                     <span>RUBRIC // V2.4</span>
                   </div>
                 </div>
@@ -538,7 +575,21 @@ export default function Landing() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. THE 6-MODULE DOSSIER INDEX (BENTO SPECIFICATION GRID)                  */}
+      {/* EDITORIAL SPECIFICATION MARQUEE RIBBON                                    */}
+      {/* ========================================================================= */}
+      <div className="border-y-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] py-2.5 overflow-hidden select-none">
+        <div className="animate-marquee font-mono text-[11px] font-bold uppercase tracking-widest text-[var(--hf-text)]">
+          {[...tickerSpecs, ...tickerSpecs].map((item, idx) => (
+            <span key={idx} className="inline-flex items-center gap-4 mx-4">
+              <span>{item}</span>
+              <span className="text-[var(--hf-cta)]">◆</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. THE 6-MODULE DOSSIER INDEX WITH EMBEDDED MINI-WIDGETS                  */}
       {/* ========================================================================= */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)]">
         <div className="max-w-7xl mx-auto">
@@ -555,92 +606,225 @@ export default function Landing() {
           </FadeInSection>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                index: 'MODULE 01',
-                icon: FileSearch,
-                title: 'Resume Analyzer',
-                spec: '4-FACTOR ATS RUBRIC',
-                desc: 'Weighted diagnostic evaluating technical skill coverage (40%), hard metrics (30%), seniority alignment (15%), and linear ATS parsability (15%).',
-                link: '/resume-analyzer',
-                cta: 'INSPECT ANALYZER →'
-              },
-              {
-                index: 'MODULE 02',
-                icon: FileEdit,
-                title: 'Resume Editor',
-                spec: 'XYZ BUILDER & PDF',
-                desc: 'Single-column ATS resume builder with inline Google-XYZ bullet refactoring, clean section ordering, and machine-readable PDF export.',
-                link: '/resume-editor',
-                cta: 'INSPECT EDITOR →'
-              },
-              {
-                index: 'MODULE 03',
-                icon: Briefcase,
-                title: 'Live Job Index',
-                spec: 'JSEARCH SEMANTIC FEED',
-                desc: 'Discover verified live tech openings scored directly against your master resume so you see exact skill overlap before applying.',
-                link: '/job-finder',
-                cta: 'INSPECT JOB INDEX →'
-              },
-              {
-                index: 'MODULE 04',
-                icon: Target,
-                title: 'Application Tracker',
-                spec: 'KANBAN PIPELINE CRM',
-                desc: 'Structured requisition board organizing active applications across Applied, Interview, Offer, and Rejected stages.',
-                link: '/job-tracker',
-                cta: 'INSPECT TRACKER →'
-              },
-              {
-                index: 'MODULE 05',
-                icon: Compass,
-                title: 'Career Roadmap',
-                spec: '30-DAY SKILL SYLLABUS',
-                desc: 'Sequential engineering milestones and proof-of-work project specifications generated from your resume skill gaps.',
-                link: '/career-advisor',
-                cta: 'INSPECT ROADMAP →'
-              },
-              {
-                index: 'MODULE 06',
-                icon: Mic,
-                title: 'Interview Lab',
-                spec: 'STAR RUBRIC SIMULATOR',
-                desc: 'Role-specific technical and behavioral mock interviews with structured 100-point STAR evaluations and senior model answers.',
-                link: '/interview-lab',
-                cta: 'INSPECT INTERVIEW LAB →'
-              }
-            ].map((mod, idx) => (
-              <FadeInSection key={mod.index} delay={idx * 0.05}>
-                <SpotlightCard className="p-6 h-full flex flex-col justify-between space-y-5">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between pb-3 border-b border-[var(--hf-border)]">
-                      <span className="font-mono text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-[var(--hf-text)]">
-                        {mod.index}
-                      </span>
-                      <span className="font-mono text-[10px] font-semibold text-[var(--hf-cta)]">
-                        {mod.spec}
-                      </span>
-                    </div>
-                    <h3 className="font-serif-display text-2xl font-normal text-[var(--hf-text)] pt-1">
-                      {mod.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">
-                      {mod.desc}
+            {/* MODULE 01: Resume Analyzer */}
+            <FadeInSection delay={0.04}>
+              <SpotlightCard className="p-6 h-full flex flex-col justify-between space-y-5">
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--hf-border)]">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
+                      MODULE 01
+                    </span>
+                    <span className="font-mono text-[10px] font-semibold text-[var(--hf-cta)]">4-FACTOR ATS</span>
+                  </div>
+                  <h3 className="font-serif-display text-2xl font-normal text-[var(--hf-text)] flex items-center gap-2">
+                    <FileSearch className="w-5 h-5 text-[var(--hf-cta)]" />
+                    <span>Resume Analyzer</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">
+                    Weighted diagnostic evaluating technical skill coverage, hard metrics, seniority alignment, and linear ATS parsability.
+                  </p>
+                  {/* Mini Rubric Preview */}
+                  <div className="p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] font-mono text-[10px] space-y-1.5">
+                    <div className="flex justify-between"><span>SKILLS (40%)</span><strong>85%</strong></div>
+                    <div className="h-1.5 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)]"><div className="h-full bg-[var(--hf-text)]" style={{ width: '85%' }} /></div>
+                    <div className="flex justify-between pt-0.5"><span>METRICS (30%)</span><strong className="text-[var(--hf-cta)]">75%</strong></div>
+                    <div className="h-1.5 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)]"><div className="h-full bg-[var(--hf-cta)]" style={{ width: '75%' }} /></div>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-[var(--hf-border)]">
+                  <Link to="/resume-analyzer" className="font-mono text-xs font-bold text-[var(--hf-text)] hover:text-[var(--hf-cta)] transition-colors">
+                    INSPECT ANALYZER →
+                  </Link>
+                </div>
+              </SpotlightCard>
+            </FadeInSection>
+
+            {/* MODULE 02: Resume Editor */}
+            <FadeInSection delay={0.08}>
+              <SpotlightCard className="p-6 h-full flex flex-col justify-between space-y-5">
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--hf-border)]">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
+                      MODULE 02
+                    </span>
+                    <span className="font-mono text-[10px] font-semibold text-[var(--hf-cta)]">XYZ BUILDER</span>
+                  </div>
+                  <h3 className="font-serif-display text-2xl font-normal text-[var(--hf-text)] flex items-center gap-2">
+                    <FileEdit className="w-5 h-5 text-[var(--hf-cta)]" />
+                    <span>Resume Editor</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">
+                    Single-column ATS resume builder with inline Google-XYZ bullet refactoring and machine-readable PDF export.
+                  </p>
+                  {/* Mini Diff Preview */}
+                  <div className="p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] space-y-1.5 text-[11px]">
+                    <div className="font-mono text-[10px] font-bold text-[var(--hf-success)]">+ XYZ VERIFIED REWRITE</div>
+                    <p className="text-[var(--hf-text)] leading-snug">
+                      &ldquo;Reduced p95 API latency <strong>38%</strong> using Redis read-through caching...&rdquo;
                     </p>
                   </div>
+                </div>
+                <div className="pt-3 border-t border-[var(--hf-border)]">
+                  <Link to="/resume-editor" className="font-mono text-xs font-bold text-[var(--hf-text)] hover:text-[var(--hf-cta)] transition-colors">
+                    INSPECT EDITOR →
+                  </Link>
+                </div>
+              </SpotlightCard>
+            </FadeInSection>
 
-                  <div className="pt-4 border-t border-[var(--hf-border)]">
-                    <Link
-                      to={mod.link}
-                      className="font-mono text-xs font-bold text-[var(--hf-text)] hover:text-[var(--hf-cta)] inline-flex items-center gap-1.5 transition-colors"
-                    >
-                      <span>{mod.cta}</span>
-                    </Link>
+            {/* MODULE 03: Live Job Index */}
+            <FadeInSection delay={0.12}>
+              <SpotlightCard className="p-6 h-full flex flex-col justify-between space-y-5">
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--hf-border)]">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
+                      MODULE 03
+                    </span>
+                    <span className="font-mono text-[10px] font-semibold text-[var(--hf-cta)]">LIVE JSEARCH</span>
                   </div>
-                </SpotlightCard>
-              </FadeInSection>
-            ))}
+                  <h3 className="font-serif-display text-2xl font-normal text-[var(--hf-text)] flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-[var(--hf-cta)]" />
+                    <span>Live Job Index</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">
+                    Discover verified live tech openings scored directly against your master resume so you see skill overlap upfront.
+                  </p>
+                  {/* Mini Job Fit Preview */}
+                  <div className="p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[var(--hf-text)] truncate">Staff Frontend Eng</p>
+                      <p className="font-mono text-[10px] text-[var(--hf-text-muted)]">Remote · React, TS</p>
+                    </div>
+                    <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[var(--hf-mint)] border border-[var(--hf-success)] text-[var(--hf-success)] shrink-0">
+                      92% FIT
+                    </span>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-[var(--hf-border)]">
+                  <Link to="/job-finder" className="font-mono text-xs font-bold text-[var(--hf-text)] hover:text-[var(--hf-cta)] transition-colors">
+                    INSPECT JOB INDEX →
+                  </Link>
+                </div>
+              </SpotlightCard>
+            </FadeInSection>
+
+            {/* MODULE 04: Application Tracker */}
+            <FadeInSection delay={0.16}>
+              <SpotlightCard className="p-6 h-full flex flex-col justify-between space-y-5">
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--hf-border)]">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
+                      MODULE 04
+                    </span>
+                    <span className="font-mono text-[10px] font-semibold text-[var(--hf-cta)]">KANBAN + LEDGER</span>
+                  </div>
+                  <h3 className="font-serif-display text-2xl font-normal text-[var(--hf-text)] flex items-center gap-2">
+                    <Target className="w-5 h-5 text-[var(--hf-cta)]" />
+                    <span>Application Tracker</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">
+                    Dual Kanban board and requisition ledger organizing active applications across Applied, Interview, and Offer stages.
+                  </p>
+                  {/* Mini 3-Col Kanban Strip */}
+                  <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
+                    <div className="p-2 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-center">
+                      <span className="block text-[var(--hf-text-muted)]">APPLIED</span>
+                      <strong className="text-xs">5</strong>
+                    </div>
+                    <div className="p-2 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-center">
+                      <span className="block text-[var(--hf-cta)]">LOOP</span>
+                      <strong className="text-xs">2</strong>
+                    </div>
+                    <div className="p-2 bg-[var(--hf-mint)] border border-[var(--hf-success)] text-center text-[var(--hf-success)]">
+                      <span className="block">OFFER</span>
+                      <strong className="text-xs">1</strong>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-[var(--hf-border)]">
+                  <Link to="/job-tracker" className="font-mono text-xs font-bold text-[var(--hf-text)] hover:text-[var(--hf-cta)] transition-colors">
+                    INSPECT TRACKER →
+                  </Link>
+                </div>
+              </SpotlightCard>
+            </FadeInSection>
+
+            {/* MODULE 05: Career Roadmap */}
+            <FadeInSection delay={0.2}>
+              <SpotlightCard className="p-6 h-full flex flex-col justify-between space-y-5">
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--hf-border)]">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
+                      MODULE 05
+                    </span>
+                    <span className="font-mono text-[10px] font-semibold text-[var(--hf-cta)]">30-DAY SYLLABUS</span>
+                  </div>
+                  <h3 className="font-serif-display text-2xl font-normal text-[var(--hf-text)] flex items-center gap-2">
+                    <Compass className="w-5 h-5 text-[var(--hf-cta)]" />
+                    <span>Career Roadmap</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">
+                    Sequential engineering milestones and proof-of-work project specs generated directly from your resume skill gaps.
+                  </p>
+                  {/* Mini Milestone Strip */}
+                  <div className="p-3 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] font-mono text-[10px] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span>01. CORE WEB VITALS</span>
+                      <span className="text-[var(--hf-success)] font-bold">DONE</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>02. BUNDLE TELEMETRY</span>
+                      <span className="text-[var(--hf-cta)] font-bold">ACTIVE</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-[var(--hf-border)]">
+                  <Link to="/career-advisor" className="font-mono text-xs font-bold text-[var(--hf-text)] hover:text-[var(--hf-cta)] transition-colors">
+                    INSPECT ROADMAP →
+                  </Link>
+                </div>
+              </SpotlightCard>
+            </FadeInSection>
+
+            {/* MODULE 06: Interview Lab */}
+            <FadeInSection delay={0.24}>
+              <SpotlightCard className="p-6 h-full flex flex-col justify-between space-y-5">
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--hf-border)]">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
+                      MODULE 06
+                    </span>
+                    <span className="font-mono text-[10px] font-semibold text-[var(--hf-cta)]">STAR SIMULATOR</span>
+                  </div>
+                  <h3 className="font-serif-display text-2xl font-normal text-[var(--hf-text)] flex items-center gap-2">
+                    <Mic className="w-5 h-5 text-[var(--hf-cta)]" />
+                    <span>Interview Lab</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">
+                    Role-specific technical and behavioral mock interviews with structured 100-point STAR critiques and model answers.
+                  </p>
+                  {/* Mini STAR Score Grid */}
+                  <div className="grid grid-cols-4 gap-1 font-mono text-[10px] text-center">
+                    {[
+                      { k: 'S', v: '22' },
+                      { k: 'T', v: '21' },
+                      { k: 'A', v: '23' },
+                      { k: 'R', v: '20' }
+                    ].map((s) => (
+                      <div key={s.k} className="p-1.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)]">
+                        <span className="text-[var(--hf-text-muted)] block">{s.k}</span>
+                        <strong className="text-[var(--hf-text)]">{s.v}/25</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-[var(--hf-border)]">
+                  <Link to="/interview-lab" className="font-mono text-xs font-bold text-[var(--hf-text)] hover:text-[var(--hf-cta)] transition-colors">
+                    INSPECT INTERVIEW LAB →
+                  </Link>
+                </div>
+              </SpotlightCard>
+            </FadeInSection>
           </div>
         </div>
       </section>
@@ -816,6 +1000,46 @@ export default function Landing() {
               </div>
             </motion.div>
           </AnimatePresence>
+
+          {/* Specification Comparison Ledger */}
+          <FadeInSection className="pt-4">
+            <div className="hf-card overflow-hidden">
+              <div className="px-5 py-3.5 bg-[var(--hf-surface-secondary)] border-b-[1.5px] border-[var(--hf-ink-border)] flex items-center justify-between">
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--hf-text)]">
+                  SPECIFICATION COMPARISON // WHY DOSSIER ARCHITECTURE
+                </span>
+                <span className="font-mono text-[10px] text-[var(--hf-text-muted)] hidden sm:inline">AUDIT VS. GENERIC TOOLS</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-bg)] font-mono">
+                      <th className="p-3.5 font-bold text-[var(--hf-text)]">EVALUATION DIMENSION</th>
+                      <th className="p-3.5 font-bold text-[var(--hf-text-muted)]">GENERIC CHATBOTS</th>
+                      <th className="p-3.5 font-bold text-[var(--hf-cta)]">HIREFLOW // DOSSIER</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--hf-border)]">
+                    {[
+                      ['Scoring Transparency', 'Opaque single number with no rubric', '4 weighted pillars (40 / 30 / 15 / 15) + line evidence'],
+                      ['Bullet Rewriting', 'Often invents fake numbers or fluff', 'Anchored strictly to your real resume + XYZ prompts'],
+                      ['Job Discovery', 'Manual copy-paste across 10 tabs', 'Live JSearch feed ranked against your resume stack'],
+                      ['Interview Rehearsal', 'Unstructured chat Q&A', '100-point STAR rubric + senior model answers'],
+                    ].map(([dim, gen, hf]) => (
+                      <tr key={dim} className="hover:bg-[var(--hf-surface-secondary)]/40 transition-colors">
+                        <td className="p-3.5 font-semibold text-[var(--hf-text)]">{dim}</td>
+                        <td className="p-3.5 text-[var(--hf-text-muted)]">{gen}</td>
+                        <td className="p-3.5 font-medium text-[var(--hf-text)] flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-[var(--hf-success)] shrink-0" />
+                          <span>{hf}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </FadeInSection>
         </div>
       </section>
 

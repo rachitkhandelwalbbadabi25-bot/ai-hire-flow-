@@ -68,30 +68,30 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   const publicNavLinks = [
-    { name: '01. AUDIT', path: '/resume-analyzer' },
-    { name: '02. EDITOR', path: '/resume-editor' },
-    { name: '03. JOB INDEX', path: '/job-finder' },
-    { name: '04. TRACKER', path: '/job-tracker' },
-    { name: '05. INTERVIEW', path: '/interview-lab' },
-    { name: '06. ROADMAP', path: '/career-advisor' },
+    { name: 'Resume Analyzer', path: '/resume-analyzer' },
+    { name: 'Resume Editor', path: '/resume-editor' },
+    { name: 'Job Finder', path: '/job-finder' },
+    { name: 'Job Tracker', path: '/job-tracker' },
+    { name: 'Interview Prep', path: '/interview-lab' },
+    { name: 'Career Path', path: '/career-advisor' },
   ];
 
   const navGroups = [
     {
-      label: '01 // OVERVIEW',
+      label: 'Overview',
       items: [
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
       ]
     },
     {
-      label: '02 // DOCUMENTS',
+      label: 'Resume Tools',
       items: [
         { name: 'Resume Analyzer', path: '/analyzer', icon: BarChart3 },
         { name: 'Resume Editor', path: '/editor', icon: FileEdit },
       ]
     },
     {
-      label: '03 // OPPORTUNITIES',
+      label: 'Opportunities',
       items: [
         { name: 'Job Finder', path: '/finder', icon: Search },
         { name: 'Job Tracker', path: '/jobs', icon: Briefcase },
@@ -99,7 +99,7 @@ export default function Navbar({ user }: NavbarProps) {
       ]
     },
     {
-      label: '04 // PREPARATION',
+      label: 'Preparation',
       items: [
         { name: 'Interview Lab', path: '/interview', icon: Mic },
         { name: 'Learning Path', path: '/learning', icon: GraduationCap },
@@ -107,7 +107,7 @@ export default function Navbar({ user }: NavbarProps) {
       ]
     },
     {
-      label: '05 // ACCOUNT',
+      label: 'Account',
       items: [
         { name: 'Billing & Credits', path: '/credits', icon: CreditCard },
         { name: 'Profile', path: '/profile', icon: UserIcon },
@@ -117,11 +117,11 @@ export default function Navbar({ user }: NavbarProps) {
 
   const getPlanLabel = (p: string) => {
     switch (p) {
-      case 'admin': return 'ADMIN // MASTER';
-      case 'premium': return 'TIER // PREMIUM';
+      case 'admin': return 'Admin Account';
+      case 'premium': return 'Premium Plan';
       case 'pro':
-      case 'standard': return 'TIER // PRO';
-      default: return 'TIER // FREE';
+      case 'standard': return 'Pro Plan';
+      default: return 'Free Plan';
     }
   };
 
@@ -163,18 +163,13 @@ export default function Navbar({ user }: NavbarProps) {
               )}
               <Link to={user && !isPublicRoute ? "/dashboard" : "/"} className="flex items-center gap-2.5 group py-1" aria-label="AI HireFlow Home">
                 <HireFlowLogo className="w-7 h-7 shrink-0" />
-                <div className="flex items-center gap-2">
-                  <span className="font-serif-display font-bold text-base sm:text-lg tracking-tight text-[var(--hf-text)]">
-                    HIREFLOW // DOSSIER
-                  </span>
-                  <span className="hidden md:inline-block text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-[var(--hf-text)]">
-                    VOL. 2026
-                  </span>
-                </div>
+                <span className="font-serif-display font-semibold text-lg tracking-tight text-[var(--hf-text)]">
+                  AI HireFlow
+                </span>
               </Link>
             </div>
 
-            {/* Center: Numbered Monospace Index Links (Public Routes) */}
+            {/* Center: Clean Public Navigation Links */}
             {isPublicRoute && (
               <div
                 className="hidden lg:flex items-center gap-1"
@@ -189,9 +184,9 @@ export default function Navbar({ user }: NavbarProps) {
                       to={item.path}
                       onMouseEnter={() => setHoveredNav(item.path)}
                       className={cn(
-                        "relative px-2.5 py-1.5 rounded-sm font-mono text-[11px] font-semibold tracking-wide transition-colors z-10",
+                        "relative px-3 py-1.5 rounded-sm font-sans text-[13px] font-medium transition-colors z-10",
                         isActive
-                          ? "text-[var(--hf-text)] font-bold"
+                          ? "text-[var(--hf-text)] font-semibold"
                           : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)]"
                       )}
                     >
@@ -239,7 +234,7 @@ export default function Navbar({ user }: NavbarProps) {
                       to="/dashboard"
                       className="hf-btn-primary min-h-[36px] px-3.5 py-1.5 text-xs gap-1.5"
                     >
-                      <span>ENTER WORKSPACE</span>
+                      <span>Open workspace</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   )}
@@ -257,9 +252,10 @@ export default function Navbar({ user }: NavbarProps) {
                   onClick={handleSignIn}
                   disabled={isSigningIn}
                   className="hf-btn-primary min-h-[38px] px-4 py-1.5 text-xs gap-1.5 disabled:opacity-60"
-                  aria-label="Enter Dossier with Google Sign In"
+                  aria-label="Sign in with Google"
                 >
-                  <span>{isSigningIn ? 'AUTHENTICATING...' : 'ENTER →'}</span>
+                  <span>{isSigningIn ? 'Signing in...' : 'Sign in'}</span>
+                  {!isSigningIn && <ArrowRight className="w-3.5 h-3.5" />}
                 </button>
               )}
             </div>
@@ -280,7 +276,7 @@ export default function Navbar({ user }: NavbarProps) {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "block px-3 py-2 rounded-sm font-mono text-xs font-semibold transition-colors",
+                    "block px-3 py-2 rounded-sm font-sans text-sm font-medium transition-colors",
                     location.pathname === item.path
                       ? "bg-[var(--hf-surface)] text-[var(--hf-text)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]"
                       : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]"
@@ -408,7 +404,7 @@ export default function Navbar({ user }: NavbarProps) {
               <div className="px-4 pb-3 border-b-[1.5px] border-[var(--hf-ink-border)]">
                 <div className="flex items-center gap-2">
                   <HireFlowLogo className="w-6 h-6" />
-                  <span className="font-serif-display font-bold text-sm text-[var(--hf-text)]">HIREFLOW // DOSSIER</span>
+                  <span className="font-serif-display font-semibold text-base text-[var(--hf-text)]">AI HireFlow</span>
                 </div>
               </div>
 

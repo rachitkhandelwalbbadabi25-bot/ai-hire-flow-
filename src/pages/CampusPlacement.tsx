@@ -465,12 +465,12 @@ export default function CampusPlacement() {
       <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)] flex flex-col sm:flex-row sm:items-end justify-between gap-4 font-sans">
         <div>
           <div className="flex items-center gap-2.5 mb-2">
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)]">
-              07 // CAMPUS PLACEMENT DRILL
+            <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)]">
+              Campus Prep
             </span>
-            <span className="px-2 py-0.5 border border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] rounded-sm font-mono text-[10px] font-bold uppercase tracking-wider text-[var(--hf-text-secondary)] flex items-center gap-1.5">
+            <span className="px-2 py-0.5 border border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] rounded-sm font-sans text-[11px] font-semibold text-[var(--hf-text-secondary)] flex items-center gap-1.5">
               <GraduationCap className="w-3 h-3 text-[var(--hf-ai-teal)]" />
-              PREP SUITE
+              Practice suite
             </span>
           </div>
           <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">

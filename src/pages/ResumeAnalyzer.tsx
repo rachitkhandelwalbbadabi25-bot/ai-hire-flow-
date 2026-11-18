@@ -1760,8 +1760,8 @@ export default function ResumeAnalyzer() {
       {/* Header */}
       <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)] flex flex-col md:flex-row md:items-end justify-between gap-4 font-sans">
         <div>
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
-            01 // ATS RESUME DIAGNOSTIC
+          <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
+            Resume Tools
           </span>
           <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">
             Resume analyzer

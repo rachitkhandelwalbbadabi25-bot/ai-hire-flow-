@@ -565,8 +565,8 @@ export default function LearningPath() {
       {/* 1. Header */}
       <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)] flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1">
-            06 // SKILL SYLLABUS &amp; ROADMAP
+          <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-1">
+            Career Roadmap
           </span>
           <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">
             Learning path

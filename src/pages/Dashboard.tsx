@@ -521,14 +521,14 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 gap-6 pt-2 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)]">
         <div>
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1">
-            01 // CANDIDATE DOSSIER OVERVIEW
+          <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-1">
+            Overview
           </span>
           <h1 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
             {greeting}, {user.displayName?.split(' ')[0] || "Candidate"}
           </h1>
           <p className="text-xs sm:text-sm mt-1 max-w-xl text-[var(--hf-text-secondary)]">
-            Resume diagnostics, application requisition ledger, and interview readiness in one workspace.
+            Resume insights, active applications, and interview readiness in one workspace.
           </p>
         </div>
         

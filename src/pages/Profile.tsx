@@ -226,8 +226,8 @@ export default function Profile() {
             {/* Candidate Metadata */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)]">
-                  09 // CANDIDATE PROFILE
+                <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)]">
+                  Candidate Profile
                 </span>
                 <span className={`px-2 py-0.5 rounded-sm font-mono text-[10px] font-bold uppercase tracking-wider border-[1.5px] border-[var(--hf-ink-border)] shadow-[1px_1px_0px_var(--hf-ink-border)] ${
                   isAdmin 

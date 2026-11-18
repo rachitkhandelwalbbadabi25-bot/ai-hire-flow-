@@ -459,8 +459,8 @@ export default function CreditsPage() {
       <div className="max-w-7xl mx-auto mb-8 space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
           <div className="space-y-1">
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block">
-              07 // CREDITS &amp; MEMBERSHIP LEDGER
+            <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block">
+              Account &amp; Billing
             </span>
             <h1 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
               Credits &amp; Billing

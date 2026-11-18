@@ -70,11 +70,11 @@ export default function HireFlowLogo({
 
       {showText && (
         <div className={`flex flex-col leading-tight ${textClassName}`}>
-          <span className="font-serif-display font-bold text-base tracking-tight text-[var(--hf-text)]">
-            HIREFLOW // DOSSIER
+          <span className="font-serif-display font-semibold text-base tracking-tight text-[var(--hf-text)]">
+            AI HireFlow
           </span>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--hf-text-secondary)]">
-            Career OS
+          <span className="text-[11px] font-sans font-medium text-[var(--hf-text-secondary)]">
+            Career Workspace
           </span>
         </div>
       )}

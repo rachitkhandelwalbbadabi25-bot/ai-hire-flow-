@@ -26,10 +26,10 @@ import EmptyState from '../components/EmptyState';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 
 const KANBAN_STAGES = [
-  { id: 'Applied', label: '01 // APPLIED', accent: 'text-[var(--hf-text)]', badgeBg: 'bg-[var(--hf-surface-secondary)]' },
-  { id: 'Interview', label: '02 // INTERVIEW LOOP', accent: 'text-[var(--hf-cta)]', badgeBg: 'bg-amber-500/15' },
-  { id: 'Offer', label: '03 // OFFER RECEIVED', accent: 'text-[var(--hf-success)]', badgeBg: 'bg-[var(--hf-mint)]' },
-  { id: 'Rejected', label: '04 // ARCHIVED', accent: 'text-[var(--hf-error)]', badgeBg: 'bg-[var(--hf-error-bg)]' },
+  { id: 'Applied', label: 'Applied', accent: 'text-[var(--hf-text)]', badgeBg: 'bg-[var(--hf-surface-secondary)]' },
+  { id: 'Interview', label: 'Interview', accent: 'text-[var(--hf-cta)]', badgeBg: 'bg-amber-500/15' },
+  { id: 'Offer', label: 'Offer', accent: 'text-[var(--hf-success)]', badgeBg: 'bg-[var(--hf-mint)]' },
+  { id: 'Rejected', label: 'Archived', accent: 'text-[var(--hf-error)]', badgeBg: 'bg-[var(--hf-error-bg)]' },
 ] as const;
 
 export default function JobTracker() {
@@ -135,54 +135,54 @@ export default function JobTracker() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-      {/* Editorial Dossier Header & Controls */}
+      {/* Header & Controls */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)]">
         <div className="space-y-1">
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block">
-            04 // APPLICATION PIPELINE
+          <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block">
+            Application Pipeline
           </span>
           <h1 className="font-serif-display text-3xl sm:text-4xl font-normal text-[var(--hf-text)] tracking-tight">
             Application tracker
           </h1>
           <p className="text-sm text-[var(--hf-text-secondary)]">
-            Manage active applications across Kanban stages or inspect the chronological requisition ledger.
+            Manage active applications across board stages or inspect them in a chronological table.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Board / Ledger View Switcher */}
+          {/* Board / Table View Switcher */}
           <div className="inline-flex border-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] p-0.5 rounded-sm">
             <button
               type="button"
               onClick={() => setViewMode('board')}
               className={cn(
-                "px-3 py-1.5 font-mono text-[11px] font-bold uppercase flex items-center gap-1.5 rounded-sm transition-colors cursor-pointer",
+                "px-3 py-1.5 font-sans text-xs font-semibold flex items-center gap-1.5 rounded-sm transition-colors cursor-pointer",
                 viewMode === 'board'
                   ? "bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)]"
                   : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)]"
               )}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>BOARD</span>
+              <span>Board</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('table')}
               className={cn(
-                "px-3 py-1.5 font-mono text-[11px] font-bold uppercase flex items-center gap-1.5 rounded-sm transition-colors cursor-pointer",
+                "px-3 py-1.5 font-sans text-xs font-semibold flex items-center gap-1.5 rounded-sm transition-colors cursor-pointer",
                 viewMode === 'table'
                   ? "bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)]"
                   : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)]"
               )}
             >
               <TableProperties className="w-3.5 h-3.5" />
-              <span>LEDGER</span>
+              <span>Table</span>
             </button>
           </div>
 
-          {/* Capacity Ledger Stamp */}
+          {/* Capacity Stamp */}
           <div className="flex items-center gap-2.5 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] px-3 py-2 rounded-sm text-xs shadow-[2px_2px_0px_var(--hf-ink-border)]">
-            <span className="font-mono text-[11px] font-bold uppercase text-[var(--hf-text-secondary)]">SLOTS:</span>
+            <span className="font-sans text-xs font-medium text-[var(--hf-text-secondary)]">Saved:</span>
             <span className={cn(
               "font-mono font-bold tabular-nums",
               jobsRemaining === 0 ? "text-[var(--hf-error)]" : "text-[var(--hf-text)]"

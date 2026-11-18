@@ -118,10 +118,10 @@ export default function SEOFeatureLayout({
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="text-center max-w-3xl mx-auto mb-12"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] mb-5">
-              <span className="w-2 h-2 bg-[var(--hf-cta)] inline-block" />
-              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-[var(--hf-text)]">
-                SPECIFICATION // {badgeText}
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] rounded-sm mb-5">
+              <span className="w-2 h-2 rounded-full bg-[var(--hf-cta)] inline-block" />
+              <span className="font-sans text-xs font-semibold text-[var(--hf-text)]">
+                {badgeText}
               </span>
             </div>
 
@@ -138,34 +138,34 @@ export default function SEOFeatureLayout({
                 type="button"
                 onClick={onCtaClick}
                 disabled={isCtaLoading}
-                className="hf-btn-primary min-h-[46px] px-6 text-xs sm:text-sm w-full sm:w-auto gap-2 disabled:opacity-60 cursor-pointer"
+                className="hf-btn-primary min-h-[46px] px-6 w-full sm:w-auto gap-2 disabled:opacity-60 cursor-pointer"
               >
-                <span>{isCtaLoading ? 'OPENING...' : ctaLabel}</span>
+                <span>{isCtaLoading ? 'Opening...' : ctaLabel}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <a
                 href="#how-it-works"
-                className="hf-btn-secondary min-h-[46px] px-5 text-xs sm:text-sm w-full sm:w-auto"
+                className="hf-btn-secondary min-h-[46px] px-5 w-full sm:w-auto"
               >
-                READ WORKFLOW SPEC
+                How it works
               </a>
             </div>
           </motion.div>
 
-          {/* Framed Dossier Report Sheet */}
+          {/* Framed Report Preview */}
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-4xl mx-auto bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-ink-border)] overflow-hidden"
+            className="max-w-4xl mx-auto bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-ink-border)] rounded-sm overflow-hidden"
           >
             <div className="px-4 py-2.5 bg-[var(--hf-surface-secondary)] border-b-[1.5px] border-[var(--hf-ink-border)] flex items-center justify-between gap-3">
-              <span className="font-mono text-xs font-bold uppercase text-[var(--hf-text)]">
-                DOSSIER PREVIEW // HIREFLOW{canonicalPath.toUpperCase()}
+              <span className="font-sans text-xs font-semibold text-[var(--hf-text)]">
+                Sample Preview · {badgeText}
               </span>
-              <span className="font-mono text-[10px] font-bold uppercase px-2 py-0.5 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] text-[var(--hf-cta)]">
-                VERIFIED MODULE
+              <span className="font-sans text-[11px] font-semibold px-2.5 py-0.5 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] rounded-sm text-[var(--hf-cta)]">
+                Interactive preview
               </span>
             </div>
             <div className="p-3 sm:p-5 bg-[var(--hf-bg)]/40">
@@ -180,8 +180,8 @@ export default function SEOFeatureLayout({
         <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)]">
           <div className="max-w-6xl mx-auto">
             <FadeInSection className="max-w-2xl mb-12">
-              <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
-                SECTION 01 // EXECUTION SEQUENCE
+              <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
+                How it works
               </span>
               <h2 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
                 {howItWorksTitle}
@@ -195,10 +195,10 @@ export default function SEOFeatureLayout({
               {howItWorks.map((item, idx) => (
                 <FadeInSection key={idx} delay={idx * 0.06}>
                   <SpotlightCard className="p-6 h-full space-y-3">
-                    <span className="font-mono text-xs font-bold text-[var(--hf-text)] px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] inline-block">
-                      STEP {item.step}
+                    <span className="font-mono text-xs font-bold text-[var(--hf-text)] px-2 py-0.5 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm inline-block">
+                      Step {item.step}
                     </span>
-                    <h3 className="font-serif-display text-xl font-bold text-[var(--hf-text)]">{item.title}</h3>
+                    <h3 className="font-serif-display text-xl font-semibold text-[var(--hf-text)]">{item.title}</h3>
                     <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{item.desc}</p>
                   </SpotlightCard>
                 </FadeInSection>
@@ -213,8 +213,8 @@ export default function SEOFeatureLayout({
         <section className="py-20 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)]">
           <div className="max-w-6xl mx-auto">
             <FadeInSection className="max-w-2xl mb-12">
-              <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
-                SECTION 02 // SYSTEM ARCHITECTURE
+              <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
+                Key capabilities
               </span>
               <h2 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
                 {capabilitiesTitle}
@@ -230,10 +230,10 @@ export default function SEOFeatureLayout({
                 return (
                   <FadeInSection key={idx} delay={idx * 0.08}>
                     <SpotlightCard className="p-6 h-full space-y-3">
-                      <div className="w-9 h-9 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] text-[var(--hf-cta)] flex items-center justify-center">
+                      <div className="w-9 h-9 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm text-[var(--hf-cta)] flex items-center justify-center">
                         <IconComponent className="w-4 h-4" />
                       </div>
-                      <h3 className="font-serif-display text-xl font-bold text-[var(--hf-text)]">{cap.title}</h3>
+                      <h3 className="font-serif-display text-xl font-semibold text-[var(--hf-text)]">{cap.title}</h3>
                       <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed">{cap.desc}</p>
                     </SpotlightCard>
                   </FadeInSection>
@@ -251,11 +251,11 @@ export default function SEOFeatureLayout({
       <section className="py-16 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)]">
         <div className="max-w-6xl mx-auto">
           <FadeInSection className="mb-8">
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-1.5">
-              CONNECTED DOSSIER
+            <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-1.5">
+              Connected tools
             </span>
             <h2 className="font-serif-display text-2xl sm:text-3xl font-normal tracking-tight text-[var(--hf-text)]">
-              Explore other modules in the workspace
+              Explore other tools in AI HireFlow
             </h2>
           </FadeInSection>
 
@@ -291,8 +291,8 @@ export default function SEOFeatureLayout({
         <section className="py-20 px-4 sm:px-6 lg:px-8 border-b-[1.5px] border-[var(--hf-ink-border)]">
           <div className="max-w-3xl mx-auto">
             <FadeInSection className="mb-12">
-              <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)] block mb-2">
-                REFERENCE FAQ
+              <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)] block mb-2">
+                Common questions
               </span>
               <h2 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
                 {faqTitle}
@@ -314,8 +314,8 @@ export default function SEOFeatureLayout({
                         className="w-full min-h-[52px] p-4 sm:p-5 flex items-center justify-between gap-4 text-left cursor-pointer"
                         aria-expanded={isOpen}
                       >
-                        <span className="font-serif-display text-base sm:text-lg font-bold text-[var(--hf-text)]">
-                          0{idx + 1}. {faq.q}
+                        <span className="font-serif-display text-base sm:text-lg font-semibold text-[var(--hf-text)]">
+                          {faq.q}
                         </span>
                         <ChevronDown className={`w-4 h-4 text-[var(--hf-text)] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--hf-cta)]' : ''}`} />
                       </button>
@@ -364,16 +364,16 @@ export default function SEOFeatureLayout({
               type="button"
               onClick={onCtaClick}
               disabled={isCtaLoading}
-              className="hf-btn-primary min-h-[46px] px-7 text-xs sm:text-sm w-full sm:w-auto gap-2 cursor-pointer disabled:opacity-60"
+              className="hf-btn-primary min-h-[46px] px-7 w-full sm:w-auto gap-2 cursor-pointer disabled:opacity-60"
             >
-              <span>{isCtaLoading ? 'OPENING...' : finalCtaLabel}</span>
+              <span>{isCtaLoading ? 'Opening...' : finalCtaLabel}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <Link
               to="/"
-              className="hf-btn-secondary min-h-[46px] px-6 text-xs sm:text-sm w-full sm:w-auto"
+              className="hf-btn-secondary min-h-[46px] px-6 w-full sm:w-auto"
             >
-              RETURN TO DOSSIER OVERVIEW
+              Back to overview
             </Link>
           </div>
         </FadeInSection>

@@ -453,8 +453,8 @@ export default function JobFinder() {
       {/* Header */}
       <div className="mb-8 pb-6 border-b-[1.5px] border-[var(--hf-ink-border)] font-sans">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--hf-cta)]">
-            03 // LIVE REQUISITION INDEX
+          <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)]">
+            Job Discovery
           </span>
           <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
             <span className="w-2 h-2 bg-[var(--hf-success)]" />

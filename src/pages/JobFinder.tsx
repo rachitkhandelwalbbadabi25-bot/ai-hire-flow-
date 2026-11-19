@@ -456,7 +456,7 @@ export default function JobFinder() {
           <span className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--hf-cta)]">
             Job Discovery
           </span>
-          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
+          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-shadow-color)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
             <span className="w-2 h-2 bg-[var(--hf-success)]" />
             <span className="font-mono font-bold tabular-nums">
               {formatCreditAvailability(creditWallet?.balance, creditCosts?.jobMatchAnalysis ?? 20, 'searches')}
@@ -589,7 +589,7 @@ export default function JobFinder() {
               <button
                 key={chip}
                 onClick={() => handlePopularSearch(chip)}
-                className="min-h-[34px] px-3 py-1 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-ink-border)] rounded-sm text-xs font-medium transition-all cursor-pointer flex items-center shadow-[1px_1px_0px_var(--hf-ink-border)] hover:-translate-y-0.5"
+                className="min-h-[34px] px-3 py-1 bg-[var(--hf-surface-secondary)] hover:bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] border border-[var(--hf-ink-border)] rounded-sm text-xs font-medium transition-all cursor-pointer flex items-center shadow-[1px_1px_0px_var(--hf-shadow-color)] hover:-translate-y-0.5"
               >
                 {chip}
               </button>
@@ -710,7 +710,7 @@ export default function JobFinder() {
             {currentActiveJob && (
               <div className="mb-6 p-4 sm:p-5 hf-card flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans">
                 <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-teal)] shrink-0 mt-0.5 shadow-[2px_2px_0px_var(--hf-ink-border)]">
+                  <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-teal)] shrink-0 mt-0.5 shadow-[2px_2px_0px_var(--hf-shadow-color)]">
                     <Target className="w-5 h-5 text-[var(--hf-teal)]" />
                   </div>
                   <div>
@@ -949,21 +949,21 @@ export default function JobFinder() {
         <div className="py-16 text-center">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
              <div className="hf-card p-6 text-left">
-                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-teal)] shadow-[2px_2px_0px_var(--hf-ink-border)]">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-teal)] shadow-[2px_2px_0px_var(--hf-shadow-color)]">
                    <TargetIcon className="w-5 h-5" />
                 </div>
                 <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">Live job feeds</h4>
                 <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Open roles pulled from verified external portals and employer job boards.</p>
              </div>
              <div className="hf-card p-6 text-left">
-                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-cta)] shadow-[2px_2px_0px_var(--hf-ink-border)]">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-cta)] shadow-[2px_2px_0px_var(--hf-shadow-color)]">
                    <Zap className="w-5 h-5" />
                 </div>
                 <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">Real-time matching</h4>
                 <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Direct comparison against your latest analyzed resume skills and profile.</p>
              </div>
              <div className="hf-card p-6 text-left">
-                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-teal)] shadow-[2px_2px_0px_var(--hf-ink-border)]">
+                <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-teal)] shadow-[2px_2px_0px_var(--hf-shadow-color)]">
                    <Building2 className="w-5 h-5" />
                 </div>
                 <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">One-click tracking</h4>

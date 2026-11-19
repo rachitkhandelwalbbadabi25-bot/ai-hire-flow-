@@ -118,7 +118,7 @@ export default function SEOFeatureLayout({
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="text-center max-w-3xl mx-auto mb-12"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] rounded-sm mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] rounded-sm mb-5">
               <span className="w-2 h-2 rounded-full bg-[var(--hf-cta)] inline-block" />
               <span className="font-sans text-xs font-semibold text-[var(--hf-text)]">
                 {badgeText}
@@ -158,7 +158,7 @@ export default function SEOFeatureLayout({
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-4xl mx-auto bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-ink-border)] rounded-sm overflow-hidden"
+            className="max-w-4xl mx-auto bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-shadow-color)] rounded-sm overflow-hidden"
           >
             <div className="px-4 py-2.5 bg-[var(--hf-surface-secondary)] border-b-[1.5px] border-[var(--hf-ink-border)] flex items-center justify-between gap-3">
               <span className="font-sans text-xs font-semibold text-[var(--hf-text)]">

@@ -88,55 +88,61 @@
   --hf-border: #D6D1C7;
   --hf-border-hover: #141413;
   --hf-ink-border: #141413;
+  --hf-shadow-color: #141413;
   --hf-shadow-ink: 3px 3px 0px #141413;
   --hf-shadow-ink-sm: 2px 2px 0px #141413;
   --hf-shadow-ink-lg: 5px 5px 0px #141413;
   --hf-shadow-accent: 3px 3px 0px #B45309;
+  --hf-card-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --hf-ambient-glow: rgba(180, 83, 9, 0.085);
   --hf-grid-line: rgba(20, 20, 19, 0.055);
-  --hf-spotlight: rgba(180, 83, 9, 0.06);
+  --hf-spotlight: rgba(180, 83, 9, 0.085);
 }
 
 .dark {
-  --background: #121210;
-  --surface: #1A1917;
-  --surface-light: #242320;
-  --ink: #F5F2EB;
-  --ink-dim: #A8A29E;
-  --ink-muted: #78716C;
-  --border: #33312C;
-  --accent-rgb: 217, 119, 6;
+  --background: #0D0D0C;
+  --surface: #161513;
+  --surface-light: #201E1B;
+  --ink: #F7F4ED;
+  --ink-dim: #B8B2A8;
+  --ink-muted: #847E75;
+  --border: #2C2925;
+  --accent-rgb: 245, 158, 11;
 
-  /* Dark Mode Palette — Archive Carbon Press & Warm Parchment */
-  --hf-bg: #121210;
-  --hf-surface: #1A1917;
-  --hf-surface-secondary: #242320;
-  --hf-text: #F5F2EB;
-  --hf-text-secondary: #A8A29E;
-  --hf-text-muted: #78716C;
+  /* Dark Mode Palette — Obsidian Archival Press & Warm Amber Ink */
+  --hf-bg: #0D0D0C;
+  --hf-surface: #161513;
+  --hf-surface-secondary: #201E1B;
+  --hf-text: #F7F4ED;
+  --hf-text-secondary: #B8B2A8;
+  --hf-text-muted: #847E75;
   --hf-cta: #F59E0B;
-  --hf-cta-hover: #D97706;
+  --hf-cta-hover: #FBBF24;
   --hf-accent: #F59E0B;
-  --hf-primary: #F5F2EB;
-  --hf-btn-primary-bg: #F5F2EB;
-  --hf-btn-primary-text: #141413;
-  --hf-navy: #121210;
-  --hf-dark-panel: #1A1917;
+  --hf-primary: #F7F4ED;
+  --hf-btn-primary-bg: #F7F4ED;
+  --hf-btn-primary-text: #111110;
+  --hf-navy: #0D0D0C;
+  --hf-dark-panel: #161513;
   --hf-ai-teal: #4ADE80;
   --hf-teal: #4ADE80;
-  --hf-mint: #14532D;
+  --hf-mint: rgba(34, 197, 94, 0.14);
   --hf-success: #4ADE80;
   --hf-warning: #F59E0B;
   --hf-error: #F87171;
-  --hf-error-bg: #450A0A;
-  --hf-border: #33312C;
-  --hf-border-hover: #F5F2EB;
-  --hf-ink-border: #57534E;
-  --hf-shadow-ink: 3px 3px 0px #000000;
-  --hf-shadow-ink-sm: 2px 2px 0px #000000;
-  --hf-shadow-ink-lg: 5px 5px 0px #000000;
-  --hf-shadow-accent: 3px 3px 0px #B45309;
-  --hf-grid-line: rgba(245, 242, 235, 0.04);
-  --hf-spotlight: rgba(245, 158, 11, 0.08);
+  --hf-error-bg: rgba(239, 68, 68, 0.12);
+  --hf-border: #2C2925;
+  --hf-border-hover: #4A453E;
+  --hf-ink-border: #36322D;
+  --hf-shadow-color: #050504;
+  --hf-shadow-ink: 0 10px 28px -12px rgba(0, 0, 0, 0.85), 3px 3px 0px #050504;
+  --hf-shadow-ink-sm: 0 4px 12px -4px rgba(0, 0, 0, 0.72), 2px 2px 0px #050504;
+  --hf-shadow-ink-lg: 0 18px 42px -12px rgba(0, 0, 0, 0.92), 5px 5px 0px #050504;
+  --hf-shadow-accent: 0 8px 22px -6px rgba(245, 158, 11, 0.3), 3px 3px 0px #B45309;
+  --hf-card-bevel: inset 0 1px 0 rgba(255, 248, 235, 0.07);
+  --hf-ambient-glow: rgba(245, 158, 11, 0.14);
+  --hf-grid-line: rgba(247, 244, 237, 0.045);
+  --hf-spotlight: rgba(245, 158, 11, 0.13);
 }
 
 @layer base {
@@ -231,29 +237,40 @@
     -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 30%, #000 50%, transparent 100%);
   }
 
-  /* Tactile Dossier Card Surface with Hard Ink Offset Shadow */
+  /* Tactile Dossier Card Surface with Crisp Bevel & Depth */
   .hf-card {
     background-color: var(--hf-surface);
     border: 1.5px solid var(--hf-ink-border);
     border-radius: 0.375rem;
-    box-shadow: var(--hf-shadow-ink);
-    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    box-shadow: var(--hf-card-bevel), var(--hf-shadow-ink);
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .hf-card-interactive:hover {
     transform: translate(-1.5px, -1.5px);
-    box-shadow: 4.5px 4.5px 0px var(--hf-ink-border);
+    box-shadow: var(--hf-card-bevel), 4.5px 4.5px 0px var(--hf-shadow-color);
+  }
+
+  .dark .hf-card-interactive:hover {
+    border-color: rgba(245, 158, 11, 0.48);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 248, 235, 0.12),
+      0 16px 36px -10px rgba(0, 0, 0, 0.92),
+      0 0 0 1px rgba(245, 158, 11, 0.16),
+      3px 3px 0px #050504;
   }
 
   .hf-card-secondary {
     background-color: var(--hf-surface-secondary);
     border: 1px solid var(--hf-border);
     border-radius: 0.375rem;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
 
-  /* Tactile Mechanical Primary Button with Terracotta Offset Shadow */
+  /* Tactile Mechanical Primary Button with Smooth Sheen & Offset Shadow */
   .hf-btn-primary {
+    position: relative;
+    overflow: hidden;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -268,12 +285,27 @@
     color: var(--hf-btn-primary-text);
     border: 1.5px solid var(--hf-ink-border);
     box-shadow: var(--hf-shadow-accent);
-    transition: all 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.16s ease;
     cursor: pointer;
+  }
+  .hf-btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, 0.2) 50%, transparent 75%);
+    transform: translateX(-120%);
+    transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+  .hf-btn-primary:hover::after {
+    transform: translateX(120%);
   }
   .hf-btn-primary:hover {
     transform: translate(-1.5px, -1.5px);
     box-shadow: 4.5px 4.5px 0px var(--hf-cta);
+  }
+  .dark .hf-btn-primary:hover {
+    box-shadow: 0 10px 26px -6px rgba(245, 158, 11, 0.45), 3px 3px 0px #D97706;
   }
   .hf-btn-primary:active {
     transform: translate(1.5px, 1.5px);
@@ -295,18 +327,22 @@
     background-color: var(--hf-surface);
     color: var(--hf-text);
     border: 1.5px solid var(--hf-ink-border);
-    box-shadow: var(--hf-shadow-ink-sm);
-    transition: all 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--hf-card-bevel), var(--hf-shadow-ink-sm);
+    transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
   }
   .hf-btn-secondary:hover {
     background-color: var(--hf-surface-secondary);
     transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0px var(--hf-ink-border);
+    box-shadow: var(--hf-card-bevel), 3px 3px 0px var(--hf-shadow-color);
+  }
+  .dark .hf-btn-secondary:hover {
+    border-color: rgba(245, 158, 11, 0.42);
+    box-shadow: inset 0 1px 0 rgba(255, 248, 235, 0.1), 0 8px 20px -6px rgba(0, 0, 0, 0.8), 2px 2px 0px #050504;
   }
   .hf-btn-secondary:active {
     transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0px var(--hf-ink-border);
+    box-shadow: 1px 1px 0px var(--hf-shadow-color);
   }
 
   .hf-badge {
@@ -377,4 +413,35 @@
 
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+@keyframes hf-breathe {
+  0%, 100% {
+    opacity: 0.65;
+    transform: translate(-50%, 0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, 6px) scale(1.06);
+  }
+}
+
+.hf-ambient-orb {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  width: 760px;
+  height: 440px;
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, var(--hf-ambient-glow) 0%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  animation: hf-breathe 9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .hf-ambient-orb {
+    animation: none;
+  }
 }

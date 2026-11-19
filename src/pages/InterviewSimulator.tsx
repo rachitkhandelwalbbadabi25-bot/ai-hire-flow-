@@ -580,7 +580,7 @@ export default function InterviewSimulator() {
               <span>Reset session</span>
             </button>
           )}
-          <div className="px-3.5 py-2 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] rounded-sm flex items-center gap-2.5">
+          <div className="px-3.5 py-2 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] rounded-sm flex items-center gap-2.5">
             <div className="w-2 h-2 bg-[var(--hf-success)]" />
             <div className="flex flex-col">
               <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-muted)]">SESSIONS AVAILABLE</span>
@@ -1490,7 +1490,7 @@ export default function InterviewSimulator() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-ink-border)] p-4 rounded-sm self-start sm:self-auto shrink-0">
+                <div className="flex items-center gap-4 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-shadow-color)] p-4 rounded-sm self-start sm:self-auto shrink-0">
                   <div className="text-right">
                     <span className="text-xs font-medium text-[var(--hf-text-secondary)] block">
                       Practice score

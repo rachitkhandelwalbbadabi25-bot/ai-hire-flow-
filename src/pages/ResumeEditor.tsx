@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  FileEdit, 
   Sparkles, 
   Save, 
   Loader2, 
@@ -15,8 +14,7 @@ import {
   Briefcase,
   Search, 
   FileText,
-  RotateCcw,
-  UserCheck
+  RotateCcw
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -275,7 +273,7 @@ export default function ResumeEditor() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="text-xs font-medium text-[var(--hf-text-secondary)] bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] px-3 py-1.5 rounded-sm hidden sm:inline-flex items-center gap-2">
+          <span className="text-xs font-medium text-[var(--hf-text-secondary)] bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] px-3 py-1.5 rounded-sm hidden sm:inline-flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[var(--hf-cta)] inline-block"></span>
             {typeof editAccess.limit === 'number' && editAccess.limit < 9999 ? `${editAccess.remaining} edits left this month` : 'Unlimited edits'}
           </span>
@@ -324,7 +322,7 @@ export default function ResumeEditor() {
                 experienceList[0]?.role, 
                 experienceList[0]?.company
               )}
-              className="self-start sm:self-auto min-h-[36px] px-3.5 py-1.5 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[var(--hf-mint)] text-[var(--hf-success)] hover:-translate-y-0.5"
+              className="self-start sm:self-auto min-h-[36px] px-3.5 py-1.5 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[var(--hf-mint)] text-[var(--hf-success)] hover:-translate-y-0.5"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Improve with AI</span>
@@ -484,7 +482,7 @@ export default function ResumeEditor() {
                                   <button
                                     type="button"
                                     onClick={() => handleOpenWritingAssistant(bullet, 'bullet', exp.id, bIdx, exp.role, exp.company)}
-                                    className="min-h-[36px] px-3 py-1.5 bg-[var(--hf-mint)] border border-[var(--hf-ink-border)] rounded-sm text-[var(--hf-success)] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-[1px_1px_0px_var(--hf-ink-border)] hover:-translate-y-0.5"
+                                    className="min-h-[36px] px-3 py-1.5 bg-[var(--hf-mint)] border border-[var(--hf-ink-border)] rounded-sm text-[var(--hf-success)] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-[1px_1px_0px_var(--hf-shadow-color)] hover:-translate-y-0.5"
                                   >
                                     <Wand2 className="w-3.5 h-3.5" />
                                     <span>Improve with AI</span>
@@ -544,7 +542,7 @@ export default function ResumeEditor() {
             </div>
             <div className="flex flex-wrap gap-2">
               {skillsList.map((skill, i) => (
-                <span key={i} className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] px-3 py-1.5 rounded-sm text-xs font-semibold text-[var(--hf-text)] flex items-center gap-2 shadow-[1px_1px_0px_var(--hf-ink-border)]">
+                <span key={i} className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] px-3 py-1.5 rounded-sm text-xs font-semibold text-[var(--hf-text)] flex items-center gap-2 shadow-[1px_1px_0px_var(--hf-shadow-color)]">
                   <span>{skill}</span>
                   <button 
                     type="button"
@@ -590,7 +588,7 @@ export default function ResumeEditor() {
       </div>
 
       {/* Floating Status Bar */}
-      <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] px-4 sm:px-5 py-2.5 rounded-sm shadow-[3px_3px_0px_var(--hf-ink-border)] flex items-center gap-4 sm:gap-6 text-xs whitespace-nowrap">
+      <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] px-4 sm:px-5 py-2.5 rounded-sm shadow-[3px_3px_0px_var(--hf-shadow-color)] flex items-center gap-4 sm:gap-6 text-xs whitespace-nowrap">
         <div className="flex items-center gap-2 border-r border-[var(--hf-border)] pr-3 sm:pr-4">
           <div className="w-2 h-2 rounded-full bg-[var(--hf-success)]" />
           <span className="font-semibold text-[var(--hf-text)]">Master resume</span>

@@ -42,7 +42,7 @@ export default function PlanBadge() {
     <Link
       to="/credits"
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm border-[1.5px] font-mono text-[11px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_var(--hf-ink-border)] hover:-translate-y-0.5 transition-all cursor-pointer",
+        "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm border-[1.5px] font-mono text-[11px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_var(--hf-shadow-color)] hover:-translate-y-0.5 transition-all cursor-pointer",
         config.className
       )}
     >

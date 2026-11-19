@@ -4,12 +4,10 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Mail,
   Inbox,
-  Send,
   Plus,
   Users,
   UserCheck,
   ExternalLink,
-  Zap,
   X,
   Loader2,
   Copy,
@@ -527,7 +525,7 @@ export default function OutreachHub() {
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
-                  className="hf-card w-full max-w-md p-6 relative shadow-[6px_6px_0px_var(--hf-ink-border)]"
+                  className="hf-card w-full max-w-md p-6 relative shadow-[6px_6px_0px_var(--hf-shadow-color)]"
                 >
                   <button
                     type="button"

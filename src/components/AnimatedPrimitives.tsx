@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, ReactNode } from 'react';
-import { motion, useInView } from 'motion/react';
+import { motion, useInView, useScroll, useSpring } from 'motion/react';
 import { cn } from '../lib/utils';
 
 /**
@@ -36,8 +36,9 @@ export function SpotlightCard({
       onMouseEnter={() => setOpacity(1)}
       onMouseLeave={() => setOpacity(0)}
       onClick={onClick}
-      whileHover={hoverLift ? { y: -3 } : undefined}
-      transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+      whileHover={hoverLift ? { y: -3, scale: 1.004 } : undefined}
+      whileTap={onClick ? { scale: 0.992 } : undefined}
+      transition={{ type: 'spring', stiffness: 360, damping: 26 }}
       className={cn(
         'hf-card hf-card-interactive relative overflow-hidden',
         onClick && 'cursor-pointer',
@@ -48,7 +49,19 @@ export function SpotlightCard({
         className="pointer-events-none absolute -inset-px transition-opacity duration-300 z-0"
         style={{
           opacity,
-          background: `radial-gradient(480px circle at ${position.x}px ${position.y}px, var(--hf-spotlight), transparent 45%)`,
+          background: `radial-gradient(460px circle at ${position.x}px ${position.y}px, var(--hf-spotlight), transparent 48%)`,
+        }}
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300 z-0"
+        style={{
+          opacity: opacity * 0.75,
+          background: `radial-gradient(240px circle at ${position.x}px ${position.y}px, rgba(var(--accent-rgb), 0.14), transparent 60%)`,
+          maskImage: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          maskComposite: 'exclude',
+          WebkitMaskComposite: 'xor',
+          padding: '1.5px',
         }}
         aria-hidden="true"
       />
@@ -213,6 +226,83 @@ export function FadeInSection({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.45, delay, ease: [0.16, 1, 0.3, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/**
+ * 5. ScrollProgressBar — Ultra-thin spring-smoothed reading progress bar
+ */
+export function ScrollProgressBar({ className = '' }: { className?: string }) {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 220,
+    damping: 32,
+    restDelta: 0.001,
+  });
+
+  return (
+    <motion.div
+      style={{ scaleX }}
+      className={cn(
+        'h-[2px] w-full origin-left bg-[var(--hf-cta)] pointer-events-none',
+        className
+      )}
+      aria-hidden="true"
+    />
+  );
+}
+
+/**
+ * 6. StaggerContainer & StaggerItem — Orchestrated viewport grid reveals
+ */
+export function StaggerContainer({
+  children,
+  className = '',
+  staggerDelay = 0.06,
+}: {
+  children: ReactNode;
+  className?: string;
+  staggerDelay?: number;
+}) {
+  return (
+    <motion.div
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: '-50px' }}
+      variants={{
+        hidden: {},
+        visible: {
+          transition: { staggerChildren: staggerDelay },
+        },
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+export function StaggerItem({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 14 },
+        visible: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.42, ease: [0.16, 1, 0.3, 1] },
+        },
+      }}
       className={className}
     >
       {children}

@@ -1771,13 +1771,13 @@ export default function ResumeAnalyzer() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
+          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-shadow-color)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
             <span className="w-2 h-2 bg-[var(--hf-ai-teal)]" aria-hidden="true" />
             <span className="font-mono font-bold tabular-nums">
               {formatCreditAvailability(creditWallet?.balance, creditCosts?.resumeScan ?? 20, 'scans')}
             </span>
           </div>
-          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
+          <div className="px-3 py-1.5 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-shadow-color)] flex items-center gap-2 text-xs text-[var(--hf-text)]">
             <span className="w-2 h-2 bg-[var(--hf-success)]" aria-hidden="true" />
             <span className="font-mono font-bold tabular-nums">
               {formatCreditAvailability(creditWallet?.balance, creditCosts?.coverLetter ?? 15, 'letters')}
@@ -2451,7 +2451,7 @@ export default function ResumeAnalyzer() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-4 p-4 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-ink-border)] bg-[var(--hf-surface-secondary)] shrink-0 self-start md:self-center">
+                    <div className="flex items-center gap-4 p-4 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-shadow-color)] bg-[var(--hf-surface-secondary)] shrink-0 self-start md:self-center">
                       <div>
                         <span className="text-xs font-semibold text-[var(--hf-text-muted)] block">ATS match score</span>
                         <div className="flex items-baseline gap-1">

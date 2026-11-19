@@ -151,7 +151,7 @@ export default function JobTracker() {
 
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Board / Table View Switcher */}
-          <div className="inline-flex border-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-ink-border)] p-0.5 rounded-sm">
+          <div className="inline-flex border-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)] shadow-[2px_2px_0px_var(--hf-shadow-color)] p-0.5 rounded-sm">
             <button
               type="button"
               onClick={() => setViewMode('board')}
@@ -181,7 +181,7 @@ export default function JobTracker() {
           </div>
 
           {/* Capacity Stamp */}
-          <div className="flex items-center gap-2.5 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] px-3 py-2 rounded-sm text-xs shadow-[2px_2px_0px_var(--hf-ink-border)]">
+          <div className="flex items-center gap-2.5 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] px-3 py-2 rounded-sm text-xs shadow-[2px_2px_0px_var(--hf-shadow-color)]">
             <span className="font-sans text-xs font-medium text-[var(--hf-text-secondary)]">Saved:</span>
             <span className={cn(
               "font-mono font-bold tabular-nums",
@@ -337,7 +337,7 @@ export default function JobTracker() {
                               key={job.id}
                               initial={{ opacity: 0, y: 6 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] p-3.5 rounded-sm space-y-2.5 group"
+                              className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] p-3.5 rounded-sm space-y-2.5 group"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">

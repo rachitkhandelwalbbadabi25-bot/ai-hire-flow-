@@ -1329,7 +1329,7 @@ export default function CreditsPage() {
                       className={cn(
                         "p-5 rounded-sm border flex flex-col justify-between transition-all",
                         a.unlocked 
-                          ? "bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]" 
+                          ? "bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)]" 
                           : "bg-[var(--hf-surface-secondary)]/50 border-[var(--hf-border)] opacity-90"
                       )}
                     >

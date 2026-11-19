@@ -8,6 +8,7 @@ import PlanBadge from './PlanBadge';
 import HeaderQuickSearch from './HeaderQuickSearch';
 import MobileBottomNav from './MobileBottomNav';
 import HireFlowLogo from './HireFlowLogo';
+import { ScrollProgressBar } from './AnimatedPrimitives';
 import { PUBLIC_SEO_ROUTES } from './Layout';
 import { useTheme } from '../context/ThemeContext';
 import { 
@@ -194,7 +195,7 @@ export default function Navbar({ user }: NavbarProps) {
                         <motion.span
                           layoutId="public-nav-pill"
                           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                          className="absolute inset-0 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] -z-10"
+                          className="absolute inset-0 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] -z-10"
                         />
                       )}
                       {item.name}
@@ -208,19 +209,41 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="flex items-center gap-2.5">
               {user && !isPublicRoute && <HeaderQuickSearch />}
 
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.94 }}
                 onClick={toggleTheme}
-                className="min-h-[36px] min-w-[36px] p-1.5 bg-[var(--hf-surface)] text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] transition-all flex items-center justify-center cursor-pointer"
+                className="min-h-[36px] min-w-[36px] p-1.5 bg-[var(--hf-surface)] text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] transition-colors flex items-center justify-center cursor-pointer overflow-hidden"
                 aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                 title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               >
-                {theme === 'dark' ? (
-                  <Sun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Moon className="w-4 h-4 text-[var(--hf-text)]" />
-                )}
-              </button>
+                <AnimatePresence mode="wait" initial={false}>
+                  {theme === 'dark' ? (
+                    <motion.span
+                      key="theme-sun"
+                      initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+                      animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                      exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex items-center justify-center"
+                    >
+                      <Sun className="w-4 h-4 text-amber-400" />
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="theme-moon"
+                      initial={{ rotate: 90, opacity: 0, scale: 0.6 }}
+                      animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                      exit={{ rotate: -90, opacity: 0, scale: 0.6 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex items-center justify-center"
+                    >
+                      <Moon className="w-4 h-4 text-[var(--hf-text)]" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
 
               {user ? (
                 <div className="flex items-center gap-2">
@@ -240,7 +263,7 @@ export default function Navbar({ user }: NavbarProps) {
                   )}
                   <button
                     onClick={handleSignOut}
-                    className="min-h-[36px] min-w-[36px] p-1.5 bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] hover:bg-[var(--hf-surface-secondary)] rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] transition-all flex items-center justify-center cursor-pointer"
+                    className="min-h-[36px] min-w-[36px] p-1.5 bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] hover:bg-[var(--hf-surface-secondary)] rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] transition-all flex items-center justify-center cursor-pointer"
                     aria-label="Sign out of account"
                     title="Sign out"
                   >
@@ -278,7 +301,7 @@ export default function Navbar({ user }: NavbarProps) {
                   className={cn(
                     "block px-3 py-2 rounded-sm font-sans text-sm font-medium transition-colors",
                     location.pathname === item.path
-                      ? "bg-[var(--hf-surface)] text-[var(--hf-text)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]"
+                      ? "bg-[var(--hf-surface)] text-[var(--hf-text)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)]"
                       : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]"
                   )}
                 >
@@ -288,6 +311,10 @@ export default function Navbar({ user }: NavbarProps) {
             </motion.div>
           )}
         </AnimatePresence>
+        {/* Scroll reading progress bar */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <ScrollProgressBar />
+        </div>
       </nav>
 
       {/* Desktop Persistent Dossier Index Sidebar (Authenticated App Routes) */}
@@ -321,7 +348,7 @@ export default function Navbar({ user }: NavbarProps) {
                         <motion.span
                           layoutId="sidebar-active-pill"
                           transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-                          className="absolute inset-0 rounded-sm bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] -z-10"
+                          className="absolute inset-0 rounded-sm bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] -z-10"
                         />
                       )}
                       <item.icon className={cn(
@@ -341,7 +368,7 @@ export default function Navbar({ user }: NavbarProps) {
             {creditWallet && (
               <Link
                 to="/credits"
-                className="px-3 py-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center justify-between text-xs transition-transform hover:-translate-y-0.5"
+                className="px-3 py-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] flex items-center justify-between text-xs transition-transform hover:-translate-y-0.5"
               >
                 <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-secondary)]">CREDITS</span>
                 <span className="font-mono font-bold text-[var(--hf-cta)] tabular-nums">
@@ -425,7 +452,7 @@ export default function Navbar({ user }: NavbarProps) {
                           className={cn(
                             "min-h-[40px] flex items-center gap-2.5 px-3 py-2 rounded-sm text-xs font-medium transition-colors",
                             isActive
-                              ? "bg-[var(--hf-surface)] text-[var(--hf-text)] font-bold border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)]"
+                              ? "bg-[var(--hf-surface)] text-[var(--hf-text)] font-bold border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)]"
                               : "text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)]"
                           )}
                         >

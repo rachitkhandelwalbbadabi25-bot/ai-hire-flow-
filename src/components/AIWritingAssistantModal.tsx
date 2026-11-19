@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState } from 'react';
+import { motion } from 'motion/react';
 import { 
   Wand2, 
   X, 
@@ -8,7 +8,6 @@ import {
   TrendingUp, 
   AlertCircle, 
   CheckCircle2, 
-  HelpCircle, 
   RefreshCw, 
   Layers, 
   ArrowRight,
@@ -17,7 +16,7 @@ import {
   Info,
   Loader2
 } from 'lucide-react';
-import { BulletAISuggestion, BulletImprovementResult, ConfidenceLevel } from '../types/aiWritingAssistant';
+import { BulletImprovementResult, ConfidenceLevel } from '../types/aiWritingAssistant';
 
 interface AIWritingAssistantModalProps {
   isOpen: boolean;
@@ -93,12 +92,12 @@ export default function AIWritingAssistantModal({
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 10 }}
-        className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm w-full max-w-3xl shadow-[6px_6px_0px_var(--hf-ink-border)] overflow-hidden my-auto relative max-h-[90vh] flex flex-col text-[var(--hf-text)]"
+        className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm w-full max-w-3xl shadow-[6px_6px_0px_var(--hf-shadow-color)] overflow-hidden my-auto relative max-h-[90vh] flex flex-col text-[var(--hf-text)]"
       >
         {/* Header */}
         <div className="p-4 sm:p-5 border-b-[1.5px] border-[var(--hf-ink-border)] flex items-center justify-between bg-[var(--hf-surface-secondary)]/60 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] text-[var(--hf-cta)] flex items-center justify-center shrink-0 shadow-[2px_2px_0px_var(--hf-ink-border)]">
+            <div className="w-9 h-9 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] text-[var(--hf-cta)] flex items-center justify-center shrink-0 shadow-[2px_2px_0px_var(--hf-shadow-color)]">
               <Wand2 className="w-4 h-4" />
             </div>
             <div>

@@ -10,12 +10,12 @@ import {
   AnimatedCircularGauge,
   FadeInSection
 } from '../components/AnimatedPrimitives';
-import { 
-  FileSearch, 
-  Target, 
-  Briefcase, 
-  FileEdit, 
-  Mic, 
+import {
+  FileSearch,
+  Target,
+  Briefcase,
+  FileEdit,
+  Mic,
   AlertCircle,
   ChevronDown,
   Compass,
@@ -244,7 +244,7 @@ export default function Landing() {
 
   return (
     <div className="flex flex-col bg-[var(--hf-bg)] text-[var(--hf-text)] selection:bg-[var(--hf-cta)] selection:text-white min-h-screen">
-      <SEOHead 
+      <SEOHead
         title="AI HireFlow | Career Platform for Resume Analysis, Job Search & Interview Prep"
         description="Check ATS resume compatibility, build single-column resumes, practice technical mock interviews, find matched jobs, and map out career roadmaps."
         canonicalPath="/"
@@ -259,6 +259,7 @@ export default function Landing() {
           className="pointer-events-none absolute inset-0 hf-grid-canvas hf-radial-mask"
           aria-hidden="true"
         />
+        <div className="hf-ambient-orb" aria-hidden="true" />
 
         <div className="relative z-10 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-start">
@@ -269,7 +270,7 @@ export default function Landing() {
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               className="lg:col-span-6 space-y-6 text-left pt-2"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] rounded-sm">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] rounded-sm">
                 <span className="w-2 h-2 rounded-full bg-[var(--hf-cta)] inline-block" />
                 <span className="font-sans text-xs font-semibold text-[var(--hf-text)]">
                   Resume Scoring · Live Jobs · Interview Prep
@@ -306,7 +307,7 @@ export default function Landing() {
 
               {/* Clean 3-Column Summary Strip */}
               <div className="pt-4">
-                <div className="grid grid-cols-3 border-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)] shadow-[3px_3px_0px_var(--hf-ink-border)] divide-x-[1.5px] divide-[var(--hf-ink-border)] rounded-sm overflow-hidden">
+                <div className="grid grid-cols-3 border-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface)] shadow-[3px_3px_0px_var(--hf-shadow-color)] divide-x-[1.5px] divide-[var(--hf-ink-border)] rounded-sm overflow-hidden">
                   <div className="p-3 sm:p-4">
                     <span className="font-sans text-[11px] font-medium text-[var(--hf-text-muted)] block">Scoring rubric</span>
                     <span className="font-serif-display text-lg sm:text-xl font-semibold text-[var(--hf-text)] mt-0.5 block">4 Clear Pillars</span>
@@ -335,7 +336,7 @@ export default function Landing() {
               onMouseLeave={() => setIsHeroPaused(false)}
               className="lg:col-span-6 w-full"
             >
-              {/* Tabs */}
+              {/* Tabs with Spring Active Pill */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
                 {heroTabs.map((tab) => {
                   const isActive = activeHeroTab === tab.id;
@@ -344,31 +345,48 @@ export default function Landing() {
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveHeroTab(tab.id)}
-                      className={`px-2.5 py-2 rounded-sm font-sans text-xs font-semibold border-[1.5px] border-[var(--hf-ink-border)] transition-all cursor-pointer flex items-center justify-center ${
-                        isActive
-                          ? 'bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)]'
-                          : 'bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:bg-[var(--hf-surface-secondary)]'
-                      }`}
+                      className={`relative px-2.5 py-2 rounded-sm font-sans text-xs font-semibold border-[1.5px] border-[var(--hf-ink-border)] transition-colors cursor-pointer flex items-center justify-center overflow-hidden ${isActive
+                          ? 'text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)]'
+                          : 'bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:bg-[var(--hf-surface-secondary)] hover:text-[var(--hf-text)]'
+                        }`}
                     >
-                      <span>{tab.label}</span>
+                      {isActive && (
+                        <motion.span
+                          layoutId="hero-tab-pill"
+                          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                          className="absolute inset-0 bg-[var(--hf-btn-primary-bg)] -z-0"
+                        />
+                      )}
+                      <span className="relative z-10">{tab.label}</span>
                     </button>
                   );
                 })}
               </div>
 
               {/* Preview Sheet with Fixed-Height Inner Body so Page Never Jumps Upward */}
-              <div className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-ink-border)] rounded-sm p-5 sm:p-6">
+              <div className="relative overflow-hidden bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-shadow-color)] rounded-sm p-5 sm:p-6">
+                {/* Auto-Cycle Hairline Progress Indicator */}
+                <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-[var(--hf-surface-secondary)] overflow-hidden" aria-hidden="true">
+                  {!isHeroPaused && (
+                    <motion.div
+                      key={activeHeroTab}
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ duration: 6.5, ease: 'linear' }}
+                      className="h-full w-full origin-left bg-[var(--hf-cta)]"
+                    />
+                  )}
+                </div>
                 {/* Card Header */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 mb-4 border-b-[1.5px] border-[var(--hf-ink-border)]">
                   <span className="font-sans text-xs font-semibold text-[var(--hf-text-secondary)]">
                     Sample Resume Review · Senior Frontend
                   </span>
                   <span
-                    className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-sm border tabular-nums transition-colors ${
-                      heroXyzApplied
+                    className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-sm border tabular-nums transition-colors ${heroXyzApplied
                         ? 'bg-[var(--hf-mint)] text-[var(--hf-success)] border-[var(--hf-success)]'
                         : 'bg-[var(--hf-surface-secondary)] text-[var(--hf-cta)] border-[var(--hf-ink-border)]'
-                    }`}
+                      }`}
                   >
                     Score: {heroScore} / 100
                   </span>
@@ -413,11 +431,10 @@ export default function Landing() {
                           <button
                             type="button"
                             onClick={() => setHeroXyzApplied((v) => !v)}
-                            className={`px-3 py-1.5 rounded-sm font-sans text-xs font-semibold border-[1.5px] border-[var(--hf-ink-border)] shrink-0 cursor-pointer transition-all flex items-center gap-1.5 ${
-                              heroXyzApplied
-                                ? 'bg-[var(--hf-surface)] text-[var(--hf-text)] shadow-[2px_2px_0px_var(--hf-ink-border)]'
+                            className={`px-3 py-1.5 rounded-sm font-sans text-xs font-semibold border-[1.5px] border-[var(--hf-ink-border)] shrink-0 cursor-pointer transition-all flex items-center gap-1.5 ${heroXyzApplied
+                                ? 'bg-[var(--hf-surface)] text-[var(--hf-text)] shadow-[2px_2px_0px_var(--hf-shadow-color)]'
                                 : 'bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)]'
-                            }`}
+                              }`}
                           >
                             {heroXyzApplied ? (
                               <>
@@ -480,7 +497,7 @@ export default function Landing() {
                           </p>
                         </div>
 
-                        <div className="p-3.5 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-ink-border)] rounded-sm space-y-2.5">
+                        <div className="p-3.5 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-shadow-color)] rounded-sm space-y-2.5">
                           <span className="font-sans text-[11px] font-semibold text-[var(--hf-success)] block">
                             Clearer rewrite anchored to your work
                           </span>
@@ -519,7 +536,7 @@ export default function Landing() {
                               <span className="font-sans text-[11px] font-medium text-[var(--hf-text-muted)] block">{job.company} · {job.loc}</span>
                               <span className="font-serif-display text-base font-semibold text-[var(--hf-text)]">{job.role}</span>
                             </div>
-                            <span className="font-mono text-xs font-bold px-2.5 py-1 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] text-[var(--hf-success)] shrink-0 rounded-sm">
+                            <span className="font-mono text-xs font-bold px-2.5 py-1 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] text-[var(--hf-success)] shrink-0 rounded-sm">
                               {job.fit}
                             </span>
                           </div>
@@ -550,7 +567,7 @@ export default function Landing() {
                               <span className="font-sans text-[11px] font-semibold text-[var(--hf-text)] block border-b border-[var(--hf-ink-border)] pb-1">
                                 {col.stage}
                               </span>
-                              <div className="p-2 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] rounded-sm">
+                              <div className="p-2 bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] rounded-sm">
                                 <p className="text-xs font-semibold text-[var(--hf-text)]">{col.company}</p>
                                 <p className="text-[11px] font-medium text-[var(--hf-cta)] mt-0.5">{col.note}</p>
                               </div>
@@ -856,7 +873,7 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Tactile Track Selector Buttons */}
+            {/* Tactile Track Selector Buttons with Spring Pill */}
             <div className="flex flex-wrap items-center gap-2 self-start">
               {(Object.keys(ROLE_BENCHMARKS) as RoleBenchmarkId[]).map((roleKey) => {
                 const isSelected = selectedRole === roleKey;
@@ -865,13 +882,19 @@ export default function Landing() {
                     key={roleKey}
                     type="button"
                     onClick={() => setSelectedRole(roleKey)}
-                    className={`px-3.5 py-2 rounded-sm font-sans text-xs font-semibold border-[1.5px] border-[var(--hf-ink-border)] transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)] -translate-y-0.5'
-                        : 'bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:bg-[var(--hf-surface-secondary)]'
-                    }`}
+                    className={`relative px-3.5 py-2 rounded-sm font-sans text-xs font-semibold border-[1.5px] border-[var(--hf-ink-border)] transition-colors cursor-pointer overflow-hidden ${isSelected
+                        ? 'text-[var(--hf-btn-primary-text)] shadow-[2px_2px_0px_var(--hf-cta)]'
+                        : 'bg-[var(--hf-surface)] text-[var(--hf-text-secondary)] hover:bg-[var(--hf-surface-secondary)] hover:text-[var(--hf-text)]'
+                      }`}
                   >
-                    {ROLE_BENCHMARKS[roleKey].code}
+                    {isSelected && (
+                      <motion.span
+                        layoutId="rubric-role-pill"
+                        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                        className="absolute inset-0 bg-[var(--hf-btn-primary-bg)] -z-0"
+                      />
+                    )}
+                    <span className="relative z-10">{ROLE_BENCHMARKS[roleKey].code}</span>
                   </button>
                 );
               })}
@@ -959,7 +982,7 @@ export default function Landing() {
                   </div>
 
                   {/* After Revision */}
-                  <div className="p-4 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-ink-border)] rounded-sm space-y-3">
+                  <div className="p-4 bg-[var(--hf-surface-secondary)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-shadow-color)] rounded-sm space-y-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-[var(--hf-success)] flex items-center gap-1">
                         <Check className="w-3.5 h-3.5" /> After (clear &amp; measurable)
@@ -1241,6 +1264,7 @@ export default function Landing() {
           className="pointer-events-none absolute inset-0 hf-grid-canvas hf-radial-mask"
           aria-hidden="true"
         />
+        <div className="hf-ambient-orb" aria-hidden="true" />
         <FadeInSection className="relative z-10 max-w-2xl mx-auto space-y-5">
           <span className="inline-block font-sans text-xs font-semibold px-3 py-1 bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] rounded-sm text-[var(--hf-text)]">
             Free to start · 150 credits daily

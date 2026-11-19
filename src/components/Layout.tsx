@@ -60,9 +60,9 @@ export default function Layout({ user, children }: LayoutProps) {
       <main className={showAppSidebar ? "flex-1 pt-20 sm:pt-22 pb-28 md:pb-12 lg:ml-60 transition-all" : "flex-1"}>
         <motion.div
           key={location.pathname}
-          initial={{ opacity: 0, y: 4 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
+          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
         >
           {children}
         </motion.div>

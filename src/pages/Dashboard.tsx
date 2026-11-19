@@ -533,7 +533,7 @@ export default function Dashboard() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-[var(--hf-surface)] px-3.5 py-2 border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] rounded-sm flex items-center gap-3">
+          <div className="bg-[var(--hf-surface)] px-3.5 py-2 border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] rounded-sm flex items-center gap-3">
             <div className="text-left">
               <p className="font-sans text-[11px] font-medium text-[var(--hf-text-muted)]">Active plan</p>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -578,7 +578,7 @@ export default function Dashboard() {
       {/* ========================================================================= */}
       {/* 1. PRIORITY #1: NEXT ACTION                                               */}
       {/* ========================================================================= */}
-      <section className="mb-8">
+      <FadeInSection className="mb-8">
         {!hasResume ? (
           <div className="hf-card p-6 sm:p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -695,7 +695,7 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-      </section>
+      </FadeInSection>
 
       {/* ========================================================================= */}
       {/* 2 & 3. RESUME READINESS & UPCOMING INTERVIEWS                              */}
@@ -795,7 +795,7 @@ export default function Dashboard() {
                     >
                       <div className="flex items-center gap-3">
                         {event.hasRealDate && event.month && event.day ? (
-                          <div className="bg-[var(--hf-surface)] px-2.5 py-1.5 rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] text-center shrink-0 min-w-[44px]">
+                          <div className="bg-[var(--hf-surface)] px-2.5 py-1.5 rounded-sm border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] text-center shrink-0 min-w-[44px]">
                             <span className="text-[10px] font-semibold text-[var(--hf-cta)] uppercase block leading-none">{event.month}</span>
                             <span className="text-sm font-bold text-[var(--hf-text)] tabular-nums leading-none mt-1">{event.day}</span>
                           </div>
@@ -1059,7 +1059,7 @@ export default function Dashboard() {
       {/* ========================================================================= */}
       {/* 7. AI CAREER ADVISOR                                                      */}
       {/* ========================================================================= */}
-      <section className="hf-card p-6 sm:p-8">
+      <FadeInSection delay={0.1} className="hf-card p-6 sm:p-8">
         <div className="flex flex-col lg:flex-row gap-8 items-stretch">
           {/* Left info column */}
           <div className="lg:w-1/3 flex flex-col justify-between">
@@ -1119,7 +1119,7 @@ export default function Dashboard() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="p-5 bg-[var(--hf-surface)] rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-ink-border)] space-y-3"
+                    className="p-5 bg-[var(--hf-surface)] rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[3px_3px_0px_var(--hf-shadow-color)] space-y-3"
                   >
                     <div className="flex items-center justify-between pb-2 border-b border-[var(--hf-border)]">
                       <div className="flex items-center gap-2">
@@ -1160,7 +1160,7 @@ export default function Dashboard() {
                   </motion.div>
                 ) : (
                   <div className="text-center py-6 px-4 space-y-2">
-                    <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-ink-border)] flex items-center justify-center mx-auto mb-3 text-[var(--hf-cta)]">
+                    <div className="w-10 h-10 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] flex items-center justify-center mx-auto mb-3 text-[var(--hf-cta)]">
                       <Sparkles className="w-5 h-5" />
                     </div>
                     <h4 className="text-sm font-semibold text-[var(--hf-text)]">Ask a question to get started</h4>
@@ -1196,7 +1196,7 @@ export default function Dashboard() {
             </form>
           </div>
         </div>
-      </section>
+      </FadeInSection>
     </div>
   );
 }

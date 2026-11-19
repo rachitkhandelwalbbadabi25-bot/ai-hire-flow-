@@ -9,6 +9,7 @@ import { cacheManager } from '../lib/CacheManager';
 import { firestoreCache } from '../services/FirestoreCache';
 import { analysisJobService } from '../services/AnalysisJobService';
 import { motion, AnimatePresence } from 'motion/react';
+import { AnimatedCounter } from '../components/AnimatedPrimitives';
 import { useSystemOS } from '../context/SystemOSContext';
 import { isDemoRole, isDemoSkills } from '../utils/demoDataSanitizer';
 import { ActiveJobContext, extractJobSkills, getActiveJobKey, formatActiveJobDescription, getStoredActiveJob } from '../utils/jobContextManager';
@@ -2459,7 +2460,7 @@ export default function ResumeAnalyzer() {
                             "font-mono text-3xl font-bold tabular-nums",
                             isHigh ? "text-[var(--hf-success)]" : isMedium ? "text-[var(--hf-cta)]" : "text-[var(--hf-warning)]"
                           )}>
-                            {scoreVal}
+                            <AnimatedCounter value={scoreVal} />
                           </span>
                           <span className="font-mono text-sm font-normal text-[var(--hf-text-muted)]">/ 100</span>
                         </div>
@@ -2553,16 +2554,19 @@ export default function ResumeAnalyzer() {
 
                         <div className="pt-3 border-t border-[var(--hf-border)] space-y-2">
                           <div className="w-full bg-[var(--hf-surface)] h-2 rounded-full overflow-hidden border border-[var(--hf-border)]">
-                            <div 
+                            <motion.div
+                              initial={{ width: 0 }}
+                              whileInView={{ width: `${Math.min(100, Math.max(0, catScore))}%` }}
+                              viewport={{ once: true }}
+                              transition={{ duration: 0.7, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
                               className={cn(
-                                "h-full rounded-full motion-reduce:transition-none transition-all duration-500",
+                                "h-full rounded-full",
                                 isCatHigh 
                                   ? "bg-[var(--hf-success)]" 
                                   : isCatMed 
                                     ? "bg-[var(--hf-cta)]" 
                                     : "bg-[var(--hf-warning)]"
                               )}
-                              style={{ width: `${Math.min(100, Math.max(0, catScore))}%` }}
                             />
                           </div>
 

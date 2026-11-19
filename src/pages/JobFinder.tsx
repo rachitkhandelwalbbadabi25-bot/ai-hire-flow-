@@ -17,6 +17,7 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 import { isDemoRole } from '../utils/demoDataSanitizer';
 import { ActiveJobContext, extractJobSkills } from '../utils/jobContextManager';
+import { FadeInSection, SpotlightCard } from '../components/AnimatedPrimitives';
 
 interface Job {
   id?: string;
@@ -948,27 +949,33 @@ export default function JobFinder() {
       {!hasSearched && (
         <div className="py-16 text-center">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
-             <div className="hf-card p-6 text-left">
+            <FadeInSection delay={0.04}>
+              <SpotlightCard className="p-6 text-left h-full">
                 <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-teal)] shadow-[2px_2px_0px_var(--hf-shadow-color)]">
-                   <TargetIcon className="w-5 h-5" />
+                  <TargetIcon className="w-5 h-5" />
                 </div>
                 <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">Live job feeds</h4>
                 <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Open roles pulled from verified external portals and employer job boards.</p>
-             </div>
-             <div className="hf-card p-6 text-left">
+              </SpotlightCard>
+            </FadeInSection>
+            <FadeInSection delay={0.1}>
+              <SpotlightCard className="p-6 text-left h-full">
                 <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-cta)] shadow-[2px_2px_0px_var(--hf-shadow-color)]">
-                   <Zap className="w-5 h-5" />
+                  <Zap className="w-5 h-5" />
                 </div>
                 <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">Real-time matching</h4>
                 <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Direct comparison against your latest analyzed resume skills and profile.</p>
-             </div>
-             <div className="hf-card p-6 text-left">
+              </SpotlightCard>
+            </FadeInSection>
+            <FadeInSection delay={0.16}>
+              <SpotlightCard className="p-6 text-left h-full">
                 <div className="w-10 h-10 bg-[var(--hf-surface-secondary)] rounded-sm flex items-center justify-center mb-3 border border-[var(--hf-ink-border)] text-[var(--hf-teal)] shadow-[2px_2px_0px_var(--hf-shadow-color)]">
-                   <Building2 className="w-5 h-5" />
+                  <Building2 className="w-5 h-5" />
                 </div>
                 <h4 className="font-serif-display text-lg font-semibold text-[var(--hf-text)] mb-1">One-click tracking</h4>
                 <p className="text-xs text-[var(--hf-text-secondary)] leading-relaxed">Save openings to your job tracker pipeline and trigger tailored interview prep.</p>
-             </div>
+              </SpotlightCard>
+            </FadeInSection>
           </div>
         </div>
       )}

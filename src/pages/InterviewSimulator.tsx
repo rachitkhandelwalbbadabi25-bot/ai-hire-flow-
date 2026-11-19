@@ -29,6 +29,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
+import { AnimatedCounter } from '../components/AnimatedPrimitives';
 import { generateInterviewQuestions, evaluateInterviewAnswer } from '../lib/gemini';
 import { cacheManager } from '../lib/CacheManager';
 import { db } from '../lib/firebase';
@@ -1496,7 +1497,7 @@ export default function InterviewSimulator() {
                       Practice score
                     </span>
                     <span className="font-mono text-2xl sm:text-3xl font-bold text-[var(--hf-text)] tabular-nums">
-                      {calculateTotalScore()}
+                      <AnimatedCounter value={calculateTotalScore()} />
                       <span className="text-xs sm:text-sm font-normal text-[var(--hf-text-muted)]"> / 100</span>
                     </span>
                   </div>

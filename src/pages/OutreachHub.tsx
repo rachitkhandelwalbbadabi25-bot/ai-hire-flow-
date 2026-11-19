@@ -25,6 +25,7 @@ import {
   Info,
 } from "lucide-react";
 import NextStepBridgeCard from "../components/NextStepBridgeCard";
+import { FadeInSection } from "../components/AnimatedPrimitives";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/firebase";
 import {
@@ -612,7 +613,7 @@ export default function OutreachHub() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column - Email settings, Candidate background, and Drafting tips */}
-        <div className="lg:col-span-12 xl:col-span-5 space-y-6">
+        <FadeInSection delay={0.04} className="lg:col-span-12 xl:col-span-5 space-y-6">
           {/* Email settings card */}
           <div className="hf-card p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -734,10 +735,10 @@ export default function OutreachHub() {
               </li>
             </ul>
           </div>
-        </div>
+        </FadeInSection>
 
         {/* Right Column - Referral Contacts */}
-        <div className="lg:col-span-12 xl:col-span-7 space-y-6">
+        <FadeInSection delay={0.1} className="lg:col-span-12 xl:col-span-7 space-y-6">
           <div className="hf-card p-6 min-h-[500px]">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-[var(--hf-border)]">
               <div className="flex items-center gap-3">
@@ -986,7 +987,7 @@ export default function OutreachHub() {
               </div>
             </div>
           </div>
-        </div>
+        </FadeInSection>
       </div>
 
       {/* AI Journey Router / Recommendations */}

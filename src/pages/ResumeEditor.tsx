@@ -24,6 +24,7 @@ import AIWritingAssistantModal from '../components/AIWritingAssistantModal';
 import { BulletImprovementResult } from '../types/aiWritingAssistant';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
+import { FadeInSection, SpotlightCard } from '../components/AnimatedPrimitives';
 
 interface ExperienceEntry {
   id: string;
@@ -302,41 +303,43 @@ export default function ResumeEditor() {
 
       <div className="space-y-8">
         {/* Professional Summary */}
-        <section className="hf-card p-5 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--hf-border)]">
-            <div>
-              <h2 className="font-serif-display text-xl font-normal text-[var(--hf-text)] flex items-center gap-2">
-                <BrainCircuit className="w-4 h-4 text-[var(--hf-cta)]" /> Professional summary
-              </h2>
-              <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
-                Brief narrative highlighting your background, core specializations, and quantifiable career wins.
-              </p>
+        <FadeInSection delay={0.04}>
+          <SpotlightCard hoverLift={false} className="p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--hf-border)]">
+              <div>
+                <h2 className="font-serif-display text-xl font-normal text-[var(--hf-text)] flex items-center gap-2">
+                  <BrainCircuit className="w-4 h-4 text-[var(--hf-cta)]" /> Professional summary
+                </h2>
+                <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
+                  Brief narrative highlighting your background, core specializations, and quantifiable career wins.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleOpenWritingAssistant(
+                  data.summary, 
+                  'summary', 
+                  undefined, 
+                  undefined, 
+                  experienceList[0]?.role, 
+                  experienceList[0]?.company
+                )}
+                className="self-start sm:self-auto min-h-[36px] px-3.5 py-1.5 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[var(--hf-mint)] text-[var(--hf-success)] hover:-translate-y-0.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Improve with AI</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => handleOpenWritingAssistant(
-                data.summary, 
-                'summary', 
-                undefined, 
-                undefined, 
-                experienceList[0]?.role, 
-                experienceList[0]?.company
-              )}
-              className="self-start sm:self-auto min-h-[36px] px-3.5 py-1.5 rounded-sm border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[var(--hf-mint)] text-[var(--hf-success)] hover:-translate-y-0.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Improve with AI</span>
-            </button>
-          </div>
-          <div className="relative">
-            <textarea
-              value={data.summary || ''}
-              onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
-              placeholder="Introduce your engineering background, specializations, and quantifiable career achievements..."
-              className="w-full min-h-[120px] p-4 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] resize-none leading-relaxed font-sans"
-            />
-          </div>
-        </section>
+            <div className="relative">
+              <textarea
+                value={data.summary || ''}
+                onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
+                placeholder="Introduce your engineering background, specializations, and quantifiable career achievements..."
+                className="w-full min-h-[120px] p-4 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] resize-none leading-relaxed font-sans"
+              />
+            </div>
+          </SpotlightCard>
+        </FadeInSection>
 
         {/* Experience Section */}
         <section className="space-y-4">
@@ -515,52 +518,60 @@ export default function ResumeEditor() {
         </section>
 
         {/* Skills Section */}
-        <section className="hf-card p-5 sm:p-6">
-          <div className="mb-4 pb-3 border-b border-[var(--hf-border)]">
-            <h2 className="font-serif-display text-xl font-normal text-[var(--hf-text)] flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[var(--hf-cta)]" /> Core skills
-            </h2>
-            <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
-              Add technical, domain, and tool proficiencies. Type a skill and press Enter.
-            </p>
-          </div>
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <input 
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const val = (e.target as HTMLInputElement).value.trim();
-                    if (val && !skillsList.includes(val)) {
-                      setData(prev => ({ ...prev, skills: [...(prev.skills || []), val] }));
-                      (e.target as HTMLInputElement).value = '';
+        <FadeInSection delay={0.1}>
+          <SpotlightCard hoverLift={false} className="p-5 sm:p-6">
+            <div className="mb-4 pb-3 border-b border-[var(--hf-border)]">
+              <h2 className="font-serif-display text-xl font-normal text-[var(--hf-text)] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[var(--hf-cta)]" /> Core skills
+              </h2>
+              <p className="text-xs text-[var(--hf-text-secondary)] mt-0.5">
+                Add technical, domain, and tool proficiencies. Type a skill and press Enter.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <input 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val && !skillsList.includes(val)) {
+                        setData(prev => ({ ...prev, skills: [...(prev.skills || []), val] }));
+                        (e.target as HTMLInputElement).value = '';
+                      }
                     }
-                  }
-                }}
-                className="flex-1 min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] font-sans"
-                placeholder="Type a skill (e.g. React, Docker, Python) and press Enter..."
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {skillsList.map((skill, i) => (
-                <span key={i} className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] px-3 py-1.5 rounded-sm text-xs font-semibold text-[var(--hf-text)] flex items-center gap-2 shadow-[1px_1px_0px_var(--hf-shadow-color)]">
-                  <span>{skill}</span>
-                  <button 
-                    type="button"
-                    onClick={() => setData(prev => ({ ...prev, skills: (prev.skills || []).filter((_, idx) => idx !== i) }))}
-                    className="min-h-[24px] min-w-[24px] flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-sm transition-colors cursor-pointer"
-                    aria-label={`Remove skill ${skill}`}
-                    title="Remove skill"
+                  }}
+                  className="flex-1 min-h-[44px] px-3.5 py-2.5 bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] rounded-sm text-sm text-[var(--hf-text)] placeholder:text-[var(--hf-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hf-cta)] font-sans"
+                  placeholder="Type a skill (e.g. React, Docker, Python) and press Enter..."
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {skillsList.map((skill, i) => (
+                  <motion.span
+                    key={`${skill}-${i}`}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.18 }}
+                    className="bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] px-3 py-1.5 rounded-sm text-xs font-semibold text-[var(--hf-text)] flex items-center gap-2 shadow-[1px_1px_0px_var(--hf-shadow-color)]"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </span>
-              ))}
-              {skillsList.length === 0 && (
-                <p className="text-xs text-[var(--hf-text-muted)] italic">No skills added yet. Type a skill above and press Enter.</p>
-              )}
+                    <span>{skill}</span>
+                    <button 
+                      type="button"
+                      onClick={() => setData(prev => ({ ...prev, skills: (prev.skills || []).filter((_, idx) => idx !== i) }))}
+                      className="min-h-[24px] min-w-[24px] flex items-center justify-center text-[var(--hf-text-secondary)] hover:text-[var(--hf-error)] rounded-sm transition-colors cursor-pointer"
+                      aria-label={`Remove skill ${skill}`}
+                      title="Remove skill"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </motion.span>
+                ))}
+                {skillsList.length === 0 && (
+                  <p className="text-xs text-[var(--hf-text-muted)] italic">No skills added yet. Type a skill above and press Enter.</p>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </SpotlightCard>
+        </FadeInSection>
 
         {/* Next Step Bridge Card */}
         <NextStepBridgeCard

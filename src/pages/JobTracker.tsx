@@ -313,12 +313,15 @@ export default function JobTracker() {
               {/* KANBAN DOSSIER BOARD VIEW */}
               {viewMode === 'board' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
-                  {KANBAN_STAGES.map((col) => {
+                  {KANBAN_STAGES.map((col, colIdx) => {
                     const colJobs = filteredJobs.filter(j => (j.status || 'Applied') === col.id);
                     const nextStage = col.id === 'Applied' ? 'Interview' : col.id === 'Interview' ? 'Offer' : null;
                     return (
-                      <div
+                      <motion.div
                         key={col.id}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.32, delay: colIdx * 0.06, ease: [0.16, 1, 0.3, 1] }}
                         className="bg-[var(--hf-surface-secondary)]/70 border-[1.5px] border-[var(--hf-ink-border)] rounded-sm p-3.5 space-y-3 min-h-[260px]"
                       >
                         <div className="flex items-center justify-between pb-2.5 border-b-[1.5px] border-[var(--hf-ink-border)]">
@@ -392,7 +395,7 @@ export default function JobTracker() {
                             </div>
                           )}
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </div>

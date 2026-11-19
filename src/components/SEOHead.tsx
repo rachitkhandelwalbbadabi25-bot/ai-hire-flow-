@@ -23,6 +23,12 @@ export default function SEOHead({
       : `/${canonicalPath.replace(/\/+$/, '')}`;
 
   const canonicalUrl = `https://www.aihireflow.in${cleanPath}`;
+  const jsonLdString = jsonLd ? JSON.stringify(jsonLd) : '';
+
+  useEffect(() => {
+    // Scroll to top ONLY on actual route/canonical URL changes, never on local state re-renders
+    window.scrollTo(0, 0);
+  }, [canonicalUrl]);
 
   useEffect(() => {
     // 1. Set document title
@@ -76,22 +82,19 @@ export default function SEOHead({
       existingScript.remove();
     }
 
-    if (jsonLd) {
+    if (jsonLdString) {
       const script = document.createElement('script');
       script.id = 'seo-jsonld';
       script.type = 'application/ld+json';
-      script.textContent = JSON.stringify(jsonLd);
+      script.textContent = jsonLdString;
       document.head.appendChild(script);
     }
-
-    // Scroll to top on SEO page route transition
-    window.scrollTo(0, 0);
 
     return () => {
       const script = document.getElementById('seo-jsonld');
       if (script) script.remove();
     };
-  }, [title, description, canonicalUrl, ogType, jsonLd]);
+  }, [title, description, canonicalUrl, ogType, jsonLdString]);
 
   return null;
 }

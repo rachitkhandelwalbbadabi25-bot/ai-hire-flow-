@@ -903,7 +903,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
             await earnCredits(100, `Referral Welcome Bonus (First Scan Complete)`, 'referral');
 
             // Find referrer by referral code
-            const refQuery = query(collection(db, 'users'), where('creditWallet.referralCode', '==', creditWallet.referredBy));
+            const refQuery = query(collection(db, 'users'), where('creditWallet.referralCode', '==', creditWallet.referredBy), limit(1));
             const refSnap = await getDocs(refQuery);
             if (!refSnap.empty) {
               const referrerDoc = refSnap.docs[0];
@@ -1065,7 +1065,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     let isCodeInput = false;
 
     // First try by code
-    const codeQuery = query(usersRef, where('creditWallet.referralCode', '==', cleanInput.toUpperCase()));
+    const codeQuery = query(usersRef, where('creditWallet.referralCode', '==', cleanInput.toUpperCase()), limit(1));
     const codeSnap = await getDocs(codeQuery);
 
     if (!codeSnap.empty) {
@@ -1073,7 +1073,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       isCodeInput = true;
     } else {
       // Try by email
-      const emailQuery = query(usersRef, where('email', '==', cleanInput.toLowerCase()));
+      const emailQuery = query(usersRef, where('email', '==', cleanInput.toLowerCase()), limit(1));
       const emailSnap = await getDocs(emailQuery);
       if (!emailSnap.empty) {
         targetDocSnap = emailSnap.docs[0];
@@ -1304,7 +1304,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
           const snap = await getDoc(doc(db, 'users', item.referredUid));
           if (snap.exists()) friendDoc = snap;
         } else if (item.referredEmail) {
-          const q = query(collection(db, 'users'), where('email', '==', item.referredEmail.toLowerCase()));
+          const q = query(collection(db, 'users'), where('email', '==', item.referredEmail.toLowerCase()), limit(1));
           const snap = await getDocs(q);
           if (!snap.empty) friendDoc = snap.docs[0];
         }

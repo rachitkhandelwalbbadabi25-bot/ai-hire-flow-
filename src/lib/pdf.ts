@@ -1,4 +1,5 @@
 import { performOcr } from './ocr.ts';
+import { getAuthHeaders } from './authHeaders';
 
 let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
 
@@ -158,9 +159,10 @@ export const extractTextFromPDF = async (
   // STEP 3: Server-side PDF direct extraction check (if client had 0 or sparse text, or threw error)
   try {
     const base64 = arrayBufferToBase64(arrayBuffer);
+    const authHeaders = await getAuthHeaders();
     const serverResp = await fetch('/api/ocr', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({
         pdfBase64: `data:application/pdf;base64,${base64}`,
         meta: { fileType: 'pdf', fileName: file.name }

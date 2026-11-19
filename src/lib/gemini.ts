@@ -1,4 +1,5 @@
 import { generateWithVelona, generateWithVelonaDetailed } from "./aiProvider";
+import { getAuthHeaders } from "./authHeaders";
 
 export const cleanJson = (text: string): string => {
   if (!text) return '';
@@ -431,9 +432,10 @@ ${cleanResume}
 
   // Strictly invoke the single Velona ATS analyze-job pipeline with ZERO fallbacks
   const analysisId = `ats_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const authHeaders = await getAuthHeaders();
   const startRes = await fetch('/api/resume/analyze-job', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({
       analysisId,
       resumeText: cleanResume,
@@ -456,7 +458,10 @@ ${cleanResume}
   const maxPolls = 26;
   for (let i = 0; i < maxPolls; i++) {
     await new Promise(r => setTimeout(r, 2000));
-    const checkRes = await fetch(`/api/resume/analyze-job/${effectiveId}`);
+    const pollHeaders = await getAuthHeaders();
+    const checkRes = await fetch(`/api/resume/analyze-job/${effectiveId}`, {
+      headers: pollHeaders
+    });
     if (checkRes.ok) {
       const job = await checkRes.json();
       if (job.status === 'completed' && job.result) {
@@ -626,11 +631,13 @@ export const findJobsDetailed = async (
     .trim()
     .slice(0, 1000);
 
+  const authHeaders = await getAuthHeaders();
   const res = await fetch('/api/jobs/search', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      ...authHeaders
     },
     signal,
     body: JSON.stringify({

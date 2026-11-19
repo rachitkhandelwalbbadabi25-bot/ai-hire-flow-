@@ -1,3 +1,5 @@
+import { getAuthHeaders } from './authHeaders';
+
 /**
  * Client-Side OCR Service Interface
  * Coordinates rendering of PDF pages/scanned resumes to images and invoking the OCR engine.
@@ -29,9 +31,10 @@ export async function performOcr(
 
   // PRIMARY: Call server-side /api/ocr (fast, pre-cached model, reliable layout analysis)
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch('/api/ocr', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({
         images,
         meta: {

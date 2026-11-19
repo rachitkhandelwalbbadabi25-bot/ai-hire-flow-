@@ -1,6 +1,12 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { initializeFirestore, setLogLevel, doc, getDocFromServer } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  setLogLevel,
+  type Firestore
+} from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Suppress benign internal gRPC idle stream disconnect warnings
@@ -14,9 +20,32 @@ setPersistence(auth, browserLocalPersistence).catch(err => {
   console.error("Auth persistence error:", err);
 });
 
-export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId);
+// Enable IndexedDB persistent local cache for near-instant repeat workspace loads
+// with automatic fallback when browser storage is restricted (e.g. strict private mode)
+function createFirestoreInstance(): Firestore {
+  try {
+    return initializeFirestore(
+      app,
+      {
+        experimentalAutoDetectLongPolling: true,
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      },
+      firebaseConfig.firestoreDatabaseId
+    );
+  } catch {
+    return initializeFirestore(
+      app,
+      {
+        experimentalAutoDetectLongPolling: true
+      },
+      firebaseConfig.firestoreDatabaseId
+    );
+  }
+}
+
+export const db = createFirestoreInstance();
 export const googleProvider = new GoogleAuthProvider();
 
 let pendingSignIn: Promise<any> | null = null;

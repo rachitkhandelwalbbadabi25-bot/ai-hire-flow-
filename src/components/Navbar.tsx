@@ -2,15 +2,17 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, signOut } from 'firebase/auth';
 import { auth, signInWithGoogle } from '../lib/firebase';
 import { cn } from '../lib/utils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import PlanBadge from './PlanBadge';
-import HeaderQuickSearch from './HeaderQuickSearch';
-import MobileBottomNav from './MobileBottomNav';
 import HireFlowLogo from './HireFlowLogo';
 import { ScrollProgressBar } from './AnimatedPrimitives';
 import { PUBLIC_SEO_ROUTES } from './Layout';
 import { useTheme } from '../context/ThemeContext';
+import { prefetchRoute } from '../lib/routePrefetch';
+
+const HeaderQuickSearch = lazy(() => import('./HeaderQuickSearch'));
+const MobileBottomNav = lazy(() => import('./MobileBottomNav'));
 import { 
   BarChart3, 
   Briefcase, 
@@ -183,7 +185,11 @@ export default function Navbar({ user }: NavbarProps) {
                     <Link
                       key={item.path}
                       to={item.path}
-                      onMouseEnter={() => setHoveredNav(item.path)}
+                      onMouseEnter={() => {
+                        setHoveredNav(item.path);
+                        prefetchRoute(item.path);
+                      }}
+                      onFocus={() => prefetchRoute(item.path)}
                       className={cn(
                         "relative px-3 py-1.5 rounded-sm font-sans text-[13px] font-medium transition-colors z-10",
                         isActive
@@ -207,7 +213,11 @@ export default function Navbar({ user }: NavbarProps) {
 
             {/* Right: Search, Theme, Account / Enter CTA */}
             <div className="flex items-center gap-2.5">
-              {user && !isPublicRoute && <HeaderQuickSearch />}
+              {user && !isPublicRoute && (
+                <Suspense fallback={null}>
+                  <HeaderQuickSearch />
+                </Suspense>
+              )}
 
               <motion.button
                 type="button"
@@ -255,6 +265,8 @@ export default function Navbar({ user }: NavbarProps) {
                   {isPublicRoute && (
                     <Link
                       to="/dashboard"
+                      onMouseEnter={() => prefetchRoute('/dashboard')}
+                      onFocus={() => prefetchRoute('/dashboard')}
                       className="hf-btn-primary min-h-[36px] px-3.5 py-1.5 text-xs gap-1.5"
                     >
                       <span>Open workspace</span>
@@ -337,6 +349,8 @@ export default function Navbar({ user }: NavbarProps) {
                     <Link
                       key={item.path}
                       to={item.path}
+                      onMouseEnter={() => prefetchRoute(item.path)}
+                      onFocus={() => prefetchRoute(item.path)}
                       className={cn(
                         "relative flex items-center gap-2.5 px-3 py-2 rounded-sm text-xs font-medium transition-colors z-10",
                         isActive
@@ -368,6 +382,8 @@ export default function Navbar({ user }: NavbarProps) {
             {creditWallet && (
               <Link
                 to="/credits"
+                onMouseEnter={() => prefetchRoute('/credits')}
+                onFocus={() => prefetchRoute('/credits')}
                 className="px-3 py-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] flex items-center justify-between text-xs transition-transform hover:-translate-y-0.5"
               >
                 <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-secondary)]">CREDITS</span>
@@ -378,6 +394,8 @@ export default function Navbar({ user }: NavbarProps) {
             )}
             <Link
               to="/profile"
+              onMouseEnter={() => prefetchRoute('/profile')}
+              onFocus={() => prefetchRoute('/profile')}
               className="p-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] hover:bg-[var(--hf-surface-secondary)] transition-colors flex items-center gap-2.5"
             >
               <div className="w-7 h-7 rounded-sm bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] border border-[var(--hf-ink-border)] flex items-center justify-center shrink-0 font-mono text-xs font-bold overflow-hidden">
@@ -485,7 +503,11 @@ export default function Navbar({ user }: NavbarProps) {
       </AnimatePresence>
 
       {/* Mobile Bottom Tab Bar (< 768px / mobile, only on authenticated app routes) */}
-      {user && !isPublicRoute && <MobileBottomNav onOpenOverflowDrawer={() => setIsDrawerOpen(true)} />}
+      {user && !isPublicRoute && (
+        <Suspense fallback={null}>
+          <MobileBottomNav onOpenOverflowDrawer={() => setIsDrawerOpen(true)} />
+        </Suspense>
+      )}
     </>
   );
 }

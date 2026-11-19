@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   AIProviderId, 
   AIProviderInfo, 
@@ -7,6 +7,19 @@ import {
   fetchAIProviders,
   testVelonaIntegration
 } from '../lib/aiProvider';
+import { useAuth } from './AuthContext';
+
+const DEFAULT_PROVIDERS: AIProviderInfo[] = [
+  {
+    id: 'velona',
+    name: 'Velona (GLM 5.3 Flash)',
+    providerName: 'Z.ai via Velona',
+    model: 'z-ai/glm-5.3-flash',
+    configured: true,
+    isDefault: true,
+    capabilities: ['Fast Inference', 'JSON Mode', 'Deep Reasoning', 'ATS Audits', 'Job Match Engine']
+  }
+];
 
 interface AIProviderContextType {
   provider: AIProviderId;
@@ -21,33 +34,40 @@ interface AIProviderContextType {
 const AIProviderContext = createContext<AIProviderContextType | undefined>(undefined);
 
 export function AIProviderProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [provider, setProviderState] = useState<AIProviderId>(getActiveProvider());
-  const [providers, setProviders] = useState<AIProviderInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [providers, setProviders] = useState<AIProviderInfo[]>(DEFAULT_PROVIDERS);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const refreshProviders = async () => {
+  const refreshProviders = useCallback(async () => {
+    setIsLoading(true);
     try {
       const list = await fetchAIProviders();
-      setProviders(list);
+      if (list.length > 0) {
+        setProviders(list);
+      }
     } catch (e) {
       console.error('Error loading AI providers:', e);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    // Only probe /api/ai/providers once signed in to avoid cold-starting serverless on public landing visits
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let idleId: number | null = null;
 
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      idleId = (window as any).requestIdleCallback(() => {
-        refreshProviders();
-      }, { timeout: 2000 });
-    } else {
-      timeoutId = setTimeout(() => {
-        refreshProviders();
-      }, 300);
+    if (user) {
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        idleId = (window as any).requestIdleCallback(() => {
+          refreshProviders();
+        }, { timeout: 2500 });
+      } else {
+        timeoutId = setTimeout(() => {
+          refreshProviders();
+        }, 500);
+      }
     }
 
     const handleStorageChange = (e: CustomEvent<AIProviderId>) => {
@@ -66,7 +86,7 @@ export function AIProviderProvider({ children }: { children: React.ReactNode }) 
       }
       window.removeEventListener('ai-provider-changed' as any, handleStorageChange);
     };
-  }, []);
+  }, [user, refreshProviders]);
 
   const setProvider = (newProvider: AIProviderId) => {
     setProviderState(newProvider);

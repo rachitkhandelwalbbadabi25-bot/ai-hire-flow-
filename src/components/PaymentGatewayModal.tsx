@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  X, 
-  Check, 
-  ShieldCheck, 
-  Lock, 
-  QrCode, 
-  Zap, 
-  CheckCircle2, 
-  AlertCircle, 
-  Printer, 
-  ArrowRight, 
-  Tag, 
-  Clock, 
-  Copy, 
+import {
+  X,
+  Check,
+  ShieldCheck,
+  Lock,
+  QrCode,
+  Zap,
+  CheckCircle2,
+  AlertCircle,
+  Printer,
+  ArrowRight,
+  Tag,
+  Clock,
+  Copy,
   Smartphone,
   CreditCard,
   Building,
@@ -23,6 +23,7 @@ import {
 import { useAuth, UserPlan } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
 import { db } from '../lib/firebase';
+import { getAuthHeaders } from '../lib/authHeaders';
 import { doc, updateDoc, addDoc, collection, setDoc } from 'firebase/firestore';
 import { cn } from '../lib/utils';
 import confetti from 'canvas-confetti';
@@ -107,7 +108,7 @@ export default function PaymentGatewayModal({
 
   // Pricing calculations
   const rawBasePrice = currency === 'INR' ? item.basePriceINR : item.basePriceUSD;
-  const discountAmount = appliedPromo 
+  const discountAmount = appliedPromo
     ? Math.round((rawBasePrice * appliedPromo.discountPercent) / 100)
     : 0;
   const finalPrice = Math.max(0, rawBasePrice - discountAmount);
@@ -154,10 +155,11 @@ export default function PaymentGatewayModal({
       setAuthStepMessage('Creating Razorpay secure order...');
       setPhase('authorizing');
 
-      // Create real Razorpay order on server
+      // Create real Razorpay order on server with verified Firebase ID token
+      const authHeaders = await getAuthHeaders();
       const res = await fetch('/api/razorpay/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           price: finalPrice,
           currency: 'INR',
@@ -258,9 +260,10 @@ export default function PaymentGatewayModal({
       setPhase('authorizing');
 
       // Request server-side verification for QR payment
+      const authHeaders = await getAuthHeaders();
       const verifyRes = await fetch('/api/razorpay/verify-payment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           paymentMode: 'upi_qr',
           razorpay_order_id: '',
@@ -279,7 +282,7 @@ export default function PaymentGatewayModal({
 
       if (!verifyRes.ok || !verifyData.success) {
         throw new Error(
-          verifyData.error || 
+          verifyData.error ||
           'Payment could not be verified yet. Credits will be added after successful payment confirmation.'
         );
       }
@@ -296,7 +299,7 @@ export default function PaymentGatewayModal({
     } catch (err: any) {
       console.warn('QR verification rejection:', err.message);
       setErrorMessage(
-        err.message || 
+        err.message ||
         'Payment could not be verified yet. Credits will be added after successful payment confirmation.'
       );
       setPhase('error');
@@ -333,9 +336,10 @@ export default function PaymentGatewayModal({
 
     try {
       // Mandatory backend verification
+      const authHeaders = await getAuthHeaders();
       const verifyRes = await fetch('/api/razorpay/verify-payment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           razorpay_order_id: razorpayOrderId || '',
           razorpay_payment_id: orderId,
@@ -464,17 +468,39 @@ export default function PaymentGatewayModal({
     }
   };
 
-  // Tax invoice generation & printing
+  // Tax invoice generation & printing (with strict HTML escaping to prevent XSS)
   const handlePrintInvoice = () => {
     if (!completedOrder) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+    printWindow.opener = null;
+
+    const escapeHtml = (value: unknown): string =>
+      String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const safeInvoiceNum = escapeHtml(completedOrder.invoiceNum);
+    const safeDate = escapeHtml(completedOrder.date);
+    const safeTime = escapeHtml(completedOrder.time);
+    const safeUserName = escapeHtml(completedOrder.userName);
+    const safeUserEmail = escapeHtml(completedOrder.userEmail);
+    const safeOrderId = escapeHtml(completedOrder.orderId);
+    const safeTitle = escapeHtml(completedOrder.title);
+    const safeSymbol = escapeHtml(completedOrder.currencySymbol);
+    const safeAmount = escapeHtml(completedOrder.amount);
+    const safeCredits = escapeHtml(completedOrder.creditsAdded.toLocaleString());
+    const safeBasePrice = escapeHtml(completedOrder.basePrice.toLocaleString());
+    const safeDiscount = escapeHtml(completedOrder.discount.toLocaleString());
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Tax Invoice - ${completedOrder.invoiceNum}</title>
+        <title>Tax Invoice - ${safeInvoiceNum}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #111; max-width: 750px; margin: auto; }
           .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 30px; }
@@ -497,21 +523,21 @@ export default function PaymentGatewayModal({
             <p style="font-size: 12px; color: #6b7280; margin: 4px 0 0;">Next-Gen Career Intelligence Platform</p>
           </div>
           <div style="text-align: right;">
-            <div class="badge">PAID & VERIFIED (RAZORPAY)</div>
-            <p style="font-size: 12px; font-weight: bold; margin: 6px 0 0;">Invoice #${completedOrder.invoiceNum}</p>
-            <p style="font-size: 11px; color: #6b7280; margin: 2px 0 0;">${completedOrder.date} ${completedOrder.time}</p>
+            <div class="badge">PAID &amp; VERIFIED (RAZORPAY)</div>
+            <p style="font-size: 12px; font-weight: bold; margin: 6px 0 0;">Invoice #${safeInvoiceNum}</p>
+            <p style="font-size: 11px; color: #6b7280; margin: 2px 0 0;">${safeDate} ${safeTime}</p>
           </div>
         </div>
 
         <div class="grid">
           <div class="box">
             <h4>Billed To</h4>
-            <p><strong>${completedOrder.userName}</strong></p>
-            <p>${completedOrder.userEmail}</p>
+            <p><strong>${safeUserName}</strong></p>
+            <p>${safeUserEmail}</p>
           </div>
           <div class="box">
             <h4>Payment Details</h4>
-            <p><strong>Razorpay Payment ID:</strong> ${completedOrder.orderId}</p>
+            <p><strong>Razorpay Payment ID:</strong> ${safeOrderId}</p>
             <p><strong>Status:</strong> Success (Completed)</p>
           </div>
         </div>
@@ -526,19 +552,19 @@ export default function PaymentGatewayModal({
           </thead>
           <tbody>
             <tr>
-              <td><strong>${completedOrder.title}</strong><br/><span style="color: #6b7280; font-size: 11px;">Instant AI Wallet Credits</span></td>
-              <td>+${completedOrder.creditsAdded.toLocaleString()} Credits</td>
-              <td style="text-align: right;">${completedOrder.currencySymbol}${completedOrder.basePrice.toLocaleString()}</td>
+              <td><strong>${safeTitle}</strong><br/><span style="color: #6b7280; font-size: 11px;">Instant AI Wallet Credits</span></td>
+              <td>+${safeCredits} Credits</td>
+              <td style="text-align: right;">${safeSymbol}${safeBasePrice}</td>
             </tr>
             ${completedOrder.discount > 0 ? `
               <tr>
                 <td colspan="2" style="color: #059669;">Promo Discount Applied</td>
-                <td style="text-align: right; color: #059669;">-${completedOrder.currencySymbol}${completedOrder.discount.toLocaleString()}</td>
+                <td style="text-align: right; color: #059669;">-${safeSymbol}${safeDiscount}</td>
               </tr>
             ` : ''}
             <tr class="total-row">
               <td colspan="2">Total Paid</td>
-              <td style="text-align: right;">${completedOrder.amount}</td>
+              <td style="text-align: right;">${safeAmount}</td>
             </tr>
           </tbody>
         </table>
@@ -558,8 +584,8 @@ export default function PaymentGatewayModal({
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiUri)}`;
 
   return (
-    <div 
-      id="payment-gateway-modal-overlay" 
+    <div
+      id="payment-gateway-modal-overlay"
       className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
     >
       <motion.div
@@ -762,9 +788,9 @@ export default function PaymentGatewayModal({
                   <div className="bg-surface-light border border-teal-500/20 p-4 rounded-xl flex flex-col items-center justify-center space-y-2.5">
                     {/* Dynamic QR Code */}
                     <div className="p-2 bg-white rounded-xl shadow-md border border-slate-200 inline-block">
-                      <img 
-                        src={qrImgUrl} 
-                        alt="Razorpay Dynamic UPI QR" 
+                      <img
+                        src={qrImgUrl}
+                        alt="Razorpay Dynamic UPI QR"
                         className="w-36 h-36 mx-auto block"
                         onError={(e) => {
                           // Fallback to vector icon if image fails

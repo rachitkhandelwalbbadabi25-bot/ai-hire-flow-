@@ -4,6 +4,13 @@ import cors from 'cors';
 import dns from 'dns';
 import { enforceSubscriptionAndCredits, getServerFirestore } from './_lib/subscriptionEnforcement.ts';
 import { CREDIT_PACKS, getCreditPackById } from './_lib/creditPacks.ts';
+import {
+  verifyFirebaseIdToken,
+  isAllowedOrigin,
+  applySecurityHeaders,
+  createRateLimiter,
+  timingSafeHexEqual
+} from './_lib/security.ts';
 
 // Prioritize IPv4 to avoid Cloudflare/carrier IPv6 connect timeouts on Node.js
 try {
@@ -25,25 +32,35 @@ console.log(`[AI HireFlow] Serverless runtime initialized: node=${process.versio
 export const maxDuration = 60;
 
 export const app = express();
+app.disable('x-powered-by');
+app.use(applySecurityHeaders);
+
+const aiRateLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30, keyPrefix: 'ai' });
+const jobsRateLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20, keyPrefix: 'jobs' });
+const ocrRateLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 15, keyPrefix: 'ocr' });
+const paymentRateLimiter = createRateLimiter({ windowMs: 5 * 60_000, maxRequests: 20, keyPrefix: 'pay' });
 
 app.use(cors({
-  origin: true,
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Origin not allowed by CORS policy'));
+    }
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-user-email'],
   credentials: true
 }));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ limit: '12mb', extended: true }));
 
-// Health Check with safe non-sensitive diagnostics
-app.get(['/api/health', '/health'], (req, res) => {
+// Health Check with safe non-sensitive status only
+app.get(['/api/health', '/health'], (_req, res) => {
   res.json({ 
     status: 'ok', 
-    timestamp: new Date().toISOString(),
-    node: process.version,
-    velonaConfigured: !!(process.env.VELONA_API_KEY || process.env.VELONA_KEY || process.env.VELONA_AUTH_TOKEN || process.env.Z_AI_API_KEY),
-    velonaModel: getVelonaModel()
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -564,11 +581,20 @@ app.post([
   '/api/ai/generate/', 
   '/ai/generate', 
   '/ai/generate/'
-], async (req, res) => {
+], aiRateLimiter, async (req, res) => {
   const requestStart = Date.now();
   const modelId = getVelonaModel();
 
   try {
+    // Cryptographically verify Firebase ID Token (prevents header/body spoofing & unauthenticated quota drain)
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        error: 'Authentication required. Please sign in to use AI features.',
+        code: 'AUTH_REQUIRED'
+      });
+    }
+
     const body = (req.body && typeof req.body === 'object') ? req.body : {};
     const { 
       prompt, 
@@ -581,13 +607,9 @@ app.post([
       meta
     } = body;
 
-    // Backend Enforcement: Check user plan, feature allowances, and credit balances
-    const effectiveUserId = (typeof body.userId === 'string' && body.userId.trim()) 
-      ? body.userId.trim() 
-      : (typeof req.headers['x-user-id'] === 'string' ? (req.headers['x-user-id'] as string).trim() : undefined);
-    const effectiveUserEmail = (typeof body.userEmail === 'string' && body.userEmail.trim()) 
-      ? body.userEmail.trim() 
-      : (typeof req.headers['x-user-email'] === 'string' ? (req.headers['x-user-email'] as string).trim() : undefined);
+    // Derive user identity strictly from verified JWT claims
+    const effectiveUserId = verifiedUser.uid;
+    const effectiveUserEmail = verifiedUser.email;
 
     if (effectiveUserId || effectiveUserEmail) {
       try {
@@ -685,9 +707,17 @@ app.post([
   }
 });
 
-// Dedicated Velona test endpoint for verification
-app.post(['/api/velona/test', '/velona/test'], async (req, res) => {
+// Dedicated Velona test endpoint — restricted strictly to verified Admin accounts
+app.post(['/api/velona/test', '/velona/test'], aiRateLimiter, async (req, res) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser || !verifiedUser.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Administrator authentication required.',
+        code: 'FORBIDDEN'
+      });
+    }
     const testPrompt = req.body?.prompt || 'Respond in 1 concise sentence confirming that Velona GLM 5.3 Flash is active and operational for AI HireFlow.';
     const result = await callVelonaChatCompletion({
       messages: [
@@ -1686,19 +1716,26 @@ ${cleanResume}
 }
 
 // 1. Initiate or reconnect to an analysis job
-app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) => {
+app.post(['/api/resume/analyze-job', '/resume/analyze-job'], aiRateLimiter, async (req, res) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        error: 'Authentication required. Please sign in to run ATS resume analysis.',
+        code: 'AUTH_REQUIRED'
+      });
+    }
+
     const body = req.body || {};
     const { 
       analysisId: incomingId, 
-      userId, 
       resumeText, 
       jobDescription, 
       fileType = 'pdf' 
     } = body;
 
-    const effectiveUserId = userId || (req.headers['x-user-id'] as string);
-    const effectiveUserEmail = body.userEmail || (req.headers['x-user-email'] as string);
+    const effectiveUserId = verifiedUser.uid;
+    const effectiveUserEmail = verifiedUser.email;
 
     if (effectiveUserId || effectiveUserEmail) {
       try {
@@ -1732,8 +1769,14 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
 
     const analysisId = incomingId || `ats_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-    // Deduplication check: if job already exists and is active, return current status
+    // Deduplication check: if job already exists for THIS user and is active, return current status
     const existing = analysisJobs.get(analysisId);
+    if (existing && existing.userId && existing.userId !== effectiveUserId) {
+      return res.status(403).json({
+        error: 'Access denied to this analysis session.',
+        code: 'FORBIDDEN'
+      });
+    }
     if (existing) {
       if (existing.status === 'completed' && existing.result) {
         return res.status(200).json({
@@ -1760,7 +1803,7 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
 
     const job: ResumeAnalysisJob = {
       analysisId,
-      userId,
+      userId: effectiveUserId,
       status: 'processing',
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -1824,7 +1867,16 @@ app.post(['/api/resume/analyze-job', '/resume/analyze-job'], async (req, res) =>
 });
 
 // 2. Poll status of an analysis job (Pure read, never restarts or duplicates AI work)
-app.get(['/api/resume/analyze-job/:analysisId', '/resume/analyze-job/:analysisId'], (req, res) => {
+app.get(['/api/resume/analyze-job/:analysisId', '/resume/analyze-job/:analysisId'], async (req, res) => {
+  const verifiedUser = await verifyFirebaseIdToken(req);
+  if (!verifiedUser) {
+    return res.status(401).json({
+      error: 'Authentication required.',
+      code: 'AUTH_REQUIRED',
+      status: 'failed'
+    });
+  }
+
   const { analysisId } = req.params;
   const job = analysisJobs.get(analysisId);
 
@@ -1832,6 +1884,14 @@ app.get(['/api/resume/analyze-job/:analysisId', '/resume/analyze-job/:analysisId
     return res.status(404).json({
       error: 'Analysis job not found or session has expired.',
       code: 'JOB_NOT_FOUND',
+      status: 'failed'
+    });
+  }
+
+  if (job.userId && job.userId !== verifiedUser.uid && !verifiedUser.isAdmin) {
+    return res.status(403).json({
+      error: 'Access denied to this analysis session.',
+      code: 'FORBIDDEN',
       status: 'failed'
     });
   }
@@ -1848,9 +1908,24 @@ app.get(['/api/resume/analyze-job/:analysisId', '/resume/analyze-job/:analysisId
 });
 
 // 3. Cancel an analysis job
-app.post(['/api/resume/analyze-job/:analysisId/cancel', '/resume/analyze-job/:analysisId/cancel'], (req, res) => {
+app.post(['/api/resume/analyze-job/:analysisId/cancel', '/resume/analyze-job/:analysisId/cancel'], async (req, res) => {
+  const verifiedUser = await verifyFirebaseIdToken(req);
+  if (!verifiedUser) {
+    return res.status(401).json({
+      error: 'Authentication required.',
+      code: 'AUTH_REQUIRED'
+    });
+  }
+
   const { analysisId } = req.params;
   const job = analysisJobs.get(analysisId);
+
+  if (job && job.userId && job.userId !== verifiedUser.uid && !verifiedUser.isAdmin) {
+    return res.status(403).json({
+      error: 'Access denied to this analysis session.',
+      code: 'FORBIDDEN'
+    });
+  }
 
   if (job && (job.status === 'processing' || job.status === 'queued')) {
     job.status = 'failed';
@@ -2019,9 +2094,15 @@ app.get(['/api/credits/packs', '/api/credit-packs'], (req, res) => {
   });
 });
 
-app.post(['/api/razorpay/create-order', '/api/create-order'], async (req, res) => {
+app.post(['/api/razorpay/create-order', '/api/create-order'], paymentRateLimiter, async (req, res) => {
   try {
-    const { amount, currency, receipt, userId, type, item, price, credits, packId } = req.body;
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({ error: 'Authentication required to create a payment order.' });
+    }
+
+    const { amount, currency, receipt, type, item, price, credits, packId } = req.body;
+    const userId = verifiedUser.uid;
     const keyId = getRazorpayKeyId();
     const keySecret = getRazorpayKeySecret();
 
@@ -2088,20 +2169,29 @@ app.post(['/api/razorpay/create-order', '/api/create-order'], async (req, res) =
   }
 });
 
-app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, res) => {
+app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], paymentRateLimiter, async (req, res) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        success: false,
+        verified: false,
+        error: 'Authentication required for payment verification.'
+      });
+    }
+
     const { 
       razorpay_order_id, 
       razorpay_payment_id, 
       razorpay_signature,
       paymentMode,
-      userId,
       type,
       item,
       credits,
       price,
       packId
     } = req.body;
+    const userId = verifiedUser.uid;
 
     // 1. Strict Server-Side Check: Reject any unverified QR button submissions or fake fallback tokens
     const isUnverifiedSubmission = (
@@ -2164,7 +2254,7 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
       .update(text)
       .digest('hex');
 
-    if (generated_signature !== razorpay_signature) {
+    if (!timingSafeHexEqual(generated_signature, razorpay_signature)) {
       return res.status(400).json({ 
         success: false,
         verified: false,
@@ -2296,8 +2386,12 @@ app.post(['/api/razorpay/verify-payment', '/api/verify-payment'], async (req, re
 });
 
 // Resume PDF & Image OCR Analysis Endpoint (lazy-loaded to keep serverless cold-start light)
-app.post(['/api/ocr', '/ocr'], async (req, res, next) => {
+app.post(['/api/ocr', '/ocr'], ocrRateLimiter, async (req, res, next) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({ error: 'Authentication required for OCR extraction.' });
+    }
     const { handleOcrRequest } = await import('./_lib/ocr.ts');
     return handleOcrRequest(req, res);
   } catch (err) {
@@ -2306,13 +2400,12 @@ app.post(['/api/ocr', '/ocr'], async (req, res, next) => {
 });
 
 // Check OpenWeb Ninja JSearch provider configuration and status
-app.get('/api/jobs/provider-status', (req, res) => {
+app.get('/api/jobs/provider-status', (_req, res) => {
   const hasKey = Boolean(process.env.OPENWEB_NINJA_API_KEY || process.env.JSEARCH_API_KEY || process.env.RAPIDAPI_KEY);
   res.json({
     provider: 'OpenWeb Ninja JSearch',
     configured: hasKey,
     plan: 'Pay As You Go',
-    endpoint: hasKey ? 'https://api.openwebninja.com/jsearch/search' : null,
     costProtection: {
       maxPagesPerQuery: 1,
       cacheTtlMinutes: 15,
@@ -2322,8 +2415,16 @@ app.get('/api/jobs/provider-status', (req, res) => {
 });
 
 // Real Job Discovery & Semantic Matching Endpoint (OpenWeb Ninja JSearch Primary)
-app.all(['/api/jobs/search', '/api/jobs'], async (req, res, next) => {
+app.all(['/api/jobs/search', '/api/jobs'], jobsRateLimiter, async (req, res, next) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required to search live jobs.',
+        code: 'AUTH_REQUIRED'
+      });
+    }
     const isPost = req.method === 'POST';
     const params = isPost ? (req.body || {}) : (req.query || {});
     

@@ -854,9 +854,9 @@ function canonicalizeUrl(rawUrl) {
     for (const p of trackingParams) {
       url.searchParams.delete(p);
     }
-    let path2 = url.pathname.replace(/\/+$/, "");
-    if (!path2) path2 = "/";
-    url.pathname = path2;
+    let path3 = url.pathname.replace(/\/+$/, "");
+    if (!path3) path3 = "/";
+    url.pathname = path3;
     url.hash = "";
     if (url.protocol === "http:") {
       url.protocol = "https:";
@@ -2159,6 +2159,195 @@ function getCreditPackById(idOrName) {
   );
 }
 
+// api/_lib/security.ts
+import crypto from "crypto";
+import fs2 from "fs";
+import path2 from "path";
+var cachedProjectId = null;
+function getFirebaseProjectId() {
+  if (cachedProjectId) return cachedProjectId;
+  if (process.env.FIREBASE_PROJECT_ID) {
+    cachedProjectId = process.env.FIREBASE_PROJECT_ID.trim();
+    return cachedProjectId;
+  }
+  try {
+    const configPath = path2.resolve(process.cwd(), "firebase-applet-config.json");
+    if (fs2.existsSync(configPath)) {
+      const cfg = JSON.parse(fs2.readFileSync(configPath, "utf8"));
+      if (cfg?.projectId) {
+        cachedProjectId = String(cfg.projectId);
+        return cachedProjectId;
+      }
+    }
+  } catch {
+  }
+  cachedProjectId = "gen-lang-client-0935933722";
+  return cachedProjectId;
+}
+var GOOGLE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
+var cachedCerts = null;
+var certsExpiresAt = 0;
+async function fetchFirebasePublicCerts(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedCerts && now < certsExpiresAt) {
+    return cachedCerts;
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6e3);
+  try {
+    const res = await fetch(GOOGLE_CERTS_URL, { signal: controller.signal });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch Firebase public keys (HTTP ${res.status})`);
+    }
+    const cacheControl = res.headers.get("cache-control") || "";
+    const maxAgeMatch = cacheControl.match(/max-age=(\d+)/i);
+    const maxAgeSec = maxAgeMatch ? Math.max(60, parseInt(maxAgeMatch[1], 10)) : 3600;
+    const certs = await res.json();
+    cachedCerts = certs;
+    certsExpiresAt = now + maxAgeSec * 1e3;
+    return certs;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function base64UrlDecodeToBuffer(segment) {
+  const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+  const padLen = (4 - normalized.length % 4) % 4;
+  return Buffer.from(normalized + "=".repeat(padLen), "base64");
+}
+var ADMIN_EMAILS = /* @__PURE__ */ new Set(["rrachitkhandelwal8@gmail.com"]);
+async function verifyFirebaseIdToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  const token = authHeader.slice(7).trim();
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [headerB64, payloadB64, signatureB64] = parts;
+  let header;
+  let payload;
+  try {
+    header = JSON.parse(base64UrlDecodeToBuffer(headerB64).toString("utf8"));
+    payload = JSON.parse(base64UrlDecodeToBuffer(payloadB64).toString("utf8"));
+  } catch {
+    return null;
+  }
+  if (header.alg !== "RS256" || !header.kid) return null;
+  const projectId = getFirebaseProjectId();
+  const expectedIssuer = `https://securetoken.google.com/${projectId}`;
+  const nowSec = Math.floor(Date.now() / 1e3);
+  if (payload.aud !== projectId || payload.iss !== expectedIssuer || typeof payload.sub !== "string" || payload.sub.length === 0 || typeof payload.exp !== "number" || payload.exp <= nowSec || typeof payload.iat !== "number" || payload.iat > nowSec + 300) {
+    return null;
+  }
+  try {
+    let certs = await fetchFirebasePublicCerts(false);
+    let certPem = certs[header.kid];
+    if (!certPem) {
+      certs = await fetchFirebasePublicCerts(true);
+      certPem = certs[header.kid];
+    }
+    if (!certPem) return null;
+    const verifier = crypto.createVerify("RSA-SHA256");
+    verifier.update(`${headerB64}.${payloadB64}`);
+    verifier.end();
+    const sigBuf = base64UrlDecodeToBuffer(signatureB64);
+    const valid = verifier.verify(certPem, sigBuf);
+    if (!valid) return null;
+    const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
+    return {
+      uid: payload.sub,
+      email,
+      emailVerified: Boolean(payload.email_verified),
+      isAdmin: email.length > 0 && ADMIN_EMAILS.has(email)
+    };
+  } catch (err) {
+    console.warn("[Security] Firebase token verification failed:", err?.message || err);
+    return null;
+  }
+}
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const normalized = origin.replace(/\/+$/, "").toLowerCase();
+  const staticAllowlist = /* @__PURE__ */ new Set([
+    "https://www.aihireflow.in",
+    "https://aihireflow.in",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173"
+  ]);
+  if (process.env.APP_URL) {
+    staticAllowlist.add(process.env.APP_URL.replace(/\/+$/, "").toLowerCase());
+  }
+  if (process.env.ALLOWED_ORIGINS) {
+    process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim().replace(/\/+$/, "").toLowerCase()).filter(Boolean).forEach((o) => staticAllowlist.add(o));
+  }
+  if (staticAllowlist.has(normalized)) return true;
+  if (/^https:\/\/[a-z0-9-]+(?:-[a-z0-9-]+)*\.vercel\.app$/i.test(normalized)) {
+    return true;
+  }
+  return false;
+}
+function applySecurityHeaders(_req, res, next) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), geolocation=(), payment=(self)");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  next();
+}
+function createRateLimiter({
+  windowMs,
+  maxRequests,
+  keyPrefix
+}) {
+  const buckets = /* @__PURE__ */ new Map();
+  return (req, res, next) => {
+    const now = Date.now();
+    const forwarded = req.headers["x-forwarded-for"];
+    const rawIp = Array.isArray(forwarded) ? forwarded[0] : typeof forwarded === "string" ? forwarded.split(",")[0].trim() : req.ip || "unknown";
+    const key = `${keyPrefix}:${rawIp}`;
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = { timestamps: [] };
+      buckets.set(key, bucket);
+    }
+    bucket.timestamps = bucket.timestamps.filter((t) => now - t < windowMs);
+    if (bucket.timestamps.length >= maxRequests) {
+      const oldest = bucket.timestamps[0] || now;
+      const retryAfterSec = Math.max(1, Math.ceil((windowMs - (now - oldest)) / 1e3));
+      res.setHeader("Retry-After", String(retryAfterSec));
+      return res.status(429).json({
+        error: "Too many requests. Please wait a moment before trying again.",
+        code: "RATE_LIMIT_EXCEEDED",
+        retryAfterSeconds: retryAfterSec
+      });
+    }
+    bucket.timestamps.push(now);
+    if (buckets.size > 2e3) {
+      for (const [k, b] of buckets.entries()) {
+        if (b.timestamps.length === 0 || now - b.timestamps[b.timestamps.length - 1] > windowMs) {
+          buckets.delete(k);
+        }
+      }
+    }
+    return next();
+  };
+}
+function timingSafeHexEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  if (a.length !== b.length || a.length === 0) return false;
+  try {
+    const bufA = Buffer.from(a, "hex");
+    const bufB = Buffer.from(b, "hex");
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
+
 // api/_index.ts
 try {
   dns.setDefaultResultOrder?.("ipv4first");
@@ -2173,21 +2362,30 @@ process.on("uncaughtException", (err) => {
 console.log(`[AI HireFlow] Serverless runtime initialized: node=${process.version}, platform=${process.platform}, velonaConfigured=${!!(process.env.VELONA_API_KEY || process.env.VELONA_KEY || process.env.VELONA_AUTH_TOKEN || process.env.Z_AI_API_KEY)}`);
 var maxDuration = 60;
 var app = express();
+app.disable("x-powered-by");
+app.use(applySecurityHeaders);
+var aiRateLimiter = createRateLimiter({ windowMs: 6e4, maxRequests: 30, keyPrefix: "ai" });
+var jobsRateLimiter = createRateLimiter({ windowMs: 6e4, maxRequests: 20, keyPrefix: "jobs" });
+var ocrRateLimiter = createRateLimiter({ windowMs: 6e4, maxRequests: 15, keyPrefix: "ocr" });
+var paymentRateLimiter = createRateLimiter({ windowMs: 5 * 6e4, maxRequests: 20, keyPrefix: "pay" });
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Origin not allowed by CORS policy"));
+    }
+  },
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "x-user-id", "x-user-email"],
   credentials: true
 }));
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
-app.get(["/api/health", "/health"], (req, res) => {
+app.use(express.json({ limit: "12mb" }));
+app.use(express.urlencoded({ limit: "12mb", extended: true }));
+app.get(["/api/health", "/health"], (_req, res) => {
   res.json({
     status: "ok",
-    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-    node: process.version,
-    velonaConfigured: !!(process.env.VELONA_API_KEY || process.env.VELONA_KEY || process.env.VELONA_AUTH_TOKEN || process.env.Z_AI_API_KEY),
-    velonaModel: getVelonaModel()
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
 app.post(["/api/coach", "/coach"], (req, res) => {
@@ -2566,10 +2764,17 @@ app.post([
   "/api/ai/generate/",
   "/ai/generate",
   "/ai/generate/"
-], async (req, res) => {
+], aiRateLimiter, async (req, res) => {
   const requestStart = Date.now();
   const modelId = getVelonaModel();
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        error: "Authentication required. Please sign in to use AI features.",
+        code: "AUTH_REQUIRED"
+      });
+    }
     const body = req.body && typeof req.body === "object" ? req.body : {};
     const {
       prompt,
@@ -2581,8 +2786,8 @@ app.post([
       operation = "general",
       meta
     } = body;
-    const effectiveUserId = typeof body.userId === "string" && body.userId.trim() ? body.userId.trim() : typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"].trim() : void 0;
-    const effectiveUserEmail = typeof body.userEmail === "string" && body.userEmail.trim() ? body.userEmail.trim() : typeof req.headers["x-user-email"] === "string" ? req.headers["x-user-email"].trim() : void 0;
+    const effectiveUserId = verifiedUser.uid;
+    const effectiveUserEmail = verifiedUser.email;
     if (effectiveUserId || effectiveUserEmail) {
       try {
         const enforcement = await enforceSubscriptionAndCredits({
@@ -2666,8 +2871,16 @@ app.post([
     });
   }
 });
-app.post(["/api/velona/test", "/velona/test"], async (req, res) => {
+app.post(["/api/velona/test", "/velona/test"], aiRateLimiter, async (req, res) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser || !verifiedUser.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: "Administrator authentication required.",
+        code: "FORBIDDEN"
+      });
+    }
     const testPrompt = req.body?.prompt || "Respond in 1 concise sentence confirming that Velona GLM 5.3 Flash is active and operational for AI HireFlow.";
     const result = await callVelonaChatCompletion({
       messages: [
@@ -3406,18 +3619,24 @@ ${cleanResume}
     console.log(`[AI HireFlow][Diagnostics] request_id=${job.analysisId}, request_purpose=ATS, endpoint=/api/resume/analyze-job, timestamp=${new Date(jobStart).toISOString()}, model=z-ai/glm-5.3-flash, input_chars=${totalInputChars}, approx_tokens=${approxInputTokens}, configured_timeout_ms=42000, overall_budget_ms=48000, provider_status=${providerHttpStatus}, provider_duration_ms=${job.diagnostics.totalDurationMs}, total_duration_ms=${Date.now() - jobStart}, retry_count=0, finish_reason=${lastFinishReason}, parse_status=FAILED, failure_category=${failureCategory}, velona_request_count=1`);
   }
 }
-app.post(["/api/resume/analyze-job", "/resume/analyze-job"], async (req, res) => {
+app.post(["/api/resume/analyze-job", "/resume/analyze-job"], aiRateLimiter, async (req, res) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        error: "Authentication required. Please sign in to run ATS resume analysis.",
+        code: "AUTH_REQUIRED"
+      });
+    }
     const body = req.body || {};
     const {
       analysisId: incomingId,
-      userId,
       resumeText,
       jobDescription,
       fileType = "pdf"
     } = body;
-    const effectiveUserId = userId || req.headers["x-user-id"];
-    const effectiveUserEmail = body.userEmail || req.headers["x-user-email"];
+    const effectiveUserId = verifiedUser.uid;
+    const effectiveUserEmail = verifiedUser.email;
     if (effectiveUserId || effectiveUserEmail) {
       try {
         const enforcement = await enforceSubscriptionAndCredits({
@@ -3448,6 +3667,12 @@ app.post(["/api/resume/analyze-job", "/resume/analyze-job"], async (req, res) =>
     }
     const analysisId = incomingId || `ats_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const existing = analysisJobs.get(analysisId);
+    if (existing && existing.userId && existing.userId !== effectiveUserId) {
+      return res.status(403).json({
+        error: "Access denied to this analysis session.",
+        code: "FORBIDDEN"
+      });
+    }
     if (existing) {
       if (existing.status === "completed" && existing.result) {
         return res.status(200).json({
@@ -3473,7 +3698,7 @@ app.post(["/api/resume/analyze-job", "/resume/analyze-job"], async (req, res) =>
     }
     const job = {
       analysisId,
-      userId,
+      userId: effectiveUserId,
       status: "processing",
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -3525,13 +3750,28 @@ app.post(["/api/resume/analyze-job", "/resume/analyze-job"], async (req, res) =>
     });
   }
 });
-app.get(["/api/resume/analyze-job/:analysisId", "/resume/analyze-job/:analysisId"], (req, res) => {
+app.get(["/api/resume/analyze-job/:analysisId", "/resume/analyze-job/:analysisId"], async (req, res) => {
+  const verifiedUser = await verifyFirebaseIdToken(req);
+  if (!verifiedUser) {
+    return res.status(401).json({
+      error: "Authentication required.",
+      code: "AUTH_REQUIRED",
+      status: "failed"
+    });
+  }
   const { analysisId } = req.params;
   const job = analysisJobs.get(analysisId);
   if (!job) {
     return res.status(404).json({
       error: "Analysis job not found or session has expired.",
       code: "JOB_NOT_FOUND",
+      status: "failed"
+    });
+  }
+  if (job.userId && job.userId !== verifiedUser.uid && !verifiedUser.isAdmin) {
+    return res.status(403).json({
+      error: "Access denied to this analysis session.",
+      code: "FORBIDDEN",
       status: "failed"
     });
   }
@@ -3545,9 +3785,22 @@ app.get(["/api/resume/analyze-job/:analysisId", "/resume/analyze-job/:analysisId
     timing: job.diagnostics
   });
 });
-app.post(["/api/resume/analyze-job/:analysisId/cancel", "/resume/analyze-job/:analysisId/cancel"], (req, res) => {
+app.post(["/api/resume/analyze-job/:analysisId/cancel", "/resume/analyze-job/:analysisId/cancel"], async (req, res) => {
+  const verifiedUser = await verifyFirebaseIdToken(req);
+  if (!verifiedUser) {
+    return res.status(401).json({
+      error: "Authentication required.",
+      code: "AUTH_REQUIRED"
+    });
+  }
   const { analysisId } = req.params;
   const job = analysisJobs.get(analysisId);
+  if (job && job.userId && job.userId !== verifiedUser.uid && !verifiedUser.isAdmin) {
+    return res.status(403).json({
+      error: "Access denied to this analysis session.",
+      code: "FORBIDDEN"
+    });
+  }
   if (job && (job.status === "processing" || job.status === "queued")) {
     job.status = "failed";
     job.error = "Analysis cancelled by user";
@@ -3670,9 +3923,14 @@ app.get(["/api/credits/packs", "/api/credit-packs"], (req, res) => {
     packs: CREDIT_PACKS
   });
 });
-app.post(["/api/razorpay/create-order", "/api/create-order"], async (req, res) => {
+app.post(["/api/razorpay/create-order", "/api/create-order"], paymentRateLimiter, async (req, res) => {
   try {
-    const { amount, currency, receipt, userId, type, item, price, credits, packId } = req.body;
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({ error: "Authentication required to create a payment order." });
+    }
+    const { amount, currency, receipt, type, item, price, credits, packId } = req.body;
+    const userId = verifiedUser.uid;
     const keyId = getRazorpayKeyId();
     const keySecret = getRazorpayKeySecret();
     if (!keyId || !keySecret) {
@@ -3730,20 +3988,28 @@ app.post(["/api/razorpay/create-order", "/api/create-order"], async (req, res) =
     res.status(500).json({ error: err.message || "Failed to create Razorpay Order" });
   }
 });
-app.post(["/api/razorpay/verify-payment", "/api/verify-payment"], async (req, res) => {
+app.post(["/api/razorpay/verify-payment", "/api/verify-payment"], paymentRateLimiter, async (req, res) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        success: false,
+        verified: false,
+        error: "Authentication required for payment verification."
+      });
+    }
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
       paymentMode,
-      userId,
       type,
       item,
       credits,
       price,
       packId
     } = req.body;
+    const userId = verifiedUser.uid;
     const isUnverifiedSubmission = paymentMode === "upi_qr" || !razorpay_signature || !razorpay_payment_id || !razorpay_order_id || typeof razorpay_signature !== "string" || typeof razorpay_payment_id !== "string" || typeof razorpay_order_id !== "string" || razorpay_signature.startsWith("sig_qr_") || razorpay_signature.startsWith("sig_bank_") || razorpay_signature.startsWith("sig_mock_") || razorpay_signature.startsWith("sig_unverified_") || razorpay_signature === "sig_verified_mock_256" || razorpay_payment_id.startsWith("rzp_qr_") || razorpay_order_id.startsWith("ord_rzp_qr_");
     if (isUnverifiedSubmission) {
       return res.status(400).json({
@@ -3774,10 +4040,10 @@ app.post(["/api/razorpay/verify-payment", "/api/verify-payment"], async (req, re
         error: "Razorpay secret key is not configured on server."
       });
     }
-    const crypto = await import("crypto");
+    const crypto2 = await import("crypto");
     const text = razorpay_order_id + "|" + razorpay_payment_id;
-    const generated_signature = crypto.createHmac("sha256", keySecret).update(text).digest("hex");
-    if (generated_signature !== razorpay_signature) {
+    const generated_signature = crypto2.createHmac("sha256", keySecret).update(text).digest("hex");
+    if (!timingSafeHexEqual(generated_signature, razorpay_signature)) {
       return res.status(400).json({
         success: false,
         verified: false,
@@ -3884,21 +4150,24 @@ app.post(["/api/razorpay/verify-payment", "/api/verify-payment"], async (req, re
     });
   }
 });
-app.post(["/api/ocr", "/ocr"], async (req, res, next) => {
+app.post(["/api/ocr", "/ocr"], ocrRateLimiter, async (req, res, next) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({ error: "Authentication required for OCR extraction." });
+    }
     const { handleOcrRequest: handleOcrRequest2 } = await Promise.resolve().then(() => (init_ocr(), ocr_exports));
     return handleOcrRequest2(req, res);
   } catch (err) {
     next(err);
   }
 });
-app.get("/api/jobs/provider-status", (req, res) => {
+app.get("/api/jobs/provider-status", (_req, res) => {
   const hasKey = Boolean(process.env.OPENWEB_NINJA_API_KEY || process.env.JSEARCH_API_KEY || process.env.RAPIDAPI_KEY);
   res.json({
     provider: "OpenWeb Ninja JSearch",
     configured: hasKey,
     plan: "Pay As You Go",
-    endpoint: hasKey ? "https://api.openwebninja.com/jsearch/search" : null,
     costProtection: {
       maxPagesPerQuery: 1,
       cacheTtlMinutes: 15,
@@ -3906,8 +4175,16 @@ app.get("/api/jobs/provider-status", (req, res) => {
     }
   });
 });
-app.all(["/api/jobs/search", "/api/jobs"], async (req, res, next) => {
+app.all(["/api/jobs/search", "/api/jobs"], jobsRateLimiter, async (req, res, next) => {
   try {
+    const verifiedUser = await verifyFirebaseIdToken(req);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication required to search live jobs.",
+        code: "AUTH_REQUIRED"
+      });
+    }
     const isPost = req.method === "POST";
     const params = isPost ? req.body || {} : req.query || {};
     const query = typeof params.query === "string" ? params.query : typeof params.q === "string" ? params.q : "";

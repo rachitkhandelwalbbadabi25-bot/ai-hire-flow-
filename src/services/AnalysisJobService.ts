@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import { getAuthHeaders } from '../lib/authHeaders';
 
 export interface AnalysisJobRecord {
   analysisId: string;
@@ -128,7 +129,10 @@ class AnalysisJobService {
     error?: string;
     timing?: any;
   }> {
-    const res = await fetch(`/api/resume/analyze-job/${encodeURIComponent(analysisId)}`);
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`/api/resume/analyze-job/${encodeURIComponent(analysisId)}`, {
+      headers: authHeaders
+    });
     if (res.status === 404) {
       return {
         analysisId,
@@ -145,8 +149,10 @@ class AnalysisJobService {
   async cancelJob(analysisId: string, userId?: string): Promise<void> {
     this.clearActiveJobId();
     try {
+      const authHeaders = await getAuthHeaders();
       await fetch(`/api/resume/analyze-job/${encodeURIComponent(analysisId)}/cancel`, {
-        method: 'POST'
+        method: 'POST',
+        headers: authHeaders
       });
     } catch (e) {
       console.warn('[AnalysisJobService] Cancel endpoint request warning:', e);
@@ -214,10 +220,12 @@ class AnalysisJobService {
     try {
       // Kick off the background processing job on the backend
       const currentUser = auth.currentUser;
+      const authHeaders = await getAuthHeaders();
       const startRes = await fetch('/api/resume/analyze-job', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          ...authHeaders,
           ...(userId ? { 'x-user-id': userId } : (currentUser?.uid ? { 'x-user-id': currentUser.uid } : {})),
           ...(currentUser?.email ? { 'x-user-email': currentUser.email } : {})
         },

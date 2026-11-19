@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout, { PUBLIC_SEO_ROUTES } from './components/Layout';
-import Landing from './pages/Landing';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PlanProvider } from './context/PlanContext';
@@ -9,31 +8,56 @@ import { SystemOSProvider } from './context/SystemOSContext';
 import { A11yProvider } from './context/A11yContext';
 import { AIProviderProvider } from './context/AIProviderContext';
 import HireFlowLogo from './components/HireFlowLogo';
+import {
+  loadLanding,
+  loadResumeAnalyzerSEO,
+  loadResumeEditorSEO,
+  loadJobFinderSEO,
+  loadJobTrackerSEO,
+  loadCareerAdvisorSEO,
+  loadInterviewLabSEO,
+  loadPrivacyPolicy,
+  loadTermsAndConditions,
+  loadRefundPolicy,
+  loadContactUs,
+  loadDashboard,
+  loadResumeAnalyzer,
+  loadJobTracker,
+  loadJobFinder,
+  loadInterviewSimulator,
+  loadLearningPath,
+  loadResumeEditor,
+  loadProfile,
+  loadCampusPlacement,
+  loadOutreachHub,
+  loadCreditsPage,
+} from './lib/routePrefetch';
 
-// Route-level lazy loading for secondary public & SEO pages
-const ResumeAnalyzerSEO = lazy(() => import('./pages/ResumeAnalyzerSEO'));
-const ResumeEditorSEO = lazy(() => import('./pages/ResumeEditorSEO'));
-const JobFinderSEO = lazy(() => import('./pages/JobFinderSEO'));
-const JobTrackerSEO = lazy(() => import('./pages/JobTrackerSEO'));
-const CareerAdvisorSEO = lazy(() => import('./pages/CareerAdvisorSEO'));
-const InterviewLabSEO = lazy(() => import('./pages/InterviewLabSEO'));
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
-const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
-const ContactUs = lazy(() => import('./pages/ContactUs'));
+// Route-level lazy loading for public & SEO pages (keeps authenticated initial bundle lean)
+const Landing = lazy(loadLanding);
+const ResumeAnalyzerSEO = lazy(loadResumeAnalyzerSEO);
+const ResumeEditorSEO = lazy(loadResumeEditorSEO);
+const JobFinderSEO = lazy(loadJobFinderSEO);
+const JobTrackerSEO = lazy(loadJobTrackerSEO);
+const CareerAdvisorSEO = lazy(loadCareerAdvisorSEO);
+const InterviewLabSEO = lazy(loadInterviewLabSEO);
+const PrivacyPolicy = lazy(loadPrivacyPolicy);
+const TermsAndConditions = lazy(loadTermsAndConditions);
+const RefundPolicy = lazy(loadRefundPolicy);
+const ContactUs = lazy(loadContactUs);
 
 // Route-level lazy loading for authenticated application modules
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'));
-const JobTracker = lazy(() => import('./pages/JobTracker'));
-const JobFinder = lazy(() => import('./pages/JobFinder'));
-const InterviewSimulator = lazy(() => import('./pages/InterviewSimulator'));
-const LearningPath = lazy(() => import('./pages/LearningPath'));
-const ResumeEditor = lazy(() => import('./pages/ResumeEditor'));
-const Profile = lazy(() => import('./pages/Profile'));
-const CampusPlacement = lazy(() => import('./pages/CampusPlacement'));
-const OutreachHub = lazy(() => import('./pages/OutreachHub'));
-const CreditsPage = lazy(() => import('./pages/Credits'));
+const Dashboard = lazy(loadDashboard);
+const ResumeAnalyzer = lazy(loadResumeAnalyzer);
+const JobTracker = lazy(loadJobTracker);
+const JobFinder = lazy(loadJobFinder);
+const InterviewSimulator = lazy(loadInterviewSimulator);
+const LearningPath = lazy(loadLearningPath);
+const ResumeEditor = lazy(loadResumeEditor);
+const Profile = lazy(loadProfile);
+const CampusPlacement = lazy(loadCampusPlacement);
+const OutreachHub = lazy(loadOutreachHub);
+const CreditsPage = lazy(loadCreditsPage);
 
 function hasCachedFirebaseSession(): boolean {
   if (typeof window === 'undefined') return false;

@@ -1,4 +1,5 @@
 import { auth } from './firebase';
+import { getAuthHeaders } from './authHeaders';
 
 export type AIProviderId = 'velona';
 
@@ -193,9 +194,10 @@ export async function generateWithVelona(options: {
 
 export async function testVelonaIntegration(prompt?: string) {
   const endpoint = '/api/velona/test';
+  const authHeaders = await getAuthHeaders();
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({ prompt })
   });
   return await parseJsonResponse(res, endpoint);

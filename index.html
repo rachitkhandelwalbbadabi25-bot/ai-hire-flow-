@@ -1,32 +1,58 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI HireFlow | AI-Powered Career Platform — Resume Analyzer, Job Finder &amp; Interview Prep</title>
-    <meta name="description" content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
-    <link rel="icon" href="/favicon.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="canonical" href="https://www.aihireflow.in/" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-    
-    <!-- Open Graph Metadata -->
-    <meta property="og:title" content="AI HireFlow | AI-Powered Career Platform" />
-    <meta property="og:description" content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
-    <meta property="og:url" content="https://www.aihireflow.in/" />
-    <meta property="og:site_name" content="AI HireFlow" />
-    <meta property="og:type" content="website" />
-    
-    <!-- Twitter Card Metadata -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="AI HireFlow | AI-Powered Career Platform" />
-    <meta name="twitter:description" content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
-    <meta name="twitter:url" content="https://www.aihireflow.in/" />
 
-    <!-- Structured Data (Schema.org JSON-LD) -->
-    <script type="application/ld+json">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI HireFlow | AI-Powered Career Platform — Resume Analyzer, Job Finder &amp; Interview Prep</title>
+  <meta name="description"
+    content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
+  <link rel="icon" href="/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="canonical" href="https://www.aihireflow.in/" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+  <link rel="preload" as="style"
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    media="print" onload="this.media='all'" />
+  <noscript>
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
+  </noscript>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('hf_theme');
+        if (t === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.add('light');
+        }
+      } catch (e) { }
+    })();
+  </script>
+
+  <!-- Open Graph Metadata -->
+  <meta property="og:title" content="AI HireFlow | AI-Powered Career Platform" />
+  <meta property="og:description"
+    content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
+  <meta property="og:url" content="https://www.aihireflow.in/" />
+  <meta property="og:site_name" content="AI HireFlow" />
+  <meta property="og:type" content="website" />
+
+  <!-- Twitter Card Metadata -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AI HireFlow | AI-Powered Career Platform" />
+  <meta name="twitter:description"
+    content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
+  <meta name="twitter:url" content="https://www.aihireflow.in/" />
+
+  <!-- Structured Data (Schema.org JSON-LD) -->
+  <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@graph": [
@@ -60,10 +86,11 @@
       ]
     }
     </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+</head>
 
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

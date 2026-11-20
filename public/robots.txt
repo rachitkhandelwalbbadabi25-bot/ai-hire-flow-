@@ -1,32 +1,56 @@
 User-agent: *
 Allow: /
-Allow: /favicon.png
-Allow: /favicon.ico
-Allow: /apple-touch-icon.png
 Allow: /resume-analyzer
 Allow: /resume-editor
 Allow: /job-finder
 Allow: /job-tracker
 Allow: /career-advisor
 Allow: /interview-lab
-Allow: /ats-resume-checker
-Allow: /resume-builder
-Allow: /ai-job-search
-Allow: /ai-interview-preparation
-Allow: /career-roadmap
+Allow: /privacy
+Allow: /terms
+Allow: /refund
+Allow: /contact
+Allow: /llms.txt
+Allow: /og-image.png
+Allow: /favicon.png
+Allow: /favicon.ico
+Allow: /favicon.svg
+Allow: /apple-touch-icon.png
 Disallow: /api/
 Disallow: /dashboard
 Disallow: /profile
 Disallow: /credits
 Disallow: /jobs
+Disallow: /tracker
 Disallow: /analyzer
 Disallow: /finder
 Disallow: /interview
 Disallow: /learning
+Disallow: /roadmap
 Disallow: /editor
 Disallow: /campus
 Disallow: /outreach
 
+# Explicitly welcome AI Search & Discovery Crawlers
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
 Sitemap: https://www.aihireflow.in/sitemap.xml
 Host: https://www.aihireflow.in
-

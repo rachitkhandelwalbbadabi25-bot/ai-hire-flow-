@@ -114,8 +114,8 @@ export default function JobTrackerSEO() {
 
   return (
     <SEOFeatureLayout
-      title="AI Job Tracker | Kanban Application Pipeline & Follow-Ups — AI HireFlow"
-      metaDescription="Organize your job search with AI HireFlow's AI Job Tracker. Manage applications, interview rounds, recruiter follow-ups, and offer negotiations in a dedicated career Kanban board."
+      title="Free Job Application Tracker & Kanban Pipeline — AI HireFlow"
+      metaDescription="Organize every job application in a visual Kanban pipeline. Track Applied, Interview, Offer, and Rejected stages, notes, resume versions, and follow-ups free."
       canonicalPath="/job-tracker"
       jsonLd={jsonLd}
       badgeText="Career Workflow Pipeline Engine"

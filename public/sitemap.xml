@@ -1,73 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Homepage -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://www.aihireflow.in/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://www.aihireflow.in/og-image.png</image:loc>
+      <image:title>AI HireFlow — Free ATS Resume Checker, Job Finder &amp; Interview Prep</image:title>
+    </image:image>
   </url>
-
-  <!-- Core AI Capabilities Public Landing Pages -->
   <url>
     <loc>https://www.aihireflow.in/resume-analyzer</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://www.aihireflow.in/og-image.png</image:loc>
+      <image:title>Free ATS Resume Checker &amp; AI Resume Analyzer — AI HireFlow</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://www.aihireflow.in/resume-editor</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://www.aihireflow.in/og-image.png</image:loc>
+      <image:title>Free ATS Resume Builder &amp; Single-Column Editor — AI HireFlow</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://www.aihireflow.in/job-finder</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://www.aihireflow.in/og-image.png</image:loc>
+      <image:title>AI Job Finder &amp; Semantic Job Match Engine — AI HireFlow</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://www.aihireflow.in/job-tracker</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
+    <priority>0.90</priority>
+    <image:image>
+      <image:loc>https://www.aihireflow.in/og-image.png</image:loc>
+      <image:title>Free Job Application Tracker &amp; Kanban Pipeline — AI HireFlow</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://www.aihireflow.in/career-advisor</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
+    <priority>0.90</priority>
+    <image:image>
+      <image:loc>https://www.aihireflow.in/og-image.png</image:loc>
+      <image:title>AI Career Roadmap &amp; Skill Gap Advisor — AI HireFlow</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://www.aihireflow.in/interview-lab</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://www.aihireflow.in/og-image.png</image:loc>
+      <image:title>AI Mock Interview Simulator &amp; STAR Prep Lab — AI HireFlow</image:title>
+    </image:image>
   </url>
-
-  <!-- Legal & Support Pages -->
   <url>
     <loc>https://www.aihireflow.in/privacy</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://www.aihireflow.in/terms</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://www.aihireflow.in/refund</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://www.aihireflow.in/contact</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

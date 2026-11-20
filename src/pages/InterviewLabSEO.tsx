@@ -146,8 +146,8 @@ export default function InterviewLabSEO() {
 
   return (
     <SEOFeatureLayout
-      title="AI Interview Lab | Technical & Behavioral Mock Simulator — AI HireFlow"
-      metaDescription="Practice realistic mock interviews with AI HireFlow's AI Interview Lab. Get real-time AI feedback on technical accuracy, STAR behavioral structure, communication conciseness, and delivery."
+      title="AI Mock Interview Simulator & STAR Prep Lab — AI HireFlow"
+      metaDescription="Practice technical, system design, and behavioral mock interviews with AI. Get instant 100-point scoring, STAR framework critiques, and concrete follow-ups."
       canonicalPath="/interview-lab"
       jsonLd={jsonLd}
       badgeText="High-Fidelity Interview Simulation Laboratory"

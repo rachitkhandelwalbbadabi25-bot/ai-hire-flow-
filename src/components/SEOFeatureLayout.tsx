@@ -1,7 +1,7 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { LucideIcon, ArrowRight, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { LucideIcon, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { motion } from 'motion/react';
 import SEOHead from './SEOHead';
 import { SpotlightCard, FadeInSection } from './AnimatedPrimitives';
 
@@ -95,13 +95,116 @@ export default function SEOFeatureLayout({
 
   const otherFeatures = ALL_FEATURES.filter(f => f.path !== canonicalPath);
 
+  // Build comprehensive rich-snippet JSON-LD @graph (SoftwareApplication + BreadcrumbList + HowTo + FAQPage)
+  const enrichedJsonLd = useMemo(() => {
+    const cleanCanonical = canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`;
+    const canonicalUrl = `https://www.aihireflow.in${cleanCanonical}`;
+
+    const baseSoftware = {
+      "@type": "SoftwareApplication",
+      "@id": `${canonicalUrl}#software`,
+      "name": jsonLd?.name || `AI HireFlow ${h1}`,
+      "url": canonicalUrl,
+      "applicationCategory": jsonLd?.applicationCategory || "BusinessApplication",
+      "operatingSystem": "Web",
+      "screenshot": "https://www.aihireflow.in/og-image.png",
+      "description": jsonLd?.description || metaDescription,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR",
+        "description": "Free to start with 150 daily renewing AI credits."
+      },
+      "publisher": {
+        "@id": "https://www.aihireflow.in/#organization"
+      }
+    };
+
+    const graph: Record<string, any>[] = [
+      {
+        "@type": "Organization",
+        "@id": "https://www.aihireflow.in/#organization",
+        "name": "AI HireFlow",
+        "url": "https://www.aihireflow.in/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.aihireflow.in/favicon.png",
+          "width": 192,
+          "height": 192
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://www.aihireflow.in/#website",
+        "url": "https://www.aihireflow.in/",
+        "name": "AI HireFlow",
+        "publisher": { "@id": "https://www.aihireflow.in/#organization" }
+      },
+      baseSoftware,
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${canonicalUrl}#breadcrumb`,
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.aihireflow.in/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": h1,
+            "item": canonicalUrl
+          }
+        ]
+      }
+    ];
+
+    if (howItWorks && howItWorks.length > 0) {
+      graph.push({
+        "@type": "HowTo",
+        "@id": `${canonicalUrl}#howto`,
+        "name": howItWorksTitle,
+        "description": howItWorksSubtitle,
+        "step": howItWorks.map((s, idx) => ({
+          "@type": "HowToStep",
+          "position": idx + 1,
+          "name": s.title,
+          "text": s.desc
+        }))
+      });
+    }
+
+    if (faqItems && faqItems.length > 0) {
+      graph.push({
+        "@type": "FAQPage",
+        "@id": `${canonicalUrl}#faq`,
+        "mainEntity": faqItems.map((item) => ({
+          "@type": "Question",
+          "name": item.q,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": item.a
+          }
+        }))
+      });
+    }
+
+    return {
+      "@context": "https://schema.org",
+      "@graph": graph
+    };
+  }, [canonicalPath, jsonLd, h1, metaDescription, howItWorks, howItWorksTitle, howItWorksSubtitle, faqItems]);
+
   return (
     <div className="flex flex-col bg-[var(--hf-bg)] text-[var(--hf-text)] selection:bg-[var(--hf-cta)] selection:text-white min-h-screen">
       <SEOHead 
         title={title}
         description={metaDescription}
         canonicalPath={canonicalPath}
-        jsonLd={jsonLd}
+        ogImageAlt={`${h1} — AI HireFlow`}
+        jsonLd={enrichedJsonLd}
       />
 
       {/* 1. Editorial Dossier Hero Section */}
@@ -112,6 +215,22 @@ export default function SEOFeatureLayout({
         />
 
         <div className="relative z-10 max-w-6xl mx-auto">
+          {/* Semantic Breadcrumb Navigation (matches BreadcrumbList JSON-LD 1:1) */}
+          <nav aria-label="Breadcrumb" className="mb-6 flex justify-center">
+            <ol className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--hf-text-muted)]">
+              <li>
+                <Link to="/" className="hover:text-[var(--hf-cta)] transition-colors">
+                  Home
+                </Link>
+              </li>
+              <li aria-hidden="true">
+                <ChevronRight className="w-3 h-3" />
+              </li>
+              <li aria-current="page" className="text-[var(--hf-text)] font-semibold">
+                {h1}
+              </li>
+            </ol>
+          </nav>
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -320,23 +439,19 @@ export default function SEOFeatureLayout({
                         <ChevronDown className={`w-4 h-4 text-[var(--hf-text)] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--hf-cta)]' : ''}`} />
                       </button>
 
-                      <AnimatePresence initial={false}>
-                        {isOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.22 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
-                              <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed border-t border-[var(--hf-border)] pt-3">
-                                {faq.a}
-                              </p>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      <div
+                        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+                          isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                        }`}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
+                            <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed border-t border-[var(--hf-border)] pt-3">
+                              {faq.a}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </FadeInSection>
                 );

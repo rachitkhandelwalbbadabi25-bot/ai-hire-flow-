@@ -1,0 +1,26 @@
+# AI HireFlow
+
+> AI HireFlow (https://www.aihireflow.in/) is an AI-powered career platform that helps job seekers, engineers, students, and professionals check ATS resume compatibility, rewrite resume bullets with XYZ/STAR impact metrics, build single-column ATS-friendly resumes, discover skill-matched live jobs, organize applications on a Kanban tracker, practice mock interviews, and follow personalized skill roadmaps.
+
+## Core Public Tools & Canonical URLs
+
+- [Home — AI HireFlow Career Platform](https://www.aihireflow.in/): Overview of the full career suite, interactive ATS benchmark demo, pricing, and FAQs.
+- [AI Resume Analyzer & Free ATS Resume Checker](https://www.aihireflow.in/resume-analyzer): Transparent 4-category weighted ATS scoring (Technical Skills Match 40%, Quantified Impact 30%, Role & Seniority Fit 15%, ATS Readability 15%), keyword gap analysis, and evidence-grounded bullet rewrites.
+- [AI Resume Editor & Single-Column ATS Builder](https://www.aihireflow.in/resume-editor): Clean single-column ATS resume builder with live preview, AI bullet polish, and vector PDF export engineered for Workday, Greenhouse, Lever, and Taleo parsers.
+- [AI Job Finder & Semantic Job Match Engine](https://www.aihireflow.in/job-finder): Live job discovery ranked by real skill overlap, role tier, and location compatibility instead of generic keyword spam.
+- [AI Job Tracker & Application Pipeline](https://www.aihireflow.in/job-tracker): Visual Kanban application tracker (Applied, Interview, Offer, Rejected) with role notes, resume links, and follow-up tracking.
+- [AI Career Advisor & Skill Gap Roadmaps](https://www.aihireflow.in/career-advisor): Personalized career gap analysis, milestone-driven learning roadmaps, and proof-of-work portfolio blueprints.
+- [AI Interview Lab & Mock Interview Simulator](https://www.aihireflow.in/interview-lab): Role-specific technical and behavioral mock interviews with structured 100-point STAR feedback and concrete follow-up drills.
+
+## Pricing
+
+- **Free Tier (₹0 / month):** 150 renewing daily AI credits, ATS resume scans, resume editor, job tracker, and mock interview practice with no credit card required.
+- **Pro Plan (₹299 / month):** Higher monthly AI credit allocation, unlimited saved resumes, priority inference, and deeper interview & outreach workflows.
+- **Premium Plan (₹599 / month):** All-access tier with maximum monthly credits and full campus placement & executive suite tools.
+
+## Trust, Privacy & Contact
+
+- [Privacy Policy](https://www.aihireflow.in/privacy)
+- [Terms & Conditions](https://www.aihireflow.in/terms)
+- [Refund & Cancellation Policy](https://www.aihireflow.in/refund)
+- [Contact Support](https://www.aihireflow.in/contact)

@@ -137,8 +137,8 @@ export default function JobFinderSEO() {
 
   return (
     <SEOFeatureLayout
-      title="AI Job Finder | Semantic Job Search & Match Engine — AI HireFlow"
-      metaDescription="Discover targeted job openings with AI HireFlow's AI Job Finder. Compare your skills directly against job descriptions with semantic compatibility scoring and instant application intelligence."
+      title="AI Job Finder & Semantic Job Match Engine — AI HireFlow"
+      metaDescription="Discover live tech & corporate jobs ranked by real resume skill overlap. Filter remote and local roles, inspect match percentages, and see missing requirements."
       canonicalPath="/job-finder"
       jsonLd={jsonLd}
       badgeText="Semantic Opportunity Discovery Engine"

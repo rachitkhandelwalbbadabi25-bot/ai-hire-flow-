@@ -17,7 +17,17 @@
       ],
       "destination": "https://www.aihireflow.in/:path*",
       "permanent": true
-    }
+    },
+    { "source": "/ats-resume-checker", "destination": "/resume-analyzer", "permanent": true },
+    { "source": "/resume-builder", "destination": "/resume-editor", "permanent": true },
+    { "source": "/ai-job-search", "destination": "/job-finder", "permanent": true },
+    { "source": "/career-roadmap", "destination": "/career-advisor", "permanent": true },
+    { "source": "/ai-interview-preparation", "destination": "/interview-lab", "permanent": true },
+    { "source": "/privacy-policy", "destination": "/privacy", "permanent": true },
+    { "source": "/terms-and-conditions", "destination": "/terms", "permanent": true },
+    { "source": "/refund-policy", "destination": "/refund", "permanent": true },
+    { "source": "/refund-and-cancellation", "destination": "/refund", "permanent": true },
+    { "source": "/contact-us", "destination": "/contact", "permanent": true }
   ],
   "headers": [
     {
@@ -64,6 +74,45 @@
         {
           "key": "Content-Type",
           "value": "text/plain; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/llms.txt",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/og-image.png",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, stale-while-revalidate=86400"
         }
       ]
     },
@@ -87,11 +136,10 @@
     { "source": "/job-tracker", "destination": "/job-tracker.html" },
     { "source": "/career-advisor", "destination": "/career-advisor.html" },
     { "source": "/interview-lab", "destination": "/interview-lab.html" },
-    { "source": "/ats-resume-checker", "destination": "/resume-analyzer.html" },
-    { "source": "/resume-builder", "destination": "/resume-editor.html" },
-    { "source": "/ai-job-search", "destination": "/job-finder.html" },
-    { "source": "/career-roadmap", "destination": "/career-advisor.html" },
-    { "source": "/ai-interview-preparation", "destination": "/interview-lab.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/refund", "destination": "/refund.html" },
+    { "source": "/contact", "destination": "/contact.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/jobs", "destination": "/jobs.html" },
     { "source": "/tracker", "destination": "/tracker.html" },

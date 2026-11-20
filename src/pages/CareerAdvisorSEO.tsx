@@ -137,8 +137,8 @@ export default function CareerAdvisorSEO() {
 
   return (
     <SEOFeatureLayout
-      title="AI Career Advisor | Personalized Skill Roadmaps & Growth — AI HireFlow"
-      metaDescription="Accelerate your tech career with AI HireFlow's AI Career Advisor. Identify technical skill gaps, generate milestone-driven learning roadmaps, and build project portfolios that recruiters notice."
+      title="AI Career Roadmap & Skill Gap Advisor — AI HireFlow"
+      metaDescription="Identify missing skills for your target role and generate step-by-step career learning roadmaps with proof-of-work portfolio project blueprints."
       canonicalPath="/career-advisor"
       jsonLd={jsonLd}
       badgeText="Technical Career Progression Engine"

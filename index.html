@@ -1,58 +1,66 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI HireFlow — Free ATS Resume Checker, Job Finder &amp; Interview Prep</title>
+    <meta name="description" content="Free ATS resume checker, single-column resume builder, semantic AI job finder, Kanban tracker, and mock interview simulator. Get 150 free daily AI credits." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="AI HireFlow" />
+    <meta name="application-name" content="AI HireFlow" />
+    <meta name="theme-color" content="#F7F4ED" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0D0D0C" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="canonical" href="https://www.aihireflow.in/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
+    </noscript>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('hf_theme');
+          if (t === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.add('light');
+          }
+        } catch (e) {}
+      })();
+    </script>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI HireFlow | AI-Powered Career Platform — Resume Analyzer, Job Finder &amp; Interview Prep</title>
-  <meta name="description"
-    content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
-  <link rel="icon" href="/favicon.png" type="image/png" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <link rel="canonical" href="https://www.aihireflow.in/" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
-  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
-  <link rel="preload" as="style"
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-    media="print" onload="this.media='all'" />
-  <noscript>
-    <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  </noscript>
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('hf_theme');
-        if (t === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.add('light');
-        }
-      } catch (e) { }
-    })();
-  </script>
+    <!-- Open Graph Metadata -->
+    <meta property="og:title" content="AI HireFlow — Free ATS Resume Checker, Job Finder &amp; Interview Prep" />
+    <meta property="og:description" content="Check ATS resume compatibility with transparent 4-part scoring, rewrite bullets with XYZ impact metrics, match with live jobs, and practice AI mock interviews free." />
+    <meta property="og:url" content="https://www.aihireflow.in/" />
+    <meta property="og:site_name" content="AI HireFlow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://www.aihireflow.in/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="AI HireFlow — Explainable ATS Resume Checker, Single-Column Builder, AI Job Finder &amp; Mock Interview Lab" />
 
-  <!-- Open Graph Metadata -->
-  <meta property="og:title" content="AI HireFlow | AI-Powered Career Platform" />
-  <meta property="og:description"
-    content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
-  <meta property="og:url" content="https://www.aihireflow.in/" />
-  <meta property="og:site_name" content="AI HireFlow" />
-  <meta property="og:type" content="website" />
+    <!-- Twitter Card Metadata -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AI HireFlow — Free ATS Resume Checker, Job Finder &amp; Interview Prep" />
+    <meta name="twitter:description" content="Check ATS resume compatibility, rewrite weak bullets with real impact metrics, find matched jobs, and practice technical &amp; STAR mock interviews free." />
+    <meta name="twitter:url" content="https://www.aihireflow.in/" />
+    <meta name="twitter:image" content="https://www.aihireflow.in/og-image.png" />
+    <meta name="twitter:image:alt" content="AI HireFlow ATS Diagnostic Dashboard &amp; Career Suite Preview" />
 
-  <!-- Twitter Card Metadata -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="AI HireFlow | AI-Powered Career Platform" />
-  <meta name="twitter:description"
-    content="AI HireFlow is the complete AI-powered career platform. Discover jobs, analyze and optimize resumes against ATS standards, practice AI mock interviews, track applications, and navigate your career path." />
-  <meta name="twitter:url" content="https://www.aihireflow.in/" />
-
-  <!-- Structured Data (Schema.org JSON-LD) -->
-  <script type="application/ld+json">
+    <!-- Structured Data (Schema.org JSON-LD) -->
+    <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@graph": [
@@ -61,17 +69,28 @@
           "@id": "https://www.aihireflow.in/#organization",
           "name": "AI HireFlow",
           "url": "https://www.aihireflow.in/",
-          "logo": "https://www.aihireflow.in/logo.svg",
-          "description": "AI-powered career operating system for resume analysis, ATS optimization, semantic job search, application tracking, and AI interview simulations."
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.aihireflow.in/favicon.png",
+            "width": 192,
+            "height": 192
+          },
+          "email": "rrachitkhandelwal@gmail.com",
+          "description": "AI-powered career operating system for ATS resume analysis, single-column resume building, semantic job search, Kanban application tracking, career roadmaps, and AI mock interview simulations."
         },
         {
           "@type": "WebSite",
           "@id": "https://www.aihireflow.in/#website",
           "url": "https://www.aihireflow.in/",
           "name": "AI HireFlow",
-          "description": "AI-Powered Career Platform — Resume Analyzer, Job Finder, Resume Editor, Job Tracker, Career Advisor, and Interview Lab.",
+          "description": "Free ATS Resume Checker, Single-Column Resume Builder, AI Job Finder, Job Tracker, Career Advisor, and AI Interview Lab.",
           "publisher": {
             "@id": "https://www.aihireflow.in/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.aihireflow.in/job-finder?q={search_term_string}",
+            "query-input": "required name=search_term_string"
           }
         },
         {
@@ -81,16 +100,93 @@
           "url": "https://www.aihireflow.in/",
           "applicationCategory": "BusinessApplication",
           "operatingSystem": "Web",
-          "description": "Comprehensive AI career suite featuring ATS resume analysis, resume building, semantic job search, Kanban application tracking, and live AI interview simulations."
+          "screenshot": "https://www.aihireflow.in/og-image.png",
+          "description": "Comprehensive AI career suite featuring transparent 4-category ATS resume scoring, XYZ bullet rewrites, single-column PDF builder, semantic job matching, Kanban application tracking, and live AI interview simulations.",
+          "featureList": [
+            "4-category weighted ATS resume compatibility audit",
+            "Evidence-grounded XYZ and STAR resume bullet rewriting",
+            "Single-column ATS-compliant resume editor and PDF export",
+            "Semantic live job finder with skill match scoring",
+            "Visual Kanban job application tracker",
+            "AI technical and behavioral mock interview simulator",
+            "Personalized skill-gap career roadmaps"
+          ],
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Free Plan",
+              "price": "0",
+              "priceCurrency": "INR",
+              "description": "150 daily renewing free AI credits for ATS resume scans, editing, job tracking, and mock interviews."
+            },
+            {
+              "@type": "Offer",
+              "name": "Pro Plan",
+              "price": "299",
+              "priceCurrency": "INR",
+              "description": "Expanded monthly AI credits, priority inference, and unlimited resume optimization."
+            },
+            {
+              "@type": "Offer",
+              "name": "Premium Plan",
+              "price": "599",
+              "priceCurrency": "INR",
+              "description": "All-access career intelligence suite with maximum monthly credits and campus placement tools."
+            }
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://www.aihireflow.in/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What makes AI HireFlow different from standard job boards?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Most job boards just show lists of open roles. AI HireFlow puts ATS resume checks, bullet rewriting based on your real work, live job matching, mock interviews, and an application tracker in one connected workspace."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Are the ATS resume tools free to try?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Every account gets 150 free AI credits that refresh daily, so you can scan resumes, review ATS compatibility, practice interviews, and build career roadmaps without adding a card."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does AI HireFlow calculate my resume score?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Your score is split across four clear areas: Technical skills match (40%), Quantified impact (30%), Role level and seniority (15%), and Formatting and ATS readability (15%)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does AI HireFlow guarantee job offers?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No tool can guarantee an interview or offer. AI HireFlow helps you surface missing keywords, tighten weak resume bullets, and prepare clearer interview stories so your actual experience stands out."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is my resume and account data private?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Your resumes, saved searches, and job tracker entries stay scoped to your signed-in Google account in Firebase and are never sold to third parties."
+              }
+            }
+          ]
         }
       ]
     }
     </script>
-</head>
-
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

@@ -134,8 +134,8 @@ export default function ResumeAnalyzerSEO() {
 
   return (
     <SEOFeatureLayout
-      title="AI Resume Analyzer | ATS Compatibility & Keyword Audit — AI HireFlow"
-      metaDescription="Analyze your resume with AI HireFlow's advanced AI Resume Analyzer. Get instant ATS compatibility scores, keyword gap audits, metric density evaluations, and actionable bullet rewrites."
+      title="Free ATS Resume Checker & AI Resume Analyzer — AI HireFlow"
+      metaDescription="Check your ATS resume score free with AI HireFlow. Get a transparent 4-part weighted audit, missing keyword gap analysis, and evidence-grounded bullet rewrites."
       canonicalPath="/resume-analyzer"
       jsonLd={jsonLd}
       badgeText="AI Resume Intelligence Engine"

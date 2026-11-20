@@ -134,8 +134,8 @@ export default function ResumeEditorSEO() {
 
   return (
     <SEOFeatureLayout
-      title="AI Resume Editor | ATS-Compliant Resume Builder — AI HireFlow"
-      metaDescription="Create and edit ATS-compliant resumes with AI HireFlow's AI Resume Editor. Transform bullet points with STAR impact metrics, single-column formatting, and instant PDF download."
+      title="Free ATS Resume Builder & Single-Column Editor — AI HireFlow"
+      metaDescription="Build an ATS-friendly single-column resume with AI HireFlow. Rewrite bullets with STAR/XYZ metrics, preview live formatting, and export clean vector PDFs."
       canonicalPath="/resume-editor"
       jsonLd={jsonLd}
       badgeText="Structured Resume Creation Engine"

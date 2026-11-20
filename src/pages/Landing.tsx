@@ -146,17 +146,110 @@ export default function Landing() {
     return () => clearInterval(timer);
   }, [isHeroPaused]);
 
+  const faqItems = [
+    {
+      q: "What makes AI HireFlow different from standard job boards?",
+      a: "Most job boards just show lists of open roles. AI HireFlow puts ATS resume checks, bullet rewriting based on your real work, live job matching, mock interviews, and an application tracker in one connected workspace."
+    },
+    {
+      q: "Are the ATS resume tools free to try?",
+      a: "Yes. Every account gets 150 free AI credits that refresh daily, so you can scan resumes, review ATS compatibility, practice interviews, and build career roadmaps without adding a card."
+    },
+    {
+      q: "How does AI HireFlow calculate my resume score?",
+      a: "Your score is split across four clear areas: Technical skills match (40%), Quantified impact (30%), Role level and seniority (15%), and Formatting and ATS readability (15%)."
+    },
+    {
+      q: "Does AI HireFlow guarantee job offers?",
+      a: "No tool can guarantee an interview or offer. AI HireFlow helps you surface missing keywords, tighten weak resume bullets, and prepare clearer interview stories so your actual experience stands out."
+    },
+    {
+      q: "Is my resume and account data private?",
+      a: "Yes. Your resumes, saved searches, and job tracker entries stay scoped to your signed-in Google account in Firebase and are never sold to third parties."
+    }
+  ];
+
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "AI HireFlow",
-    "url": "https://www.aihireflow.in/",
-    "description": "Career platform for ATS resume analysis, resume building, job matching, interview simulation, and career roadmaps.",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": "https://www.aihireflow.in/ai-job-search?q={search_term_string}",
-      "query-input": "required name=search_term_string"
-    }
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://www.aihireflow.in/#organization",
+        "name": "AI HireFlow",
+        "url": "https://www.aihireflow.in/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.aihireflow.in/favicon.png",
+          "width": 192,
+          "height": 192
+        },
+        "email": "rrachitkhandelwal@gmail.com",
+        "description": "AI-powered career platform for ATS resume scoring, single-column resume building, semantic job matching, application tracking, and mock interview practice."
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://www.aihireflow.in/#website",
+        "name": "AI HireFlow",
+        "url": "https://www.aihireflow.in/",
+        "description": "Free ATS Resume Checker, Single-Column Resume Builder, AI Job Finder, Job Tracker, Career Advisor, and AI Interview Lab.",
+        "publisher": { "@id": "https://www.aihireflow.in/#organization" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://www.aihireflow.in/job-finder?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://www.aihireflow.in/#software",
+        "name": "AI HireFlow Career Platform",
+        "url": "https://www.aihireflow.in/",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "screenshot": "https://www.aihireflow.in/og-image.png",
+        "description": "Free ATS resume checker, single-column resume builder, semantic AI job finder, Kanban tracker, and mock interview simulator.",
+        "featureList": [
+          "Explainable 4-category ATS resume scoring",
+          "Evidence-grounded XYZ and STAR bullet rewrites",
+          "Single-column ATS resume builder with PDF export",
+          "Semantic live job finder with skill match scores",
+          "Kanban job application tracker",
+          "AI technical and behavioral mock interviews"
+        ],
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free Plan",
+            "price": "0",
+            "priceCurrency": "INR"
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro Plan",
+            "price": "299",
+            "priceCurrency": "INR"
+          },
+          {
+            "@type": "Offer",
+            "name": "Premium Plan",
+            "price": "599",
+            "priceCurrency": "INR"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://www.aihireflow.in/#faq",
+        "mainEntity": faqItems.map((item) => ({
+          "@type": "Question",
+          "name": item.q,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": item.a
+          }
+        }))
+      }
+    ]
   };
 
   const handleLaunch = async () => {
@@ -199,29 +292,6 @@ export default function Landing() {
     { id: 'pipeline', label: 'Job Tracker' },
   ];
 
-  const faqItems = [
-    {
-      q: "What makes AI HireFlow different from standard job boards?",
-      a: "Most job boards just show lists of open roles. AI HireFlow puts ATS resume checks, bullet rewriting based on your real work, live job matching, mock interviews, and an application tracker in one connected workspace."
-    },
-    {
-      q: "Are the ATS resume tools free to try?",
-      a: "Yes. Every account gets 150 free AI credits that refresh daily, so you can scan resumes, review ATS compatibility, practice interviews, and build career roadmaps without adding a card."
-    },
-    {
-      q: "How does AI HireFlow calculate my resume score?",
-      a: "Your score is split across four clear areas: Technical skills match (40%), Quantified impact (30%), Role level and seniority (15%), and Formatting and ATS readability (15%)."
-    },
-    {
-      q: "Does AI HireFlow guarantee job offers?",
-      a: "No tool can guarantee an interview or offer. AI HireFlow helps you surface missing keywords, tighten weak resume bullets, and prepare clearer interview stories so your actual experience stands out."
-    },
-    {
-      q: "Is my resume and account data private?",
-      a: "Yes. Your resumes, saved searches, and job tracker entries stay scoped to your signed-in Google account in Firebase and are never sold to third parties."
-    }
-  ];
-
   const activeBenchmark = ROLE_BENCHMARKS[selectedRole];
 
   const heroScore = heroXyzApplied ? 91 : 74;
@@ -245,8 +315,8 @@ export default function Landing() {
   return (
     <div className="flex flex-col bg-[var(--hf-bg)] text-[var(--hf-text)] selection:bg-[var(--hf-cta)] selection:text-white min-h-screen">
       <SEOHead
-        title="AI HireFlow | Career Platform for Resume Analysis, Job Search & Interview Prep"
-        description="Check ATS resume compatibility, build single-column resumes, practice technical mock interviews, find matched jobs, and map out career roadmaps."
+        title="AI HireFlow — Free ATS Resume Checker, Job Finder & Interview Prep"
+        description="Free ATS resume checker, single-column resume builder, semantic AI job finder, Kanban tracker, and mock interview simulator. Start with 150 free daily AI credits."
         canonicalPath="/"
         jsonLd={jsonLd}
       />
@@ -1231,23 +1301,19 @@ export default function Landing() {
                       <ChevronDown className={`w-4 h-4 text-[var(--hf-text)] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--hf-cta)]' : ''}`} />
                     </button>
 
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.22 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
-                            <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed border-t border-[var(--hf-border)] pt-3">
-                              {faq.a}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <div
+                      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+                        isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
+                          <p className="text-xs sm:text-sm text-[var(--hf-text-secondary)] leading-relaxed border-t border-[var(--hf-border)] pt-3">
+                            {faq.a}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </FadeInSection>
               );

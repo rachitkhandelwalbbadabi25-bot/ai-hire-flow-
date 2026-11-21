@@ -190,7 +190,7 @@ function getInitialAnalyzerState() {
 }
 
 export default function ResumeAnalyzer() {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const location = useLocation();
   const navigate = useNavigate();
@@ -215,6 +215,7 @@ export default function ResumeAnalyzer() {
   // Check for saved Master Resume in Resume Editor
   useEffect(() => {
     if (!user?.uid) {
+      setIsUploadMode(true);
       setLoadingMaster(false);
       return;
     }
@@ -1322,6 +1323,7 @@ export default function ResumeAnalyzer() {
 
   // Dedicated on-demand cover letter generator
   const handleGenerateCoverLetter = async () => {
+    if (!requireAuth('generate a tailored AI cover letter')) return;
     if (!user?.uid) return;
     if (isGeneratingCLRef.current) return;
     if (!canGenCL) {
@@ -1499,6 +1501,7 @@ export default function ResumeAnalyzer() {
   };
 
   const handleStartAnalysis = async () => {
+    if (!requireAuth('run your ATS resume analysis')) return;
     if (!user?.uid) return;
     if (isAnalyzing || isAnalyzingRef.current) return; // Synchronous guard against concurrent submissions!
     isAnalyzingRef.current = true;
@@ -1744,17 +1747,6 @@ export default function ResumeAnalyzer() {
   const formattedLastUpdated = masterResume?.updatedAt 
     ? new Date(masterResume.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : 'Recently Saved';
-
-  if (!user) {
-    return (
-      <div className="min-h-[400px] w-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--hf-cta)]" />
-          <p className="text-xs text-[var(--hf-text-muted)] tracking-wide animate-pulse">Initializing resume analyzer...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">

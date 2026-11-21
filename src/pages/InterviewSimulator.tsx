@@ -116,7 +116,7 @@ const getQuestionEvaluationKind = (evalData?: Evaluation | null): QuestionEvalua
 };
 
 export default function InterviewSimulator() {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const location = useLocation();
   const { checkAccess, deductCredit, creditWallet, creditCosts, triggerAction } = usePlan();
   const { hasAccess, remaining, limit: sessionLimit } = checkAccess('interviewSessions');
@@ -318,6 +318,7 @@ export default function InterviewSimulator() {
 
   const startInterview = async () => {
     if (!jobDescription) return;
+    if (!requireAuth('start an AI mock interview session')) return;
     
     // If user explicitly chose Text Practice / Static Rubric Mode
     if (mode === 'text_practice') {
@@ -437,6 +438,7 @@ export default function InterviewSimulator() {
     }
 
     // AI Evaluation Mode
+    if (!requireAuth('evaluate your interview answer with AI')) return;
     setIsEvaluating(true);
     try {
       const evaluation = await evaluateInterviewAnswer(currentQ.question, userAnswer, jobDescription);
@@ -541,17 +543,6 @@ export default function InterviewSimulator() {
   const currentQ = questions[currentIdx];
   const currentEvaluation = activeQuestionEvaluation || (currentQ ? evaluations[currentQ.id] : null);
   const activeRubric = currentQ ? getEffectiveRubric(currentQ) : null;
-
-  if (!user) {
-    return (
-      <div className="min-h-[400px] w-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--hf-cta)]" />
-          <p className="text-sm font-medium text-[var(--hf-text-secondary)]">Loading interview practice...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-20">

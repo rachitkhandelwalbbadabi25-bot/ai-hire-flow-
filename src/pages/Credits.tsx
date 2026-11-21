@@ -49,7 +49,7 @@ import { CREDIT_PACKS } from '../constants/creditPacks.ts';
 import { normalizePlanTier, PLAN_DAILY_CREDITS, PLAN_MONTHLY_CREDITS, SUBSCRIPTION_PLANS } from '../constants/subscriptionPlans';
 
 export default function CreditsPage() {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const {
     plan,
     creditWallet,
@@ -305,6 +305,7 @@ export default function CreditsPage() {
 
   const handleReferralSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!requireAuth('claim referral bonus credits')) return;
     const input = referralEmailInput.trim();
     if (!input) return;
     setIsSubmittingReferral(true);
@@ -386,6 +387,7 @@ export default function CreditsPage() {
     credits: number;
     priceUSD?: number;
   }) => {
+    if (!requireAuth(`purchase ${params.itemName}`)) return;
     const isINR = currency === 'INR';
     const priceINR = isINR ? params.price : Math.round(params.price * 80);
     const priceUSD = params.priceUSD || (isINR ? Math.round(params.price / 80) || 4 : params.price);

@@ -29,25 +29,8 @@ export default function ResumeAnalyzerSEO() {
     "description": "Enterprise-grade ATS resume analyzer and auditor. Scan resumes for keyword gaps, formatting parseability, impact metrics, and job alignment with explainable scoring."
   };
 
-  const handleLaunch = async () => {
-    if (user) {
-      navigate('/analyzer');
-      return;
-    }
-    if (isLaunching) return;
-    setIsLaunching(true);
-    try {
-      const loggedInUser = await signInWithGoogle();
-      if (loggedInUser) {
-        navigate('/analyzer');
-      }
-    } catch (error: any) {
-      if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
-        console.error('Sign in error:', error);
-      }
-    } finally {
-      setIsLaunching(false);
-    }
+  const handleLaunch = () => {
+    navigate('/analyzer');
   };
 
   // Unique Sample Visual: Annotated sample resume audit with categories, missing keywords, and evidence

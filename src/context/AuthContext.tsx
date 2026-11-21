@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
-import { onAuthStateChanged, User, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { doc, setDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import AuthGateModal from '../components/AuthGateModal';
 
 export type UserPlan = 'free' | 'pro' | 'standard' | 'premium' | 'admin';
 
@@ -14,6 +15,13 @@ interface AuthContextType {
   isAdmin: boolean;
   isPremium: boolean;
   logout: () => Promise<void>;
+  /**
+   * Checks if user is signed in. If not, opens the Sign-In modal for `actionLabel` and returns false.
+   * Pass an optional `onAuthorized` callback to resume right after Google Sign-In succeeds.
+   */
+  requireAuth: (actionLabel?: string, onAuthorized?: () => void) => boolean;
+  openAuthModal: (actionLabel?: string, onAuthorized?: () => void) => void;
+  closeAuthModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<UserPlan>('free');
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authActionLabel, setAuthActionLabel] = useState('unlock this AI feature');
+  const pendingActionRef = useRef<(() => void) | undefined>(undefined);
 
   const unsubRef = useRef<Unsubscribe | null>(null);
 
@@ -93,6 +104,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, plan]);
 
+  const openAuthModal = useCallback((actionLabel = 'continue with AI HireFlow', onAuthorized?: () => void) => {
+    setAuthActionLabel(actionLabel);
+    pendingActionRef.current = onAuthorized;
+    setAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setAuthModalOpen(false);
+    pendingActionRef.current = undefined;
+  }, []);
+
+  const requireAuth = useCallback((actionLabel = 'use this feature', onAuthorized?: () => void): boolean => {
+    if (user) return true;
+    openAuthModal(actionLabel, onAuthorized);
+    return false;
+  }, [user, openAuthModal]);
+
+  const handleAuthModalSuccess = useCallback(() => {
+    const callback = pendingActionRef.current;
+    pendingActionRef.current = undefined;
+    if (callback) {
+      callback();
+    }
+  }, []);
+
   const logout = async () => {
     cleanup();
     await signOut(auth);
@@ -104,10 +140,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     plan,
     isAdmin: plan === 'admin',
     isPremium: plan === 'premium' || plan === 'admin',
-    logout
+    logout,
+    requireAuth,
+    openAuthModal,
+    closeAuthModal
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      <AuthGateModal
+        isOpen={authModalOpen}
+        actionLabel={authActionLabel}
+        onClose={closeAuthModal}
+        onSuccess={handleAuthModalSuccess}
+      />
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

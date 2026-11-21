@@ -13,17 +13,45 @@ import { Link } from 'react-router-dom';
 import { SpotlightCard, AnimatedCounter, FadeInSection } from '../components/AnimatedPrimitives';
 
 export default function Profile() {
-  const { user, isAdmin, isPremium } = useAuth();
+  const { user, isAdmin, isPremium, openAuthModal } = useAuth();
   const { creditWallet } = usePlan();
   const [copiedReferral, setCopiedReferral] = useState(false);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
 
   if (!user) {
     return (
-      <div className="min-h-[400px] w-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--hf-cta)]" />
-          <p className="text-xs font-medium text-[var(--hf-text-secondary)] animate-pulse">Loading your profile...</p>
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[5px_5px_0px_var(--hf-shadow-color)] rounded-sm p-8 text-center space-y-5">
+          <div className="w-12 h-12 mx-auto rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] flex items-center justify-center text-[var(--hf-cta)]">
+            <UserIcon className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--hf-cta)]">
+              Guest Preview Mode
+            </span>
+            <h1 className="font-serif-display text-2xl sm:text-3xl font-bold text-[var(--hf-text)]">
+              Sign in to view your Career Profile
+            </h1>
+            <p className="text-sm text-[var(--hf-text-secondary)] max-w-md mx-auto leading-relaxed">
+              Track your ATS milestones, XP rank, daily streaks, unlocked badges, and referral rewards synced to your Google account.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => openAuthModal('access your career profile & daily credits')}
+              className="hf-btn-primary min-h-[44px] px-6 text-sm gap-2 cursor-pointer w-full sm:w-auto"
+            >
+              <span>Continue with Google</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <Link
+              to="/dashboard"
+              className="hf-btn-secondary min-h-[44px] px-5 text-sm w-full sm:w-auto"
+            >
+              Back to Workspace
+            </Link>
+          </div>
         </div>
       </div>
     );

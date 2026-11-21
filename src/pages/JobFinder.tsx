@@ -45,7 +45,7 @@ interface Job {
 }
 
 export default function JobFinder() {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const { checkAccess, deductCredit, creditWallet, creditCosts } = usePlan();
   const { hasAccess } = checkAccess('jobSearches');
 
@@ -284,6 +284,7 @@ export default function JobFinder() {
     allowFallback: boolean = false
   ) => {
     if (e) e.preventDefault();
+    if (!requireAuth('search live jobs & match scores')) return;
 
     // If query is empty or whitespace, gracefully default to activeTargetRole or 'Software Engineer'
     let effectiveQuery = (searchQuery || '').trim();
@@ -412,6 +413,7 @@ export default function JobFinder() {
   const handleSearch = (e: FormEvent) => handleSearchWithQuery(query, location, e);
 
   const trackJob = async (job: Job) => {
+    if (!requireAuth('save this job to your application tracker')) return;
     if (!user) return;
     handleSelectJob(job);
     try {
@@ -437,17 +439,6 @@ export default function JobFinder() {
     const formattedDesc = job.description ? `${metaParts.join(' · ')}\n\n${job.description}` : metaParts.join(' · ');
     navigate('/analyzer', { state: { jobDescription: formattedDesc, forceResetAnalysis: true } });
   };
-
-  if (!user) {
-    return (
-      <div className="min-h-[400px] w-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--hf-cta)]" />
-          <p className="text-xs text-[var(--hf-text-secondary)] tracking-wide animate-pulse">Initializing Job Finder...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 font-sans">

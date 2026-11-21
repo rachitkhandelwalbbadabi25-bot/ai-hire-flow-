@@ -31,25 +31,8 @@ export default function JobFinderSEO() {
     "description": "Semantic job discovery and matching engine. Discover high-compatibility tech opportunities based on skill alignment, location preferences, and career goals."
   };
 
-  const handleLaunch = async () => {
-    if (user) {
-      navigate('/finder');
-      return;
-    }
-    if (isLaunching) return;
-    setIsLaunching(true);
-    try {
-      const loggedInUser = await signInWithGoogle();
-      if (loggedInUser) {
-        navigate('/finder');
-      }
-    } catch (error: any) {
-      if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
-        console.error('Sign in error:', error);
-      }
-    } finally {
-      setIsLaunching(false);
-    }
+  const handleLaunch = () => {
+    navigate('/finder');
   };
 
   // Sample Visual: Search query, filters, match score, matched and missing skills, and "why this role" explanation

@@ -1,6 +1,6 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { User, signOut } from 'firebase/auth';
-import { auth, signInWithGoogle } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 
 import { usePlan } from '../context/PlanContext';
+import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   user: User | null;
@@ -41,33 +42,19 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const { plan, creditWallet } = usePlan();
+  const { openAuthModal } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
-  const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPublicMenuOpen, setIsPublicMenuOpen] = useState(false);
-  const [isSigningIn, setIsSigningIn] = useState(false);
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
 
   const isPublicRoute = PUBLIC_SEO_ROUTES.includes(location.pathname);
 
   const handleSignOut = () => signOut(auth);
 
-  const handleSignIn = async () => {
-    if (isSigningIn) return;
-    setIsSigningIn(true);
-    try {
-      const loggedInUser = await signInWithGoogle();
-      if (loggedInUser) {
-        navigate('/dashboard');
-      }
-    } catch (err: any) {
-      if (err?.code !== 'auth/cancelled-popup-request' && err?.code !== 'auth/popup-closed-by-user') {
-        console.error('Sign in error:', err);
-      }
-    } finally {
-      setIsSigningIn(false);
-    }
+  const handleOpenSignIn = () => {
+    openAuthModal('unlock 150 daily AI credits & cloud sync');
   };
 
   const publicNavLinks = [
@@ -143,7 +130,7 @@ export default function Navbar({ user }: NavbarProps) {
           <div className="flex justify-between h-16 items-center gap-4">
             {/* Left: Menu Trigger + Editorial Masthead Brand */}
             <div className="flex items-center gap-3">
-              {user && !isPublicRoute && (
+              {!isPublicRoute && (
                 <button 
                   onClick={() => setIsDrawerOpen(true)}
                   className="min-h-[38px] min-w-[38px] flex items-center justify-center -ml-1.5 text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded border border-[var(--hf-ink-border)] transition-colors lg:hidden cursor-pointer"
@@ -164,7 +151,7 @@ export default function Navbar({ user }: NavbarProps) {
                   {isPublicMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                 </button>
               )}
-              <Link to={user && !isPublicRoute ? "/dashboard" : "/"} className="flex items-center gap-2.5 group py-1" aria-label="AI HireFlow Home">
+              <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2.5 group py-1" aria-label="AI HireFlow Home">
                 <HireFlowLogo className="w-7 h-7 shrink-0" />
                 <span className="font-serif-display font-semibold text-lg tracking-tight text-[var(--hf-text)]">
                   AI HireFlow
@@ -213,7 +200,7 @@ export default function Navbar({ user }: NavbarProps) {
 
             {/* Right: Search, Theme, Account / Enter CTA */}
             <div className="flex items-center gap-2.5">
-              {user && !isPublicRoute && (
+              {!isPublicRoute && (
                 <Suspense fallback={null}>
                   <HeaderQuickSearch />
                 </Suspense>
@@ -282,16 +269,42 @@ export default function Navbar({ user }: NavbarProps) {
                     <LogOut className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
+              ) : isPublicRoute ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenSignIn}
+                    className="hidden sm:inline-flex min-h-[36px] px-3 py-1.5 text-xs font-semibold text-[var(--hf-text-secondary)] hover:text-[var(--hf-text)] hover:bg-[var(--hf-surface-secondary)] rounded-sm transition-colors cursor-pointer items-center"
+                    aria-label="Sign in to existing account"
+                  >
+                    Sign in
+                  </button>
+                  <Link
+                    to="/dashboard"
+                    onMouseEnter={() => prefetchRoute('/dashboard')}
+                    onFocus={() => prefetchRoute('/dashboard')}
+                    className="hf-btn-primary min-h-[38px] px-4 py-1.5 text-xs gap-1.5"
+                    aria-label="Explore AI HireFlow workspace"
+                  >
+                    <span>Explore app</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               ) : (
-                <button
-                  onClick={handleSignIn}
-                  disabled={isSigningIn}
-                  className="hf-btn-primary min-h-[38px] px-4 py-1.5 text-xs gap-1.5 disabled:opacity-60"
-                  aria-label="Sign in with Google"
-                >
-                  <span>{isSigningIn ? 'Signing in...' : 'Sign in'}</span>
-                  {!isSigningIn && <ArrowRight className="w-3.5 h-3.5" />}
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-[var(--hf-surface-secondary)] border border-[var(--hf-ink-border)] font-mono text-[10px] font-bold uppercase tracking-wider text-[var(--hf-text-secondary)]">
+                    Guest Preview
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleOpenSignIn}
+                    className="hf-btn-primary min-h-[36px] px-3.5 py-1.5 text-xs gap-1.5 cursor-pointer"
+                    aria-label="Sign in with Google"
+                  >
+                    <span>Sign in</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -329,8 +342,8 @@ export default function Navbar({ user }: NavbarProps) {
         </div>
       </nav>
 
-      {/* Desktop Persistent Dossier Index Sidebar (Authenticated App Routes) */}
-      {user && !isPublicRoute && (
+      {/* Desktop Persistent Dossier Index Sidebar (Workspace Routes — Open in Guest Preview too) */}
+      {!isPublicRoute && (
         <aside
           aria-label="Sidebar Navigation"
           className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 lg:z-40 lg:border-r-[1.5px] lg:border-[var(--hf-ink-border)] lg:bg-[var(--hf-bg)] transition-colors"
@@ -379,44 +392,64 @@ export default function Navbar({ user }: NavbarProps) {
 
           {/* Sidebar Bottom Ledger Card */}
           <div className="p-3 border-t-[1.5px] border-[var(--hf-ink-border)] bg-[var(--hf-surface-secondary)]/50 mt-auto space-y-2">
-            {creditWallet && (
-              <Link
-                to="/credits"
-                onMouseEnter={() => prefetchRoute('/credits')}
-                onFocus={() => prefetchRoute('/credits')}
-                className="px-3 py-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] flex items-center justify-between text-xs transition-transform hover:-translate-y-0.5"
-              >
-                <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-secondary)]">CREDITS</span>
-                <span className="font-mono font-bold text-[var(--hf-cta)] tabular-nums">
-                  {creditWallet.balance.toLocaleString()} CR
-                </span>
-              </Link>
-            )}
-            <Link
-              to="/profile"
-              onMouseEnter={() => prefetchRoute('/profile')}
-              onFocus={() => prefetchRoute('/profile')}
-              className="p-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] hover:bg-[var(--hf-surface-secondary)] transition-colors flex items-center gap-2.5"
-            >
-              <div className="w-7 h-7 rounded-sm bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] border border-[var(--hf-ink-border)] flex items-center justify-center shrink-0 font-mono text-xs font-bold overflow-hidden">
-                {user?.photoURL ? (
-                  <img src={user.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  (user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()
+            {user ? (
+              <>
+                {creditWallet && (
+                  <Link
+                    to="/credits"
+                    onMouseEnter={() => prefetchRoute('/credits')}
+                    onFocus={() => prefetchRoute('/credits')}
+                    className="px-3 py-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] flex items-center justify-between text-xs transition-transform hover:-translate-y-0.5"
+                  >
+                    <span className="font-mono text-[10px] font-bold uppercase text-[var(--hf-text-secondary)]">CREDITS</span>
+                    <span className="font-mono font-bold text-[var(--hf-cta)] tabular-nums">
+                      {creditWallet.balance.toLocaleString()} CR
+                    </span>
+                  </Link>
                 )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-[var(--hf-text)] truncate">{user?.displayName || 'CANDIDATE'}</p>
-                <p className="font-mono text-[10px] text-[var(--hf-cta)] font-semibold truncate">{getPlanLabel(plan)}</p>
-              </div>
-            </Link>
+                <Link
+                  to="/profile"
+                  onMouseEnter={() => prefetchRoute('/profile')}
+                  onFocus={() => prefetchRoute('/profile')}
+                  className="p-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] hover:bg-[var(--hf-surface-secondary)] transition-colors flex items-center gap-2.5"
+                >
+                  <div className="w-7 h-7 rounded-sm bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] border border-[var(--hf-ink-border)] flex items-center justify-center shrink-0 font-mono text-xs font-bold overflow-hidden">
+                    {user?.photoURL ? (
+                      <img src={user.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      (user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-[var(--hf-text)] truncate">{user?.displayName || 'CANDIDATE'}</p>
+                    <p className="font-mono text-[10px] text-[var(--hf-cta)] font-semibold truncate">{getPlanLabel(plan)}</p>
+                  </div>
+                </Link>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenSignIn}
+                className="w-full p-2.5 rounded-sm bg-[var(--hf-surface)] border-[1.5px] border-[var(--hf-ink-border)] shadow-[2px_2px_0px_var(--hf-shadow-color)] hover:-translate-y-0.5 transition-all text-left space-y-1 cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[var(--hf-cta)]">
+                    Guest Preview
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 text-[var(--hf-text)]" />
+                </div>
+                <p className="text-[11px] font-semibold text-[var(--hf-text)] leading-snug">
+                  Sign in for 150 free daily credits
+                </p>
+              </button>
+            )}
           </div>
         </aside>
       )}
 
-      {/* Side Drawer Overlay (Mobile / Tablet below lg, Authenticated App Routes) */}
+      {/* Side Drawer Overlay (Mobile / Tablet below lg, Workspace Routes) */}
       <AnimatePresence>
-        {isDrawerOpen && user && !isPublicRoute && (
+        {isDrawerOpen && !isPublicRoute && (
           <div className="lg:hidden">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -487,23 +520,37 @@ export default function Navbar({ user }: NavbarProps) {
               </div>
 
               <div className="p-3 border-t-[1.5px] border-[var(--hf-ink-border)] mt-auto bg-[var(--hf-surface-secondary)]">
-                <div className="p-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-sm bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] flex items-center justify-center shrink-0 font-mono text-xs font-bold">
-                    {(user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                {user ? (
+                  <div className="p-2 rounded-sm bg-[var(--hf-surface)] border border-[var(--hf-ink-border)] flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-sm bg-[var(--hf-btn-primary-bg)] text-[var(--hf-btn-primary-text)] flex items-center justify-center shrink-0 font-mono text-xs font-bold">
+                      {(user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-[var(--hf-text)] truncate">{user?.displayName || 'CANDIDATE'}</p>
+                      <p className="font-mono text-[10px] text-[var(--hf-cta)] font-semibold truncate">{getPlanLabel(plan)}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-[var(--hf-text)] truncate">{user?.displayName || 'CANDIDATE'}</p>
-                    <p className="font-mono text-[10px] text-[var(--hf-cta)] font-semibold truncate">{getPlanLabel(plan)}</p>
-                  </div>
-                </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      handleOpenSignIn();
+                    }}
+                    className="hf-btn-primary w-full min-h-[42px] text-xs gap-1.5 cursor-pointer"
+                  >
+                    <span>Sign in · 150 free credits</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Mobile Bottom Tab Bar (< 768px / mobile, only on authenticated app routes) */}
-      {user && !isPublicRoute && (
+      {/* Mobile Bottom Tab Bar (< 768px / mobile, on workspace routes) */}
+      {!isPublicRoute && (
         <Suspense fallback={null}>
           <MobileBottomNav onOpenOverflowDrawer={() => setIsDrawerOpen(true)} />
         </Suspense>

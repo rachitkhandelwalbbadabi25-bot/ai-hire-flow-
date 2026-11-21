@@ -15,6 +15,7 @@ import {
 import NextStepBridgeCard from '../components/NextStepBridgeCard';
 import { isDemoRole } from '../utils/demoDataSanitizer';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 const CAMPUS_STORAGE_KEYS = {
   SEARCH_QUERY: 'campus_prep_search_query',
@@ -35,6 +36,7 @@ const CAMPUS_STORAGE_KEYS = {
 };
 
 export default function CampusPlacement() {
+  const { requireAuth } = useAuth();
   // Company Search State - starts cleanly empty on fresh start
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
@@ -343,6 +345,7 @@ export default function CampusPlacement() {
 
   const handleCompanySearch = async (company: string) => {
     if (!company.trim()) return;
+    if (!requireAuth(`generate a campus placement prep plan for ${company.trim()}`)) return;
     setSearching(true);
     setSearchError(null);
     setCompanyPrep(null);
@@ -359,6 +362,7 @@ export default function CampusPlacement() {
 
   const handleStartAptitudeDrill = async (topic: string | null) => {
     if (!topic || loadingDrill) return;
+    if (!requireAuth(`start an AI aptitude drill on ${topic}`)) return;
 
     // Reset drill UI state and clear errors
     setActiveDrillTopic(topic);
@@ -425,6 +429,7 @@ export default function CampusPlacement() {
   };
 
   const handleStartStartupChallenge = async (track: string) => {
+    if (!requireAuth(`start a ${track} startup architecture challenge`)) return;
     setActiveStartupTrack(track);
     setLoadingStartup(true);
     setStartupChallenge(null);
@@ -442,6 +447,7 @@ export default function CampusPlacement() {
 
   const handleSubmitStartupSolution = async () => {
     if (!proposedSolution.trim() || !startupChallenge) return;
+    if (!requireAuth('evaluate your architecture solution with AI')) return;
     setSubmittingSolution(true);
     setSolutionFeedback(null);
     try {

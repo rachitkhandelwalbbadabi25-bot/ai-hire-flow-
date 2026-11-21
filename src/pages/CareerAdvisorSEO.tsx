@@ -30,25 +30,8 @@ export default function CareerAdvisorSEO() {
     "description": "Intelligent AI career advisory system. Analyze skill deficiencies against target tech jobs, formulate milestone learning roadmaps, and receive curated technical project guidance."
   };
 
-  const handleLaunch = async () => {
-    if (user) {
-      navigate('/learning');
-      return;
-    }
-    if (isLaunching) return;
-    setIsLaunching(true);
-    try {
-      const loggedInUser = await signInWithGoogle();
-      if (loggedInUser) {
-        navigate('/learning');
-      }
-    } catch (error: any) {
-      if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
-        console.error('Sign in error:', error);
-      }
-    } finally {
-      setIsLaunching(false);
-    }
+  const handleLaunch = () => {
+    navigate('/learning');
   };
 
   // Sample Visual: Skill gap roadmap with current skills, target role, and next milestones

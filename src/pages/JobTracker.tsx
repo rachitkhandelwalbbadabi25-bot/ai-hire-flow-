@@ -34,7 +34,7 @@ const KANBAN_STAGES = [
 
 export default function JobTracker() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const { checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const { activeTargetRole } = useSystemOS();
   const [jobs, setJobs] = useState<any[]>([]);
@@ -79,6 +79,7 @@ export default function JobTracker() {
 
   const handleAddJob = async (e: FormEvent) => {
     e.preventDefault();
+    if (!requireAuth('save this job to your tracker')) return;
     if (!user?.uid) return;
     if (!canAddJob) {
       openUpgradeModal('jobsTracked');
@@ -121,17 +122,6 @@ export default function JobTracker() {
     (j.company || '').toLowerCase().includes(search.toLowerCase()) || 
     (j.role || '').toLowerCase().includes(search.toLowerCase())
   );
-
-  if (!user) {
-    return (
-      <div className="min-h-[400px] w-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--hf-cta)]" />
-          <p className="font-mono text-xs uppercase text-[var(--hf-text-secondary)]">Loading application ledger...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">

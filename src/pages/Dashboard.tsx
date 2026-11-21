@@ -57,7 +57,7 @@ interface RecommendedJob {
 }
 
 export default function Dashboard() {
-  const { user, isAdmin, isPremium } = useAuth();
+  const { user, isAdmin, isPremium, requireAuth } = useAuth();
   const { plan, creditWallet, checkAccess, deductCredit, openUpgradeModal } = usePlan();
   const { 
     activeTargetRole, 
@@ -104,7 +104,10 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     
     // Helper to extract a normalized 0-100 score from any simulation record or evaluation payload
     const parseSimulationScore = (sim: any): number | null => {
@@ -456,6 +459,7 @@ export default function Dashboard() {
   const handleAskCoach = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!coachQuestion.trim()) return;
+    if (!requireAuth('ask your AI Career Coach')) return;
 
     const access = checkAccess('careerAdvisor');
     if (!access.hasAccess) {
@@ -500,7 +504,7 @@ export default function Dashboard() {
   const hasTargetRole = Boolean(masterResumeData?.targetRole || latestResume?.targetRole || activeTargetRole);
   const hasScanDone = stats.resumesAnalyzed > 0;
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="min-h-[400px] w-full flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-3">
@@ -525,7 +529,7 @@ export default function Dashboard() {
             Overview
           </span>
           <h1 className="font-serif-display text-3xl sm:text-4xl font-normal tracking-tight text-[var(--hf-text)]">
-            {greeting}, {user.displayName?.split(' ')[0] || "Candidate"}
+            {greeting}, {user?.displayName?.split(' ')[0] || "Explorer"}
           </h1>
           <p className="text-xs sm:text-sm mt-1 max-w-xl text-[var(--hf-text-secondary)]">
             Resume insights, active applications, and interview readiness in one workspace.

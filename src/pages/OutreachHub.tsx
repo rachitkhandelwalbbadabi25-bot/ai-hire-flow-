@@ -41,7 +41,7 @@ import SkeletonLoader from "../components/SkeletonLoader";
 import EmptyState from "../components/EmptyState";
 
 export default function OutreachHub() {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -173,6 +173,7 @@ export default function OutreachHub() {
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!requireAuth('save a recruiter or referral contact')) return;
     if (!user || !newName.trim() || !newCompany.trim() || !newEmail.trim())
       return;
 
@@ -246,6 +247,7 @@ export default function OutreachHub() {
   };
 
   const handleGeneratePitch = async (contact: any, selectedTone: string = outreachTone) => {
+    if (!requireAuth('generate an AI outreach email pitch')) return;
     setSelectedContact(contact);
     setViewMode("pitch_result");
     setGeneratingPitch(true);

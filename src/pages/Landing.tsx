@@ -252,37 +252,20 @@ export default function Landing() {
     ]
   };
 
-  const handleLaunch = async () => {
-    if (user) {
-      navigate('/dashboard');
-      return;
-    }
-    if (isLaunching) return;
-    setIsLaunching(true);
-    try {
-      const loggedInUser = await signInWithGoogle();
-      if (loggedInUser) {
-        navigate('/dashboard');
-      }
-    } catch (error: any) {
-      if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
-        console.error('Sign in error:', error);
-      }
-    } finally {
-      setIsLaunching(false);
-    }
+  const handleLaunch = () => {
+    navigate('/dashboard');
   };
 
   const handlePlanAction = (planId: 'free' | 'pro' | 'premium') => {
-    if (!user) {
-      handleLaunch();
-      return;
-    }
     if (planId === 'free') {
       navigate('/dashboard');
-    } else {
-      openUpgradeModal(planId);
+      return;
     }
+    if (!user) {
+      navigate('/credits');
+      return;
+    }
+    openUpgradeModal(planId);
   };
 
   const heroTabs: { id: HeroTabId; label: string }[] = [

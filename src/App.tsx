@@ -89,7 +89,8 @@ function AppRoutes() {
   const { user, loading: authLoading } = useAuth();
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
   const isDedicatedPublicPage = pathname !== '/' && PUBLIC_SEO_ROUTES.includes(pathname);
-  const canRenderImmediately = isDedicatedPublicPage || (pathname === '/' && !hasCachedFirebaseSession());
+  // Render immediately for public pages OR guests without a cached Firebase session (enables instant guest exploration)
+  const canRenderImmediately = isDedicatedPublicPage || !hasCachedFirebaseSession();
 
   if (authLoading && !canRenderImmediately) {
     return (
@@ -143,20 +144,20 @@ function AppRoutes() {
             <Route path="/contact" element={<ContactUs />} />
             <Route path="/contact-us" element={<ContactUs />} />
 
-            {/* Authenticated Application Routes (Protected product functionality) */}
-            <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" replace />} />
-            <Route path="/analyzer" element={user ? <ResumeAnalyzer /> : <Navigate to="/" replace />} />
-            <Route path="/finder" element={user ? <JobFinder /> : <Navigate to="/" replace />} />
-            <Route path="/interview" element={user ? <InterviewSimulator /> : <Navigate to="/" replace />} />
-            <Route path="/learning" element={user ? <LearningPath /> : <Navigate to="/" replace />} />
-            <Route path="/roadmap" element={user ? <LearningPath /> : <Navigate to="/" replace />} />
-            <Route path="/editor" element={user ? <ResumeEditor /> : <Navigate to="/" replace />} />
-            <Route path="/jobs" element={user ? <JobTracker /> : <Navigate to="/" replace />} />
-            <Route path="/tracker" element={user ? <JobTracker /> : <Navigate to="/" replace />} />
-            <Route path="/campus" element={user ? <CampusPlacement /> : <Navigate to="/" replace />} />
-            <Route path="/outreach" element={user ? <OutreachHub /> : <Navigate to="/" replace />} />
-            <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" replace />} />
-            <Route path="/credits" element={user ? <CreditsPage /> : <Navigate to="/" replace />} />
+            {/* Interactive Workspace Routes (Open for guest exploration; AI & save actions trigger Sign-In modal) */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analyzer" element={<ResumeAnalyzer />} />
+            <Route path="/finder" element={<JobFinder />} />
+            <Route path="/interview" element={<InterviewSimulator />} />
+            <Route path="/learning" element={<LearningPath />} />
+            <Route path="/roadmap" element={<LearningPath />} />
+            <Route path="/editor" element={<ResumeEditor />} />
+            <Route path="/jobs" element={<JobTracker />} />
+            <Route path="/tracker" element={<JobTracker />} />
+            <Route path="/campus" element={<CampusPlacement />} />
+            <Route path="/outreach" element={<OutreachHub />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/credits" element={<CreditsPage />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />

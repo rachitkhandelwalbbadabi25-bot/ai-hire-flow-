@@ -29,25 +29,8 @@ export default function ResumeEditorSEO() {
     "description": "Interactive ATS resume editor and builder. Structure professional resumes, polish bullet points with AI assistance, and export clean, single-column PDFs."
   };
 
-  const handleLaunch = async () => {
-    if (user) {
-      navigate('/editor');
-      return;
-    }
-    if (isLaunching) return;
-    setIsLaunching(true);
-    try {
-      const loggedInUser = await signInWithGoogle();
-      if (loggedInUser) {
-        navigate('/editor');
-      }
-    } catch (error: any) {
-      if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
-        console.error('Sign in error:', error);
-      }
-    } finally {
-      setIsLaunching(false);
-    }
+  const handleLaunch = () => {
+    navigate('/editor');
   };
 
   // Static editor mockup mirroring real editor (section editing, AI bullet rewrite, live preview, PDF export)

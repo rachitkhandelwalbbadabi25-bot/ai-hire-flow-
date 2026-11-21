@@ -58,7 +58,7 @@ function generateUniqueId(): string {
 }
 
 export default function ResumeEditor() {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const { triggerAction, checkAccess, deductCredit, openUpgradeModal } = usePlan();
   const editAccess = checkAccess('resumeEdits');
   
@@ -111,6 +111,7 @@ export default function ResumeEditor() {
   }, [user?.uid]);
 
   const handleSave = async () => {
+    if (!requireAuth('save your Master Resume')) return;
     if (!user?.uid) return;
 
     const access = checkAccess('resumeEdits');
@@ -181,6 +182,7 @@ export default function ResumeEditor() {
   ) => {
     const initialText = (text || '').trim();
     if (!initialText) return;
+    if (!requireAuth('rewrite resume bullets with AI')) return;
 
     const target: ActiveAssistantTarget = {
       expId,

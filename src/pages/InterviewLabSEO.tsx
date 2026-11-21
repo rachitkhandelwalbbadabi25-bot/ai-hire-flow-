@@ -30,25 +30,8 @@ export default function InterviewLabSEO() {
     "description": "Interactive technical and behavioral interview simulation laboratory. Practice with dynamic AI hiring managers and receive structured feedback on STAR delivery and technical precision."
   };
 
-  const handleLaunch = async () => {
-    if (user) {
-      navigate('/interview');
-      return;
-    }
-    if (isLaunching) return;
-    setIsLaunching(true);
-    try {
-      const loggedInUser = await signInWithGoogle();
-      if (loggedInUser) {
-        navigate('/interview');
-      }
-    } catch (error: any) {
-      if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
-        console.error('Sign in error:', error);
-      }
-    } finally {
-      setIsLaunching(false);
-    }
+  const handleLaunch = () => {
+    navigate('/interview');
   };
 
   // Sample Visual: Question, candidate response, structured STAR feedback, strengths, and improvement points

@@ -42,7 +42,7 @@ export default function Layout({ user, children }: LayoutProps) {
   const location = useLocation();
   const { isUpgradeModalOpen } = usePlan();
   const isPublicRoute = PUBLIC_SEO_ROUTES.includes(location.pathname);
-  const showAppSidebar = Boolean(user && !isPublicRoute);
+  const showAppSidebar = !isPublicRoute;
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--hf-bg)] selection:bg-[var(--hf-cta)] selection:text-white text-[var(--hf-text)] transition-colors duration-150">
@@ -52,7 +52,7 @@ export default function Layout({ user, children }: LayoutProps) {
           <UpgradeModal />
         </Suspense>
       )}
-      {showAppSidebar && (
+      {user && showAppSidebar && (
         <Suspense fallback={null}>
           <OnboardingTour />
         </Suspense>

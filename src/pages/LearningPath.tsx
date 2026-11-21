@@ -111,7 +111,7 @@ function normalizeIncomingSkills(rawSkills?: any): string {
 }
 
 export default function LearningPath() {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const { plan, checkAccess, openUpgradeModal, deductCredit } = usePlan();
   const location = useLocation();
   const { currentActiveJob, setCurrentActiveJob, clearCurrentJobContext } = useSystemOS();
@@ -503,6 +503,7 @@ export default function LearningPath() {
   const generatePath = async () => {
     if (loading) return;
     if (!skillsStr.trim() || !targetRole.trim()) return;
+    if (!requireAuth('generate a personalized AI career roadmap')) return;
     
     // Check access for learningPath (available for free users)
     const access = checkAccess('learningPath');
@@ -548,17 +549,6 @@ export default function LearningPath() {
       default: return <Globe className="w-4 h-4" />;
     }
   };
-
-  if (!user) {
-    return (
-      <div className="min-h-[400px] w-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-7 h-7 animate-spin text-[var(--hf-primary)]" />
-          <p className="text-sm font-medium text-[var(--hf-text-secondary)]">Loading career roadmap...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-20">
